@@ -9,39 +9,40 @@
 
 | Phase | Name | Wave | Status | Completion |
 |-------|------|------|--------|------------|
-| 0 | Foundations & Shared Core | 1 | ❌ Not Started | 0% |
+| 0 | Foundational Shared Core | 1 | ✔️ Completed | 100% |
 | 1 | Integration & Ingest | 1 | ❌ Not Started | 0% |
-| 2 | Material Availability | 1 | ❌ Not Started | 0% |
-| 3 | Routing & Process Master Data | 1 | ❌ Not Started | 0% |
-| 4 | Capacity CTP Module | 2 | ❌ Not Started | 0% |
-| 5 | Transport ATP Module | 2 | ❌ Not Started | 0% |
-| 6 | Postgres/Marten Repository Integration | 2 | ❌ Not Started | 0% |
-| 7 | Promise/ATP Orchestrator | 2 | ❌ Not Started | 0% |
-| 8 | Heuristic MRP Module | 3 | ❌ Not Started | 0% |
-| 9 | Material Replenishment | 3 | ❌ Not Started | 0% |
-| 10 | Pegging & Traceability | 3 | ❌ Not Started | 0% |
-| 11 | Work Orders & MES Feedback | 3 | ❌ Not Started | 0% |
-| 12 | Heuristic Replanning (Disruption) | 3 | ❌ Not Started | 0% |
-| 13 | Stage 1 Global Tactical Solver (MILP) | 4 | ❌ Not Started | 0% |
-| 14 | Stage 2 Detailed Scheduling (CP-SAT) | 4 | ❌ Not Started | 0% |
-| 15 | Digital Twin Simulator & Sim-to-Real | 4 | ❌ Not Started | 0% |
-| 16 | Supplier Management & Collaborative ATP | 4 | ❌ Not Started | 0% |
-| 17 | Probabilistic Promising | 5 | ❌ Not Started | 0% |
-| 18 | Agentic Exception Resolution & Memory | 5 | ❌ Not Started | 0% |
-| 19 | Continuous Planning & SC Graph GNNs | 5 | ❌ Not Started | 0% |
-| 20 | AI Governance & Guardrails | 5 | ❌ Not Started | 0% |
-| 21 | Analytics, Reporting & Hardening | 5 | ❌ Not Started | 0% |
+| 2 | Material Availability Query | 1 | ❌ Not Started | 0% |
+| 3 | Material Reservations | 1 | ❌ Not Started | 0% |
+| 4 | Routing & Process Master Data | 1 | ❌ Not Started | 0% |
+| 5 | Capacity CTP Module | 2 | ❌ Not Started | 0% |
+| 6 | Transport ATP Module | 2 | ❌ Not Started | 0% |
+| 7 | Postgres/Marten Repository Integration | 2 | ❌ Not Started | 0% |
+| 8 | Promise/ATP Orchestrator | 2 | ❌ Not Started | 0% |
+| 9 | Heuristic MRP Module | 3 | ❌ Not Started | 0% |
+| 10 | Material Replenishment Module | 3 | ❌ Not Started | 0% |
+| 11 | Pegging & Traceability | 3 | ❌ Not Started | 0% |
+| 12 | Work Orders & Execution Feedback | 3 | ❌ Not Started | 0% |
+| 13 | Heuristic Replanning (Disruption Handling) | 3 | ❌ Not Started | 0% |
+| 14 | Stage 1 Global Tactical Solver (MILP) | 4 | ❌ Not Started | 0% |
+| 15 | Stage 2 Detailed Scheduling (CP-SAT) | 4 | ❌ Not Started | 0% |
+| 16 | Digital Twin Simulator & Sim-to-Real | 4 | ❌ Not Started | 0% |
+| 17 | Supplier Management & Collaborative ATP | 4 | ❌ Not Started | 0% |
+| 18 | Probabilistic Promising | 5 | ❌ Not Started | 0% |
+| 19 | Agentic Exception Resolution & Memory | 5 | ❌ Not Started | 0% |
+| 20 | Continuous Planning & SC Graph GNNs | 5 | ❌ Not Started | 0% |
+| 21 | AI Governance & Guardrails | 5 | ❌ Not Started | 0% |
+| 22 | Analytics, Reporting & Hardening | 5 | ❌ Not Started | 0% |
 
 ---
 
 ## 2. Wave Execution Summary
 
 ```
-Wave 1: Core Deterministic Foundations [MVP] (Phases 0–3)          ░░░░░░░░░░░░░░░░░░ 0%
-Wave 2: Finite Heuristic Planning & Persistence [MVP] (Phases 4–7)  ░░░░░░░░░░░░░░░░░░ 0%
-Wave 3: Demand/Supply Netting & Execution [MVP] (Phases 8–12)       ░░░░░░░░░░░░░░░░░░ 0%
-Wave 4: Advanced AI/ML & Optimization [Post-MVP] (Phases 13–16)     ░░░░░░░░░░░░░░░░░░ 0%
-Wave 5: Cognitive, Agentic, & Governance Layer [Post-MVP] (Ph- 17-21) ░░░░░░░░░░░░░░░░ 0%
+Wave 1: Core Deterministic Foundations [MVP] (Phases 0–4)          ▓▓▓░░░░░░░░░░░░░░░ 20%
+Wave 2: Finite Heuristic Planning & Persistence [MVP] (Phases 5–8)  ░░░░░░░░░░░░░░░░░░ 0%
+Wave 3: Demand/Supply Netting & Execution [MVP] (Phases 9–13)       ░░░░░░░░░░░░░░░░░░ 0%
+Wave 4: Advanced AI/ML & Optimization [Post-MVP] (Phases 14–17)     ░░░░░░░░░░░░░░░░░░ 0%
+Wave 5: Cognitive, Agentic, & Governance Layer [Post-MVP] (Phases 18–22) ░░░░░░░░░░░░░ 0%
 ```
 
 ---
@@ -171,11 +172,11 @@ Wave 5: Cognitive, Agentic, & Governance Layer [Post-MVP] (Ph- 17-21) ░░░�
 
 | Wave | Name | Phases | Goal |
 |------|------|--------|------|
-| **1** | Core Deterministic Foundations [MVP] | 0–3 | Establish F# Shared Kernel, Command API, Ingest adapters, Material Availability snapshot query, Material Reservations aggregate, and Routing master data. |
-| **2** | Finite Heuristic Planning & Persistence [MVP] | 4–7 | Build Capacity calendar buckets CTP, Transport leg pathfinding ATP, Postgres/Marten persistence, and compose the online Promise/ATP orchestrator. |
-| **3** | Demand/Supply Netting & Execution [MVP] | 8–12 | Implement Heuristic MRP netting, BOM explosion, Material Replenishment targets, Pegging Snapshot links, Work Order Release, MES feedback, and Heuristic Replanning. |
-| **4** | Advanced AI/ML & Optimization [Post-MVP] | 13–16 | Implement Stage 1 global MILP solver, Stage 2 CP-SAT line sequencer, Digital Twin simulator, and Supplier ATP collaborative parameters. |
-| **5** | Cognitive, Agentic & Governance Layer [Post-MVP] | 17–21 | Deliver Probabilistic Promising confidence intervals, Agent Memory exceptions, Continuous event-driven planning, GNN SC graphs, AI Governance guardrails, and hardening. |
+| **1** | Core Deterministic Foundations [MVP] | 0–4 | Establish F# Shared Kernel, Command API, Ingest adapters, Material Availability snapshot query, Material Reservations aggregate, and Routing master data. |
+| **2** | Finite Heuristic Planning & Persistence [MVP] | 5–8 | Build Capacity calendar buckets CTP, Transport leg pathfinding ATP, Postgres/Marten persistence, and compose the online Promise/ATP orchestrator. |
+| **3** | Demand/Supply Netting & Execution [MVP] | 9–13 | Implement Heuristic MRP netting, BOM explosion, Material Replenishment targets, Pegging Snapshot links, Work Order Release, MES feedback, and Heuristic Replanning. |
+| **4** | Advanced AI/ML & Optimization [Post-MVP] | 14–17 | Implement Stage 1 global MILP solver, Stage 2 CP-SAT line sequencer, Digital Twin simulator, and Supplier ATP collaborative parameters. |
+| **5** | Cognitive, Agentic & Governance Layer [Post-MVP] | 18–22 | Deliver Probabilistic Promising confidence intervals, Agent Memory exceptions, Continuous event-driven planning, GNN SC graphs, AI Governance guardrails, and hardening. |
 
 ---
 
@@ -291,19 +292,16 @@ The following capabilities **must grow incrementally** across multiple phases ra
 
 ---
 
-### Phase 1 — Integration & Ingest
+### Phase 1 — Integration & Pragmatic Ingest
 **Wave**: 1 | **Status**: ❌ Not Started
 
 | Sub-Phase | Feature(s) | Description | Exit Gate | Status |
 |-----------|-----------|-------------|-----------|--------|
 | 1.1 | MP-41 | Integration event envelope & base event contracts (IntegrationEvent DU, EventEnvelope) | EventEnvelope compiles with TenantId, CorrelationId, and base IntegrationEvent payloads. | ❌ Not Started |
-| 1.2 | INT-01, INT-08 | Nexus ingest adapter (idempotent by message ID, PostgreSQL Outbox) | Ingestion service writes messages to Outbox table; rejects duplicates by message ID. | ❌ Not Started |
-| 1.3 | INT-05 | Master data sync — static ingest (Products, BOMs, StockingPoints, Resources, Routings, Suppliers) | Static master data files parse completely and populate initial domain entities. | ❌ Not Started |
-| 1.4 | NX-01, NX-06 | Demand signal processing (CustomerOrder, Forecast events) | Ingestion parses orders/forecasts, converting them into domain command payloads. | ❌ Not Started |
-| 1.5 | INT-04, INT-09 | Schema validation, reference integrity & anti-corruption layer boundary transformers | Ingestion validates external schemas; invalid schemas fail; valid schemas convert to domain models. | ❌ Not Started |
-| 1.6 | INT-02 | Event normalization (schema evolution, data transformation) | Transformer mapping supports converting older payload formats to the current schema. | ❌ Not Started |
-| 1.7 | NX-02 | Alerting on ingest failures (DLQ notifications) | Ingest exceptions catch, route payloads to Dead Letter Queue (DLQ), and write alerts to log. | ❌ Not Started |
-| 1.8 | INT-03 | Event streaming infrastructure (message bus, subscriber pattern, back-pressure) | Message bus subscriber receives events in order; back-pressure keeps processing stable under load. | ❌ Not Started |
+| 1.2 | INT-05 | Master data file parsing (static ingest of Products, BOMs, StockingPoints, Resources, Routings, Suppliers) | Master data files (JSON/CSV) parse completely and map to aggregate records. | ❌ Not Started |
+| 1.3 | NX-01, NX-06 | Demand signal file processing (CustomerOrder, Forecast file ingest) | Order and forecast files parse completely and map to command payloads. | ❌ Not Started |
+| 1.4 | INT-04, INT-09 | Schema validation, reference integrity & anti-corruption layer boundary transformers | Boundary transformers validate file fields, enforce reference integrity, and throw ValidationError on failure. | ❌ Not Started |
+
 
 ---
 
@@ -401,9 +399,10 @@ The following capabilities **must grow incrementally** across multiple phases ra
 | 7.1 | MP-41 | Marten configuration (connection pooling, Weasel migration strategy, database schema) | Marten document store initializes; Weasel auto-migrates schemas during startup test. | ❌ Not Started |
 | 7.2 | MP-41 | Repository implementation for aggregates (Scenario, Reservations) | Repositories load and save Scenario and Reservation aggregates using Marten sessions. | ❌ Not Started |
 | 7.3 | MP-41 | Optimistic concurrency via Marten document version | Concurrent updates to same aggregate throw concurrency/version conflicts as expected. | ❌ Not Started |
-| 7.4 | MP-41 | Event storage & integration outbox streams | Aggregate events write to event store; Outbox publisher picks up and marks events processed. | ❌ Not Started |
+| 7.4 | MP-41 | Event storage & integration outbox streams (Marten Async Daemon) | Aggregate events write to event store; Marten Async Daemon catch-up subscriptions dispatch integration events to bounded contexts. | ❌ Not Started |
 | 7.5 | MP-41 | Read-model projection infrastructure (Marten inline/async projections for read models) | Marten projections rebuild read models on document changes; verified in database query. | ❌ Not Started |
 | 7.6 | MP-41 | Integration test harness (Testcontainers/PostgreSQL, aggregate roundtrip, concurrency tests) | Testcontainers-backed DB integration test suite runs and passes on local runner. | ❌ Not Started |
+| 7.7 | INT-01, INT-08 | Nexus idempotent ingest adapter (idempotent by message ID, PostgreSQL Outbox) | Ingestion service writes messages to Outbox table; rejects duplicates by message ID. | ❌ Not Started |
 
 ---
 
@@ -615,6 +614,9 @@ The following capabilities **must grow incrementally** across multiple phases ra
 | 22.1 | MP-53 | KPI projection schemas (OTD, utilization, inventory turns, accuracy) | OTD, inventory turn, and utilization schemas query and return correct KPIs. | ❌ Not Started |
 | 22.2 | MP-41 | Production hardening: RBAC, TLS 1.3, Secrets, WAF, multi-tenant locks | External vulnerability scans and multi-tenant isolation tests pass. | ❌ Not Started |
 | 22.3 | MP-41 | Distributed tracing (OTEL), structured JSON logging, Prometheus metrics | OpenTelemetry trace IDs and Prometheus metrics are scraped successfully under load. | ❌ Not Started |
+| 22.4 | INT-02 | Ingest event normalization (schema evolution, data transformation) | Transformer mapping supports converting older payload formats to the current schema. | ❌ Not Started |
+| 22.5 | NX-02 | Alerting on ingest failures (DLQ notifications) | Ingest exceptions catch, route payloads to Dead Letter Queue (DLQ), and write alerts to log. | ❌ Not Started |
+| 22.6 | INT-03 | Event streaming infrastructure (external broker integration: RabbitMQ/Kafka) | Outbox adapter forwards events to external broker; subscriber receives events with back-pressure support. | ❌ Not Started |
 
 ---
 
