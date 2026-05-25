@@ -67,7 +67,7 @@ module StateMonad =
         //member _.Delay(f) = f()
         member _.Delay(f) = State(fun s -> runState (f()) s)
 
-        member _.Run(f) = f()
+        member _.Run(m) = m
         member _.For(sequence: seq<'T>, body: 'T -> State<'S, unit>) : State<'S, unit> =
             State(fun s ->
                 let mutable currentState = s

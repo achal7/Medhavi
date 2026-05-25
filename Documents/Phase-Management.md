@@ -282,17 +282,12 @@ The following capabilities **must grow incrementally** across multiple phases ra
 | 0.1 | MP-41 | SharedKernel primitives (Id types, Version, Period, Qty, UoM, Money) | Primitives compiled; JSON serialization & equality unit tests pass. | ✔️ Completed |
 | 0.2 | MP-41 | Strict aggregate command API convention (`handle : Cmd -> State -> Result<State*Events, Error>`) | Command handler signatures compile; F# pattern match completeness verified. | ✔️ Completed |
 | 0.3 | MP-41 | Base repository port pattern (pluggable interface in-memory implementation) | Repository record-of-functions defined; in-memory mock implementation CRUD tests pass. | ✔️ Completed |
-| 0.4 | MP-41 | Scenario aggregate (Version, PlanSnapshot, MarkDirty, optimistic concurrency) | Scenario aggregate updates increment Scenario.Version and track dirty state in unit tests. | ❌ Not Started |
-| 0.5 | MP-41 | Error taxonomy & reason code catalog (DomainError DU, PromiseReasonCode) | DomainError and PromiseReasonCode DUs compile; mapping function to HTTP status exists. | ❌ Not Started |
-| 0.6 | MP-41 | Core policy & SLA presets (Gold/Silver/Bronze presets, merge logic) | Presets defined; merging unit tests verify priority resolution behavior. | ❌ Not Started |
-| 0.7 | MP-41 | Idempotency & deterministic IDs (hash-based, retry patterns) | Hash-based deterministic ID generator test returns identical IDs for duplicate payloads. | ❌ Not Started |
-| 0.8 | MP-41 | Tenant & UTC normalization | Date fields default to/enforce UTC; TenantId propagates through context wrapper. | ❌ Not Started |
-| 0.9 | MP-41 | Telemetry contracts (latency, limiter frequency) | TelemetryContracts record definitions compile and model key latency/rate indicators. | ❌ Not Started |
-| 0.10 | MP-44 | Scoring type stubs (time/cost/risk/CO2 record shapes; logic wired in Phase 8) | Scoring types compile and support addition/comparison operations. | ❌ Not Started |
-| 0.11 | MP-41 | Routing/alternate selection primitives | Selection policy primitives (Fastest, Cheapest, Balanced) compile. | ❌ Not Started |
-| 0.12 | MP-41 | Applicative command validation pipeline (wire Validator pattern to aggregate commands) | Validation pipeline prevents command execution on invalid inputs; tests verify invalid patterns are caught. | ❌ Not Started |
-| 0.13 | MP-41 | FP pattern verification (unit tests for State/Writer/Optics patterns in domain context) | Unit tests confirm optics lens getters/setters and state monad transitions operate correctly. | ❌ Not Started |
-| 0.14 | MP-41 | Integration event envelope & base event contracts (IntegrationEvent DU, EventEnvelope) | EventEnvelope compiles with TenantId, CorrelationId, and base IntegrationEvent payloads. | ❌ Not Started |
+| 0.4 | MP-41 | Error taxonomy & reason code catalog (DomainError DU) | DomainError DUs compile | ✔️ Completed |
+| 0.5 | MP-41 | Idempotency & deterministic IDs (hash-based, retry patterns) | Hash-based deterministic ID generator test returns identical IDs for duplicate payloads. | ✔️ Completed |
+| 0.6 | MP-41 | Tenant & UTC normalization | Date fields default to/enforce UTC; TenantId propagates through context wrapper. | ✔️ Completed |
+| 0.7 | MP-41 | Telemetry contracts (latency, limiter frequency) | TelemetryContracts record definitions compile and model key latency/rate indicators. | ✔️ Completed |
+| 0.8 | MP-41 | Applicative command validation pipeline (wire Validator pattern to aggregate commands) | Validation pipeline prevents command execution on invalid inputs; tests verify invalid patterns are caught. | ✔️ Completed |
+| 0.9 | MP-41 | FP pattern verification (unit tests for State/Writer/Optics patterns in domain context) | Unit tests confirm optics lens getters/setters and state monad transitions operate correctly. | ✔️ Completed |
 
 ---
 
@@ -301,13 +296,14 @@ The following capabilities **must grow incrementally** across multiple phases ra
 
 | Sub-Phase | Feature(s) | Description | Exit Gate | Status |
 |-----------|-----------|-------------|-----------|--------|
-| 1.1 | INT-01, INT-08 | Nexus ingest adapter (idempotent by message ID, PostgreSQL Outbox) | Ingestion service writes messages to Outbox table; rejects duplicates by message ID. | ❌ Not Started |
-| 1.2 | INT-05 | Master data sync — static ingest (Products, BOMs, StockingPoints, Resources, Routings, Suppliers) | Static master data files parse completely and populate initial domain entities. | ❌ Not Started |
-| 1.3 | NX-01, NX-06 | Demand signal processing (CustomerOrder, Forecast events) | Ingestion parses orders/forecasts, converting them into domain command payloads. | ❌ Not Started |
-| 1.4 | INT-04, INT-09 | Schema validation, reference integrity & anti-corruption layer boundary transformers | Ingestion validates external schemas; invalid schemas fail; valid schemas convert to domain models. | ❌ Not Started |
-| 1.5 | INT-02 | Event normalization (schema evolution, data transformation) | Transformer mapping supports converting older payload formats to the current schema. | ❌ Not Started |
-| 1.6 | NX-02 | Alerting on ingest failures (DLQ notifications) | Ingest exceptions catch, route payloads to Dead Letter Queue (DLQ), and write alerts to log. | ❌ Not Started |
-| 1.7 | INT-03 | Event streaming infrastructure (message bus, subscriber pattern, back-pressure) | Message bus subscriber receives events in order; back-pressure keeps processing stable under load. | ❌ Not Started |
+| 1.1 | MP-41 | Integration event envelope & base event contracts (IntegrationEvent DU, EventEnvelope) | EventEnvelope compiles with TenantId, CorrelationId, and base IntegrationEvent payloads. | ❌ Not Started |
+| 1.2 | INT-01, INT-08 | Nexus ingest adapter (idempotent by message ID, PostgreSQL Outbox) | Ingestion service writes messages to Outbox table; rejects duplicates by message ID. | ❌ Not Started |
+| 1.3 | INT-05 | Master data sync — static ingest (Products, BOMs, StockingPoints, Resources, Routings, Suppliers) | Static master data files parse completely and populate initial domain entities. | ❌ Not Started |
+| 1.4 | NX-01, NX-06 | Demand signal processing (CustomerOrder, Forecast events) | Ingestion parses orders/forecasts, converting them into domain command payloads. | ❌ Not Started |
+| 1.5 | INT-04, INT-09 | Schema validation, reference integrity & anti-corruption layer boundary transformers | Ingestion validates external schemas; invalid schemas fail; valid schemas convert to domain models. | ❌ Not Started |
+| 1.6 | INT-02 | Event normalization (schema evolution, data transformation) | Transformer mapping supports converting older payload formats to the current schema. | ❌ Not Started |
+| 1.7 | NX-02 | Alerting on ingest failures (DLQ notifications) | Ingest exceptions catch, route payloads to Dead Letter Queue (DLQ), and write alerts to log. | ❌ Not Started |
+| 1.8 | INT-03 | Event streaming infrastructure (message bus, subscriber pattern, back-pressure) | Message bus subscriber receives events in order; back-pressure keeps processing stable under load. | ❌ Not Started |
 
 ---
 
@@ -355,7 +351,8 @@ The following capabilities **must grow incrementally** across multiple phases ra
 | 4.2 | MP-06 | Qty-duration calculation (base + qty × rate, with fallback) | Duration formula calculates operation times correctly; uses fallback default when rates are missing. | ❌ Not Started |
 | 4.3 | MP-06 | Alternates modeling & policy-driven selection (Fastest/Cheapest/Balanced) | Selector matches configured policy constraints and returns the correct alternate path. | ❌ Not Started |
 | 4.4 | MP-45 | Rework/inspection step modeling (yield, rework duration) | Model incorporates scrap yield and recalculates total run times for loop-back rework steps. | ❌ Not Started |
-| 4.5 | MP-06 | Routing unit tests (selection, validity, qty-duration, rework steps, alternates) | Test suite runs green; achieves >90% coverage on routing calculation logic. | ❌ Not Started |
+| 4.5 | MP-41 | Routing/alternate selection primitives | Selection policy primitives (Fastest, Cheapest, Balanced) compile. | ❌ Not Started |
+| 4.6 | MP-06 | Routing unit tests (selection, validity, qty-duration, rework steps, alternates) | Test suite runs green; achieves >90% coverage on routing calculation logic. | ❌ Not Started |
 
 ---
 
@@ -417,19 +414,22 @@ The following capabilities **must grow incrementally** across multiple phases ra
 
 | Sub-Phase | Feature(s) | Description | Exit Gate | Status |
 |-----------|-----------|-------------|-----------|--------|
-| 8.1 | MP-01 | Material ATP service (uses Material Availability) | Query returns material availability date per product; returns Infinite/Unavailable if stock-out. | ❌ Not Started |
-| 8.2 | MP-01 | Capacity window finder (uses Capacity CTP) | Capacity query returns start/end dates for routing requirements. | ❌ Not Started |
-| 8.3 | MP-01 | Transport ATP integration (uses Transport ATP) | Pathfinder resolves valid transit legs and returns expected arrival date. | ❌ Not Started |
-| 8.4 | MP-23 | Multi-hop material flow (graph-based upstream availability) | Orchestrator resolves multi-hop material constraints by tracing upstream bill-of-materials locations. | ❌ Not Started |
-| 8.5 | MP-01 | Promise orchestrator (compose all providers, step ordering) | Orchestrator aggregates material, capacity, and transport outputs into a combined promise request. | ❌ Not Started |
-| 8.6 | MP-01 | Promise date = max(material_ready, capacity_ready, transport_arrival) | Orchestrator accurately sets promise date using the max of ready dates; unit tests verify calculations. | ❌ Not Started |
-| 8.7 | MP-01 | Limiter selection (argmax contributor + rationale) | Output payload identifies the exact bottleneck limiting a promise (Material, Capacity, or Transport). | ❌ Not Started |
-| 8.8 | MP-42 | Tentative reservation creation (material/capacity/transport) | Orchestrator successfully creates tentative reservations across all 3 domains, rollback occurs on failure. | ❌ Not Started |
-| 8.9 | MP-01 | Priority/full-order/full-delivery enforcement | Order promising respects priority parameters, enforcing full-order delivery rules when requested. | ❌ Not Started |
-| 8.10 | MP-41 | Provider injection (light vs full mode) | Config changes switch orchestrator between mock providers and real repository implementations. | ❌ Not Started |
-| 8.11 | MP-01 | Risk/confidence stub (deterministic date with confidence=1.0; hook for Phase 18 upgrade) | Response includes risk metadata; returns 1.0 confidence stub; hook compiles cleanly. | ❌ Not Started |
-| 8.12 | MP-44 | Cost calculation (material + production + transport + holding + lateness penalties) | Total cost matches expected sum of material, capacity, transit, and late penalty parameters. | ❌ Not Started |
-| 8.13 | MP-41 | Promise telemetry instrumentation (latency per provider, limiter frequency, cache hit/miss) | Latencies, cache hits, and limiter counts are successfully published to telemetry sinks. | ❌ Not Started |
+| 8.1 | MP-41 | Scenario aggregate (Version, PlanSnapshot, MarkDirty, optimistic concurrency) | Scenario aggregate updates increment Scenario.Version and track dirty state in unit tests. | ❌ Not Started |
+| 8.2 | MP-41 | Core policy & SLA presets (Gold/Silver/Bronze presets, merge logic) | Presets defined; merging unit tests verify priority resolution behavior. | ❌ Not Started |
+| 8.3 | MP-44 | Scoring type stubs (time/cost/risk/CO2 record shapes; logic wired in Phase 8) | Scoring types compile and support addition/comparison operations. | ❌ Not Started |
+| 8.4 | MP-01 | Material ATP service (uses Material Availability) | Query returns material availability date per product; returns Infinite/Unavailable if stock-out. | ❌ Not Started |
+| 8.5 | MP-01 | Capacity window finder (uses Capacity CTP) | Capacity query returns start/end dates for routing requirements. | ❌ Not Started |
+| 8.6 | MP-01 | Transport ATP integration (uses Transport ATP) | Pathfinder resolves valid transit legs and returns expected arrival date. | ❌ Not Started |
+| 8.7 | MP-23 | Multi-hop material flow (graph-based upstream availability) | Orchestrator resolves multi-hop material constraints by tracing upstream bill-of-materials locations. | ❌ Not Started |
+| 8.8 | MP-01 | Promise orchestrator (compose all providers, step ordering) | Orchestrator aggregates material, capacity, and transport outputs into a combined promise request. | ❌ Not Started |
+| 8.9 | MP-01 | Promise date = max(material_ready, capacity_ready, transport_arrival) | Orchestrator accurately sets promise date using the max of ready dates; unit tests verify calculations. | ❌ Not Started |
+| 8.10 | MP-01 | Limiter selection (argmax contributor + rationale) | Output payload identifies the exact bottleneck limiting a promise (Material, Capacity, or Transport). | ❌ Not Started |
+| 8.11 | MP-42 | Tentative reservation creation (material/capacity/transport) | Orchestrator successfully creates tentative reservations across all 3 domains, rollback occurs on failure. | ❌ Not Started |
+| 8.12 | MP-01 | Priority/full-order/full-delivery enforcement | Order promising respects priority parameters, enforcing full-order delivery rules when requested. | ❌ Not Started |
+| 8.13 | MP-41 | Provider injection (light vs full mode) | Config changes switch orchestrator between mock providers and real repository implementations. | ❌ Not Started |
+| 8.14 | MP-01 | Risk/confidence stub (deterministic date with confidence=1.0; hook for Phase 18 upgrade) | Response includes risk metadata; returns 1.0 confidence stub; hook compiles cleanly. | ❌ Not Started |
+| 8.15 | MP-44 | Cost calculation (material + production + transport + holding + lateness penalties) | Total cost matches expected sum of material, capacity, transit, and late penalty parameters. | ❌ Not Started |
+| 8.16 | MP-41 | Promise telemetry instrumentation (latency per provider, limiter frequency, cache hit/miss) | Latencies, cache hits, and limiter counts are successfully published to telemetry sinks. | ❌ Not Started |
 
 ---
 

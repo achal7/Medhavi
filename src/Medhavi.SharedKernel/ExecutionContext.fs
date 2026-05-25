@@ -187,6 +187,7 @@ module ExecutionContext =
                 |> Option.bind (fun data ->
                     data.TryFind "Timestamp"
                     |> Option.map (fun v -> v :?> DateTimeOffset))
+                |> Option.map (fun t -> t.ToUniversalTime())
                 |> Option.defaultValue DateTimeOffset.UtcNow
 
             { CorrelationId = correlationId
@@ -195,3 +196,26 @@ module ExecutionContext =
               Principal = principal
               TenantId = tenantId
               Timestamp = timestamp })
+
+type ContextWrapper<'Payload> =
+    { Context: ExecutionContext
+      Payload: 'Payload }
+
+type ExecutionContextHolder =
+    static member val private CurrentContext = System.Threading.AsyncLocal<ExecutionContext>() with get
+
+    static member Set(ctx: ExecutionContext) =
+        ExecutionContextHolder.CurrentContext.Value <- ctx
+
+    static member TryGet() =
+        let value = ExecutionContextHolder.CurrentContext.Value
+        if obj.ReferenceEquals(value, null) then None else Some value
+
+    static member Clear() =
+        ExecutionContextHolder.CurrentContext.Value <- Unchecked.defaultof<ExecutionContext>
+
+module ExecutionContextValidation =
+    let requireTenant (ctx: ExecutionContext) : Result<string, DomainError> =
+        match ctx.TenantId with
+        | Some tenantId when not (String.IsNullOrWhiteSpace tenantId) -> Ok tenantId
+        | _ -> Error (DomainError.validation "TenantId is required but was missing or empty")

@@ -157,24 +157,30 @@ module Percent =
 
     let value (Percent v) = v
 
+module DateTimeOffset =
+    /// Normalizes a DateTimeOffset to UTC
+    let toUtc (dto: DateTimeOffset) = dto.ToUniversalTime()
+
 [<JsonFSharpConverter>]
 type Timestamp =
     | Timestamp of DateTimeOffset
 
-    static member (+)(Timestamp a, b: TimeSpan) = Timestamp(a + b)
+    static member (+)(Timestamp a, b: TimeSpan) = Timestamp((a + b).ToUniversalTime())
     static member (-)(Timestamp t1, Timestamp t2) = t1 - t2
     static member now = Timestamp(DateTimeOffset.UtcNow)
 
 module Timestamp =
-    let minValue = Timestamp(DateTimeOffset.MinValue)
-    let maxValue = Timestamp(DateTimeOffset.MaxValue)
+    /// Create a Timestamp, enforcing UTC normalization
+    let create (dto: DateTimeOffset) = Timestamp(dto.ToUniversalTime())
+    let minValue = Timestamp(DateTimeOffset.MinValue.ToUniversalTime())
+    let maxValue = Timestamp(DateTimeOffset.MaxValue.ToUniversalTime())
     let value (Timestamp v) = v
 
-    let minOf (Timestamp a) (Timestamp b) = Timestamp(min a b)
-    let maxOf (Timestamp a) (Timestamp b) = Timestamp(max a b)
+    let minOf (Timestamp a) (Timestamp b) = Timestamp((min a b).ToUniversalTime())
+    let maxOf (Timestamp a) (Timestamp b) = Timestamp((max a b).ToUniversalTime())
 
-    let add (Timestamp a) (span: TimeSpan) = Timestamp(a + span)
-    let subtract (Timestamp a) (span: TimeSpan) = Timestamp(a - span)
+    let add (Timestamp a) (span: TimeSpan) = Timestamp((a + span).ToUniversalTime())
+    let subtract (Timestamp a) (span: TimeSpan) = Timestamp((a - span).ToUniversalTime())
 
     let isAfter (Timestamp a) (Timestamp b) = a > b
     let isBefore (Timestamp a) (Timestamp b) = a < b
@@ -197,25 +203,30 @@ module Window =
 
     let applySlack (slack: TimeSpan) (w: Window) =
         { StartVal = w.Start
-          EndVal = w.End + slack }
+          EndVal = Timestamp.add w.End slack }
 
     let isBefore (t: Timestamp) (w: Window) = t < w.Start
 
     /// Validate cutoff: departure must be >= earliest and before cutoff end.
     let meetsCutoff (earliest: DateTimeOffset) (cutoffEnd: DateTimeOffset) (departure: DateTimeOffset) =
-        departure >= earliest && departure <= cutoffEnd
+        let utcEarliest = earliest.ToUniversalTime()
+        let utcCutoff = cutoffEnd.ToUniversalTime()
+        let utcDeparture = departure.ToUniversalTime()
+        utcDeparture >= utcEarliest && utcDeparture <= utcCutoff
 
     let startTime (window: Window) = Timestamp.value window.Start
     let endTime (window: Window) = Timestamp.value window.End
     let duration (window: Window) = window.End - window.Start
 
     let createFromTime (startTime: DateTimeOffset) (endTime: DateTimeOffset) =
-        match startTime < endTime with
+        let utcStart = startTime.ToUniversalTime()
+        let utcEnd = endTime.ToUniversalTime()
+        match utcStart < utcEnd with
         | true ->
             Ok
-                { StartVal = Timestamp startTime
-                  EndVal = Timestamp endTime }
-        | false -> Error(DomainError.validation $"Start {startTime} is after end time {endTime} ")
+                { StartVal = Timestamp utcStart
+                  EndVal = Timestamp utcEnd }
+        | false -> Error(DomainError.validation $"Start {utcStart} is after end time {utcEnd} ")
 
     let create (startTime: Timestamp) (endTime: Timestamp) =
         createFromTime (Timestamp.value startTime) (Timestamp.value endTime)

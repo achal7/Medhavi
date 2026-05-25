@@ -26,6 +26,7 @@ type Envelope =
 
         CorrelationId: Guid option
         CausationId: Guid option
+        TenantId: string option
 
         /// Extensible metadata for tracing and context
         Metadata: Map<string, string>
@@ -47,15 +48,16 @@ module Envelope =
           EventId = Guid.NewGuid()
           SchemaVersion = version
           Metadata = Map.empty
-          CreatedUtc = DateTimeOffset.Now
+          CreatedUtc = DateTimeOffset.UtcNow
           StreamName = ""
           CorrelationId = None
-          CausationId = None }
+          CausationId = None
+          TenantId = None }
 
     let withMetadata (key: string) (value: string) (envelope: Envelope) : Envelope =
         let newMeta = envelope.Metadata |> Map.add key value
 
-        // Extract typed correlation + causation from metadata (if present)
+        // Extract typed correlation + causation + tenant from metadata (if present)
         let correlationId =
             match Map.tryFind "correlationId" newMeta with
             | Some v -> tryGuid v
@@ -66,10 +68,16 @@ module Envelope =
             | Some v -> tryGuid v
             | None -> envelope.CausationId
 
+        let tenantId =
+            match Map.tryFind "tenantId" newMeta with
+            | Some v -> Some v
+            | None -> envelope.TenantId
+
         { envelope with
             Metadata = newMeta
             CorrelationId = correlationId
-            CausationId = causationId }
+            CausationId = causationId
+            TenantId = tenantId }
 
     /// Rehydrate from full metadata map
     let withMetadataMap (metadata: Map<string, string>) (envelope: Envelope) : Envelope =
@@ -83,14 +91,21 @@ module Envelope =
             |> Map.tryFind "causationId"
             |> Option.bind tryGuid
 
+        let tenantId =
+            metadata
+            |> Map.tryFind "tenantId"
+
         { envelope with
             Metadata = metadata
             CorrelationId = correlationId
-            CausationId = causationId }
+            CausationId = causationId
+            TenantId = tenantId }
 
     let withCorrelationId (id: string) (envelope: Envelope) : Envelope = envelope |> withMetadata "correlationId" id
 
     let withCausationId (id: string) (envelope: Envelope) : Envelope = envelope |> withMetadata "causationId" id
+
+    let withTenantId (id: string) (envelope: Envelope) : Envelope = envelope |> withMetadata "tenantId" id
 
     let withAggregateId (id: string) (envelope: Envelope) : Envelope = envelope |> withMetadata "aggregateId" id
 
@@ -178,7 +193,7 @@ module Envelope =
             | _ -> None)
 
     let tryGetPrincipal (env: Envelope) : string option = tryGetMetadata "principal" env
-    let tryGetTenantId (env: Envelope) : string option = tryGetMetadata "tenantId" env
+    let tryGetTenantId (env: Envelope) : string option = env.TenantId
     let tryGetMessageId (env: Envelope) : string option = tryGetMetadata "messageId" env
 
     /// Build typed ExecutionContext from envelope (uses CreatedUtc as timestamp)
@@ -195,7 +210,7 @@ module Envelope =
 
     let createCheckpointEnvelope (streamName: string) (payload: string) : Envelope =
         let env = createEnvelope "checkpoint" payload 1
-        { env with StreamName = streamName }
+        { env with StreamName = streamName; TenantId = None }
 
     let tryParsePositionFromData (env: Envelope) : int64 option =
         try
