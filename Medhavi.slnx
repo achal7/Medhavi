@@ -1,0 +1,26 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Medhavi.Capacity/Medhavi.Capacity.fsproj" />
+    <Project Path="src/Medhavi.Common/Medhavi.Common.fsproj" />
+    <Project Path="src/Medhavi.Contracts/Medhavi.Contracts.fsproj" />
+    <Project Path="src/Medhavi.Demand/Medhavi.Demand.fsproj" />
+    <Project Path="src/Medhavi.Hub/Medhavi.Hub.fsproj" />
+    <Project Path="src/Medhavi.Infrastructure/Medhavi.Infrastructure.fsproj" />
+    <Project Path="src/Medhavi.Integration/Medhavi.Integration.fsproj" />
+    <Project Path="src/Medhavi.MasterData/Medhavi.MasterData.fsproj" />
+    <Project Path="src/Medhavi.Nexus/Medhavi.Nexus.fsproj" />
+    <Project Path="src/Medhavi.Planning/Medhavi.Planning.fsproj" />
+    <Project Path="src/Medhavi.Scenario/Medhavi.Scenario.fsproj" />
+    <Project Path="src/Medhavi.SharedKernel/Medhavi.SharedKernel.fsproj" />
+    <Project Path="src/Medhavi.Supply/Medhavi.Supply.fsproj" />
+  </Folder>
+  <Folder Name="/src/UI/">
+    <Project Path="src/UI/Medhavi.Terminal/Medhavi.Terminal.fsproj" />
+  </Folder>
+  <Folder Name="/src/tests/">
+    <Project Path="src/tests/Medhavi.Domain.Tests/Medhavi.Domain.Tests.fsproj" />
+    <Project Path="src/tests/Medhavi.E2E.Tests/Medhavi.E2E.Tests.fsproj" />
+    <Project Path="src/tests/Medhavi.Integration.Tests/Medhavi.Integration.Tests.fsproj" />
+    <Project Path="src/tests/Medhavi.Planning.Tests/Medhavi.Planning.Tests.fsproj" />
+  </Folder>
+</Solution>

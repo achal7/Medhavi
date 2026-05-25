@@ -1,0 +1,68 @@
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Re]leases/
+x64/
+x86/
+[Aa]rm/
+[Aa]rm64/
+bld/
+[Bi]n/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+[Ff]xCop/
+
+# Visual Studio 2015/2017/2019/2022 cache/options directory
+.vs/
+
+# dotnet tools / local cache
+.paket/
+.fake/
+paket-files/
+
+# .NET Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Paket dependency manager
+.paket/paket.exe
+.paket/
+
+# FAKE - F# Make
+.fake/
+
+# Rider/IntelliJ
+.idea/
+*.sln.iml
+*.iml
+
+# OS generated files
+Thumbs.db
+.DS_Store
+
+# Backup & Temp files
+*~
+*.bak
+*.tmp
+*.temp
+
+# Test Results
+TestResults/
+*.trx
+
+# User files
+/appsettings.json
+/appsettings.Development.json
+/appsettings.Production.json
+/appsettings.local.json
+.ignore/

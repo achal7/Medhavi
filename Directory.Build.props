@@ -1,0 +1,25 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);FS2003;FS3265;FS3261;NU1608;NU1901;NU1902;NU1903;NU1904</NoWarn>
+    <NuGetAudit>false</NuGetAudit>
+    
+    <!-- Central Package Management -->
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <!-- F# Specific Compilation Invariants -->
+  <PropertyGroup Condition="'$(MSBuildProjectExtension)' == '.fsproj'">
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <!-- 
+      FS0025: Incomplete pattern match (DDD safety)
+      FS1182: Unused local variables
+      FS3390: XML comment formatting
+    -->
+    <WarningsAsErrors>FS0025;FS1182;FS3390</WarningsAsErrors>
+  </PropertyGroup>
+</Project>
+
