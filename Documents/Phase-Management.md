@@ -1,7 +1,7 @@
 # Phase Planning & Progress
 **Version**: 1.2  
 **Date**: 2026-05-25  
-**Status**: All phases at ❌ Not Started
+**Status**: Wave 1 in progress
 
 ---
 
@@ -10,7 +10,7 @@
 | Phase | Name | Wave | Status | Completion |
 |-------|------|------|--------|------------|
 | 0 | Foundational Shared Core | 1 | ✔️ Completed | 100% |
-| 1 | Integration & Ingest | 1 | ❌ Not Started | 0% |
+| 1 | Integration & Ingest | 1 | 🟡 In Progress | 5% |
 | 2 | Material Availability Query | 1 | ❌ Not Started | 0% |
 | 3 | Material Reservations | 1 | ❌ Not Started | 0% |
 | 4 | Routing & Process Master Data | 1 | ❌ Not Started | 0% |
@@ -38,7 +38,7 @@
 ## 2. Wave Execution Summary
 
 ```
-Wave 1: Core Deterministic Foundations [MVP] (Phases 0–4)          ▓▓▓░░░░░░░░░░░░░░░ 20%
+Wave 1: Core Deterministic Foundations [MVP] (Phases 0–4)          ▓▓▓░░░░░░░░░░░░░░░ 21%
 Wave 2: Finite Heuristic Planning & Persistence [MVP] (Phases 5–8)  ░░░░░░░░░░░░░░░░░░ 0%
 Wave 3: Demand/Supply Netting & Execution [MVP] (Phases 9–13)       ░░░░░░░░░░░░░░░░░░ 0%
 Wave 4: Advanced AI/ML & Optimization [Post-MVP] (Phases 14–17)     ░░░░░░░░░░░░░░░░░░ 0%
@@ -293,14 +293,30 @@ The following capabilities **must grow incrementally** across multiple phases ra
 ---
 
 ### Phase 1 — Integration & Pragmatic Ingest
-**Wave**: 1 | **Status**: ❌ Not Started
+**Wave**: 1 | **Status**: 🟡 In Progress
 
 | Sub-Phase | Feature(s) | Description | Exit Gate | Status |
 |-----------|-----------|-------------|-----------|--------|
-| 1.1 | MP-41 | Integration event envelope & base event contracts (IntegrationEvent DU, EventEnvelope) | EventEnvelope compiles with TenantId, CorrelationId, and base IntegrationEvent payloads. | ❌ Not Started |
-| 1.2 | INT-05 | Master data file parsing (static ingest of Products, BOMs, StockingPoints, Resources, Routings, Suppliers) | Master data files (JSON/CSV) parse completely and map to aggregate records. | ❌ Not Started |
-| 1.3 | NX-01, NX-06 | Demand signal file processing (CustomerOrder, Forecast file ingest) | Order and forecast files parse completely and map to command payloads. | ❌ Not Started |
-| 1.4 | INT-04, INT-09 | Schema validation, reference integrity & anti-corruption layer boundary transformers | Boundary transformers validate file fields, enforce reference integrity, and throw ValidationError on failure. | ❌ Not Started |
+| 1.1 | MP-41 | Integration event envelope & base event contracts (IntegrationEvent DU, EventEnvelope) | EventEnvelope compiles with TenantId, CorrelationId, and base IntegrationEvent payloads. | ✔️ Completed |
+| 1.2 | INT-05 | Uom static file parsing & payload contract | Uom files (JSON/CSV) parse completely and map to contracts. | ❌ Not Started |
+| 1.3 | INT-05 | UnitConversion static file parsing & payload contract | UnitConversion files (JSON/CSV) parse completely and map to contracts. | ❌ Not Started |
+| 1.4 | INT-05 | Product static file parsing & payload contract | Product files (JSON/CSV) parse completely and map to contracts. | ❌ Not Started |
+| 1.5 | INT-05 | BomLine static file parsing & payload contract | BomLine files (JSON/CSV) parse completely and map to contracts. | ❌ Not Started |
+| 1.6 | INT-05 | StockingPoint static file parsing & payload contract | StockingPoint files (JSON/CSV) parse completely and map to contracts. | ❌ Not Started |
+| 1.7 | INT-05 | Supplier static file parsing & payload contract | Supplier files (JSON/CSV) parse completely and map to contracts. | ❌ Not Started |
+| 1.8 | INT-05 | Resource static file parsing & payload contract | Resource files (JSON/CSV) parse completely and map to contracts. | ❌ Not Started |
+| 1.9 | INT-05 | Routing & RoutingStep static file parsing & payload contract | Routing step files (JSON/CSV) parse completely and map to contracts. | ❌ Not Started |
+| 1.10 | INT-05, INT-09 | TransportLeg static file parsing & payload contract | TransportLeg files (JSON/CSV) parse completely and map to contracts. | ❌ Not Started |
+| 1.11 | NX-01, NX-06 | CustomerOrder signal file parsing & payload contract | CustomerOrder files (JSON/CSV) parse completely and map to contracts. | ❌ Not Started |
+| 1.12 | NX-01, NX-06 | Forecast signal file parsing & payload contract | Forecast files (JSON/CSV) parse completely and map to contracts. | ❌ Not Started |
+| 1.13 | INT-05 | InventoryPosition supply file parsing & payload contract | InventoryPosition files (JSON/CSV) parse completely and map to contracts. | ❌ Not Started |
+| 1.14 | INT-05 | SupplyOrder status update parsing & payload contract | SupplyOrder status files (JSON/CSV) parse completely and map to contracts. | ❌ Not Started |
+| 1.15 | INT-05 | ResourceCalendar downtime and capacity factor parsing | ResourceCalendar files (JSON/CSV) parse completely and map to contracts. | ❌ Not Started |
+| 1.16 | MP-27, NX-44 | WorkOrderCompleted MES execution feedback parsing | MES completion events parse completely and map to contracts. | ❌ Not Started |
+| 1.17 | MP-27, NX-44 | MaterialReceived ERP/WMS receipt telemetry parsing | MaterialReceived events parse completely and map to contracts. | ❌ Not Started |
+| 1.18 | MP-27, NX-44 | ResourceDowntime IoT downtime telemetry parsing | ResourceDowntime events parse completely and map to contracts. | ❌ Not Started |
+| 1.19 | MP-27, NX-44 | TransportDelay logistics delay telemetry parsing | TransportDelay events parse completely and map to contracts. | ❌ Not Started |
+| 1.20 | INT-04, INT-09 | Schema validation, reference integrity & ACL boundary transformers | Boundary transformers validate fields, enforce reference integrity, and throw ValidationError on failure. | ❌ Not Started |
 
 
 ---
