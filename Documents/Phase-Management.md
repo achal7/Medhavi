@@ -279,9 +279,9 @@ The following capabilities **must grow incrementally** across multiple phases ra
 
 | Sub-Phase | Feature(s) | Description | Exit Gate | Status |
 |-----------|-----------|-------------|-----------|--------|
-| 0.1 | MP-41 | SharedKernel primitives (Id types, Version, Period, Qty, UoM, Money) | Primitives compiled; JSON serialization & equality unit tests pass. | ❌ Not Started |
-| 0.2 | MP-41 | Strict aggregate command API convention (`handle : Cmd -> State -> Result<State*Events, Error>`) | Command handler signatures compile; F# pattern match completeness verified. | ❌ Not Started |
-| 0.3 | MP-41 | Base repository port pattern (pluggable interface in-memory implementation) | Repository record-of-functions defined; in-memory mock implementation CRUD tests pass. | ❌ Not Started |
+| 0.1 | MP-41 | SharedKernel primitives (Id types, Version, Period, Qty, UoM, Money) | Primitives compiled; JSON serialization & equality unit tests pass. | ✔️ Completed |
+| 0.2 | MP-41 | Strict aggregate command API convention (`handle : Cmd -> State -> Result<State*Events, Error>`) | Command handler signatures compile; F# pattern match completeness verified. | ✔️ Completed |
+| 0.3 | MP-41 | Base repository port pattern (pluggable interface in-memory implementation) | Repository record-of-functions defined; in-memory mock implementation CRUD tests pass. | ✔️ Completed |
 | 0.4 | MP-41 | Scenario aggregate (Version, PlanSnapshot, MarkDirty, optimistic concurrency) | Scenario aggregate updates increment Scenario.Version and track dirty state in unit tests. | ❌ Not Started |
 | 0.5 | MP-41 | Error taxonomy & reason code catalog (DomainError DU, PromiseReasonCode) | DomainError and PromiseReasonCode DUs compile; mapping function to HTTP status exists. | ❌ Not Started |
 | 0.6 | MP-41 | Core policy & SLA presets (Gold/Silver/Bronze presets, merge logic) | Presets defined; merging unit tests verify priority resolution behavior. | ❌ Not Started |

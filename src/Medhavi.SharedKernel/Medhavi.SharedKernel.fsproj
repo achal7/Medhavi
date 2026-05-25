@@ -6,11 +6,25 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Logging.fs" />
+    <Compile Include="Logger.fs" />
+    <Compile Include="ErrorHandling.fs" />
     <Compile Include="Types.fs" />
+    <Compile Include="Aggregate.fs" />
+    <Compile Include="ExecutionContext.fs" />
+    <Compile Include="Envelope.fs" />
+    <Compile Include="IdsFactory.fs" />
+    <Compile Include="Ids.fs" />
+    <Compile Include="Repository.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Medhavi.Common\Medhavi.Common.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FSharp.SystemTextJson" />
+    <PackageReference Include="Microsoft.Extensions.Logging" />
   </ItemGroup>
 
 </Project>
