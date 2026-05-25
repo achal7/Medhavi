@@ -17,6 +17,7 @@
     <Compile Include="IdsFactory.fs" />
     <Compile Include="Ids.fs" />
     <Compile Include="Repository.fs" />
+    <Compile Include="Validations.fs" />
   </ItemGroup>
 
   <ItemGroup>
