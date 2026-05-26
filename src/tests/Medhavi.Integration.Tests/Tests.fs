@@ -25,12 +25,14 @@ module RepositoryTests =
                   let entity = { Id = "entity-01"; Value = 42 }
 
                   let saveResult =
-                      repo.Save("entity-01", entity, [ "CreatedEvent" ])
-                      |> Async.RunSynchronously
+                      (repo.Save("entity-01", entity, [ "CreatedEvent" ])).Result
 
-                  let findResult = repo.Get "entity-01" |> Async.RunSynchronously
+                  let findResult = (repo.Get "entity-01").Result
 
-                  let isSaveOk = saveResult.IsOk
+                  let isSaveOk =
+                      match saveResult with
+                      | Ok _ -> true
+                      | Error _ -> false
 
                   let isFoundValueOk =
                       match findResult with
@@ -40,10 +42,13 @@ module RepositoryTests =
                   test <@ isSaveOk @>
                   test <@ isFoundValueOk @>
 
-                  let deleteResult = repo.Delete "entity-01" |> Async.RunSynchronously
-                  let findAfterDeleteResult = repo.Get "entity-01" |> Async.RunSynchronously
+                  let deleteResult = (repo.Delete "entity-01").Result
+                  let findAfterDeleteResult = (repo.Get "entity-01").Result
 
-                  let isDeleteOk = deleteResult.IsOk
+                  let isDeleteOk =
+                      match deleteResult with
+                      | Ok _ -> true
+                      | Error _ -> false
 
                   let isNotFoundOk =
                       match findAfterDeleteResult with

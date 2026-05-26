@@ -12,7 +12,7 @@ let createInMemoryRepository<'Aggregate, 'Id, 'Event when 'Id: not null> () =
 
     { Get =
         fun id ->
-            async {
+            task {
                 match store.TryGetValue id with
                 | true, versioned -> return Ok(Some versioned.Aggregate)
                 | false, _ -> return Ok(None)
@@ -20,7 +20,7 @@ let createInMemoryRepository<'Aggregate, 'Id, 'Event when 'Id: not null> () =
 
       Save =
         fun (id, aggregate, events) ->
-            async {
+            task {
                 // Get or create a lock for this ID
                 let lockObj = locks.GetOrAdd(id, fun _ -> obj ())
 
@@ -51,7 +51,7 @@ let createInMemoryRepository<'Aggregate, 'Id, 'Event when 'Id: not null> () =
 
       Delete =
         fun id ->
-            async {
+            task {
                 let lockObj = locks.GetOrAdd(id, fun _ -> obj ())
 
                 return
@@ -68,7 +68,7 @@ let createInMemoryRepository<'Aggregate, 'Id, 'Event when 'Id: not null> () =
 
       GetEvents =
         fun id ->
-            async {
+            task {
                 match eventStore.TryGetValue id with
                 | true, events -> return Ok events
                 | false, _ -> return Ok []
@@ -76,7 +76,7 @@ let createInMemoryRepository<'Aggregate, 'Id, 'Event when 'Id: not null> () =
 
       GetEventsByType =
         fun predicate ->
-            async {
+            task {
                 let allEvents =
                     eventStore.Values
                     |> Seq.collect id
@@ -88,7 +88,7 @@ let createInMemoryRepository<'Aggregate, 'Id, 'Event when 'Id: not null> () =
 
       GetAll =
         fun () ->
-            async {
+            task {
                 return
                     store.Values
                     |> Seq.map (fun v -> v.Aggregate)
