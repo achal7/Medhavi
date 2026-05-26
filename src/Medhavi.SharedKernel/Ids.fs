@@ -20,6 +20,10 @@ module PlantId =
 [<JsonFSharpConverter>]
 type StockingPointId = private StockingPointId of string
 
+module StockingPointId =
+    let create = IdsFactory.createExplicitId StockingPointId "StockingPointId"
+    let value (StockingPointId id) = id
+
 [<JsonFSharpConverter>]
 type NodeId = private NodeId of string
 

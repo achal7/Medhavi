@@ -52,6 +52,10 @@ type TransportCostDetail =
 [<JsonFSharpConverter>]
 type TransportLegId = private TransportLegId of string
 
+module TransportLegId =
+    let create = IdsFactory.createExplicitId TransportLegId "TransportLegId"
+    let value (TransportLegId id) = id
+
 type TransportCalendarId = TransportCalendarId of string
 
 type CapacityProfile =
@@ -516,7 +520,6 @@ let decide: DecideTransportLeg =
         | DeactivateTransportLeg _, Some _ -> Error(DomainError.validation "TransportLeg not found")
 
         | _, None -> Error(DomainError.validation "TransportLeg not found")
-        | _, _ -> Error(DomainError.validation "Invalid command/state combination")
 
 // Implement the Evolve function
 let evolveTransportLeg: EvolveTransportLeg =

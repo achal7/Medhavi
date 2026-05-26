@@ -18,7 +18,13 @@
 
     <Compile Include="Application\UnitOfMeasure.fs" />
     <Compile Include="Application\UoMConversion.fs" />
-    
+    <Compile Include="Application\Plant.fs" />
+    <Compile Include="Application\StockingPoint.fs" />
+    <Compile Include="Application\Node.fs" />
+    <Compile Include="Application\Sku.fs" />
+    <Compile Include="Application\BillOfMaterials.fs" />
+    <Compile Include="Application\Routing.fs" />
+    <Compile Include="Application\TransportLeg.fs" />
   </ItemGroup>
 
   <ItemGroup>

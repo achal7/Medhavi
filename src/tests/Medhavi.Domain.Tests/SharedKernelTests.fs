@@ -6,7 +6,7 @@ open Expecto
 open Swensen.Unquote
 open Medhavi.SharedKernel
 open Medhavi.Scenario
-open Medhavi.Common.Validator
+open Medhavi.Common.Validation
 open Medhavi.Common.Patterns.Optics
 open Medhavi.Common.Patterns
 open Medhavi.Common.Patterns.StateMonad
@@ -153,26 +153,27 @@ let tests =
               let decide
                   (cmd: CounterCommand)
                   (stateOpt: CounterState option)
-                  : Result<CounterState * CounterEvent list, DomainError> =
+                  : Result<Decision<CounterState, CounterEvent>, DomainError> =
                   let state = stateOpt |> Option.defaultValue { Count = 0 }
 
                   match cmd with
-                  | Increment value -> Ok({ Count = state.Count + value }, [ Incremented value ])
-                  | Decrement value -> Ok({ Count = state.Count - value }, [ Decremented value ])
+                  | Increment value -> Ok { NewState = { Count = state.Count + value }; Events = [ Incremented value ] }
+                  | Decrement value -> Ok { NewState = { Count = state.Count - value }; Events = [ Decremented value ] }
 
-              let evolve (ev: CounterEvent) (stateOpt: CounterState option) : CounterState option =
-                  let state = stateOpt |> Option.defaultValue { Count = 0 }
+              let evolve: Evolve<CounterState, CounterEvent> =
+                  fun ev stateOpt ->
+                      let state = stateOpt |> Option.defaultValue { Count = 0 }
 
-                  match ev with
-                  | Incremented value -> Some { Count = state.Count + value }
-                  | Decremented value -> Some { Count = state.Count - value }
+                      match ev with
+                      | Incremented value -> Some { Count = state.Count + value }
+                      | Decremented value -> Some { Count = state.Count - value }
 
-              let result = Aggregate.handleCommand decide evolve (Increment 5) [ Incremented 10 ]
+              let result = Aggregate.handleCommandFromHistory decide evolve (Increment 5) [ Incremented 10 ]
 
               match result with
-              | Ok(finalState, events) ->
-                  let isCountFifteen = (finalState.Count = 15)
-                  let isEventsOk = (events = [ Incremented 5 ])
+              | Ok decision ->
+                  let isCountFifteen = (decision.NewState.Count = 15)
+                  let isEventsOk = (decision.Events = [ Incremented 5 ])
                   test <@ isCountFifteen @>
                   test <@ isEventsOk @>
               | Error _ -> failwith "Decision failed")
@@ -391,18 +392,29 @@ let tests =
                   let vId = validateCommandId cmd.CommandId
                   let vQty = validateQty cmd.Quantity
                   let vHours = validateHours cmd.SetupHours
-                  Medhavi.Common.Validator.apply (Medhavi.Common.Validator.apply (Medhavi.Common.Validator.map c vId) vQty) vHours
+                  Medhavi.Common.Validation.apply (Medhavi.Common.Validation.apply (Medhavi.Common.Validation.map c vId) vQty) vHours
 
               // Handlers
-              let decide cmd _ =
-                  Ok ({ CommandId = cmd.CommandId; Quantity = cmd.Quantity; SetupHours = cmd.SetupHours }, [ CommandProcessed (cmd.CommandId, cmd.Quantity, cmd.SetupHours) ])
+              let decide cmd _ : Result<Decision<MockState, MockEvent>, DomainError> =
+                  Ok { NewState = { CommandId = cmd.CommandId; Quantity = cmd.Quantity; SetupHours = cmd.SetupHours }
+                       Events = [ CommandProcessed (cmd.CommandId, cmd.Quantity, cmd.SetupHours) ] }
 
-              let evolve (CommandProcessed (id, q, h)) _ =
-                  Some { CommandId = id; Quantity = q; SetupHours = h }
+              let evolve: Evolve<MockState, MockEvent> =
+                  fun ev stateOpt ->
+                      match ev with
+                      | CommandProcessed (id, q, h) ->
+                          Some { CommandId = id; Quantity = q; SetupHours = h }
+
+              let handleCommandWithValidation validator decide evolve command history =
+                  validator command
+                  |> toResult
+                  |> Result.mapError DomainError.combineValidationErrors
+                  |> Result.bind (fun cmd -> Aggregate.handleCommandFromHistory decide evolve cmd history)
+                  |> Result.map (fun decision -> (decision.NewState, decision.Events))
 
               // 1. Success Case
               let validCmd = { CommandId = "CMD-001"; Quantity = 10.5m; SetupHours = 2.5 }
-              let successResult = Aggregate.handleCommandWithValidation validateMockCommand decide evolve validCmd Seq.empty
+              let successResult = handleCommandWithValidation validateMockCommand decide evolve validCmd Seq.empty
               
               match successResult with
               | Ok (state, events) ->
@@ -414,7 +426,7 @@ let tests =
 
               // 2. Failure Case with error accumulation
               let invalidCmd = { CommandId = "   "; Quantity = -5.0m; SetupHours = -1.0 }
-              let failureResult = Aggregate.handleCommandWithValidation validateMockCommand decide evolve invalidCmd Seq.empty
+              let failureResult = handleCommandWithValidation validateMockCommand decide evolve invalidCmd Seq.empty
 
               match failureResult with
               | Error (ValidationError (code, msg, data)) ->

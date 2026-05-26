@@ -14,7 +14,7 @@ module Program =
               SkuId = "SKU-TEST-ABC"
               NodeId = "NODE-TEST-XYZ"
               Quantity = 150.0m
-              RequestedDate = DateTimeOffset.UtcNow.AddDays(7.0) }
+              RequestedDateUtc = DateTimeOffset.UtcNow.AddDays(7.0) }
 
         printfn "Initialized sample request for: %s (Qty: %f)" sampleRequest.OrderId (float sampleRequest.Quantity)
         0
