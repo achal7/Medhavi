@@ -1,7 +1,7 @@
 module Medhavi.SharedKernel.Validations
 
 open System
-open Medhavi.Common.Validator
+open Medhavi.Common.Validation
 open Medhavi.SharedKernel
 
 /// Reusable validation helpers for command/input checks

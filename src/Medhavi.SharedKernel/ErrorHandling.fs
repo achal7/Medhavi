@@ -3,7 +3,7 @@ namespace Medhavi.SharedKernel
 open System
 open System.Threading.Tasks
 open System.Text.Json.Serialization
-open Medhavi.Common.Validator
+open Medhavi.Common.Validation
 open Medhavi.SharedKernel.Logging
 
 [<JsonFSharpConverter>]
@@ -82,6 +82,25 @@ type DomainError =
 
     static member conflict message = DomainError(ErrorCodes.Conflict, message, Map.empty)
     static member notFound message = DomainError(ErrorCodes.NotFound, message, Map.empty)
+
+    /// Combines multiple validation DomainError instances into a single consolidated DomainError.
+    static member combineValidationErrors(errors: DomainError list) : DomainError =
+        match errors with
+        | [] -> DomainError.validation "Validation failed with no specified details"
+        | [ single ] -> single
+        | _ ->
+            let messages = errors |> List.map (fun e -> e.Message)
+
+            let combinedMessage =
+                "Command validation failed: "
+                + String.concat "; " messages
+
+            let data =
+                errors
+                |> List.mapi (fun idx e -> $"error_{idx}", box e.Message)
+                |> Map.ofList
+
+            DomainError.validationWith combinedMessage data
 
 [<JsonFSharpConverter>]
 type InfraError =

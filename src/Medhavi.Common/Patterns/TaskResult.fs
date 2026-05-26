@@ -4,6 +4,7 @@ open System
 open System.Threading.Tasks
 open Microsoft.Extensions.Logging.Abstractions
 open Medhavi.Common.Retry
+open Medhavi.Common
 
 // ==========================================
 // TaskResult PATTERN - Asynchronous Computations with Error Handling
@@ -25,15 +26,18 @@ type TaskResult<'T, 'E> = Task<Result<'T, 'E>>
 [<RequireQualifiedAccess>]
 module TaskResult =
 
-    /// Convert a result to an task result
+    /// Convert result to a task result
     let ofResult (result: Result<'T, 'E>) : TaskResult<'T, 'E> = task { return result }
 
-    /// Convert an task to an task result
+    /// Convert task to a task result
     let ofAsync (asyncValue: Async<'T>) : TaskResult<'T, 'E> =
         task {
             let! value = asyncValue
             return Ok value
         }
+
+    /// Convert validation to a task result
+    let ofValidation (validation: Validation.Validation<'T, 'E>) = validation |> Validation.toResult |> ofResult
 
     /// Chain together two TaskResult computations (monad operation)
     let bind (f: 'T -> TaskResult<'U, 'E>) (x: TaskResult<'T, 'E>) : TaskResult<'U, 'E> =
@@ -268,5 +272,12 @@ type TaskResultBuilder() =
         }
 
 [<AutoOpen>]
-module TaskResultBuilderExtensions =
+module TaskResultExtensions =
     let taskResult = TaskResultBuilder()
+
+    /// Kleisli composition (fish operator) for TaskResult
+    let inline (>=>) (f: 'A -> TaskResult<'B, 'E>) (g: 'B -> TaskResult<'C, 'E>) (x: 'A) : TaskResult<'C, 'E> =
+        TaskResult.bind g (f x)
+
+    /// Monadic bind operator for TaskResult
+    let inline (>>=) (x: TaskResult<'T, 'E>) (f: 'T -> TaskResult<'U, 'E>) : TaskResult<'U, 'E> = TaskResult.bind f x

@@ -1,4 +1,4 @@
-module Medhavi.Common.Validator
+module Medhavi.Common.Validation
 
 type Validation<'a, 'b> =
     | Valid of 'a
@@ -85,18 +85,3 @@ let fromResult result =
 
 // /// Composes a non-choice type with a choice type.
 // let inline (|?>) a b = lift2 (fun z _ -> z) (Valid a) b
-
-(*
-let validateQuantity q =
-    if q > 0 then Ok q
-    else Error ["Quantity must be positive"]
-
-let validateAll quantities =
-    traverseList
-        ValidationA.pure
-        ValidationA.map
-        ValidationA.apply
-        validateQuantity
-        quantities
-
-*)

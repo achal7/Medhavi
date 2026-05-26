@@ -1,9 +1,14 @@
 namespace Medhavi.SharedKernel
 
-open Medhavi.Common.Validator
+open Medhavi.Common.Patterns
+open Medhavi.Common.Validation
+
+type Decision<'State, 'Event> =
+    { NewState: 'State
+      Events: 'Event list }
 
 /// Shared decide/evolve function signatures for event-sourced aggregates.
-type Decide<'State, 'Command, 'Event> = 'Command -> 'State option -> Result<'State * 'Event list, DomainError>
+type Decide<'State, 'Command, 'Event> = 'Command -> 'State option -> Result<Decision<'State, 'Event>, DomainError>
 type Evolve<'State, 'Event> = 'Event -> 'State option -> 'State option
 
 /// Validator type for aggregate commands using applicative Validation functor
@@ -16,40 +21,75 @@ module Aggregate =
         Seq.fold (fun state ev -> evolve ev state) None events
 
     /// Executes a command against an aggregate's historical events.
-    let handleCommand
+    let handleCommandFromHistory
         (decide: Decide<'State, 'Command, 'Event>)
         (evolve: Evolve<'State, 'Event>)
         (command: 'Command)
         (history: 'Event seq)
-        : Result<'State * 'Event list, DomainError> =
+        : Result<Decision<'State, 'Event>, DomainError> =
         let currentState = replay evolve history
         decide command currentState
 
-    /// Combines multiple validation DomainError instances into a single consolidated DomainError.
-    let combineValidationErrors (errors: DomainError list) : DomainError =
-        match errors with
-        | [] -> DomainError.validation "Validation failed with no specified details"
-        | [single] -> single
-        | _ ->
-            let messages = errors |> List.map (fun e -> e.Message)
-            let combinedMessage = "Command validation failed: " + String.concat "; " messages
-            let data = 
-                errors 
-                |> List.mapi (fun idx e -> $"error_{idx}", box e.Message) 
-                |> Map.ofList
-            DomainError.validationWith combinedMessage data
+    //Natural transformation from RepositoryError to InfraError
+    let private mapRepositoryErrorToApplicationError (e: RepositoryError) : ApplicationError =
+        let etype = InfrastructureError.Database "Repository error"
 
-    /// Validates an incoming command before replaying history and executing decision logic.
-    /// If validation fails, short-circuits and returns a consolidated DomainError.
-    let handleCommandWithValidation
-        (validate: CommandValidator<'Command>)
-        (decide: Decide<'State, 'Command, 'Event>)
-        (evolve: Evolve<'State, 'Event>)
-        (command: 'Command)
-        (history: 'Event seq)
-        : Result<'State * 'Event list, DomainError> =
-        match validate command with
-        | Valid validatedCommand ->
-            handleCommand decide evolve validatedCommand history
-        | Invalid errors ->
-            Error (combineValidationErrors errors)
+        match e with
+        | ConcurrencyConflict msg -> InfraError.Issue(etype, "Concurrency", msg, Map.empty)
+        | NotFound msg -> InfraError.Issue(etype, "NotFound", msg, Map.empty)
+        | StorageError msg -> InfraError.Issue(etype, "Storage", msg, Map.empty)
+        |> ApplicationError.Infrastructure
+
+    let liftCmdResult f =
+        f
+        >> Result.mapError ApplicationError.mapDomainError
+        >> TaskResult.ofResult
+
+    let liftCmdValidation f =
+        f
+        >> mapError ApplicationError.mapDomainError
+        >> TaskResult.ofValidation
+
+    let handleCommand
+        (getId: 'Cmd -> 'Id)
+        (repo: Repository<'Agg, 'Id, 'Event>)
+        (toDomain: 'Cmd -> 'DomainCmd)
+        (decide: Decide<'Agg, 'DomainCmd, 'Event>)
+        (cmd: 'Cmd)
+        : TaskResult<'Event list, ApplicationError> =
+
+        let id = getId cmd
+        let domainCmd = toDomain cmd
+
+        // Morphism 1: Load aggregate
+        let load (_: 'Cmd) =
+            repo.Get id
+            |> TaskResult.mapError mapRepositoryErrorToApplicationError
+
+        // Morphism 2: Domain decision
+        let runDecide (stateOpt: 'Agg option) =
+            decide domainCmd stateOpt
+            |> Result.mapError ApplicationError.mapDomainError
+            |> TaskResult.ofResult
+
+        // Morphism 3: Persist state & events, returning events on success
+        let save (decision: Decision<'Agg, 'Event>) =
+            repo.Save(id, decision.NewState, decision.Events)
+            |> TaskResult.mapError mapRepositoryErrorToApplicationError
+            |> TaskResult.map (fun _ -> decision.Events)
+
+        // Compose the morphisms in the Kleisli Category
+        let pipeline = load >=> runDecide >=> save
+
+        pipeline cmd
+
+    let createAggregate
+        (validate: 'Command -> Validation<'Agg, DomainError>)
+        (events: 'Agg -> 'Event list)
+        (cmd: 'Command)
+        : Result<Decision<'Agg, 'Event>, DomainError> =
+
+        validate cmd
+        |> toResult
+        |> Result.map (fun agg -> { NewState = agg; Events = events agg })
+        |> Result.mapError DomainError.combineValidationErrors

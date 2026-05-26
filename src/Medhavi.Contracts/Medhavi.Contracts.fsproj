@@ -6,11 +6,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Dto.fs" />
+    <Compile Include="Domain.fs" />
+    <Compile Include="Integration.fs" />
+    <Compile Include="IntegrationPayloads.fs" />
   </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\Medhavi.SharedKernel\Medhavi.SharedKernel.fsproj" />
-  </ItemGroup>
-
 </Project>

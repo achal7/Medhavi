@@ -6,11 +6,25 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Domain.fs" />
+    <Compile Include="Domain\UnitOfMeasure.fs" />
+    <Compile Include="Domain\UnitConversion.fs" />
+    <Compile Include="Domain\Plant.fs" />
+    <Compile Include="Domain\StockingPoint.fs" />
+    <Compile Include="Domain\Node.fs" />
+    <Compile Include="Domain\Sku.fs" />
+    <Compile Include="Domain\BillofMaterials.fs" />
+    <Compile Include="Domain\Routing.fs" />
+    <Compile Include="Domain\TransportLeg.fs" />
+
+    <Compile Include="Application\UnitOfMeasure.fs" />
+    <Compile Include="Application\UoMConversion.fs" />
+    
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Medhavi.SharedKernel\Medhavi.SharedKernel.fsproj" />
+    <ProjectReference Include="..\Medhavi.Common\Medhavi.Common.fsproj" />
+    <ProjectReference Include="..\Medhavi.Contracts\Medhavi.Contracts.fsproj" />
   </ItemGroup>
 
 </Project>

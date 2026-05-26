@@ -19,8 +19,8 @@
     <Compile Include="Patterns\ResultAsyncCommon.fs" />
     <Compile Include="Task.fs" />
     <Compile Include="Patterns\AsyncResult.fs" />
+    <Compile Include="Patterns\Validation.fs" />
     <Compile Include="Patterns\TaskResult.fs" />
-    <Compile Include="Patterns\Validator.fs" />
     <Compile Include="Patterns\AsyncValidator.fs" />
     <Compile Include="ExceptionHandling.fs" />
     <Compile Include="Enrichment\Enrichment.fs" />
@@ -33,7 +33,6 @@
     <Compile Include="DeadLetterQueue.fs" />
     <Compile Include="FQueue.fs" />
     <Compile Include="Global.fs" />
-    <Compile Include="Common.fs" />
   </ItemGroup>
 
   <ItemGroup>

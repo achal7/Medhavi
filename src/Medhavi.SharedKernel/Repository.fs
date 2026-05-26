@@ -2,6 +2,7 @@ namespace Medhavi.SharedKernel
 
 open System.Collections.Concurrent
 open Medhavi.SharedKernel
+open Medhavi.Common.Patterns
 
 /// Error types for repository operations
 type RepositoryError =
@@ -11,9 +12,9 @@ type RepositoryError =
 
 /// Pluggable Repository port defined as a record-of-functions.
 type Repository<'Aggregate, 'Id, 'Event> =
-    { Get: 'Id -> Async<Result<'Aggregate option, RepositoryError>>
-      Save: 'Id * 'Aggregate * 'Event list -> Async<Result<unit, RepositoryError>>
-      Delete: 'Id -> Async<Result<unit, RepositoryError>>
-      GetEvents: 'Id -> Async<Result<'Event list, RepositoryError>>
-      GetEventsByType: ('Event -> bool) -> Async<Result<'Event list, RepositoryError>>
-      GetAll: unit -> Async<Result<'Aggregate list, RepositoryError>> }
+    { Get: 'Id -> TaskResult<'Aggregate option, RepositoryError>
+      Save: 'Id * 'Aggregate * 'Event list -> TaskResult<unit, RepositoryError>
+      Delete: 'Id -> TaskResult<unit, RepositoryError>
+      GetEvents: 'Id -> TaskResult<'Event list, RepositoryError>
+      GetEventsByType: ('Event -> bool) -> TaskResult<'Event list, RepositoryError>
+      GetAll: unit -> TaskResult<'Aggregate list, RepositoryError> }
