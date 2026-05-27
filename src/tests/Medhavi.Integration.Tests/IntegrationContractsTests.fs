@@ -4,7 +4,9 @@ open System
 open Expecto
 open Swensen.Unquote
 open Medhavi.SharedKernel
+open Medhavi.Infrastructure
 open Medhavi.Contracts
+open Medhavi.Contracts.Integration
 open Medhavi.Integration
 open Medhavi.Common.Serialization
 
@@ -17,7 +19,17 @@ module IntegrationContractsTests =
             [ testCase "should create Envelope with correct integration metadata and payload" (fun () ->
                   let tenantId = "tenant-test"
                   let correlationId = Guid.NewGuid()
-                  let payload = { Products = []; Boms = []; StockingPoints = []; Resources = []; Routings = []; Suppliers = [] }
+                  let payload : MasterDataImportedPayload = { 
+                      SkuRequests = []
+                      BomRequests = []
+                      StockingPointRequests = []
+                      NodeRequests = []
+                      RoutingRequests = []
+                      TransportLegRequests = [] 
+                      UomRequests = []
+                      PlantRequests = []
+                      UnitConversionRequests = []
+                  }
                   let event = MasterDataImported payload
                   
                   let createResult = IntegrationEventEnvelope.create tenantId correlationId event
@@ -42,8 +54,24 @@ module IntegrationContractsTests =
               testCase "should serialize and deserialize Envelope containing IntegrationEvent successfully" (fun () ->
                   let tenantId = "tenant-test-2"
                   let correlationId = Guid.NewGuid()
-                  let product = { SkuId = "SKU-999"; Name = "Widget"; UoM = "PCS"; IsActive = true }
-                  let payload = { Products = [product]; Boms = []; StockingPoints = []; Resources = []; Routings = []; Suppliers = [] }
+                  let skuReq : SkuDefineReq = { 
+                      Id = "SKU-999"
+                      Code = "SKU-999"
+                      Name = "Widget"
+                      Group = "Simulation"
+                      Created = DateTimeOffset.UtcNow 
+                  }
+                  let payload : MasterDataImportedPayload = { 
+                      SkuRequests = [skuReq]
+                      BomRequests = []
+                      StockingPointRequests = []
+                      NodeRequests = []
+                      RoutingRequests = []
+                      TransportLegRequests = [] 
+                      UomRequests = []
+                      PlantRequests = []
+                      UnitConversionRequests = []
+                  }
                   let event = MasterDataImported payload
                   
                   let createResult = IntegrationEventEnvelope.create tenantId correlationId event
@@ -68,8 +96,8 @@ module IntegrationContractsTests =
                               | Ok extractedEvent ->
                                   match extractedEvent with
                                   | MasterDataImported md ->
-                                      test <@ md.Products.Length = 1 @>
-                                      test <@ md.Products.[0].SkuId = "SKU-999" @>
+                                      test <@ md.SkuRequests.Length = 1 @>
+                                      test <@ md.SkuRequests.[0].Id = "SKU-999" @>
                                   | _ -> failwith "Expected MasterDataImported payload"
               )
 
@@ -94,4 +122,21 @@ module IntegrationContractsTests =
                               test <@ ds.CustomerOrders.[0].OrderId = "ORD-001" @>
                               test <@ ds.CustomerOrders.[0].Quantity = 50m @>
                           | _ -> failwith "Expected DemandSignalsImported payload"
-              ) ]
+              )
+
+              testCase "Envelope first-class TenantId and withTenantId" (fun () ->
+                  let env = Envelope.createEnvelope "TestEvent" "{\"value\":42}" 1
+
+                  // CreatedUtc must be UTC time (offset zero)
+                  let envCreatedOffset = env.CreatedUtc.Offset
+                  test <@ envCreatedOffset = TimeSpan.Zero @>
+                  test <@ env.TenantId = None @>
+
+                  let envWithTenant = env |> Envelope.withTenantId "tenant-123"
+                  test <@ envWithTenant.TenantId = Some "tenant-123" @>
+                  test <@ Map.tryFind "tenantId" envWithTenant.Metadata = Some "tenant-123" @>
+                  test <@ Envelope.tryGetTenantId envWithTenant = Some "tenant-123" @>
+
+                  // Rehydrate/re-extract should work
+                  let envelopeRehydrated = Envelope.withMetadataMap envWithTenant.Metadata env
+                  test <@ envelopeRehydrated.TenantId = Some "tenant-123" @>) ]

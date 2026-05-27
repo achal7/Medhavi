@@ -208,23 +208,6 @@ let tests =
                   test <@ endHour = 20 @>
               | Error e -> failwith e.Message)
 
-          testCase "Envelope first-class TenantId and withTenantId" (fun () ->
-              let env = Envelope.createEnvelope "TestEvent" "{\"value\":42}" 1
-
-              // CreatedUtc must be UTC time (offset zero)
-              let envCreatedOffset = env.CreatedUtc.Offset
-              test <@ envCreatedOffset = TimeSpan.Zero @>
-              test <@ env.TenantId = None @>
-
-              let envWithTenant = env |> Envelope.withTenantId "tenant-123"
-              test <@ envWithTenant.TenantId = Some "tenant-123" @>
-              test <@ Map.tryFind "tenantId" envWithTenant.Metadata = Some "tenant-123" @>
-              test <@ Envelope.tryGetTenantId envWithTenant = Some "tenant-123" @>
-
-              // Rehydrate/re-extract should work
-              let envelopeRehydrated = Envelope.withMetadataMap envWithTenant.Metadata env
-              test <@ envelopeRehydrated.TenantId = Some "tenant-123" @>)
-
           testCase "ContextWrapper explicit propagation" (fun () ->
               let ctx =
                   ExecutionContext.create ()

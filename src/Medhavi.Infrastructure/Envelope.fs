@@ -1,4 +1,4 @@
-namespace Medhavi.SharedKernel
+namespace Medhavi.Infrastructure
 
 open System
 open Medhavi.Common.Serialization
@@ -91,9 +91,7 @@ module Envelope =
             |> Map.tryFind "causationId"
             |> Option.bind tryGuid
 
-        let tenantId =
-            metadata
-            |> Map.tryFind "tenantId"
+        let tenantId = metadata |> Map.tryFind "tenantId"
 
         { envelope with
             Metadata = metadata
@@ -154,15 +152,6 @@ module Envelope =
         |> withTracingContext correlationId causationId
         |> withTimestamp timestamp
 
-    /// Apply ExecutionContext metadata to envelope (for distributed tracing)
-    let withExecutionContext (ctx: ExecutionContext) (envelope: Envelope) : Envelope =
-        let metadataMap = ExecutionContext.toMetadataMap ctx
-
-        { envelope with
-            Metadata =
-                metadataMap
-                |> Map.fold (fun acc key value -> Map.add key value acc) envelope.Metadata }
-
     // small helper to extract telemetry-friendly context
     let toTelemetryContext (env: Envelope) =
         Map.empty
@@ -196,21 +185,12 @@ module Envelope =
     let tryGetTenantId (env: Envelope) : string option = env.TenantId
     let tryGetMessageId (env: Envelope) : string option = tryGetMetadata "messageId" env
 
-    /// Build typed ExecutionContext from envelope (uses CreatedUtc as timestamp)
-    let executionContextOf (env: Envelope) : ExecutionContext =
-        ExecutionContext.fromMetadataMap env.Metadata env.CreatedUtc
-
-    type EnvelopeRuntime =
-        { Envelope: Envelope
-          ExecutionContext: ExecutionContext }
-
-    let toRuntime (env: Envelope) : EnvelopeRuntime =
-        { Envelope = env
-          ExecutionContext = executionContextOf env }
-
     let createCheckpointEnvelope (streamName: string) (payload: string) : Envelope =
         let env = createEnvelope "checkpoint" payload 1
-        { env with StreamName = streamName; TenantId = None }
+
+        { env with
+            StreamName = streamName
+            TenantId = None }
 
     let tryParsePositionFromData (env: Envelope) : int64 option =
         try

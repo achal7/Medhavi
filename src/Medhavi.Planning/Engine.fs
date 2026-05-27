@@ -2,7 +2,6 @@ namespace Medhavi.Planning
 
 open System
 open Medhavi.SharedKernel
-open Medhavi.Supply
 
 /// Core Planning Engine / Solver API
 module NettingEngine =

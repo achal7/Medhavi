@@ -15,6 +15,7 @@ type Evolve<'State, 'Event> = 'Event -> 'State option -> 'State option
 type CommandValidator<'Command> = 'Command -> Validation<'Command, DomainError>
 
 /// Helper utilities to run and compose event-sourced aggregate logic.
+
 module Aggregate =
     /// Replays a sequence of events on top of an initial state.
     let replay (evolve: Evolve<'State, 'Event>) (events: 'Event seq) : 'State option =
@@ -56,7 +57,7 @@ module Aggregate =
         (toDomain: 'Cmd -> 'DomainCmd)
         (decide: Decide<'Agg, 'DomainCmd, 'Event>)
         (cmd: 'Cmd)
-        : TaskResult<'Event list, ApplicationError> =
+        : TaskResult<Decision<'Agg, 'Event>, ApplicationError> =
 
         let id = getId cmd
         let domainCmd = toDomain cmd
@@ -76,7 +77,11 @@ module Aggregate =
         let save (decision: Decision<'Agg, 'Event>) =
             repo.Save(id, decision.NewState, decision.Events)
             |> TaskResult.mapError mapRepositoryErrorToApplicationError
-            |> TaskResult.map (fun _ -> decision.Events)
+            |> TaskResult.map (fun _ ->
+                for ev in decision.Events do
+                    BoundedContexts.DomainEventBus.Publish(ev)
+
+                decision)
 
         // Compose the morphisms in the Kleisli Category
         let pipeline = load >=> runDecide >=> save

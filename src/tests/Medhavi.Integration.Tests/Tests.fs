@@ -14,12 +14,7 @@ module RepositoryTests =
     let tests =
         testList
             "Repository Schema Tests"
-            [ testCase "should initialize scenario repository without errors" (fun () ->
-                  let repo = ScenarioRepository()
-                  // Just a basic check that it initializes
-                  test <@ box repo <> null @>)
-
-              testCase "InMemoryRepository CRUD operations validation" (fun () ->
+            [ testCase "InMemoryRepository CRUD operations validation" (fun () ->
                   let repo = createInMemoryRepository<MockEntity, string, string> ()
 
                   let entity = { Id = "entity-01"; Value = 42 }

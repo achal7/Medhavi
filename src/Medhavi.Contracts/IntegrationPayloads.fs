@@ -1,6 +1,7 @@
 namespace Medhavi.Contracts
 
 open System
+open Medhavi.Contracts.Integration
 
 /// Integration event payloads for Master Data elements
 type ProductImportedPayload = {
@@ -72,6 +73,19 @@ type MasterDataPayload = {
     Resources: ResourceImportedPayload list
     Routings: RoutingImportedPayload list
     Suppliers: SupplierImportedPayload list
+}
+
+/// Decoupled, business-aligned payload carrying domain request DTOs directly
+type MasterDataImportedPayload = {
+    SkuRequests: SkuDefineReq list
+    BomRequests: BomDefineReq list
+    StockingPointRequests: StockingPointDefineReq list
+    NodeRequests: NodeDefineReq list
+    RoutingRequests: RoutingDefineReq list
+    TransportLegRequests: TransportLegDefineReq list
+    UomRequests: UomDefineReq list
+    PlantRequests: PlantDefineReq list
+    UnitConversionRequests: UnitConversionDefineReq list
 }
 
 /// Bulk container for processed Demand Signals.

@@ -21,9 +21,6 @@ module Version =
         else
             Ok(Version value)
 
-/// Versioned aggregate for optimistic concurrency
-type VersionedAggregate<'Aggregate> = { Aggregate: 'Aggregate; Version: int }
-
 [<Struct>]
 [<JsonFSharpConverter>]
 type Qty =
@@ -212,7 +209,9 @@ module Window =
         let utcEarliest = earliest.ToUniversalTime()
         let utcCutoff = cutoffEnd.ToUniversalTime()
         let utcDeparture = departure.ToUniversalTime()
-        utcDeparture >= utcEarliest && utcDeparture <= utcCutoff
+
+        utcDeparture >= utcEarliest
+        && utcDeparture <= utcCutoff
 
     let startTime (window: Window) = Timestamp.value window.Start
     let endTime (window: Window) = Timestamp.value window.End
@@ -221,6 +220,7 @@ module Window =
     let createFromTime (startTime: DateTimeOffset) (endTime: DateTimeOffset) =
         let utcStart = startTime.ToUniversalTime()
         let utcEnd = endTime.ToUniversalTime()
+
         match utcStart < utcEnd with
         | true ->
             Ok

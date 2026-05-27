@@ -1,0 +1,3 @@
+SkuId,Sequence,ResourceId,SetupHours,RunHoursPerUnit
+SKU-BIKE,10,RES-LINE1,1.0,0.5
+SKU-BIKE,20,RES-LINE2,0.5,0.25

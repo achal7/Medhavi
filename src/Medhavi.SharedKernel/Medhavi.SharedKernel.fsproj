@@ -11,17 +11,20 @@
     <Compile Include="ErrorHandling.fs" />
     <Compile Include="Types.fs" />
     <Compile Include="ExecutionContext.fs" />
-    <Compile Include="Envelope.fs" />
     <Compile Include="Observability.fs" />
     <Compile Include="IdsFactory.fs" />
     <Compile Include="Ids.fs" />
+    <Compile Include="BoundedContexts.fs" />
     <Compile Include="Validations.fs" />
     <Compile Include="Repository.fs" />
     <Compile Include="Aggregate.fs" />
+    <Compile Include="Projections.fs" />
+    <Compile Include="API.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Medhavi.Common\Medhavi.Common.fsproj" />
+    <ProjectReference Include="..\Medhavi.Contracts\Medhavi.Contracts.fsproj" />
   </ItemGroup>
 
   <ItemGroup>

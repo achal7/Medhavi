@@ -1,6 +1,7 @@
 module Medhavi.Infrastructure.Stores.InMemRepository
 
 open System.Collections.Concurrent
+open Medhavi.Infrastructure
 open Medhavi.SharedKernel
 
 let createInMemoryRepository<'Aggregate, 'Id, 'Event when 'Id: not null> () =

@@ -2,8 +2,9 @@ module Medhavi.Infrastructure.Stores.IdempotencyStore
 
 open System
 open System.Threading
-open Medhavi.SharedKernel
+open Medhavi.Infrastructure
 open Medhavi.Common.Patterns
+open Microsoft.Extensions.Logging
 
 type IdempotencyKey = string
 type ReservationToken = Guid
@@ -173,7 +174,7 @@ let readLast (envStore: EnvelopeStore.EnvelopeStoreOps) (streamName: string) (ct
 
 let addIfNotExists
     (envStore: EnvelopeStore.EnvelopeStoreOps)
-    (logger: Logging.Logger)
+    (logger: ILogger)
     (streamName: string)
     (key: IdempotencyKey)
     (expiry: DateTimeOffset option)
@@ -201,30 +202,31 @@ let addIfNotExists
                         | Some pos -> return Ok(Reserved(token, pos)) // first writer wins
                         | None -> return Error(AppendFailed $"{logMsgPrefix} Error: Position is empty")
                     | Error e ->
-                        logger.Error $"[AddIfNotExists] Publish returned Error for stream {streamName} key {key}: %A{e}"
+                        logger.LogError
+                            $"[AddIfNotExists] Publish returned Error for stream {streamName} key {key}: %A{e}"
 
                         if isWrongExpectedVersion (box e) then
                             let! lastRec = readLast envStore streamName ct
 
                             match lastRec with
                             | Error e ->
-                                logger.Error $"{logMsgPrefix} Error: {e}"
+                                logger.LogError $"{logMsgPrefix} Error: {e}"
                                 return Error(AppendFailed $"{logMsgPrefix} Error: {e}")
                             | Ok(idemRec, _) -> return Ok(ReservationResult.AlreadyExists(idemRec.Token, idemRec))
                         else
                             // Not a version conflict — surface as append failure
-                            logger.Error $"[AddIfNotExists] Append failed (non-concurrency): %A{e}"
+                            logger.LogError $"[AddIfNotExists] Append failed (non-concurrency): %A{e}"
                             return Error(AppendFailed $"{logMsgPrefix} Error: {e.ToString()}")
                 with ex ->
                     // Exception fallback: check message then attempt fallback read if it looks like version error
-                    logger.Error $"{logMsgPrefix} Error:{ex.Message}"
+                    logger.LogError $"{logMsgPrefix} Error:{ex.Message}"
                     return Error(IdempotencyStoreError.UnknownError ex.Message)
     }
 
 let markProcessed
 
     (envStore: EnvelopeStore.EnvelopeStoreOps)
-    (logger: Logging.Logger)
+    (logger: ILogger)
     (streamName: string)
     (key: IdempotencyKey)
     (token: ReservationToken)
@@ -244,14 +246,14 @@ let markProcessed
                 match! envStore.ReadLast streamName None ct with
                 | Error ex ->
                     let msg = errMsgPrefix + ex.ToString()
-                    logger.Error msg
+                    logger.LogError msg
                     return Error(AppendFailed msg)
                 | Ok resolved when resolved.Length = 0 -> return Error(NotFound key)
                 | Ok resolved ->
                     match tryParseIdempotencyRecordJson resolved.Head.Envelope.DataJson with
                     | None ->
                         let msg = errMsgPrefix + "Failed to parse reservation token"
-                        logger.Error msg
+                        logger.LogError msg
                         return Error(ParseError msg)
                     | Some reserved when reserved.Token <> token -> return Error(TokenMismatch(reserved.Token, token))
                     | Some reserved ->
@@ -292,7 +294,7 @@ let markProcessed
                                 |> Result.map (fun _ -> ())
                                 |> Result.mapError (fun e -> IdempotencyStoreError.AppendFailed(e.ToString()))
         with ex ->
-            logger.Warning(errMsgPrefix + ex.Message)
+            logger.LogWarning(errMsgPrefix + ex.Message)
             return Error(AppendFailed(errMsgPrefix + ex.Message))
     }
 
@@ -341,7 +343,7 @@ let exists
 
 let remove
     (envStore: EnvelopeStore.EnvelopeStoreOps)
-    (logger: Logging.Logger)
+    (logger: ILogger)
     (streamName: string)
     (key: IdempotencyKey)
     (ct: CancellationToken)
@@ -357,16 +359,16 @@ let remove
                 match res with
                 | Ok() -> return Ok()
                 | Error e ->
-                    logger.Warning $"[Store] Failed to remove idempotency stream {streamName}: {e}"
+                    logger.LogWarning $"[Store] Failed to remove idempotency stream {streamName}: {e}"
                     return Error(IdempotencyStoreError.StorageError(sprintf "%A" e))
             with ex ->
-                logger.Warning $"[Store] Failed to remove idempotency stream {streamName}: {ex.Message}"
+                logger.LogWarning $"[Store] Failed to remove idempotency stream {streamName}: {ex.Message}"
                 return Error(IdempotencyStoreError.StorageError ex.Message)
     }
 
 let getKeys
     (envStore: EnvelopeStore.EnvelopeStoreOps)
-    (logger: Logging.Logger)
+    (logger: ILogger)
     (streamPrefix: string)
     (prefixOpt: string option)
     (limitOpt: int option)
@@ -384,7 +386,7 @@ let getKeys
 
             match readRes with
             | Error e ->
-                logger.Error(sprintf "GetKeys: ReadAll failed: %A" e)
+                logger.LogError(sprintf "GetKeys: ReadAll failed: %A" e)
                 return []
             | Ok envelopes ->
                 // Extract stream names, filter by prefix, remove prefix and distinct
@@ -405,13 +407,13 @@ let getKeys
 
                 return keys
         with ex ->
-            logger.Error $"GetKeys failed: {ex.Message}"
+            logger.LogError $"GetKeys failed: {ex.Message}"
             return []
     }
 
 let cleanup
     (envStore: EnvelopeStore.EnvelopeStoreOps)
-    (logger: Logging.Logger)
+    (logger: ILogger)
     (streamPrefix: string)
     (expiration: DateTimeOffset)
     (ct: CancellationToken)
@@ -426,7 +428,7 @@ let cleanup
 
                 match readRes with
                 | Error e ->
-                    logger.Error $"[Store] Idempotency cleanup: ReadAll failed: {e}"
+                    logger.LogError $"[Store] Idempotency cleanup: ReadAll failed: {e}"
                     return Error(StorageError(sprintf "%A" e))
                 | Ok envelopes ->
                     // Build dict of first-seen timestamp per stream
@@ -458,13 +460,13 @@ let cleanup
 
                             match clearRes with
                             | Ok() -> removed <- removed + 1
-                            | Error e -> logger.Warning $"Failed to clear idempotency stream {s}: {e}"
+                            | Error e -> logger.LogWarning $"Failed to clear idempotency stream {s}: {e}"
                         with ex ->
-                            logger.Warning $"Failed to clear idempotency stream {s}: {ex.Message}"
+                            logger.LogWarning $"Failed to clear idempotency stream {s}: {ex.Message}"
 
                     return Ok removed
         with ex ->
-            logger.Error "[Store] Idempotency store cleanup failed"
+            logger.LogError "[Store] Idempotency store cleanup failed"
             return Error(StorageError ex.Message)
     }
 
@@ -528,7 +530,7 @@ let renewReservation
                 return Error(StorageError(ex.ToString()))
     }
 
-let create (envStore: EnvelopeStore.EnvelopeStoreOps) (logger: Logging.Logger) : IdempotencyStoreOps =
+let create (envStore: EnvelopeStore.EnvelopeStoreOps) (logger: ILogger) : IdempotencyStoreOps =
 
     { AddIfNotExists = addIfNotExists envStore logger
       SetResult = markProcessed envStore logger

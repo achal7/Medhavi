@@ -1,0 +1,3 @@
+ResourceId,Name,NodeId,IsActive
+RES-LINE1,Assembly Line 1,SP-FACTORY,true
+RES-LINE2,Assembly Line 2,SP-FACTORY,true

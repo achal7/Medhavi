@@ -8,6 +8,21 @@
   <ItemGroup>
     <Compile Include="IntegrationEvents.fs" />
     <Compile Include="Ingestion.fs" />
+    <Compile Include="Adapters\SkuAdapter.fs" />
+    <Compile Include="Adapters\BomAdapter.fs" />
+    <Compile Include="Adapters\StockingPointAdapter.fs" />
+    <Compile Include="Adapters\RoutingAdapter.fs" />
+    <Compile Include="Adapters\TransportLegAdapter.fs" />
+    <Compile Include="Adapters\PlantAdapter.fs" />
+    <Compile Include="Adapters\UomAdapter.fs" />
+    <Compile Include="Adapters\UnitConversionAdapter.fs" />
+    <Compile Include="IntegrationService.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="csv\*.csv">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
   <ItemGroup>

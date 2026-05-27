@@ -229,4 +229,46 @@ module IngestionTests =
                               test <@ list.[0].ProductId = "SKU-1" @>
                           | _ -> failwith "Expected InventoryPositionsImported payload"
               )
+
+              testCase "should parse Plant, Uom, and UnitConversion adapters correctly" (fun () ->
+                  // 1. PlantAdapter
+                  let spCsv = "StockingPointId,Name,IsActive\nSP-FACTORY,Assembly Plant,true"
+                  let plantRes = Medhavi.Integration.Adapters.PlantAdapter.parse spCsv
+                  match plantRes with
+                  | Error err -> failwithf "PlantAdapter failed: %s" err
+                  | Ok plants ->
+                      test <@ plants.Length = 1 @>
+                      test <@ plants.[0].Id = "PLANT-DEFAULT" @>
+
+                  // 2. UomAdapter
+                  let prodCsv = "SkuId,Name,UoM,IsActive\nSKU-1,Widget,UOM-PCS,true"
+                  let legCsv = "Id,Origin,Destination,Mode,Schedule,LeadTimeMinutes,Capacity,CapacityUnit,CutoffMinutes,Constraints,Reliability,CO2PerUnit,EffectiveStart\nLEG-1,SP-1,SP-2,Road,Daily,180.0,500.0,UOM-BAG,60.0,,0.95,0.05,2026-05-27T00:00:00Z"
+                  let uomRes = Medhavi.Integration.Adapters.UomAdapter.parse prodCsv legCsv
+                  match uomRes with
+                  | Error err -> failwithf "UomAdapter failed: %s" err
+                  | Ok uoms ->
+                      test <@ uoms |> List.exists (fun u -> u.Id = "UOM-PCS") @>
+                      test <@ uoms |> List.exists (fun u -> u.Id = "UOM-BAG") @>
+                      test <@ uoms |> List.exists (fun u -> u.Id = "UOM-BOX") @>
+
+                  // 3. UnitConversionAdapter
+                  let ucCsv = "SourceUom,TargetUom,ConversionFactor,Created\nUOM-BOX,UOM-PCS,10.0,2026-05-28T00:00:00Z"
+                  let ucRes = Medhavi.Integration.Adapters.UnitConversionAdapter.parse ucCsv
+                  match ucRes with
+                  | Error err -> failwithf "UnitConversionAdapter failed: %s" err
+                  | Ok conversions ->
+                      test <@ conversions.Length = 1 @>
+                      test <@ conversions.[0].SourceUom = "UOM-BOX" @>
+                      test <@ conversions.[0].TargetUom = "UOM-PCS" @>
+                      test <@ conversions.[0].ConversionFactor = 10.0m @>
+
+                  let emptyUcRes = Medhavi.Integration.Adapters.UnitConversionAdapter.parse ""
+                  match emptyUcRes with
+                  | Error err -> failwithf "UnitConversionAdapter empty failed: %s" err
+                  | Ok conversions ->
+                      test <@ conversions.Length = 1 @>
+                      test <@ conversions.[0].SourceUom = "UOM-BOX" @>
+                      test <@ conversions.[0].TargetUom = "UOM-PCS" @>
+                      test <@ conversions.[0].ConversionFactor = 10.0m @>
+              )
             ]

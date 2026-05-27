@@ -1,0 +1,3 @@
+StockingPointId,Name,IsActive
+SP-FACTORY,Assembly Plant,true
+SP-WAREHOUSE,Central Warehouse,true

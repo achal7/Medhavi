@@ -25,10 +25,13 @@
     <Compile Include="Application\BillOfMaterials.fs" />
     <Compile Include="Application\Routing.fs" />
     <Compile Include="Application\TransportLeg.fs" />
+    <Compile Include="BoundedContext.fs" />
+    <Compile Include="Application\MasterDataImportedHandler.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Medhavi.SharedKernel\Medhavi.SharedKernel.fsproj" />
+    <ProjectReference Include="..\Medhavi.Infrastructure\Medhavi.Infrastructure.fsproj" />
     <ProjectReference Include="..\Medhavi.Common\Medhavi.Common.fsproj" />
     <ProjectReference Include="..\Medhavi.Contracts\Medhavi.Contracts.fsproj" />
   </ItemGroup>

@@ -197,6 +197,29 @@ module ExecutionContext =
               TenantId = tenantId
               Timestamp = timestamp })
 
+// TODO - Open item (Moved from Envelope to here)
+/// Apply ExecutionContext metadata to envelope (for distributed tracing)
+// let withExecutionContext (ctx: ExecutionContext) (envelope: Envelope) : Envelope =
+//     let metadataMap = ExecutionContext.toMetadataMap ctx
+
+//     { envelope with
+//         Metadata =
+//             metadataMap
+//             |> Map.fold (fun acc key value -> Map.add key value acc) envelope.Metadata }
+
+// TODO - Open item (Moved from Envelope to here)
+/// Build typed ExecutionContext from envelope (uses CreatedUtc as timestamp)
+// let executionContextOf (env: Envelope) : ExecutionContext =
+//     ExecutionContext.fromMetadataMap env.Metadata env.CreatedUtc
+
+// type EnvelopeRuntime =
+//     { Envelope: Envelope
+//         ExecutionContext: ExecutionContext }
+
+// let toRuntime (env: Envelope) : EnvelopeRuntime =
+//     { Envelope = env
+//         ExecutionContext = executionContextOf env }
+
 type ContextWrapper<'Payload> =
     { Context: ExecutionContext
       Payload: 'Payload }
@@ -204,12 +227,15 @@ type ContextWrapper<'Payload> =
 type ExecutionContextHolder =
     static member val private CurrentContext = System.Threading.AsyncLocal<ExecutionContext>() with get
 
-    static member Set(ctx: ExecutionContext) =
-        ExecutionContextHolder.CurrentContext.Value <- ctx
+    static member Set(ctx: ExecutionContext) = ExecutionContextHolder.CurrentContext.Value <- ctx
 
     static member TryGet() =
         let value = ExecutionContextHolder.CurrentContext.Value
-        if obj.ReferenceEquals(value, null) then None else Some value
+
+        if obj.ReferenceEquals(value, null) then
+            None
+        else
+            Some value
 
     static member Clear() =
         ExecutionContextHolder.CurrentContext.Value <- Unchecked.defaultof<ExecutionContext>
@@ -218,4 +244,4 @@ module ExecutionContextValidation =
     let requireTenant (ctx: ExecutionContext) : Result<string, DomainError> =
         match ctx.TenantId with
         | Some tenantId when not (String.IsNullOrWhiteSpace tenantId) -> Ok tenantId
-        | _ -> Error (DomainError.validation "TenantId is required but was missing or empty")
+        | _ -> Error(DomainError.validation "TenantId is required but was missing or empty")

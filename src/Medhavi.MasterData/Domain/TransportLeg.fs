@@ -1,4 +1,4 @@
-module Medhavi.Domain.Transport
+module Medhavi.MasterData.Domain.TransportAgg
 
 open System
 open System.Text.Json.Serialization
@@ -396,7 +396,9 @@ let validateCO2PerUnit (co2Opt: decimal option) : Result<PositiveDecimal option,
     | None -> Ok None
     | Some v -> PositiveDecimal.create v |> Result.map Some
 
-let validateUpdate (cmd: UpdateTransportLegCmd) : Result<PositiveDecimal option * Percent option * PositiveDecimal option, DomainError> =
+let validateUpdate
+    (cmd: UpdateTransportLegCmd)
+    : Result<PositiveDecimal option * Percent option * PositiveDecimal option, DomainError> =
     result {
         let! cap = validateCapacity cmd.Capacity
         let! rel = validateReliability cmd.Reliability
@@ -410,7 +412,7 @@ let decide: DecideTransportLeg =
         | DefineTransportLeg cmd, None ->
             match validateDefine cmd with
             | Error e -> Error e
-            | Ok () ->
+            | Ok() ->
                 let costDetail =
                     { FixedCost = PositiveDecimal.Zero
                       VariableCostPerUnit = None
@@ -458,7 +460,9 @@ let decide: DecideTransportLeg =
                       Created = cmd.Created
                       Modified = cmd.Created }
 
-                Ok { NewState = newState; Events = [ TransportLegDefined evt ] }
+                Ok
+                    { NewState = newState
+                      Events = [ TransportLegDefined evt ] }
 
         | DefineTransportLeg _, Some _ -> Error(DomainError.validation "TransportLeg already exists")
 
@@ -468,7 +472,7 @@ let decide: DecideTransportLeg =
             | Active ->
                 match validateUpdate cmd with
                 | Error e -> Error e
-                | Ok (cap, rel, co2) ->
+                | Ok(cap, rel, co2) ->
                     let evt =
                         { Id = cmd.Id
                           Mode = cmd.Mode
@@ -492,13 +496,17 @@ let decide: DecideTransportLeg =
                             Capacity = cap
                             CapacityUnit = cmd.CapacityUnit
                             Cutoff = cmd.Cutoff
-                            Constraints = cmd.Constraints |> Option.defaultValue state.Constraints
+                            Constraints =
+                                cmd.Constraints
+                                |> Option.defaultValue state.Constraints
                             Reliability = rel
                             CO2PerUnit = co2
                             EffectiveEnd = cmd.EffectiveEnd
                             Modified = cmd.Modified }
 
-                    Ok { NewState = newState; Events = [ TransportLegUpdated evt ] }
+                    Ok
+                        { NewState = newState
+                          Events = [ TransportLegUpdated evt ] }
 
         | UpdateTransportLeg _, Some _ -> Error(DomainError.validation "TransportLeg not found")
 
@@ -515,7 +523,9 @@ let decide: DecideTransportLeg =
                     { Id = cmd.Id
                       DeactivatedAt = cmd.DeactivatedAt }
 
-                Ok { NewState = updated; Events = [ TransportLegDeactivated evt ] }
+                Ok
+                    { NewState = updated
+                      Events = [ TransportLegDeactivated evt ] }
 
         | DeactivateTransportLeg _, Some _ -> Error(DomainError.validation "TransportLeg not found")
 

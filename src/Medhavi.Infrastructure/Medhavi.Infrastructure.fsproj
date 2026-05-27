@@ -6,18 +6,17 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Envelope.fs" />
     <Compile Include="Stores\EnvelopeStore.fs" />
     <Compile Include="Stores\EnvelopeStoreMem.fs" />
     <Compile Include="Stores\IdempotencyStore.fs" />
     <Compile Include="Stores\InMemRepository.fs" />
-    <Compile Include="Persistence.fs" />
+    <Compile Include="Projections.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Medhavi.Common\Medhavi.Common.fsproj" />
     <ProjectReference Include="..\Medhavi.SharedKernel\Medhavi.SharedKernel.fsproj" />
-    <ProjectReference Include="..\Medhavi.Scenario\Medhavi.Scenario.fsproj" />
-    <ProjectReference Include="..\Medhavi.Contracts\Medhavi.Contracts.fsproj" />
   </ItemGroup>
 
   <ItemGroup>

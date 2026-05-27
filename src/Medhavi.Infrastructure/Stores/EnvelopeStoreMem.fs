@@ -7,7 +7,7 @@ open System.Threading.Tasks
 open Medhavi.Infrastructure.Stores.EnvelopeStore
 open System.Collections.Immutable
 open Medhavi.Common.Patterns
-open Medhavi.SharedKernel
+open Medhavi.Infrastructure
 
 [<CLIMutable>]
 type StoredEvent =

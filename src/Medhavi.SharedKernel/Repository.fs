@@ -1,8 +1,10 @@
 namespace Medhavi.SharedKernel
 
-open System.Collections.Concurrent
-open Medhavi.SharedKernel
 open Medhavi.Common.Patterns
+open System.Threading.Tasks
+
+/// Versioned aggregate for optimistic concurrency
+type VersionedAggregate<'Aggregate> = { Aggregate: 'Aggregate; Version: int }
 
 /// Error types for repository operations
 type RepositoryError =

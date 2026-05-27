@@ -3,7 +3,7 @@ namespace Medhavi.Infrastructure.Stores.EnvelopeStore
 open System
 open System.Threading.Tasks
 open Medhavi.Common.Patterns
-open Medhavi.SharedKernel
+open Medhavi.Infrastructure
 
 /// Position information captured from the event store
 type Position =
