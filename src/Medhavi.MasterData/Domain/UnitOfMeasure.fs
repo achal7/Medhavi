@@ -17,15 +17,11 @@ type ConversionFactor =
     | Base of factor: PositiveDecimal
     | Derived of factor: PositiveDecimal
 
-type UomStatus =
-    | Active
-    | Retired
-
 type UnitOfMeasure =
     { Id: UomId
       Code: string
       Name: string
-      Status: UomStatus
+      Status: Status
       ConversionFactor: ConversionFactor
       Created: Timestamp
       Modified: Timestamp }
@@ -129,7 +125,7 @@ let decide: DecideUnitOfMeasure =
         | Retire id, Some s ->
             let newstate =
                 { s with
-                    Status = Retired
+                    Status = Inactive
                     Modified = Timestamp.now }
 
             { NewState = newstate
@@ -152,7 +148,7 @@ let evolve (state: UnitOfMeasure option) (event: UnitOfMeasureEvent) : UnitOfMea
     | UnitOfMeasureRetired e, Some s ->
         Some(
             { s with
-                Status = Retired
+                Status = Inactive
                 Modified = e.Modified }
         )
     | UnitOfMeasureRetired _, None -> None

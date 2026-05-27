@@ -13,10 +13,6 @@ type StockingPointType =
     | DistributionCenter
     | Warehouse
 
-type StockingPointStatus =
-    | Active
-    | Retired
-
 type StockingPoint =
     { Id: StockingPointId
       PlantId: PlantId
@@ -29,7 +25,7 @@ type StockingPoint =
       SupplyCanBeSplit: bool
       Created: Timestamp
       Modified: Timestamp
-      Status: StockingPointStatus }
+      Status: Status }
 
 // Commands
 type DefineStockingPointCmd =
@@ -102,22 +98,33 @@ let decide: DecideStockingPoint =
 
         | RenameStockingPoint cmd, Some state when state.Id = cmd.Id ->
             match state.Status with
-            | Retired -> Error(DomainError.invariant "Cannot rename an inactive StockingPoint")
+            | Inactive -> Error(DomainError.invariant "Cannot rename an inactive StockingPoint")
             | Active ->
-                { NewState = { state with Name = cmd.NewName; Modified = Timestamp.now }
-                  Events = [ StockingPointRenamed { Id = state.Id; NewName = cmd.NewName; Modified = Timestamp.now } ] }
+                { NewState =
+                    { state with
+                        Name = cmd.NewName
+                        Modified = Timestamp.now }
+                  Events =
+                    [ StockingPointRenamed
+                          { Id = state.Id
+                            NewName = cmd.NewName
+                            Modified = Timestamp.now } ] }
                 |> Ok
 
         | RetireStockingPoint id, Some state when state.Id = id ->
             match state.Status with
-            | Retired -> Error(DomainError.invariant "StockingPoint is already inactive")
+            | Inactive -> Error(DomainError.invariant "StockingPoint is already inactive")
             | Active ->
                 let updated =
                     { state with
-                        Status = Retired
+                        Status = Inactive
                         Modified = Timestamp.now }
+
                 { NewState = updated
-                  Events = [ StockingPointRetired { Id = state.Id; RetiredAt = updated.Modified } ] }
+                  Events =
+                    [ StockingPointRetired
+                          { Id = state.Id
+                            RetiredAt = updated.Modified } ] }
                 |> Ok
         | _, None -> Error(DomainError.validation "StockingPoint not found")
         | _, _ -> Error(DomainError.validation "Invalid command/state combination")
@@ -143,7 +150,7 @@ let applyRenamed (evt: StockingPointRenamedEvt) (state: StockingPoint) : Stockin
 
 let applyRetired (evt: StockingPointRetiredEvt) (state: StockingPoint) : StockingPoint =
     { state with
-        Status = Retired
+        Status = Inactive
         Modified = evt.RetiredAt }
 
 let evolve (state: StockingPoint option) (event: StockingPointEvent) : StockingPoint option =

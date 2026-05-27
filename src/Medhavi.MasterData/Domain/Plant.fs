@@ -1,15 +1,9 @@
 module Medhavi.MasterData.Domain.PlantAgg
 
-open System.Text.Json.Serialization
-open Medhavi.Common
 open Medhavi.Common.Validation
 open Medhavi.SharedKernel
 open Medhavi.SharedKernel.Validations
 open Medhavi.SharedKernel.Aggregate
-
-type PlantStatus =
-    | Active
-    | Retired
 
 type Plant =
     { Id: PlantId
@@ -17,7 +11,7 @@ type Plant =
       Name: string
       Created: Timestamp
       Modified: Timestamp
-      Status: PlantStatus }
+      Status: Status }
 
 // Commands
 type DefinePlantCmd =
@@ -87,9 +81,12 @@ let decide: DecidePlant =
                 cmd
         | RenamePlant cmd, Some plant ->
             match plant.Status with
-            | Retired -> Error(DomainError.invariant ("Cannot rename an inactive plant"))
+            | Inactive -> Error(DomainError.invariant ("Cannot rename an inactive plant"))
             | Active ->
-                { NewState = { plant with Name = cmd.NewName; Modified = Timestamp.now }
+                { NewState =
+                    { plant with
+                        Name = cmd.NewName
+                        Modified = Timestamp.now }
                   Events =
                     [ PlantRenamed
                           { Id = plant.Id
@@ -99,9 +96,12 @@ let decide: DecidePlant =
 
         | RetirePlant cmd, Some plant ->
             match plant.Status with
-            | Retired -> Error(DomainError.invariant ("Plant is already inactive"))
+            | Inactive -> Error(DomainError.invariant ("Plant is already inactive"))
             | Active ->
-                { NewState = { plant with Status = Retired; Modified = Timestamp.now }
+                { NewState =
+                    { plant with
+                        Status = Inactive
+                        Modified = Timestamp.now }
                   Events =
                     [ PlantRetired
                           { Id = plant.Id
@@ -124,7 +124,7 @@ let applyRenamed (evt: PlantRenamedEvt) (state: Plant) : Plant =
 
 let applyRetired (evt: PlantRetiredEvt) (state: Plant) : Plant =
     { state with
-        Status = Retired
+        Status = Inactive
         Modified = evt.RetiredAt }
 
 let evolve (state: Plant option) (event: PlantEvent) : Plant option =

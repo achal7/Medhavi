@@ -1,6 +1,5 @@
 module Medhavi.MasterData.Domain.NodeAgg
 
-open Medhavi.Common
 open Medhavi.Common.Validation
 open Medhavi.SharedKernel
 open Medhavi.SharedKernel.Validations
@@ -20,10 +19,6 @@ type NodeAttributes =
       PlanningLevel: int option
       StockingPointRef: StockingPointId option }
 
-type NodeStatus =
-    | Active
-    | Retired
-
 type Node =
     { Id: NodeId
       Code: string
@@ -31,7 +26,7 @@ type Node =
       Attributes: NodeAttributes
       CreatedAt: Timestamp
       ModifiedAt: Timestamp
-      Status: NodeStatus }
+      Status: Status }
 
 type DefineNodeCmd =
     { Id: string
@@ -76,11 +71,11 @@ let decide: DecideNode =
 
         | RetireNode(id), Some state when state.Id = id ->
             match state.Status with
-            | Retired -> Error(DomainError.invariant "Node is already inactive")
+            | Inactive -> Error(DomainError.invariant "Node is already inactive")
             | Active ->
                 let updated =
                     { state with
-                        Status = Retired
+                        Status = Inactive
                         ModifiedAt = Timestamp.now }
 
                 { NewState = updated
@@ -97,7 +92,7 @@ let evolve: EvolveNode =
         | NodeRetired(id, modifiedAt), Some state when state.Id = id ->
             Some
                 { state with
-                    Status = Retired
+                    Status = Inactive
                     ModifiedAt = modifiedAt }
         | NodeDefined _, Some state -> Some state
         | _, current -> current

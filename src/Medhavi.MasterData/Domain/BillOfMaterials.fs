@@ -20,16 +20,12 @@ type BomItem =
       UnitOfMeasureId: UomId
       Sequence: int }
 
-type BomStatus =
-    | Active
-    | Retired
-
 type BillOfMaterial =
     { Id: BillOfMaterialId
       SkuId: SkuId
       Version: Version
       Items: BomItem list
-      Status: BomStatus
+      Status: Status
       CreatedAt: Timestamp
       ModifiedAt: Timestamp }
 
@@ -72,7 +68,7 @@ let validateAndMakeBoM now (cmd: DefineBillOfMaterialCmd) =
           SkuId = cmd.SkuId
           Version = Version.initial
           Items = lines
-          Status = Retired
+          Status = Inactive
           CreatedAt = now
           ModifiedAt = Timestamp.minValue }
 
@@ -108,7 +104,7 @@ let decide: DecideBom =
         | ActivateBom(id), Some state when state.Id = id ->
             match state.Status with
             | Active -> Error(DomainError.invariant "BOM is already active")
-            | Retired ->
+            | Inactive ->
                 let updated =
                     { state with
                         Status = Active
@@ -122,11 +118,11 @@ let decide: DecideBom =
 
         | DeactivateBom(id), Some state when state.Id = id ->
             match state.Status with
-            | Retired -> Error(DomainError.invariant "BOM is already inactive")
+            | Inactive -> Error(DomainError.invariant "BOM is already inactive")
             | Active ->
                 let updated =
                     { state with
-                        Status = Retired
+                        Status = Inactive
                         ModifiedAt = Timestamp.now }
 
                 Ok(
@@ -149,7 +145,7 @@ let evolve: EvolveBom =
         | BomDeactivated(id, modifiedAt), Some state when state.Id = id ->
             Some
                 { state with
-                    Status = Retired
+                    Status = Inactive
                     ModifiedAt = modifiedAt }
         | BomDefined _, Some state -> Some state
         | _, current -> current

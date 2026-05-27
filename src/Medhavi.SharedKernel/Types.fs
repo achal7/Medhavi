@@ -230,3 +230,20 @@ module Window =
 
     let create (startTime: Timestamp) (endTime: Timestamp) =
         createFromTime (Timestamp.value startTime) (Timestamp.value endTime)
+
+type Status =
+    | Active
+    | Inactive
+
+    member this.ToBool() =
+        match this with
+        | Active -> true
+        | Inactive -> false
+
+    member this.Toogle() = if this = Active then Inactive else Active
+
+module Status =
+    let fromBool status =
+        match status with
+        | true -> Active
+        | false -> Inactive

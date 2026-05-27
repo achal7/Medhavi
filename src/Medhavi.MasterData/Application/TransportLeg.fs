@@ -230,10 +230,7 @@ let mapTransportLegDto (l: TransportLeg) : Medhavi.Contracts.Domain.TransportLeg
         l.Capacity
         |> Option.map (fun c -> PositiveDecimal.value c)
       CapacityUnit = l.CapacityUnit |> Option.map UomId.value
-      Status =
-        match l.Status with
-        | TransportLegStatus.Active -> true
-        | TransportLegStatus.Retired -> false }
+      Status = l.Status.ToBool() }
 
 let evolveProjection (state: Map<string, Medhavi.Contracts.Domain.TransportLeg>) (evt: TransportLegEvent) =
     match evt with

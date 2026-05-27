@@ -77,10 +77,7 @@ let mapStockingPointDto (s: StockingPoint) : Contracts.Domain.StockingPoint =
       Code = s.Code
       Name = s.Name
       Type = tStr
-      Status =
-        match s.Status with
-        | StockingPointStatus.Active -> true
-        | StockingPointStatus.Retired -> false }
+      Status = s.Status.ToBool() }
 
 let evolveProjection (state: Map<string, Contracts.Domain.StockingPoint>) (evt: StockingPointEvent) =
     match evt with

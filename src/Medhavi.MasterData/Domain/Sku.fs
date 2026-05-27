@@ -6,16 +6,12 @@ open Medhavi.SharedKernel
 open Medhavi.SharedKernel.Validations
 open Medhavi.SharedKernel.Aggregate
 
-type SkuStatus =
-    | Active
-    | Retired
-
 type Sku =
     { Id: SkuId
       Code: string
       Name: string
       Group: string
-      Status: SkuStatus
+      Status: Status
       CreatedAt: Timestamp
       ModifiedAt: Timestamp }
 
@@ -64,7 +60,7 @@ let decide: DecideSku =
 
         | RenameSku(id, name), Some state when state.Id = id ->
             match state.Status with
-            | Retired -> Error(DomainError.invariant "Cannot update an inactive Sku")
+            | Inactive -> Error(DomainError.invariant "Cannot update an inactive Sku")
             | Active ->
                 required "Sku name" name
                 |> toResult
@@ -82,11 +78,11 @@ let decide: DecideSku =
 
         | RetireSku id, Some state when state.Id = id ->
             match state.Status with
-            | Retired -> Error(DomainError.invariant "Sku is already inactive")
+            | Inactive -> Error(DomainError.invariant "Sku is already inactive")
             | Active ->
                 let updated =
                     { state with
-                        Status = Retired
+                        Status = Inactive
                         ModifiedAt = Timestamp.now }
 
                 Ok
@@ -109,7 +105,7 @@ let evolve: EvolveSku =
         | SkuRetired(id, modifiedAt), Some state when state.Id = id ->
             Some
                 { state with
-                    Status = Retired
+                    Status = Inactive
                     ModifiedAt = modifiedAt }
         | SkuDefined _, Some state -> Some state
         | _, current -> current

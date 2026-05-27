@@ -74,10 +74,7 @@ let mapBomDto (b: BillOfMaterial) : Medhavi.Contracts.Domain.Bom =
     { Id = BillOfMaterialId.value b.Id
       SkuId = SkuId.value b.SkuId
       Items = lines
-      Status =
-        match b.Status with
-        | BomStatus.Active -> true
-        | BomStatus.Retired -> false }
+      Status = b.Status.ToBool() }
 
 let evolveProjection (state: Map<string, Medhavi.Contracts.Domain.Bom>) (evt: BomEvent) =
     match evt with

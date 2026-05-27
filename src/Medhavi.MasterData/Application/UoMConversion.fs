@@ -33,9 +33,9 @@ module ACL =
         UnitConversionId.create req.Id
         |> Result.map (fun id -> { Id = id; Ratio = req.Ratio }: UpdateUnitConversionCmd)
 
-    let toRetireCommand (req: UnitConversionRetireReq) : Result<UnitConversionId * UnitConversionStatus, DomainError> =
+    let toRetireCommand (req: UnitConversionRetireReq) : Result<UnitConversionId * Status, DomainError> =
         UnitConversionId.create req.Id
-        |> Result.map (fun id -> (id, Retired))
+        |> Result.map (fun id -> (id, Inactive))
 
 type Decision = Decision<UnitConversion, UnitConversionEvent>
 

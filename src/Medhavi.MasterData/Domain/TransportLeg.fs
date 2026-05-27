@@ -62,10 +62,6 @@ type CapacityProfile =
     | StaticCapacity of PositiveDecimal
     | ByDate of Map<DateTime, PositiveDecimal>
 
-type TransportCalendarStatus =
-    | Active
-    | Retired
-
 type TransportCalendar =
     { Id: TransportCalendarId
       Name: string
@@ -79,7 +75,7 @@ type TransportCalendar =
       CapacityProfile: CapacityProfile option
       EffectiveStart: Timestamp
       EffectiveEnd: Timestamp option
-      Status: TransportCalendarStatus
+      Status: Status
       Created: Timestamp
       Modified: Timestamp }
 
@@ -169,14 +165,10 @@ let evolveTransportCalendar: EvolveTransportCalendar =
             |> Some
         | CalendarDeactivated e, Some s ->
             { s with
-                Status = Retired
+                Status = Inactive
                 Modified = e.DeactivatedAt }
             |> Some
         | _ -> failwith "Invalid state/event combination"
-
-type TransportLegStatus =
-    | Active
-    | Retired
 
 /// Transport Leg aggregate
 /// Represents a scheduled transport leg with mode, schedule, capacity, cutoff, constraints, reliability, and CO2
@@ -198,7 +190,7 @@ type TransportLeg =
       CO2PerUnit: PositiveDecimal option // CO2 emissions per unit (kg/kg or kg/m3)
       EffectiveStart: Timestamp
       EffectiveEnd: Timestamp option
-      Status: TransportLegStatus
+      Status: Status
       Created: Timestamp
       Modified: Timestamp }
 
@@ -468,7 +460,7 @@ let decide: DecideTransportLeg =
 
         | UpdateTransportLeg cmd, Some state when state.Id = cmd.Id ->
             match state.Status with
-            | Retired -> Error(DomainError.invariant "Cannot update an inactive TransportLeg")
+            | Inactive -> Error(DomainError.invariant "Cannot update an inactive TransportLeg")
             | Active ->
                 match validateUpdate cmd with
                 | Error e -> Error e
@@ -512,11 +504,11 @@ let decide: DecideTransportLeg =
 
         | DeactivateTransportLeg cmd, Some state when state.Id = cmd.Id ->
             match state.Status with
-            | Retired -> Error(DomainError.invariant "TransportLeg is already inactive")
+            | Inactive -> Error(DomainError.invariant "TransportLeg is already inactive")
             | Active ->
                 let updated =
                     { state with
-                        Status = Retired
+                        Status = Inactive
                         Modified = cmd.DeactivatedAt }
 
                 let evt =
@@ -574,7 +566,7 @@ let evolveTransportLeg: EvolveTransportLeg =
             |> Some
         | TransportLegDeactivated e, Some s ->
             { s with
-                Status = Retired
+                Status = Inactive
                 Modified = e.DeactivatedAt }
             |> Some
         | _ -> failwith "Invalid state/event combination"

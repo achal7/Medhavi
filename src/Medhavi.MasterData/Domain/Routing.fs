@@ -36,10 +36,6 @@ type StepResourceMap =
       Sequence: int
       DurationPerUnitMinutes: decimal option }
 
-type RoutingStatus =
-    | Active
-    | Retired
-
 type Routing =
     { Id: RoutingId
       Name: string
@@ -52,7 +48,7 @@ type Routing =
       StepResources: StepResourceMap list
       CreatedAt: Timestamp
       ModifiedAt: Timestamp
-      Status: RoutingStatus }
+      Status: Status }
 
 type DefineRoutingCmd =
     { Id: RoutingId
@@ -66,7 +62,7 @@ type DefineRoutingCmd =
       StepResources: DefineStepResourceMap list
       CreatedAt: Timestamp
       ModifiedAt: Timestamp
-      Status: RoutingStatus }
+      Status: Status }
 
 and DefineRoutingStep =
     { StepId: string
@@ -250,7 +246,7 @@ let decide: DecideRouting =
         | ActivateRouting(id), Some state when state.Id = id ->
             match state.Status with
             | Active -> Error(DomainError.invariant "Routing is already active")
-            | Retired ->
+            | Inactive ->
                 let updated =
                     { state with
                         Status = Active
@@ -263,11 +259,11 @@ let decide: DecideRouting =
 
         | DeactivateRouting(id), Some state when state.Id = id ->
             match state.Status with
-            | Retired -> Error(DomainError.invariant "Routing is already inactive")
+            | Inactive -> Error(DomainError.invariant "Routing is already inactive")
             | Active ->
                 let updated =
                     { state with
-                        Status = Retired
+                        Status = Inactive
                         ModifiedAt = Timestamp.now }
 
                 { NewState = updated
@@ -289,7 +285,7 @@ let evolve: EvolveRouting =
         | RoutingDeactivated(id, modifiedAt), Some state when state.Id = id ->
             Some
                 { state with
-                    Status = Retired
+                    Status = Inactive
                     ModifiedAt = modifiedAt }
         | RoutingDefined _, Some state -> Some state
         | _, current -> current

@@ -14,10 +14,6 @@ module UnitConversionId =
     let create = IdsFactory.createExplicitId UnitConversionId "UnitConversionId"
     let value (UnitConversionId id) = id
 
-type UnitConversionStatus =
-    | Active
-    | Retired
-
 // Core UnitConversion aggregate - defines conversion relationships between units
 type UnitConversion =
     { Id: UnitConversionId
@@ -25,7 +21,7 @@ type UnitConversion =
       FromUom: UomId
       ToUom: UomId
       Ratio: PositiveDecimal // multiply source by Ratio to get target
-      Status: UnitConversionStatus
+      Status: Status
       Created: Timestamp
       Modified: Timestamp }
 
@@ -46,7 +42,7 @@ type UnitConversionCommand =
     | DefineUnitConversion of DefineUnitConversionCmd
     | RetireUnitConversion of UnitConversionId
     | UpdateRatio of UpdateUnitConversionCmd
-    | UpdateStatus of UnitConversionId * UnitConversionStatus
+    | UpdateStatus of UnitConversionId * Status
 
 // Events
 type UnitConversionDefinedEvt = UnitConversion
@@ -58,7 +54,7 @@ type RatioUpdatedEvt =
 
 type StatusUpdatedEvt =
     { Id: UnitConversionId
-      NewStatus: UnitConversionStatus
+      NewStatus: Status
       Modified: Timestamp }
 
 type UnitConversionRetiredEvt =

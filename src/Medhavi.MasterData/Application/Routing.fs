@@ -56,7 +56,7 @@ module ACL =
               StepResources = req.StepResources |> List.map toStepResource
               CreatedAt = Timestamp.create req.Created
               ModifiedAt = Timestamp.create req.Created
-              Status = RoutingStatus.Active }
+              Status = Status.Active }
 
         make <!> (RoutingId.create req.Id |> fromResult)
         <*> (parseRoutingType req.Type |> fromResult)
@@ -115,10 +115,7 @@ let mapRoutingDto (r: Routing) : Medhavi.Contracts.Domain.Routing =
       Name = r.Name
       Type = tStr
       Steps = steps
-      Status =
-        match r.Status with
-        | RoutingStatus.Active -> true
-        | RoutingStatus.Retired -> false }
+      Status = r.Status.ToBool() }
 
 let evolveProjection (state: Map<string, Medhavi.Contracts.Domain.Routing>) (evt: RoutingEvent) =
     match evt with
