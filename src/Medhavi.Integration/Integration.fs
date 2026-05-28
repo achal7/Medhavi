@@ -35,6 +35,7 @@ type IntegrationEvent =
     | MaterialsReceived of MaterialReceivedPayload list
     | ResourceDowntimes of ResourceDowntimePayload list
     | TransportDelays of TransportDelayPayload list
+    | MaterialReservationsImported of MaterialReservationCreateReq list
 
 [<RequireQualifiedAccess>]
 module IntegrationEventEnvelope =

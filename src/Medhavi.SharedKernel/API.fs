@@ -99,3 +99,12 @@ type SupplyOrderApi =
       Cancel: SupplyOrderCancelReq -> TaskResult<SupplyOrder, ApplicationError>
       Lock: SupplyOrderLockReq -> TaskResult<SupplyOrder, ApplicationError>
       QueryService: QueryService<SupplyOrder, string> }
+
+type MaterialReservationApi =
+    { CreateTentative: MaterialReservationCreateReq -> TaskResult<MaterialReservation, ApplicationError>
+      Confirm: MaterialReservationConfirmReq -> TaskResult<MaterialReservation, ApplicationError>
+      Release: MaterialReservationReleaseReq -> TaskResult<MaterialReservation, ApplicationError>
+      Reduce: MaterialReservationReduceReq -> TaskResult<MaterialReservation, ApplicationError>
+      Expire: MaterialReservationExpireReq -> TaskResult<MaterialReservation, ApplicationError>
+      QueryService: QueryService<MaterialReservation, string> }
+

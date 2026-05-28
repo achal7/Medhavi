@@ -182,7 +182,7 @@ type SupplyOrder =
 type MaterialSnapshot =
     { OnHand: decimal
       Inbound: (DateTimeOffset * decimal) list
-      Reservations: decimal
+      Reservations: (DateTimeOffset * decimal) list
       Safety: decimal }
 
 type ProviderError =
@@ -190,5 +190,17 @@ type ProviderError =
 
 type MaterialProvider =
     { GetSnapshot: string -> string -> DateTimeOffset -> Async<Result<MaterialSnapshot, ProviderError>>
-      GetSupplierOptions: string -> string option -> decimal -> DateTimeOffset -> Async<Result<SupplierOffer list, ProviderError>> }
+      GetSupplierOptions: string -> string option -> decimal -> DateTimeOffset -> Async<Result<SupplierOffer list, ProviderError>>
+      GetDateWiseAvailability: string -> string -> DateTimeOffset -> int -> Async<Result<(DateTimeOffset * decimal) list, ProviderError>> }
 
+type MaterialReservation =
+    { Id: string
+      IdempotencyKey: string
+      SkuId: string
+      StockingPointId: string
+      Quantity: decimal
+      State: string // "Tentative", "Confirmed", "Released", "Expired", "Reduced"
+      RequiredDate: DateTimeOffset
+      ExpiryTime: DateTimeOffset
+      Created: DateTimeOffset
+      Modified: DateTimeOffset }

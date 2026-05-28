@@ -12,12 +12,14 @@ open Medhavi.Supply.Domain.InventoryAgg
 open Medhavi.Supply.Domain.InventoryTargetAgg
 open Medhavi.Supply.Domain.SupplierOfferAgg
 open Medhavi.Domain.Material.SupplyOrder
+open Medhavi.Supply.Domain.MaterialReservationAgg
 
 type Supply =
     { Inventory: InventoryApi
       InventoryTarget: InventoryTargetApi
       SupplierOffer: SupplierOfferApi
       SupplyOrder: SupplyOrderApi
+      MaterialReservation: MaterialReservationApi
       Initialize: unit -> Task<unit>
       Dispose: unit -> unit }
 
@@ -29,27 +31,32 @@ module BoundedContext =
         let targetRepo = createInMemoryRepository<InventoryTarget, string, InventoryTargetEvent> ()
         let offerRepo = createInMemoryRepository<SupplierOffer, string, SupplierOfferEvent> ()
         let orderRepo = createInMemoryRepository<SupplyOrder, string, SupplyOrderEvent> ()
+        let reservationRepo = createInMemoryRepository<MaterialReservation, string, MaterialReservationEvent> ()
 
         // 2. Capabilities
         let invCaps = Inventory.createCapabilities invRepo
         let targetCaps = InventoryTarget.createCapabilities targetRepo
         let offerCaps = SupplierOffer.createCapabilities offerRepo
         let orderCaps = SupplyOrder.createCapabilities orderRepo
+        let reservationCaps = MaterialReservation.createCapabilities reservationRepo
 
         // 3. Projection Agents
         let invAgent = Inventory.createProjectionAgent ()
         let targetAgent = InventoryTarget.createProjectionAgent ()
         let offerAgent = SupplierOffer.createProjectionAgent ()
         let orderAgent = SupplyOrder.createProjectionAgent ()
+        let reservationAgent = MaterialReservation.createProjectionAgent ()
 
         // 4. APIs
         let invApi = Inventory.createInventoryApi invCaps invAgent
         let targetApi = InventoryTarget.createInventoryTargetApi targetCaps targetAgent
         let offerApi = SupplierOffer.createSupplierOfferApi offerCaps offerAgent
         let orderApi = SupplyOrder.createSupplyOrderApi orderCaps orderAgent
+        let reservationApi = MaterialReservation.createMaterialReservationApi reservationCaps reservationAgent
 
         // 5. Subscriptions List
         let mutable subscriptions : IDisposable list = []
+        let mutable sweeperRunning = true
 
         // 6. Initialize (Bootstrap & Subscriptions)
         let initialize () =
@@ -83,17 +90,48 @@ module BoundedContext =
                     orderAgent.SetState(m)
                 | Error _ -> ()
 
+                let! reservations = reservationRepo.GetAll()
+                match reservations with
+                | Ok list ->
+                    let m = list |> List.map (fun r -> r.Id, MaterialReservation.ACL.toContract r) |> Map.ofList
+                    reservationAgent.SetState(m)
+                | Error _ -> ()
+
                 // B. Subscriptions
                 subscriptions <- [
                     DomainEventBus.Subscribe<InventoryEvent>(fun ev -> invAgent.Post(ev, Guid.NewGuid(), None))
                     DomainEventBus.Subscribe<InventoryTargetEvent>(fun ev -> targetAgent.Post(ev, Guid.NewGuid(), None))
                     DomainEventBus.Subscribe<SupplierOfferEvent>(fun ev -> offerAgent.Post(ev, Guid.NewGuid(), None))
                     DomainEventBus.Subscribe<SupplyOrderEvent>(fun ev -> orderAgent.Post(ev, Guid.NewGuid(), None))
+                    DomainEventBus.Subscribe<MaterialReservationEvent>(fun ev -> reservationAgent.Post(ev, Guid.NewGuid(), None))
                 ]
+
+                // C. TTL Sweeper Loop
+                let rec sweeper () =
+                    task {
+                        if sweeperRunning then
+                            do! Task.Delay(5000)
+                            let! allRes = reservationRepo.GetAll()
+                            match allRes with
+                            | Error _ -> ()
+                            | Ok list ->
+                                let now = DateTimeOffset.UtcNow
+                                let expired =
+                                    list
+                                    |> List.filter (fun r -> r.State = "Tentative" && r.ExpiryTime < now)
+                                for r in expired do
+                                    let! _ = reservationCaps.Expire { Id = r.Id }
+                                    ()
+                            return! sweeper ()
+                    }
+                // Run in background without awaiting the loop task
+                let _ = sweeper ()
+                ()
             }
 
         // 7. Dispose
         let dispose () =
+            sweeperRunning <- false
             for sub in subscriptions do sub.Dispose()
             subscriptions <- []
 
@@ -101,5 +139,7 @@ module BoundedContext =
           InventoryTarget = targetApi
           SupplierOffer = offerApi
           SupplyOrder = orderApi
+          MaterialReservation = reservationApi
           Initialize = initialize
           Dispose = dispose }
+

@@ -8,7 +8,8 @@ open Medhavi.Integration.Adapters
 type IntegrationCapabilities =
     { IngestAndPublishMasterData: unit -> TaskResult<Envelope list, IntegrationError>
       IngestAndPublishInventoryPositions: unit -> TaskResult<IntegrationSuccess, IntegrationError>
-      IngestAndPublishSupplyOrders: unit -> TaskResult<IntegrationSuccess, IntegrationError> }
+      IngestAndPublishSupplyOrders: unit -> TaskResult<IntegrationSuccess, IntegrationError>
+      IngestAndPublishReservations: unit -> TaskResult<IntegrationSuccess, IntegrationError> }
 
 module IntegrationService =
 
@@ -48,7 +49,8 @@ module IntegrationService =
               fun () -> Inventory.ingestAndPublishInventoryPositions "inventory_positions.csv" store
               fun () -> InventoryTarget.ingestAndPublishInventoryTargets "inventory_targets.csv" store
               fun () -> SupplyOrder.ingestAndPublishSupplyOrders "supply_orders.csv" store
-              fun () -> SupplierOffer.ingestAndPublishSupplierOffers "supplier_offers.csv" store ]
+              fun () -> SupplierOffer.ingestAndPublishSupplierOffers "supplier_offers.csv" store
+              fun () -> MaterialReservation.ingestAndPublishReservations "reservations.csv" store ]
 
     let createCapabilities (store: EnvelopeStoreOps) : IntegrationCapabilities =
         { IngestAndPublishMasterData = fun () -> ingestAndPublishMasterData store
@@ -68,6 +70,16 @@ module IntegrationService =
                 task {
                     let! res = SupplyOrder.ingestAndPublishSupplyOrders "supply_orders.csv" store
 
+                    return
+                        res
+                        |> Result.map (fun env ->
+                            { EnvelopeId = env.EventId
+                              CorrelationId = env.CorrelationId })
+                }
+          IngestAndPublishReservations =
+            fun () ->
+                task {
+                    let! res = MaterialReservation.ingestAndPublishReservations "reservations.csv" store
                     return
                         res
                         |> Result.map (fun env ->

@@ -11,10 +11,12 @@
     <Compile Include="Domain\SupplyOrder.fs" />
     <Compile Include="Domain\Inventory.fs" />
     <Compile Include="Domain\InventoryTarget.fs" />
+    <Compile Include="Domain\MaterialReservation.fs" />
     <Compile Include="Application\Inventory.fs" />
     <Compile Include="Application\InventoryTarget.fs" />
     <Compile Include="Application\SupplierOffer.fs" />
     <Compile Include="Application\SupplyOrder.fs" />
+    <Compile Include="Application\MaterialReservation.fs" />
     <Compile Include="BoundedContext.fs" />
     <Compile Include="Application\SupplyMasterDataImportedHandler.fs" />
     <Compile Include="Application\MaterialProvider.fs" />

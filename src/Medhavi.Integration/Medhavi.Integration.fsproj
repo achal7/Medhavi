@@ -20,6 +20,7 @@
     <Compile Include="Adapters\InventoryTargetAdapter.fs" />
     <Compile Include="Adapters\SupplyOrderAdapter.fs" />
     <Compile Include="Adapters\SupplierOfferAdapter.fs" />
+    <Compile Include="Adapters\MaterialReservationAdapter.fs" />
     
     <Compile Include="IntegrationService.fs" />
   </ItemGroup>

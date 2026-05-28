@@ -300,3 +300,17 @@ type SupplyOrderLockReq =
     { Id: string
       Locked: bool
       ModifiedDate: DateTimeOffset }
+
+type MaterialReservationCreateReq =
+    { Id: string
+      IdempotencyKey: string
+      SkuId: string
+      StockingPointId: string
+      Quantity: decimal
+      RequiredDate: DateTimeOffset
+      ExpiryTime: DateTimeOffset }
+
+type MaterialReservationConfirmReq = { Id: string }
+type MaterialReservationReleaseReq = { Id: string }
+type MaterialReservationReduceReq = { Id: string; NewQuantity: decimal }
+type MaterialReservationExpireReq = { Id: string }

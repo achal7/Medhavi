@@ -13,6 +13,7 @@ open Medhavi.Infrastructure.Stores.EnvelopeStore
 open Medhavi.Infrastructure.Stores.EnvelopeStoreMem
 
 module Program =
+    open Medhavi.Common.Patterns
 
     // ANSI Colors for Rich Typography
     let printColor color text =
@@ -177,6 +178,23 @@ module Program =
                     | SupplyOrdersImported supplyOrders ->
                         let! _ = supplyContext.SupplyOrder.ProcessStatusUpdates(supplyOrders)
                         ()
+                    | MaterialReservationsImported reservations ->
+                        let! res =
+                            reservations
+                            |> List.map supplyContext.MaterialReservation.CreateTentative
+                            |> TaskResult.sequence
+                        match res with
+                        | Ok items ->
+                            for item in items do
+                                logger.LogSuccess(
+                                    sprintf
+                                        "    - Material Reservation Created: Id=%s, Sku=%s, Qty=%M [ OK ]"
+                                        item.Id
+                                        item.SkuId
+                                        item.Quantity
+                                )
+                        | Error err -> logger.LogError(sprintf "    - Reservation Ingestion Error: %A" err)
+                        ()
                     | ResourceCalendarsImported resourceCalendars ->
                         // do! supplyContext.ResourceCalendar.DefineBulk(resourceCalendars)
                         ()
@@ -253,6 +271,19 @@ module Program =
                 printfn "     - %s" err
         | Error(IngestionError err) ->
             printColorLine "red" (sprintf "   [ ERR ] Supply Orders ingestion failed: %s" err)
+
+        // 3. Ingest Material Reservations
+        let resTask = integrationCaps.IngestAndPublishReservations()
+
+        match resTask.Result with
+        | Ok _ -> printColorLine "green" "   [ OK ] Material Reservations successfully validated and published."
+        | Error(ValidationError errors) ->
+            printColor "red" "   [ ERR ] Material Reservations validation failed:\n"
+
+            for err in errors do
+                printfn "     - %s" err
+        | Error(IngestionError err) ->
+            printColorLine "red" (sprintf "   [ ERR ] Material Reservations ingestion failed: %s" err)
 
     let viewEnvelopesInStore () =
         printColorLine "bold" "\n--- [STEP 2: VIEW OUTBOX ENVELOPES IN STORE] ---"
@@ -528,6 +559,27 @@ module Program =
             [| "ORDER ID"; "TYPE"; "SKU ID"; "STOCKING POINT ID"; "QTY"; "STATE" |]
             orderRows
 
+        // 11.5 Material Reservations In Database
+        let reservationsList =
+            supplyContext.MaterialReservation.QueryService.GetAll().Result
+
+        let resvRows =
+            reservationsList
+            |> List.map (fun r ->
+                [| r.Id
+                   r.SkuId
+                   r.StockingPointId
+                   r.Quantity.ToString()
+                   r.State
+                   r.RequiredDate.ToString("yyyy-MM-dd")
+                   r.ExpiryTime.ToString("yyyy-MM-dd HH:mm:ss") |])
+            |> List.toArray
+
+        printTable
+            "MATERIAL RESERVATIONS IN DATABASE"
+            [| "RESERVATION ID"; "SKU ID"; "STOCKING POINT ID"; "QTY"; "STATE"; "REQUIRED DATE"; "EXPIRY TIME" |]
+            resvRows
+
         // 12. Live Material Availability ATP Snapshots & Projections
         printColorLine "bold" "\n================================================================================"
         printColorLine "bold" "                     LIVE MATERIAL AVAILABILITY SNAPSHOTS                       "
@@ -548,6 +600,7 @@ module Program =
                       | Ok snap ->
                           let net = MaterialProvider.calculateNetAvailable snap
                           let totalInbound = snap.Inbound |> List.sumBy snd
+                          let totalReservations = snap.Reservations |> List.sumBy snd
 
                           yield
                               [| p
@@ -555,7 +608,7 @@ module Program =
                                  snap.OnHand.ToString()
                                  totalInbound.ToString()
                                  snap.Safety.ToString()
-                                 snap.Reservations.ToString()
+                                 totalReservations.ToString()
                                  net.ToString() |]
                       | Error _ -> () ]
             |> List.toArray
@@ -599,6 +652,35 @@ module Program =
             "TIME-PHASED NET AVAILABILITY BUCKETS (10-DAY BUCKETS)"
             [| "SKU ID"; "STOCKING POINT"; "BUCKET START DATE"; "NET AVAILABLE" |]
             timePhasedRows
+
+        // 13.5 Daily Date-Wise Step-Curve Projections
+        printColorLine "bold" "\n================================================================================"
+        printColorLine "bold" "             DAILY DATE-WISE STEP-CURVE AVAILABILITY PROJECTIONS                "
+        printColorLine "bold" "================================================================================"
+
+        let dailyRows =
+            [ for p in [ "SKU-BIKE"; "SKU-FRAME" ] do
+                  let sp =
+                      if p = "SKU-BIKE" then
+                          "SP-WAREHOUSE"
+                      else
+                          "SP-FACTORY"
+
+                  let dailyRes =
+                      MaterialProvider.getDateWiseAvailability supplyContext p sp now 90
+                      |> Async.RunSynchronously
+
+                  match dailyRes with
+                  | Ok list ->
+                      for (date, qty) in list do
+                          yield [| p; sp; date.ToString("yyyy-MM-dd"); qty.ToString() |]
+                  | Error _ -> () ]
+            |> List.toArray
+
+        printTable
+            "DAILY STEP-CURVE NET AVAILABILITY"
+            [| "SKU ID"; "STOCKING POINT"; "DATE"; "NET AVAILABLE" |]
+            dailyRows
 
     [<EntryPoint>]
     let main argv =
