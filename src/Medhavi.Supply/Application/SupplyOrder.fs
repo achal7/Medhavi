@@ -11,6 +11,7 @@ open Medhavi.SharedKernel
 open Medhavi.SharedKernel.API
 open Medhavi.SharedKernel.Aggregate
 open Medhavi.Domain.Material.SupplyOrder
+open System
 
 module ACL =
 
@@ -172,6 +173,132 @@ type SupplyOrderCapabilities =
       Cancel: SupplyOrderCancelReq -> TaskResult<Decision, ApplicationError>
       Lock: SupplyOrderLockReq -> TaskResult<Decision, ApplicationError> }
 
+module Service =
+    open Medhavi.SharedKernel.Projections
+    open Medhavi.Contracts
+
+    let private createIfMissing
+        capabilities
+        (item: SupplyOrderStatusPayload)
+        (existingOpt: Contracts.Domain.SupplyOrder option)
+        =
+        taskResult {
+            match existingOpt with
+            | Some order -> return order
+            | None ->
+                let orderType =
+                    if item.SupplyOrderId.StartsWith("WO", StringComparison.OrdinalIgnoreCase) then
+                        "WorkOrder"
+                    elif item.SupplyOrderId.StartsWith("TO", StringComparison.OrdinalIgnoreCase) then
+                        "TransportOrder"
+                    else
+                        "PurchaseOrder"
+
+                let createReq: SupplyOrderCreateReq =
+                    { Id = item.SupplyOrderId
+                      OrderType = orderType
+                      SkuId = item.ProductId
+                      StockingPointId = item.StockingPointId
+                      Quantity = item.Quantity
+                      UnitOfMeasure = "UOM-PCS"
+                      RoutingId = None
+                      SupplierId = None
+                      IsFirm =
+                        (item.Status.Equals("Firm", StringComparison.OrdinalIgnoreCase)
+                         || item.Status.Equals("InTransit", StringComparison.OrdinalIgnoreCase))
+                      IsExpedited = false
+                      IsLocked = false
+                      UsesLeadTimeQuantity = false
+                      RequiredDeliveryDate = Some item.ExpectedDeliveryUtc
+                      CreatedDate = DateTimeOffset.UtcNow }
+
+                let! decision = capabilities.Create createReq
+                return ACL.toContract decision.NewState
+        }
+
+    let private transitionState capabilities (item: SupplyOrderStatusPayload) (order: Contracts.Domain.SupplyOrder) =
+        taskResult {
+            let normalizedStatus = item.Status.Trim().ToLowerInvariant()
+            let currentStatus = order.State.Trim().ToLowerInvariant()
+
+            if
+                (normalizedStatus = "inprogress"
+                 || normalizedStatus = "intransit")
+                && currentStatus <> "inprogress"
+            then
+                let! res =
+                    capabilities.Start
+                        { Id = item.SupplyOrderId
+                          StartedDate = DateTimeOffset.UtcNow }
+
+                return ACL.toContract res.NewState
+            elif
+                (normalizedStatus = "completed"
+                 || normalizedStatus = "received")
+                && currentStatus <> "completed"
+            then
+                let! res =
+                    capabilities.Complete
+                        { Id = item.SupplyOrderId
+                          CompletedDate = DateTimeOffset.UtcNow }
+
+                return ACL.toContract res.NewState
+            elif
+                normalizedStatus = "cancelled"
+                && currentStatus <> "cancelled"
+            then
+                let! res =
+                    capabilities.Cancel
+                        { Id = item.SupplyOrderId
+                          CancelledDate = DateTimeOffset.UtcNow }
+
+                return ACL.toContract res.NewState
+            elif
+                (normalizedStatus = "firm"
+                 || normalizedStatus = "confirmed")
+                && currentStatus <> "confirmed"
+            then
+                let! res =
+                    capabilities.Confirm
+                        { Id = item.SupplyOrderId
+                          ConfirmedDate = DateTimeOffset.UtcNow }
+
+                return ACL.toContract res.NewState
+            elif
+                normalizedStatus = "planned"
+                && currentStatus <> "planned"
+            then
+                let! res =
+                    capabilities.Plan
+                        { Id = item.SupplyOrderId
+                          PlannedDeliveryDate = DateTimeOffset.UtcNow }
+
+                return ACL.toContract res.NewState
+            else
+                return order
+        }
+
+    let processSingleUpdate capabilities query (item: SupplyOrderStatusPayload) =
+        taskResult {
+            let! existing =
+                task {
+                    let! res = query.GetById item.SupplyOrderId
+                    return Ok res
+                }
+
+            let! order = createIfMissing capabilities item existing
+            return! transitionState capabilities item order
+        }
+
+    let processStatusUpdates
+        (capabilities: SupplyOrderCapabilities)
+        (query: QueryService<Contracts.Domain.SupplyOrder, string>)
+        (statusUpdates: SupplyOrderStatusPayload list)
+        : TaskResult<Contracts.Domain.SupplyOrder list, ApplicationError> =
+        statusUpdates
+        |> List.map (processSingleUpdate capabilities query)
+        |> TaskResult.sequence
+
 let createCapabilities (repo: Repository<SupplyOrder, string, SupplyOrderEvent>) =
     { Create =
         liftCmdValidation ACL.toCreateCommand
@@ -317,11 +444,23 @@ let createProjectionAgent () =
     )
 
 let createSupplyOrderApi (capabilities: SupplyOrderCapabilities) agent =
+    let query = QueryServiceBase.getQueryService agent id
+
     { Create =
         fun req ->
             capabilities.Create req
             |> TaskResult.map (fun d -> d.NewState)
             |> TaskResult.map ACL.toContract
+      CreateBulk =
+        fun reqs ->
+            reqs
+            |> List.map capabilities.Create
+            |> TaskResult.sequence
+            |> TaskResult.map (fun decisions ->
+                decisions
+                |> List.map (fun d -> d.NewState)
+                |> List.map ACL.toContract)
+      ProcessStatusUpdates = Service.processStatusUpdates capabilities query
       Start =
         fun req ->
             capabilities.Start req
@@ -362,5 +501,5 @@ let createSupplyOrderApi (capabilities: SupplyOrderCapabilities) agent =
             capabilities.Lock req
             |> TaskResult.map (fun d -> d.NewState)
             |> TaskResult.map ACL.toContract
-      QueryService = QueryServiceBase.getQueryService agent id }
+      QueryService = query }
     : SupplyOrderApi

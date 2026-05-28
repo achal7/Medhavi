@@ -108,6 +108,11 @@ module Program =
     let subscribeBoundedContexts () =
         printColorLine "bold" "\n--- [INITIALIZING EVENT BOUNDED CONTEXT SUBSCRIPTIONS] ---"
 
+        let logger =
+            { LogInfo = fun msg -> printColorLine "cyan" msg
+              LogSuccess = fun msg -> printColorLine "green" msg
+              LogError = fun msg -> printColorLine "red" msg }
+
         let handler (envelopedEvent: EnvelopedEvent) : Task<unit> =
             task {
                 let envelope = envelopedEvent.Envelope
@@ -116,51 +121,84 @@ module Program =
                 | Error err ->
                     printColorLine "red" (sprintf "   [ ERR ] [Subscription] Failed to deserialize envelope: %A" err)
                 | Ok event ->
+                    printColorLine
+                        "cyan"
+                        $"\n>>> [Subscription Broker] Received {event.GetType().Name} Event! Delegating processing..."
+
                     match event with
-                    | MasterDataImported payload ->
-                        printColorLine
-                            "cyan"
-                            "\n>>> [Subscription Broker] Received MasterDataImported Event! Delegating processing..."
+                    | UomImported uoms ->
+                        let! _ = masterDataContext.Uom.DefineBulk(uoms)
+                        ()
+                    | UnitConversionsImported unitConversions ->
+                        let! _ = masterDataContext.UnitConversion.DefineBulk(unitConversions)
+                        ()
+                    | TransportLegsImported transportLegs ->
+                        let! _ = masterDataContext.TransportLeg.DefineBulk(transportLegs)
+                        ()
+                    | RoutingsImported routings ->
+                        let! _ = masterDataContext.Routing.DefineBulk(routings)
+                        ()
+                    | BomImported boms ->
+                        let! _ = masterDataContext.Bom.DefineBulk(boms)
+                        ()
+                    | SkusImported skus ->
+                        let! _ = masterDataContext.Sku.DefineBulk(skus)
+                        ()
+                    | StockingPointsImported stockingPoints ->
+                        let! _ = masterDataContext.StockingPoint.DefineBulk(stockingPoints)
+                        ()
+                    | PlantsImported plants ->
+                        let! _ = masterDataContext.Plant.DefineBulk(plants)
+                        ()
+                    | ResourcesImported resources -> logger.LogError(" Pending...")
+                    | SupplyOffersImported supplyOffers ->
+                        let! _ = supplyContext.SupplierOffer.DefineBulk(supplyOffers)
+                        ()
+                    | DemandSignalsImported demandSignals -> ()
+                    | InventoryPositionsImported inventoryPositions ->
+                        let! res = supplyContext.Inventory.DefineBulk(inventoryPositions)
 
-                        let logger =
-                            { LogInfo = fun msg -> printColorLine "cyan" msg
-                              LogSuccess = fun msg -> printColorLine "green" msg
-                              LogError = fun msg -> printColorLine "red" msg }
+                        match res with
+                        | Ok items ->
+                            for item in items do
+                                logger.LogSuccess(
+                                    sprintf
+                                        "    - Inventory Position Updated: Product=%s, SP=%s, Qty=%M [ OK ]"
+                                        item.SkuId
+                                        item.StockingPointId
+                                        item.Quantity
+                                )
+                        | Error err -> logger.LogError(sprintf "    - Inventory Ingestion Error: %A" err)
 
-                        do! MasterDataImportedHandler.handle masterDataContext payload logger
-                        do! SupplyMasterDataImportedHandler.handle supplyContext payload logger
-
-                    | InventoryPositionsImported payload ->
-                        printColorLine
-                            "cyan"
-                            "\n>>> [Subscription Broker] Received InventoryPositionsImported Event! Delegating processing to Supply Bounded Context..."
-
-                        let logger =
-                            { LogInfo = fun msg -> printColorLine "cyan" msg
-                              LogSuccess = fun msg -> printColorLine "green" msg
-                              LogError = fun msg -> printColorLine "red" msg }
-
-                        do! SupplyIntegrationHandler.handleInventoryPositions supplyContext payload logger
-
-                    | SupplyOrdersImported payload ->
-                        printColorLine
-                            "cyan"
-                            "\n>>> [Subscription Broker] Received SupplyOrdersImported Event! Delegating processing to Supply Bounded Context..."
-
-                        let logger =
-                            { LogInfo = fun msg -> printColorLine "cyan" msg
-                              LogSuccess = fun msg -> printColorLine "green" msg
-                              LogError = fun msg -> printColorLine "red" msg }
-
-                        do! SupplyIntegrationHandler.handleSupplyOrders supplyContext payload logger
-
+                        ()
+                    | InventoryTargetsImported inventoryTargets ->
+                        let! _ = supplyContext.InventoryTarget.DefineBulk(inventoryTargets)
+                        ()
+                    | SupplyOrdersImported supplyOrders ->
+                        let! _ = supplyContext.SupplyOrder.ProcessStatusUpdates(supplyOrders)
+                        ()
+                    | ResourceCalendarsImported resourceCalendars ->
+                        // do! supplyContext.ResourceCalendar.DefineBulk(resourceCalendars)
+                        ()
+                    | WorkOrdersCompleted workOrdersCompleted ->
+                        // do! supplyContext.WorkOrder.DefineBulk(workOrdersCompleted)
+                        ()
+                    | MaterialsReceived materialsReceived ->
+                        // do! supplyContext.MaterialReceipt.DefineBulk(materialsReceived)
+                        ()
+                    | ResourceDowntimes resourceDowntimes ->
+                        // do! supplyContext.ResourceDowntime.DefineBulk(resourceDowntimes)
+                        ()
+                    | TransportDelays transportDelays ->
+                        // do! supplyContext.TransportDelay.DefineBulk(transportDelays)
+                        ()
                     | _ -> printfn "   [ INFO ] [Subscription] Received event: %A" event
             }
 
         let subscribeTask =
             envelopeStore.Subscribe SubscriptionMode.All None handler System.Threading.CancellationToken.None
 
-        match Async.RunSynchronously subscribeTask with
+        match subscribeTask.Result with
         | Error err -> printfn "   [ ERR ] Failed to subscribe bounded context handlers: %A" err
         | Ok handle ->
             subscriptionHandle <- Some handle
@@ -177,43 +215,44 @@ module Program =
         let ingestTask = integrationCaps.IngestAndPublishMasterData()
 
         match ingestTask.Result with
-        | Success(evtId, corrId) ->
-            printColorLine "green" "   [ OK ] Master data successfully validated and published."
-            printfn "          Envelope ID: %s" (evtId.ToString())
-            printfn "          Correlation ID: %s" (corrId.ToString())
-        | ValidationError errors ->
+        | Ok _ -> printColorLine "green" "   [ OK ] Master data successfully published."
+        | Error(ValidationError errors) ->
             printColor "red" "   [ ERR ] Validation failed with the following errors:\n"
 
             for err in errors do
                 printfn "     - %s" err
-        | IngestionError err -> printColorLine "red" (sprintf "   [ ERR ] Ingestion failed: %s" err)
+        | Error(IngestionError err) -> printColorLine "red" (sprintf "   [ ERR ] Ingestion failed: %s" err)
 
     let loadDynamicSupplyData () =
-        printColorLine "bold" "\n--- [TRIGGER DYNAMIC SUPPLY INGESTION (Inventory Positions & Supply Orders) via IntegrationService] ---"
-        
+        printColorLine
+            "bold"
+            "\n--- [TRIGGER DYNAMIC SUPPLY INGESTION (Inventory Positions & Supply Orders) via IntegrationService] ---"
+
         // 1. Ingest Inventory Positions
         let invTask = integrationCaps.IngestAndPublishInventoryPositions()
+
         match invTask.Result with
-        | Success(evtId, corrId) ->
-            printColorLine "green" "   [ OK ] Inventory Positions successfully validated and published."
-            printfn "          Envelope ID: %s" (evtId.ToString())
-            printfn "          Correlation ID: %s" (corrId.ToString())
-        | ValidationError errors ->
+        | Ok _ -> printColorLine "green" "   [ OK ] Inventory Positions successfully validated and published."
+        | Error(ValidationError errors) ->
             printColor "red" "   [ ERR ] Inventory Positions validation failed:\n"
-            for err in errors do printfn "     - %s" err
-        | IngestionError err -> printColorLine "red" (sprintf "   [ ERR ] Inventory Positions ingestion failed: %s" err)
+
+            for err in errors do
+                printfn "     - %s" err
+        | Error(IngestionError err) ->
+            printColorLine "red" (sprintf "   [ ERR ] Inventory Positions ingestion failed: %s" err)
 
         // 2. Ingest Supply Orders
         let orderTask = integrationCaps.IngestAndPublishSupplyOrders()
+
         match orderTask.Result with
-        | Success(evtId, corrId) ->
-            printColorLine "green" "   [ OK ] Supply Orders successfully validated and published."
-            printfn "          Envelope ID: %s" (evtId.ToString())
-            printfn "          Correlation ID: %s" (corrId.ToString())
-        | ValidationError errors ->
+        | Ok _ -> printColorLine "green" "   [ OK ] Supply Orders successfully validated and published."
+        | Error(ValidationError errors) ->
             printColor "red" "   [ ERR ] Supply Orders validation failed:\n"
-            for err in errors do printfn "     - %s" err
-        | IngestionError err -> printColorLine "red" (sprintf "   [ ERR ] Supply Orders ingestion failed: %s" err)
+
+            for err in errors do
+                printfn "     - %s" err
+        | Error(IngestionError err) ->
+            printColorLine "red" (sprintf "   [ ERR ] Supply Orders ingestion failed: %s" err)
 
     let viewEnvelopesInStore () =
         printColorLine "bold" "\n--- [STEP 2: VIEW OUTBOX ENVELOPES IN STORE] ---"
@@ -221,7 +260,7 @@ module Program =
         let readTask =
             envelopeStore.ReadAll None None System.Threading.CancellationToken.None
 
-        match Async.RunSynchronously readTask with
+        match readTask.Result with
         | Error err -> printColorLine "red" (sprintf "   [ ERR ] Failed to read from EnvelopeStore: %A" err)
         | Ok envelopes ->
             if envelopes.Length = 0 then
@@ -257,7 +296,10 @@ module Program =
         printTable "SKUs IN DATABASE" [| "SKU ID"; "CODE"; "NAME" |] skuRows
 
         // 2. Stocking Points Table
-        let sps = masterDataContext.StockingPoint.QueryService.GetAll().Result
+        let sps =
+            masterDataContext.StockingPoint.QueryService
+                .GetAll()
+                .Result
 
         let spRows =
             sps
@@ -282,7 +324,10 @@ module Program =
             bomRows
 
         // 4. Routings Table
-        let routings = masterDataContext.Routing.QueryService.GetAll().Result
+        let routings =
+            masterDataContext.Routing.QueryService
+                .GetAll()
+                .Result
 
         let routingRows =
             routings
@@ -305,7 +350,10 @@ module Program =
             routingRows
 
         // 5. Transport Legs Table
-        let legs = masterDataContext.TransportLeg.QueryService.GetAll().Result
+        let legs =
+            masterDataContext.TransportLeg.QueryService
+                .GetAll()
+                .Result
 
         let legRows =
             legs
@@ -329,23 +377,45 @@ module Program =
             legRows
 
         // 6. Plants Table
-        let plants = masterDataContext.Plant.QueryService.GetAll().Result
+        let plants =
+            masterDataContext.Plant.QueryService
+                .GetAll()
+                .Result
+
         let plantRows =
             plants
             |> List.map (fun p -> [| p.Id; p.Code; p.Name; (if p.Status then "Active" else "Inactive") |])
             |> List.toArray
+
         printTable "PLANTS IN DATABASE" [| "PLANT ID"; "CODE"; "NAME"; "STATUS" |] plantRows
 
         // 7. Unit Conversions Table
-        let conversions = masterDataContext.UnitConversion.QueryService.GetAll().Result
+        let conversions =
+            masterDataContext.UnitConversion.QueryService
+                .GetAll()
+                .Result
+
         let convRows =
             conversions
-            |> List.map (fun c -> [| c.Id; c.FromUnitCode; c.ToUnitCode; c.Ratio.ToString(); (if c.Status then "Active" else "Inactive") |])
+            |> List.map (fun c ->
+                [| c.Id
+                   c.FromUnitCode
+                   c.ToUnitCode
+                   c.Ratio.ToString()
+                   (if c.Status then "Active" else "Inactive") |])
             |> List.toArray
-        printTable "UNIT CONVERSIONS IN DATABASE" [| "CONVERSION ID"; "FROM UNIT"; "TO UNIT"; "RATIO"; "STATUS" |] convRows
+
+        printTable
+            "UNIT CONVERSIONS IN DATABASE"
+            [| "CONVERSION ID"; "FROM UNIT"; "TO UNIT"; "RATIO"; "STATUS" |]
+            convRows
 
         // 8. Inventories Table
-        let inventories = supplyContext.Inventory.QueryService.GetAll().Result
+        let inventories =
+            supplyContext.Inventory.QueryService
+                .GetAll()
+                .Result
+
         let invRows =
             inventories
             |> List.map (fun i ->
@@ -356,32 +426,73 @@ module Program =
                    i.InTransitInbound.ToString()
                    i.AvailableToPromise.ToString() |])
             |> List.toArray
-        printTable "INVENTORIES IN DATABASE" [| "INVENTORY ID"; "SKU ID"; "STOCKING POINT ID"; "ON-HAND QTY"; "IN-TRANSIT"; "ATP QTY" |] invRows
+
+        printTable
+            "INVENTORIES IN DATABASE"
+            [| "INVENTORY ID"
+               "SKU ID"
+               "STOCKING POINT ID"
+               "ON-HAND QTY"
+               "IN-TRANSIT"
+               "ATP QTY" |]
+            invRows
 
         // 9. Inventory Targets Table
-        let targets = supplyContext.InventoryTarget.QueryService.GetAll().Result
+        let targets =
+            supplyContext.InventoryTarget.QueryService
+                .GetAll()
+                .Result
+
         let targetRows =
             targets
             |> List.map (fun t ->
-                let safetyStr = t.SafetyStockQty |> Option.map (fun q -> q.ToString()) |> Option.defaultValue "0"
-                let minStr = t.MinQty |> Option.map (fun q -> q.ToString()) |> Option.defaultValue "None"
-                let maxStr = t.MaxQty |> Option.map (fun q -> q.ToString()) |> Option.defaultValue "None"
-                [| t.Id
-                   t.SkuId
-                   t.StockingPointId
-                   safetyStr
-                   minStr
-                   maxStr |])
+                let safetyStr =
+                    t.SafetyStockQty
+                    |> Option.map (fun q -> q.ToString())
+                    |> Option.defaultValue "0"
+
+                let minStr =
+                    t.MinQty
+                    |> Option.map (fun q -> q.ToString())
+                    |> Option.defaultValue "None"
+
+                let maxStr =
+                    t.MaxQty
+                    |> Option.map (fun q -> q.ToString())
+                    |> Option.defaultValue "None"
+
+                [| t.Id; t.SkuId; t.StockingPointId; safetyStr; minStr; maxStr |])
             |> List.toArray
-        printTable "INVENTORY TARGETS IN DATABASE" [| "TARGET ID"; "SKU ID"; "STOCKING POINT ID"; "SAFETY STOCK"; "MIN QTY"; "MAX QTY" |] targetRows
+
+        printTable
+            "INVENTORY TARGETS IN DATABASE"
+            [| "TARGET ID"
+               "SKU ID"
+               "STOCKING POINT ID"
+               "SAFETY STOCK"
+               "MIN QTY"
+               "MAX QTY" |]
+            targetRows
 
         // 10. Supplier Offers Table
-        let offers = supplyContext.SupplierOffer.QueryService.GetAll().Result
+        let offers =
+            supplyContext.SupplierOffer.QueryService
+                .GetAll()
+                .Result
+
         let offerRows =
             offers
             |> List.map (fun o ->
-                let moqStr = o.Moq |> Option.map (fun q -> q.ToString()) |> Option.defaultValue "None"
-                let lotStr = o.LotSize |> Option.map (fun q -> q.ToString()) |> Option.defaultValue "None"
+                let moqStr =
+                    o.Moq
+                    |> Option.map (fun q -> q.ToString())
+                    |> Option.defaultValue "None"
+
+                let lotStr =
+                    o.LotSize
+                    |> Option.map (fun q -> q.ToString())
+                    |> Option.defaultValue "None"
+
                 [| o.Id
                    o.SupplierId
                    o.SkuId
@@ -389,10 +500,18 @@ module Program =
                    lotStr
                    (if o.IsActive then "Active" else "Inactive") |])
             |> List.toArray
-        printTable "SUPPLIER OFFERS IN DATABASE" [| "OFFER ID"; "SUPPLIER ID"; "SKU ID"; "MOQ"; "LOT SIZE"; "STATUS" |] offerRows
+
+        printTable
+            "SUPPLIER OFFERS IN DATABASE"
+            [| "OFFER ID"; "SUPPLIER ID"; "SKU ID"; "MOQ"; "LOT SIZE"; "STATUS" |]
+            offerRows
 
         // 11. Supply Orders Table
-        let orders = supplyContext.SupplyOrder.QueryService.GetAll().Result
+        let orders =
+            supplyContext.SupplyOrder.QueryService
+                .GetAll()
+                .Result
+
         let orderRows =
             orders
             |> List.map (fun o ->
@@ -403,7 +522,11 @@ module Program =
                    o.Quantity.ToString()
                    o.State |])
             |> List.toArray
-        printTable "SUPPLY ORDERS IN DATABASE" [| "ORDER ID"; "TYPE"; "SKU ID"; "STOCKING POINT ID"; "QTY"; "STATE" |] orderRows
+
+        printTable
+            "SUPPLY ORDERS IN DATABASE"
+            [| "ORDER ID"; "TYPE"; "SKU ID"; "STOCKING POINT ID"; "QTY"; "STATE" |]
+            orderRows
 
         // 12. Live Material Availability ATP Snapshots & Projections
         printColorLine "bold" "\n================================================================================"
@@ -416,19 +539,36 @@ module Program =
 
         let atpRows =
             [ for p in sampleProducts do
-                for sp in stockingPoints do
-                    let snapRes = MaterialProvider.getSnapshot supplyContext p sp now |> Async.RunSynchronously
-                    match snapRes with
-                    | Ok snap ->
-                        let net = MaterialProvider.calculateNetAvailable snap
-                        let totalInbound = snap.Inbound |> List.sumBy snd
-                        yield [| p; sp; snap.OnHand.ToString(); totalInbound.ToString(); snap.Safety.ToString(); snap.Reservations.ToString(); net.ToString() |]
-                    | Error _ -> () ]
+                  for sp in stockingPoints do
+                      let snapRes =
+                          MaterialProvider.getSnapshot supplyContext p sp now
+                          |> Async.RunSynchronously
+
+                      match snapRes with
+                      | Ok snap ->
+                          let net = MaterialProvider.calculateNetAvailable snap
+                          let totalInbound = snap.Inbound |> List.sumBy snd
+
+                          yield
+                              [| p
+                                 sp
+                                 snap.OnHand.ToString()
+                                 totalInbound.ToString()
+                                 snap.Safety.ToString()
+                                 snap.Reservations.ToString()
+                                 net.ToString() |]
+                      | Error _ -> () ]
             |> List.toArray
 
         printTable
             "MATERIAL AVAILABILITY (ATP) SUMMARY"
-            [| "SKU ID"; "STOCKING POINT"; "ON-HAND QTY"; "INBOUND QTY"; "SAFETY QTY"; "RESERVATIONS"; "NET AVAILABLE (ATP)" |]
+            [| "SKU ID"
+               "STOCKING POINT"
+               "ON-HAND QTY"
+               "INBOUND QTY"
+               "SAFETY QTY"
+               "RESERVATIONS"
+               "NET AVAILABLE (ATP)" |]
             atpRows
 
         // 13. Time-Phased Availability Projections
@@ -438,13 +578,21 @@ module Program =
 
         let timePhasedRows =
             [ for p in [ "SKU-BIKE"; "SKU-FRAME" ] do
-                let sp = if p = "SKU-BIKE" then "SP-WAREHOUSE" else "SP-FACTORY"
-                let tpRes = MaterialProvider.getTimePhasedAvailability supplyContext p sp now 10 90 |> Async.RunSynchronously
-                match tpRes with
-                | Ok list ->
-                    for (date, qty) in list do
-                        yield [| p; sp; date.ToString("yyyy-MM-dd"); qty.ToString() |]
-                | Error _ -> () ]
+                  let sp =
+                      if p = "SKU-BIKE" then
+                          "SP-WAREHOUSE"
+                      else
+                          "SP-FACTORY"
+
+                  let tpRes =
+                      MaterialProvider.getTimePhasedAvailability supplyContext p sp now 10 90
+                      |> Async.RunSynchronously
+
+                  match tpRes with
+                  | Ok list ->
+                      for (date, qty) in list do
+                          yield [| p; sp; date.ToString("yyyy-MM-dd"); qty.ToString() |]
+                  | Error _ -> () ]
             |> List.toArray
 
         printTable
@@ -468,8 +616,8 @@ module Program =
 
         while not exit do
             printColorLine "bold" "\nMAIN MENU"
-            printfn "1. Load, Validate and Publish Master Data CSV"
-            printfn "2. Load, Validate and Publish Dynamic Supply Data (Inventory Positions & Supply Orders)"
+            printfn "1. Publish Master Data CSV"
+            printfn "2. Publish Dynamic Supply Data (Inventory Positions & Supply Orders)"
             printfn "3. View Outbox Envelopes inside EnvelopeStore"
             printfn "4. View Aggregate Database Snapshot Dashboard"
             printfn "5. Run End-to-End Automated Demo"

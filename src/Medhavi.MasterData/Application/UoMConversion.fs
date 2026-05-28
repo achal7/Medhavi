@@ -61,10 +61,7 @@ let mapUnitConversionDto (uc: UnitConversion) : Contracts.Domain.UnitConversion 
       FromUnitCode = UomId.value uc.FromUom
       ToUnitCode = UomId.value uc.ToUom
       Ratio = PositiveDecimal.value uc.Ratio
-      Status =
-        match uc.Status with
-        | Active -> true
-        | Retired -> false }
+      Status = uc.Status.IsActive }
 
 let evolveProjection (state: Map<string, Contracts.Domain.UnitConversion>) (evt: UnitConversionEvent) =
     match evt with
@@ -90,7 +87,7 @@ let evolveProjection (state: Map<string, Contracts.Domain.UnitConversion>) (evt:
             let newStatus =
                 match e.NewStatus with
                 | Active -> true
-                | Retired -> false
+                | Inactive -> false
 
             Map.add key { existing with Status = newStatus } state
         | None -> state
@@ -118,6 +115,15 @@ let createUnitConversionApi (capabilities: UnitConversionCapabilities) agent =
             capabilities.Define req
             |> TaskResult.map (fun d -> d.NewState)
             |> TaskResult.map mapUnitConversionDto
+      DefineBulk =
+        fun reqs ->
+            reqs
+            |> List.map capabilities.Define
+            |> TaskResult.sequence
+            |> TaskResult.map (fun decisions ->
+                decisions
+                |> List.map (fun d -> d.NewState)
+                |> List.map mapUnitConversionDto)
       UpdateRatio =
         fun req ->
             capabilities.UpdateRatio req

@@ -118,6 +118,15 @@ let createUomApi
             capabilities.Define req
             |> TaskResult.map (fun d -> d.NewState)
             |> TaskResult.map mapToUomDto
+      DefineBulk =
+        fun reqs ->
+            reqs
+            |> List.map capabilities.Define
+            |> TaskResult.sequence
+            |> TaskResult.map (fun decisions ->
+                decisions
+                |> List.map (fun d -> d.NewState)
+                |> List.map mapToUomDto)
       Retire =
         fun req ->
             capabilities.Retire req

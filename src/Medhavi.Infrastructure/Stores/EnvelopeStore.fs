@@ -58,13 +58,13 @@ type EnvelopeStoreOps =
                 -> Envelope list
                 -> ExpectedRevision
                 -> System.Threading.CancellationToken
-                -> AsyncResult<AppendResult, EnvelopeStoreError>
+                -> TaskResult<AppendResult, EnvelopeStoreError>
         PublishSingle:
             string
                 -> Envelope
                 -> ExpectedRevision
                 -> Threading.CancellationToken
-                -> AsyncResult<AppendResult, EnvelopeStoreError>
+                -> TaskResult<AppendResult, EnvelopeStoreError>
         PublishAtomicOutbox:
             string
                 -> Envelope list
@@ -72,7 +72,7 @@ type EnvelopeStoreOps =
                 -> Envelope
                 -> ExpectedRevision
                 -> Threading.CancellationToken
-                -> AsyncResult<AppendResult, EnvelopeStoreError>
+                -> TaskResult<AppendResult, EnvelopeStoreError>
 
         /// Read events from a named stream starting at an optional stream revision (inclusive).
         ReadStream:
@@ -80,21 +80,21 @@ type EnvelopeStoreOps =
                 -> Position option
                 -> int option
                 -> Threading.CancellationToken
-                -> AsyncResult<EnvelopedEvent list, EnvelopeStoreError>
+                -> TaskResult<EnvelopedEvent list, EnvelopeStoreError>
 
         /// Read all events from global position
         ReadAll:
             Position option
                 -> int option
                 -> Threading.CancellationToken
-                -> AsyncResult<EnvelopedEvent list, EnvelopeStoreError>
+                -> TaskResult<EnvelopedEvent list, EnvelopeStoreError>
 
         ReadLast:
             string
                 -> int64 option
                 -> Threading.CancellationToken
-                -> AsyncResult<EnvelopedEvent list, EnvelopeStoreError>
-        GetLastRevision: string -> Threading.CancellationToken -> AsyncResult<Position option, EnvelopeStoreError>
+                -> TaskResult<EnvelopedEvent list, EnvelopeStoreError>
+        GetLastRevision: string -> Threading.CancellationToken -> TaskResult<Position option, EnvelopeStoreError>
 
         /// Subscribe to a stream or all-stream; handler receives each Envelope (positions populated).
         /// Handler returns Task<unit> so caller can handle errors and DLQ accordingly.
@@ -103,9 +103,9 @@ type EnvelopeStoreOps =
                 -> Position option
                 -> (EnvelopedEvent -> Task<unit>)
                 -> Threading.CancellationToken
-                -> AsyncResult<SubscriptionHandle, EnvelopeStoreError>
+                -> TaskResult<SubscriptionHandle, EnvelopeStoreError>
 
-        ClearStream: string -> Threading.CancellationToken -> AsyncResult<unit, EnvelopeStoreError>
+        ClearStream: string -> Threading.CancellationToken -> TaskResult<unit, EnvelopeStoreError>
     }
 
 type StreamType =

@@ -112,6 +112,15 @@ let createStockingPointApi (capabilities: StockingPointCapabilities) agent =
             capabilities.Define req
             |> TaskResult.map (fun d -> d.NewState)
             |> TaskResult.map mapStockingPointDto
+      DefineBulk =
+        fun reqs ->
+            reqs
+            |> List.map capabilities.Define
+            |> TaskResult.sequence
+            |> TaskResult.map (fun decisions ->
+                decisions
+                |> List.map (fun d -> d.NewState)
+                |> List.map mapStockingPointDto)
       Rename =
         fun req ->
             capabilities.Rename req

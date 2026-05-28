@@ -6,18 +6,21 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="IntegrationEvents.fs" />
-    <Compile Include="Ingestion.fs" />
+    <Compile Include="Integration.fs" />
     <Compile Include="Adapters\SkuAdapter.fs" />
     <Compile Include="Adapters\BomAdapter.fs" />
     <Compile Include="Adapters\StockingPointAdapter.fs" />
+    <Compile Include="Adapters\ResourceAdapter.fs" />
     <Compile Include="Adapters\RoutingAdapter.fs" />
     <Compile Include="Adapters\TransportLegAdapter.fs" />
     <Compile Include="Adapters\PlantAdapter.fs" />
     <Compile Include="Adapters\UomAdapter.fs" />
     <Compile Include="Adapters\UnitConversionAdapter.fs" />
+    <Compile Include="Adapters\InventoryAdapter.fs" />
     <Compile Include="Adapters\InventoryTargetAdapter.fs" />
+    <Compile Include="Adapters\SupplyOrderAdapter.fs" />
     <Compile Include="Adapters\SupplierOfferAdapter.fs" />
+    
     <Compile Include="IntegrationService.fs" />
   </ItemGroup>
 

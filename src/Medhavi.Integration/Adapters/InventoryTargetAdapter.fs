@@ -1,12 +1,15 @@
 module Medhavi.Integration.Adapters.InventoryTarget
 
 open System
+open System.Threading
+open Medhavi.Common.Patterns
 open Medhavi.Contracts.Integration
 open Medhavi.Integration
+open Medhavi.Infrastructure.IO
+open Medhavi.Infrastructure.Stores.EnvelopeStore
+open Medhavi.Infrastructure
 
 module ACL =
-    let parseInventoryTargetJson json = InboundAdapter.parseJsonList<InventoryTargetDefineReq> json
-
     let parseInventoryTargetCsv csv =
         let rows = CsvHelper.parseCsv csv
 
@@ -44,3 +47,45 @@ module ACL =
             parseInventoryTargetCsv csvText
         with ex ->
             Error ex.Message
+
+let ingestInventoryTargets (file: string) : TaskResult<InventoryTargetDefineReq list, IntegrationError> =
+    task {
+        try
+            return
+                file
+                |> readCsvFile
+                |> ACL.parse
+                |> Result.mapError IngestionError
+        with ex ->
+            return Error(IngestionError ex.Message)
+    }
+
+let publishInventoryTargets (store: EnvelopeStoreOps) (targets: InventoryTargetDefineReq list) : TaskResult<Envelope, IntegrationError> =
+    task {
+        try
+            let tenantId = "tenant-mountain-bike"
+            let correlationId = Guid.NewGuid()
+            let event = InventoryTargetsImported targets
+
+            match IntegrationEventEnvelope.create tenantId correlationId event with
+            | Error err -> return Error(IngestionError(sprintf "Serialization failed: %A" err))
+            | Ok envelope ->
+                let! publishRes =
+                    store.PublishSingle
+                        "inventory-targets-stream"
+                        envelope
+                        ExpectedRevision.Any
+                        CancellationToken.None
+
+                match publishRes with
+                | Error err -> return Error(IngestionError(sprintf "Failed to write to EnvelopeStore: %A" err))
+                | Ok _ -> return Ok envelope
+        with ex ->
+            return Error(IngestionError ex.Message)
+    }
+
+let ingestAndPublishInventoryTargets (file: string) (store: EnvelopeStoreOps) : TaskResult<Envelope, IntegrationError> =
+    taskResult {
+        let! targets = ingestInventoryTargets file
+        return! publishInventoryTargets store targets
+    }

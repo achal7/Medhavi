@@ -21,20 +21,14 @@ module IntegrationContractsTests =
                   let tenantId = "tenant-test"
                   let correlationId = Guid.NewGuid()
 
-                  let payload: MasterDataImportedPayload =
-                      { SkuRequests = []
-                        BomRequests = []
-                        StockingPointRequests = []
-                        NodeRequests = []
-                        RoutingRequests = []
-                        TransportLegRequests = []
-                        UomRequests = []
-                        InventoryTargetRequests = []
-                        SupplierOfferRequests = []
-                        PlantRequests = []
-                        UnitConversionRequests = [] }
+                  let skuReq: SkuDefineReq =
+                      { Id = "SKU-999"
+                        Code = "SKU-999"
+                        Name = "Widget"
+                        Group = "Simulation"
+                        Created = DateTimeOffset.UtcNow }
 
-                  let event = MasterDataImported payload
+                  let event = SkusImported [ skuReq ]
 
                   let createResult = IntegrationEventEnvelope.create tenantId correlationId event
 
@@ -42,9 +36,11 @@ module IntegrationContractsTests =
                   | Error err -> failwithf "Failed to create envelope: %A" err
                   | Ok envelope ->
                       test <@ envelope.TenantId = Some tenantId @>
-                      test <@ envelope.CorrelationId = Some correlationId @>
+                      test <@ envelope.CorrelationId = Some(CorrelationId correlationId) @>
                       test <@ envelope.EventType = "IntegrationEvent" @>
-                      test <@ envelope.EventId <> Guid.Empty @>
+
+                      test <@ envelope.EventId <> (EventId Guid.Empty) @>
+
                       let timeDiff = DateTimeOffset.UtcNow - envelope.CreatedUtc
                       let totalSeconds = timeDiff.TotalSeconds
                       test <@ totalSeconds < 5.0 @>
@@ -57,6 +53,7 @@ module IntegrationContractsTests =
 
               testCase "should serialize and deserialize Envelope containing IntegrationEvent successfully" (fun () ->
                   let tenantId = "tenant-test-2"
+
                   let correlationId = Guid.NewGuid()
 
                   let skuReq: SkuDefineReq =
@@ -66,20 +63,7 @@ module IntegrationContractsTests =
                         Group = "Simulation"
                         Created = DateTimeOffset.UtcNow }
 
-                  let payload: MasterDataImportedPayload =
-                      { SkuRequests = [ skuReq ]
-                        BomRequests = []
-                        StockingPointRequests = []
-                        NodeRequests = []
-                        RoutingRequests = []
-                        TransportLegRequests = []
-                        InventoryTargetRequests = []
-                        SupplierOfferRequests = []
-                        UomRequests = []
-                        PlantRequests = []
-                        UnitConversionRequests = [] }
-
-                  let event = MasterDataImported payload
+                  let event = SkusImported [ skuReq ]
 
                   let createResult = IntegrationEventEnvelope.create tenantId correlationId event
 
@@ -97,7 +81,7 @@ module IntegrationContractsTests =
                           | Error err -> failwithf "Deserialization failed: %A" err
                           | Ok desEnv ->
                               test <@ desEnv.TenantId = Some tenantId @>
-                              test <@ desEnv.CorrelationId = Some correlationId @>
+                              test <@ desEnv.CorrelationId = Some(CorrelationId correlationId) @>
                               test <@ desEnv.EventId = envelope.EventId @>
 
                               let payloadResult = IntegrationEventEnvelope.tryGetPayload desEnv
@@ -106,10 +90,10 @@ module IntegrationContractsTests =
                               | Error err -> failwithf "Failed to extract payload from deserialized envelope: %A" err
                               | Ok extractedEvent ->
                                   match extractedEvent with
-                                  | MasterDataImported md ->
-                                      test <@ md.SkuRequests.Length = 1 @>
-                                      test <@ md.SkuRequests.[0].Id = "SKU-999" @>
-                                  | _ -> failwith "Expected MasterDataImported payload")
+                                  | SkusImported skus ->
+                                      test <@ skus.Length = 1 @>
+                                      test <@ skus.[0].Id = "SKU-999" @>
+                                  | _ -> failwith "Expected SkusImported payload")
 
               testCase "should preserve metadata when converting roundtrip for demand signals" (fun () ->
                   let tenantId = "tenant-test-3"

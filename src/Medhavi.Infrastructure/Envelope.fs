@@ -3,10 +3,13 @@ namespace Medhavi.Infrastructure
 open System
 open Medhavi.Common.Serialization
 
+type CorrelationId = CorrelationId of Guid
+type EventId = EventId of Guid
+
 type Envelope =
     {
         /// Unique id for the recorded event
-        EventId: Guid
+        EventId: EventId
 
         /// Event type for routing, filtering and decoding
         EventType: string
@@ -24,7 +27,7 @@ type Envelope =
         /// Infrastructure timestamp (UTC) when event was created/persisted
         CreatedUtc: DateTimeOffset
 
-        CorrelationId: Guid option
+        CorrelationId: CorrelationId option
         CausationId: Guid option
         TenantId: string option
 
@@ -45,7 +48,7 @@ module Envelope =
     let createEnvelope (eventType: string) (dataJson: string) (version: int) : Envelope =
         { EventType = eventType
           DataJson = dataJson
-          EventId = Guid.NewGuid()
+          EventId = Guid.NewGuid() |> EventId
           SchemaVersion = version
           Metadata = Map.empty
           CreatedUtc = DateTimeOffset.UtcNow
@@ -60,7 +63,7 @@ module Envelope =
         // Extract typed correlation + causation + tenant from metadata (if present)
         let correlationId =
             match Map.tryFind "correlationId" newMeta with
-            | Some v -> tryGuid v
+            | Some v -> tryGuid v |> Option.map CorrelationId
             | None -> envelope.CorrelationId
 
         let causationId =
@@ -85,6 +88,7 @@ module Envelope =
             metadata
             |> Map.tryFind "correlationId"
             |> Option.bind tryGuid
+            |> Option.map CorrelationId
 
         let causationId =
             metadata

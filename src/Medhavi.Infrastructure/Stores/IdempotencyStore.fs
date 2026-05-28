@@ -5,6 +5,7 @@ open System.Threading
 open Medhavi.Infrastructure
 open Medhavi.Common.Patterns
 open Microsoft.Extensions.Logging
+open System.Threading.Tasks
 
 type IdempotencyKey = string
 type ReservationToken = Guid
@@ -61,7 +62,7 @@ type IdempotencyStoreOps =
                 -> IdempotencyKey
                 -> DateTimeOffset option
                 -> CancellationToken
-                -> AsyncResult<ReservationResult, IdempotencyStoreError>
+                -> TaskResult<ReservationResult, IdempotencyStoreError>
 
         ReclaimReservation:
             string
@@ -69,7 +70,7 @@ type IdempotencyStoreOps =
                 -> ReservationToken
                 -> DateTimeOffset option // new expiry (optional)
                 -> CancellationToken
-                -> AsyncResult<ReservationResult, IdempotencyStoreError>
+                -> TaskResult<ReservationResult, IdempotencyStoreError>
 
         /// Optionally record the operation result (so future callers can get the same response).
         /// Should be idempotent and overwrite only if the same token is used (safety).
@@ -81,26 +82,26 @@ type IdempotencyStoreOps =
                 -> string option
                 -> Origin option
                 -> CancellationToken
-                -> AsyncResult<unit, IdempotencyStoreError>
+                -> TaskResult<unit, IdempotencyStoreError>
 
         /// Get result if operation already completed (response payload and metadata).
         GetResult:
             string
                 -> IdempotencyKey
                 -> CancellationToken
-                -> AsyncResult<Option<IdempotencyRecord>, IdempotencyStoreError>
+                -> TaskResult<Option<IdempotencyRecord>, IdempotencyStoreError>
 
         /// Check existence without adding
-        Exists: string -> IdempotencyKey -> CancellationToken -> AsyncResult<bool, IdempotencyStoreError>
+        Exists: string -> IdempotencyKey -> CancellationToken -> TaskResult<bool, IdempotencyStoreError>
 
         /// Remove a key (admin-only). Prefer TTL instead.
-        Remove: string -> IdempotencyKey -> CancellationToken -> AsyncResult<unit, IdempotencyStoreError>
+        Remove: string -> IdempotencyKey -> CancellationToken -> TaskResult<unit, IdempotencyStoreError>
 
         /// List keys (admin) optionally filtered by prefix and/or paging to avoid scanning entire store.
-        GetKeys: string -> string option -> int option -> CancellationToken -> Async<string list>
+        GetKeys: string -> string option -> int option -> CancellationToken -> Task<string list>
 
         /// Cleanup keys older than `expiration`. Returns number removed.
-        Cleanup: string -> DateTimeOffset -> CancellationToken -> AsyncResult<int, IdempotencyStoreError>
+        Cleanup: string -> DateTimeOffset -> CancellationToken -> TaskResult<int, IdempotencyStoreError>
     }
 
 type IdempotencyOptions =
@@ -157,7 +158,7 @@ let private isWrongExpectedVersion (errObj: obj) : bool =
             false
 
 let readLast (envStore: EnvelopeStore.EnvelopeStoreOps) (streamName: string) (ct: Threading.CancellationToken) =
-    async {
+    task {
         let! readRes = envStore.ReadLast streamName None ct
 
         match readRes with
@@ -179,8 +180,8 @@ let addIfNotExists
     (key: IdempotencyKey)
     (expiry: DateTimeOffset option)
     (ct: CancellationToken)
-    : AsyncResult<ReservationResult, IdempotencyStoreError> =
-    async {
+    : TaskResult<ReservationResult, IdempotencyStoreError> =
+    task {
         let logMsgPrefix = $"[AddIfNotExists] Stream: {streamName}, Key: {key} "
 
         if ct.IsCancellationRequested then
@@ -234,8 +235,8 @@ let markProcessed
     (responseJson: string option)
     (origin: Origin option)
     (ct: CancellationToken)
-    : AsyncResult<unit, IdempotencyStoreError> =
-    async {
+    : TaskResult<unit, IdempotencyStoreError> =
+    task {
         let errMsgPrefix = $"[MarkProcessed] Stream: {streamName}, Key: {key} Error: "
 
         try
@@ -303,8 +304,8 @@ let getResult
     (key: IdempotencyKey)
     (streamName: string)
     (ct: CancellationToken)
-    : AsyncResult<IdempotencyRecord option, IdempotencyStoreError> =
-    async {
+    : TaskResult<IdempotencyRecord option, IdempotencyStoreError> =
+    task {
         if ct.IsCancellationRequested then
             return Error(Cancelled)
         else
@@ -323,7 +324,7 @@ let exists
     (streamName: string)
     (ct: CancellationToken)
     =
-    async {
+    task {
         if ct.IsCancellationRequested then
             return Error(Cancelled)
         else
@@ -348,7 +349,7 @@ let remove
     (key: IdempotencyKey)
     (ct: CancellationToken)
     =
-    async {
+    task {
         if ct.IsCancellationRequested then
             return Error(Cancelled)
         else
@@ -373,8 +374,8 @@ let getKeys
     (prefixOpt: string option)
     (limitOpt: int option)
     (ct: CancellationToken)
-    : Async<string list> =
-    async {
+    : Task<string list> =
+    task {
         try
             // Admin only; scan global (ReadAll) and find stream names starting with prefix.
             let pattern = defaultArg prefixOpt streamPrefix
@@ -418,7 +419,7 @@ let cleanup
     (expiration: DateTimeOffset)
     (ct: CancellationToken)
     =
-    async {
+    task {
         try
             if ct.IsCancellationRequested then
                 return Error(Cancelled)
@@ -478,7 +479,7 @@ let renewReservation
     (newExpiryOpt: DateTimeOffset option)
     (ct: CancellationToken)
     =
-    async {
+    task {
         if ct.IsCancellationRequested then
             return Error(Cancelled)
         else

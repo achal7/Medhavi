@@ -80,6 +80,15 @@ let createInventoryApi (capabilities: InventoryCapabilities) agent =
             capabilities.Define req
             |> TaskResult.map (fun d -> d.NewState)
             |> TaskResult.map ACL.toContract
+      DefineBulk =
+        fun reqs ->
+            reqs
+            |> List.map capabilities.Define
+            |> TaskResult.sequence
+            |> TaskResult.map (fun decisions ->
+                decisions
+                |> List.map (fun d -> d.NewState)
+                |> List.map ACL.toContract)
       Remove =
         fun reqId ->
             capabilities.Remove reqId

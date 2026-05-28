@@ -491,21 +491,21 @@ let createEnvelopeStoreMem () : EnvelopeStoreOps =
         (envs: Envelope list)
         (expected: ExpectedRevision)
         (ct: CancellationToken)
-        : AsyncResult<AppendResult, EnvelopeStoreError> =
+        : TaskResult<AppendResult, EnvelopeStoreError> =
         let tcs =
             TaskCompletionSource<Result<AppendResult, EnvelopeStoreError>>(
                 TaskCreationOptions.RunContinuationsAsynchronously
             )
 
         agent.Post(Append(streamName, envs, expected, tcs))
-        tcs.Task |> AsyncResult.ofTask
+        tcs.Task
 
     let publishSingle
         (streamName: string)
         (env: Envelope)
         (expected: ExpectedRevision)
         (ct: CancellationToken)
-        : AsyncResult<AppendResult, EnvelopeStoreError> =
+        : TaskResult<AppendResult, EnvelopeStoreError> =
         publish streamName [ env ] expected ct
 
     let publishAtomicOutbox
@@ -515,87 +515,84 @@ let createEnvelopeStoreMem () : EnvelopeStoreOps =
         (outboxEnvelope: Envelope)
         (expected: ExpectedRevision)
         (ct: CancellationToken)
-        : AsyncResult<AppendResult, EnvelopeStoreError> =
+        : TaskResult<AppendResult, EnvelopeStoreError> =
         let tcs =
             TaskCompletionSource<Result<AppendResult, EnvelopeStoreError>>(
                 TaskCreationOptions.RunContinuationsAsynchronously
             )
 
         agent.Post(AppendAtomicOutbox(streamName, envs, outboxStream, outboxEnvelope, expected, tcs))
-        tcs.Task |> AsyncResult.ofTask
+        tcs.Task |> TaskResult.ofTask
 
     let readStream
         (streamName: string)
         (position: Position option)
         (count: int option)
         (ct: CancellationToken)
-        : AsyncResult<EnvelopedEvent list, EnvelopeStoreError> =
+        : TaskResult<EnvelopedEvent list, EnvelopeStoreError> =
         let tcs =
             TaskCompletionSource<Result<EnvelopedEvent list, EnvelopeStoreError>>(
                 TaskCreationOptions.RunContinuationsAsynchronously
             )
 
         agent.Post(ReadStream(streamName, position, count, tcs))
-        tcs.Task |> AsyncResult.ofTask
+        tcs.Task |> TaskResult.ofTask
 
     let readAll
         (posOpt: Position option)
         (count: int option)
         (ct: CancellationToken)
-        : AsyncResult<EnvelopedEvent list, EnvelopeStoreError> =
+        : TaskResult<EnvelopedEvent list, EnvelopeStoreError> =
         let tcs =
             TaskCompletionSource<Result<EnvelopedEvent list, EnvelopeStoreError>>(
                 TaskCreationOptions.RunContinuationsAsynchronously
             )
 
         agent.Post(ReadAll(posOpt, count, tcs))
-        tcs.Task |> AsyncResult.ofTask
+        tcs.Task |> TaskResult.ofTask
 
     let readLast
         (streamName: string)
         (count: int64 option)
         (ct: CancellationToken)
-        : AsyncResult<EnvelopedEvent list, EnvelopeStoreError> =
+        : TaskResult<EnvelopedEvent list, EnvelopeStoreError> =
         let tcs =
             TaskCompletionSource<Result<EnvelopedEvent list, EnvelopeStoreError>>(
                 TaskCreationOptions.RunContinuationsAsynchronously
             )
 
         agent.Post(ReadLast(streamName, count, tcs))
-        tcs.Task |> AsyncResult.ofTask
+        tcs.Task |> TaskResult.ofTask
 
-    let getLastRevision
-        (streamName: string)
-        (ct: CancellationToken)
-        : AsyncResult<Position option, EnvelopeStoreError> =
+    let getLastRevision (streamName: string) (ct: CancellationToken) : TaskResult<Position option, EnvelopeStoreError> =
         let tcs =
             TaskCompletionSource<Result<Position option, EnvelopeStoreError>>(
                 TaskCreationOptions.RunContinuationsAsynchronously
             )
 
         agent.Post(GetLastRevision(streamName, tcs))
-        tcs.Task |> AsyncResult.ofTask
+        tcs.Task |> TaskResult.ofTask
 
     let subscribe
         (mode: SubscriptionMode)
         (startPos: Position option)
         (handler: EnvelopedEvent -> Task<unit>)
         (ct: CancellationToken)
-        : AsyncResult<SubscriptionHandle, EnvelopeStoreError> =
+        : TaskResult<SubscriptionHandle, EnvelopeStoreError> =
         let tcs =
             TaskCompletionSource<Result<SubscriptionHandle, EnvelopeStoreError>>(
                 TaskCreationOptions.RunContinuationsAsynchronously
             )
 
         agent.Post(Subscribe(mode, startPos, handler, tcs))
-        tcs.Task |> AsyncResult.ofTask
+        tcs.Task |> TaskResult.ofTask
 
-    let clearStream (streamName: string) (ct: CancellationToken) : AsyncResult<unit, EnvelopeStoreError> =
+    let clearStream (streamName: string) (ct: CancellationToken) : TaskResult<unit, EnvelopeStoreError> =
         let tcs =
             TaskCompletionSource<Result<unit, EnvelopeStoreError>>(TaskCreationOptions.RunContinuationsAsynchronously)
 
         agent.Post(ClearStream(streamName, tcs))
-        tcs.Task |> AsyncResult.ofTask
+        tcs.Task |> TaskResult.ofTask
 
     { Publish = publish
       PublishSingle = publishSingle

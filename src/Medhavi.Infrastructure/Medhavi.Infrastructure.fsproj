@@ -12,6 +12,7 @@
     <Compile Include="Stores\IdempotencyStore.fs" />
     <Compile Include="Stores\InMemRepository.fs" />
     <Compile Include="Projections.fs" />
+    <Compile Include="IO.fs" />
   </ItemGroup>
 
   <ItemGroup>

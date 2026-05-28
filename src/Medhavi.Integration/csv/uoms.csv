@@ -1,0 +1,4 @@
+Id,Code,Name,IsBase,ToBaseFactor
+UOM-PCS,PCS,Pieces,true,1.0
+UOM-BAG,BAG,Bags,false,50.0
+UOM-BOX,BOX,Box of 10,false,10.0

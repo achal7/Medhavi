@@ -106,6 +106,15 @@ let createBomApi (capabilities: BomCapabilities) agent =
             capabilities.Define req
             |> TaskResult.map (fun d -> d.NewState)
             |> TaskResult.map mapBomDto
+      DefineBulk =
+        fun reqs ->
+            reqs
+            |> List.map capabilities.Define
+            |> TaskResult.sequence
+            |> TaskResult.map (fun decisions ->
+                decisions
+                |> List.map (fun d -> d.NewState)
+                |> List.map mapBomDto)
       Activate =
         fun req ->
             capabilities.Activate req

@@ -80,6 +80,15 @@ let createSkuApi (capabilities: SkuCapabilities) agent =
             capabilities.Define req
             |> TaskResult.map (fun d -> d.NewState)
             |> TaskResult.map mapSkuDto
+      DefineBulk =
+        fun reqs ->
+            reqs
+            |> List.map capabilities.Define
+            |> TaskResult.sequence
+            |> TaskResult.map (fun decisions ->
+                decisions
+                |> List.map (fun d -> d.NewState)
+                |> List.map mapSkuDto)
       Rename =
         fun req ->
             capabilities.Rename req
