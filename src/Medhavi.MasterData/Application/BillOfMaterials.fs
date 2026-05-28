@@ -12,15 +12,16 @@ open Medhavi.MasterData.Domain.BoMAgg
 
 module ACL =
     let toBomItem (req: BomItemReq) : Validation<DefineBomItemCmd, DomainError> =
-        let make (compSkuId: SkuId) (uomId: UomId) : DefineBomItemCmd =
+        let make (compSkuId: SkuId) (uomId: UomId) (qty: Quantity) : DefineBomItemCmd =
             { ComponentSkuId = compSkuId
-              Quantity = Qty.create req.Quantity
+              Quantity = qty
               UnitOfMeasureId = uomId
               Sequence = req.Sequence }
 
         make
         <!> (SkuId.create req.ComponentSkuId |> fromResult)
         <*> (UomId.create req.UnitOfMeasureId |> fromResult)
+        <*> (Quantity.create req.Quantity |> fromResult)
 
     let toDefineCommand (req: BomDefineReq) : Result<DefineBillOfMaterialCmd, DomainError> =
         let make (bomId: BillOfMaterialId) (skuId: SkuId) (items: DefineBomItemCmd list) : DefineBillOfMaterialCmd =
@@ -66,7 +67,7 @@ let mapBomDto (b: BillOfMaterial) : Medhavi.Contracts.Domain.Bom =
         |> List.map (fun i ->
             let item: Medhavi.Contracts.Domain.BomItem =
                 { ComponentSkuId = SkuId.value i.ComponentSkuId
-                  Quantity = (Qty.value i.Quantity)
+                  Quantity = (Quantity.value i.Quantity)
                   Sequence = i.Sequence }
 
             item)

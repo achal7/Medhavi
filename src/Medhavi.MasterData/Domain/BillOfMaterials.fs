@@ -16,7 +16,7 @@ module BillOfMaterialId =
 
 type BomItem =
     { ComponentSkuId: SkuId
-      Quantity: Qty
+      Quantity: Quantity
       UnitOfMeasureId: UomId
       Sequence: int }
 
@@ -31,7 +31,7 @@ type BillOfMaterial =
 
 type DefineBomItemCmd =
     { ComponentSkuId: SkuId
-      Quantity: Qty
+      Quantity: Quantity
       UnitOfMeasureId: UomId
       Sequence: int }
 

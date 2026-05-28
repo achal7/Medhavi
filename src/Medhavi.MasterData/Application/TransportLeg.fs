@@ -101,12 +101,12 @@ module ACL =
               Destination = dest
               Mode = mode
               Schedule = schedule
-              LeadTime = TimeSpan.FromMinutes(req.LeadTimeMinutes)
+              LeadTime = TimeSpan.FromMinutes(float req.LeadTimeMinutes)
               Capacity = cap
               CapacityUnit = capUnit
               Cutoff =
                 req.CutoffMinutes
-                |> Option.map TimeSpan.FromMinutes
+                |> Option.map (float >> TimeSpan.FromMinutes)
               Constraints = constrs
               Reliability = rel
               CO2PerUnit = co2
@@ -161,12 +161,12 @@ module ACL =
               Schedule = s
               LeadTime =
                 req.LeadTimeMinutes
-                |> Option.map TimeSpan.FromMinutes
+                |> Option.map (float >> TimeSpan.FromMinutes)
               Capacity = req.Capacity
               CapacityUnit = capUnit
               Cutoff =
                 req.CutoffMinutes
-                |> Option.map TimeSpan.FromMinutes
+                |> Option.map (float >> TimeSpan.FromMinutes)
               Constraints = constrs
               Reliability =
                 rel

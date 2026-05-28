@@ -2,9 +2,6 @@ namespace Medhavi.Scenario
 
 open System
 open Medhavi.SharedKernel
-open Medhavi.MasterData
-open Medhavi.Demand
-open Medhavi.Supply
 
 /// Pegging Link connecting a demand requirements to supply orders
 type PeggingLink = {
@@ -12,7 +9,7 @@ type PeggingLink = {
     DemandOrderId: OrderId
     DemandLineId: string
     SupplyRefId: string // E.g. PlannedOrderId or purchase order id
-    PeggedQty: Qty
+    PeggedQty: Quantity
     IsFixed: bool
 }
 

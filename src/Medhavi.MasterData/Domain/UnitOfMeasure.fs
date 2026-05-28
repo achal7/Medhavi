@@ -1,17 +1,9 @@
 module Medhavi.MasterData.Domain.UomAgg
 
-open System.Text.Json.Serialization
 open Medhavi.Common.Validation
 open Medhavi.SharedKernel
 open Medhavi.SharedKernel.Validations
 open Medhavi.SharedKernel.Aggregate
-
-[<JsonFSharpConverter>]
-type UomId = private UomId of string
-
-module UomId =
-    let create = IdsFactory.createExplicitId UomId "UomId"
-    let value (UomId id) = id
 
 type ConversionFactor =
     | Base of factor: PositiveDecimal

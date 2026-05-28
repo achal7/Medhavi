@@ -17,6 +17,7 @@
     <ProjectReference Include="..\..\Medhavi.MasterData\Medhavi.MasterData.fsproj" />
     <ProjectReference Include="..\..\Medhavi.Integration\Medhavi.Integration.fsproj" />
     <ProjectReference Include="..\..\Medhavi.Infrastructure\Medhavi.Infrastructure.fsproj" />
+    <ProjectReference Include="..\..\Medhavi.Supply\Medhavi.Supply.fsproj" />
   </ItemGroup>
 
 </Project>

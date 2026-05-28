@@ -86,6 +86,8 @@ type MasterDataImportedPayload = {
     UomRequests: UomDefineReq list
     PlantRequests: PlantDefineReq list
     UnitConversionRequests: UnitConversionDefineReq list
+    InventoryTargetRequests: InventoryTargetDefineReq list
+    SupplierOfferRequests: SupplierOfferDefineReq list
 }
 
 /// Bulk container for processed Demand Signals.

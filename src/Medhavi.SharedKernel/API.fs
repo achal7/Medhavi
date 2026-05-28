@@ -54,3 +54,35 @@ type TransportLegApi =
       Update: TransportLegUpdateReq -> TaskResult<TransportLeg, ApplicationError>
       Deactivate: TransportLegDeactivateReq -> TaskResult<TransportLeg, ApplicationError>
       QueryService: QueryService<TransportLeg, string> }
+
+type InventoryApi =
+    { Define: InventoryDefineReq -> TaskResult<Inventory, ApplicationError>
+      Remove: string -> TaskResult<Inventory, ApplicationError>
+      QueryService: QueryService<Inventory, string> }
+
+type InventoryTargetApi =
+    { Define: InventoryTargetDefineReq -> TaskResult<InventoryTarget, ApplicationError>
+      Update: InventoryTargetUpdateReq -> TaskResult<InventoryTarget, ApplicationError>
+      Activate: string -> TaskResult<InventoryTarget, ApplicationError>
+      Deactivate: string -> TaskResult<InventoryTarget, ApplicationError>
+      QueryService: QueryService<InventoryTarget, string> }
+
+type SupplierOfferApi =
+    { Define: SupplierOfferDefineReq -> TaskResult<SupplierOffer, ApplicationError>
+      Update: SupplierOfferUpdateReq -> TaskResult<SupplierOffer, ApplicationError>
+      Revoke: string -> TaskResult<SupplierOffer, ApplicationError>
+      ChangeStatus: SupplierOfferChangeStatusReq -> TaskResult<SupplierOffer, ApplicationError>
+      QueryService: QueryService<SupplierOffer, string> }
+
+type SupplyOrderApi =
+    { Create: SupplyOrderCreateReq -> TaskResult<SupplyOrder, ApplicationError>
+      Start: SupplyOrderStartReq -> TaskResult<SupplyOrder, ApplicationError>
+      PartialComplete: SupplyOrderPartialCompleteReq -> TaskResult<SupplyOrder, ApplicationError>
+      Complete: SupplyOrderCompleteReq -> TaskResult<SupplyOrder, ApplicationError>
+      Plan: SupplyOrderPlanReq -> TaskResult<SupplyOrder, ApplicationError>
+      Confirm: SupplyOrderConfirmReq -> TaskResult<SupplyOrder, ApplicationError>
+      Release: SupplyOrderReleaseReq -> TaskResult<SupplyOrder, ApplicationError>
+      Cancel: SupplyOrderCancelReq -> TaskResult<SupplyOrder, ApplicationError>
+      Lock: SupplyOrderLockReq -> TaskResult<SupplyOrder, ApplicationError>
+      QueryService: QueryService<SupplyOrder, string> }
+

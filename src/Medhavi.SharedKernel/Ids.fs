@@ -4,6 +4,13 @@ open System.Text.Json.Serialization
 open Medhavi.SharedKernel
 
 [<JsonFSharpConverter>]
+type UomId = private UomId of string
+
+module UomId =
+    let create = IdsFactory.createExplicitId UomId "UomId"
+    let value (UomId id) = id
+
+[<JsonFSharpConverter>]
 type SkuId = private SkuId of string
 
 module SkuId =
@@ -79,6 +86,12 @@ type SupplierId = private SupplierId of string
 module SupplierId =
     let create = IdsFactory.createExplicitId SupplierId "SupplierId"
     let value (SupplierId id) = id
+
+type InventoryId = private InventoryId of string
+
+module InventoryId =
+    let create = IdsFactory.createExplicitId InventoryId "InventoryId"
+    let value (InventoryId id) = id
 
 [<JsonFSharpConverter>]
 type OrderId = private OrderId of string

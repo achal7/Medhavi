@@ -16,6 +16,8 @@
     <Compile Include="Adapters\PlantAdapter.fs" />
     <Compile Include="Adapters\UomAdapter.fs" />
     <Compile Include="Adapters\UnitConversionAdapter.fs" />
+    <Compile Include="Adapters\InventoryTargetAdapter.fs" />
+    <Compile Include="Adapters\SupplierOfferAdapter.fs" />
     <Compile Include="IntegrationService.fs" />
   </ItemGroup>
 

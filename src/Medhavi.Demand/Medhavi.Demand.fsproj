@@ -10,7 +10,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Medhavi.MasterData\Medhavi.MasterData.fsproj" />
+    <ProjectReference Include="..\Medhavi.Common\Medhavi.Common.fsproj" />
+    <ProjectReference Include="..\Medhavi.Contracts\Medhavi.Contracts.fsproj" />
+    <ProjectReference Include="..\Medhavi.SharedKernel\Medhavi.SharedKernel.fsproj" />
+    <ProjectReference Include="..\Medhavi.Infrastructure\Medhavi.Infrastructure.fsproj" />
   </ItemGroup>
 
 </Project>

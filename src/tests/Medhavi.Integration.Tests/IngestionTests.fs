@@ -124,7 +124,37 @@ module IngestionTests =
                       test <@ list.[0].Id = "LEG-1" @>
                       test <@ list.[0].Constraints = ["Hazmat"; "Fragile"] @>
                       test <@ list.[0].Capacity = Some 500.0m @>
-                      test <@ list.[0].CutoffMinutes = Some 60.0 @>
+                      test <@ list.[0].CutoffMinutes = Some 60.0m @>
+              )
+
+              testCase "should parse InventoryTargets CSV completely" (fun () ->
+                  let csv = "SkuId,StockingPointId,SafetyStockQty,MinQty,MaxQty,TargetServiceLevel,CoverDays,IsActive\nSKU-BIKE,SP-WAREHOUSE,10.0,5.0,50.0,0.95,5.0,true"
+                  let res = InboundAdapter.parseInventoryTargetCsv csv
+                  match res with
+                  | Error err -> failwithf "Failed CSV: %s" err
+                  | Ok list ->
+                      test <@ list.Length = 1 @>
+                      test <@ list.[0].SkuId = "SKU-BIKE" @>
+                      test <@ list.[0].StockingPointId = "SP-WAREHOUSE" @>
+                      test <@ list.[0].SafetyStockQty = Some 10.0m @>
+                      test <@ list.[0].CoverDays = Some 5.0m @>
+                      test <@ list.[0].IsActive @>
+              )
+
+              testCase "should parse SupplierOffers CSV completely" (fun () ->
+                  let csv = "Id,SupplierId,SkuId,StockingPointId,Moq,LotSize,LeadTimeP50Minutes,LeadTimeP95Minutes,Reliability,Incoterm\nOFFER-1,SUP-1,SKU-1,SP-1,50.0,10.0,1440.0,2880.0,0.95,DDP"
+                  let res = InboundAdapter.parseSupplierOfferCsv csv
+                  match res with
+                  | Error err -> failwithf "Failed CSV: %s" err
+                  | Ok list ->
+                      test <@ list.Length = 1 @>
+                      test <@ list.[0].Id = "OFFER-1" @>
+                      test <@ list.[0].SupplierId = "SUP-1" @>
+                      test <@ list.[0].SkuId = "SKU-1" @>
+                      test <@ list.[0].Moq = Some 50.0m @>
+                      test <@ list.[0].LeadTimeP50Minutes = Some 1440.0m @>
+                      test <@ list.[0].Reliability = Some 0.95m @>
+                      test <@ list.[0].Incoterm = Some "DDP" @>
               )
 
               testCase "should validate master data cross-reference integrity successfully" (fun () ->

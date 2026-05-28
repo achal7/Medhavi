@@ -7,6 +7,8 @@ open Medhavi.SharedKernel.BoundedContexts
 open Medhavi.MasterData
 open Medhavi.MasterData.Application
 open Medhavi.Integration
+open Medhavi.Supply
+open Medhavi.Supply.Application
 open Medhavi.Infrastructure.Stores.EnvelopeStore
 open Medhavi.Infrastructure.Stores.EnvelopeStoreMem
 
@@ -30,8 +32,9 @@ module Program =
         printColor color text
         printfn ""
 
-    // Initialize MasterData Bounded Context via modular composition root
-    let masterDataContext = BoundedContext.create ()
+    // Initialize Bounded Contexts via modular composition roots
+    let masterDataContext = Medhavi.MasterData.BoundedContext.create ()
+    let supplyContext = Medhavi.Supply.BoundedContext.create ()
 
     // Real EnvelopeStore instance (Mailbox-agent based)
     let envelopeStore = createEnvelopeStoreMem ()
@@ -117,7 +120,7 @@ module Program =
                     | MasterDataImported payload ->
                         printColorLine
                             "cyan"
-                            "\n>>> [Subscription Broker] Received MasterDataImported Event! Delegating processing to MasterData Bounded Context..."
+                            "\n>>> [Subscription Broker] Received MasterDataImported Event! Delegating processing..."
 
                         let logger =
                             { LogInfo = fun msg -> printColorLine "cyan" msg
@@ -125,6 +128,32 @@ module Program =
                               LogError = fun msg -> printColorLine "red" msg }
 
                         do! MasterDataImportedHandler.handle masterDataContext payload logger
+                        do! SupplyMasterDataImportedHandler.handle supplyContext payload logger
+
+                    | InventoryPositionsImported payload ->
+                        printColorLine
+                            "cyan"
+                            "\n>>> [Subscription Broker] Received InventoryPositionsImported Event! Delegating processing to Supply Bounded Context..."
+
+                        let logger =
+                            { LogInfo = fun msg -> printColorLine "cyan" msg
+                              LogSuccess = fun msg -> printColorLine "green" msg
+                              LogError = fun msg -> printColorLine "red" msg }
+
+                        do! SupplyIntegrationHandler.handleInventoryPositions supplyContext payload logger
+
+                    | SupplyOrdersImported payload ->
+                        printColorLine
+                            "cyan"
+                            "\n>>> [Subscription Broker] Received SupplyOrdersImported Event! Delegating processing to Supply Bounded Context..."
+
+                        let logger =
+                            { LogInfo = fun msg -> printColorLine "cyan" msg
+                              LogSuccess = fun msg -> printColorLine "green" msg
+                              LogError = fun msg -> printColorLine "red" msg }
+
+                        do! SupplyIntegrationHandler.handleSupplyOrders supplyContext payload logger
+
                     | _ -> printfn "   [ INFO ] [Subscription] Received event: %A" event
             }
 
@@ -158,6 +187,33 @@ module Program =
             for err in errors do
                 printfn "     - %s" err
         | IngestionError err -> printColorLine "red" (sprintf "   [ ERR ] Ingestion failed: %s" err)
+
+    let loadDynamicSupplyData () =
+        printColorLine "bold" "\n--- [TRIGGER DYNAMIC SUPPLY INGESTION (Inventory Positions & Supply Orders) via IntegrationService] ---"
+        
+        // 1. Ingest Inventory Positions
+        let invTask = integrationCaps.IngestAndPublishInventoryPositions()
+        match invTask.Result with
+        | Success(evtId, corrId) ->
+            printColorLine "green" "   [ OK ] Inventory Positions successfully validated and published."
+            printfn "          Envelope ID: %s" (evtId.ToString())
+            printfn "          Correlation ID: %s" (corrId.ToString())
+        | ValidationError errors ->
+            printColor "red" "   [ ERR ] Inventory Positions validation failed:\n"
+            for err in errors do printfn "     - %s" err
+        | IngestionError err -> printColorLine "red" (sprintf "   [ ERR ] Inventory Positions ingestion failed: %s" err)
+
+        // 2. Ingest Supply Orders
+        let orderTask = integrationCaps.IngestAndPublishSupplyOrders()
+        match orderTask.Result with
+        | Success(evtId, corrId) ->
+            printColorLine "green" "   [ OK ] Supply Orders successfully validated and published."
+            printfn "          Envelope ID: %s" (evtId.ToString())
+            printfn "          Correlation ID: %s" (corrId.ToString())
+        | ValidationError errors ->
+            printColor "red" "   [ ERR ] Supply Orders validation failed:\n"
+            for err in errors do printfn "     - %s" err
+        | IngestionError err -> printColorLine "red" (sprintf "   [ ERR ] Supply Orders ingestion failed: %s" err)
 
     let viewEnvelopesInStore () =
         printColorLine "bold" "\n--- [STEP 2: VIEW OUTBOX ENVELOPES IN STORE] ---"
@@ -288,6 +344,114 @@ module Program =
             |> List.toArray
         printTable "UNIT CONVERSIONS IN DATABASE" [| "CONVERSION ID"; "FROM UNIT"; "TO UNIT"; "RATIO"; "STATUS" |] convRows
 
+        // 8. Inventories Table
+        let inventories = supplyContext.Inventory.QueryService.GetAll().Result
+        let invRows =
+            inventories
+            |> List.map (fun i ->
+                [| i.Id
+                   i.SkuId
+                   i.StockingPointId
+                   i.Quantity.ToString()
+                   i.InTransitInbound.ToString()
+                   i.AvailableToPromise.ToString() |])
+            |> List.toArray
+        printTable "INVENTORIES IN DATABASE" [| "INVENTORY ID"; "SKU ID"; "STOCKING POINT ID"; "ON-HAND QTY"; "IN-TRANSIT"; "ATP QTY" |] invRows
+
+        // 9. Inventory Targets Table
+        let targets = supplyContext.InventoryTarget.QueryService.GetAll().Result
+        let targetRows =
+            targets
+            |> List.map (fun t ->
+                let safetyStr = t.SafetyStockQty |> Option.map (fun q -> q.ToString()) |> Option.defaultValue "0"
+                let minStr = t.MinQty |> Option.map (fun q -> q.ToString()) |> Option.defaultValue "None"
+                let maxStr = t.MaxQty |> Option.map (fun q -> q.ToString()) |> Option.defaultValue "None"
+                [| t.Id
+                   t.SkuId
+                   t.StockingPointId
+                   safetyStr
+                   minStr
+                   maxStr |])
+            |> List.toArray
+        printTable "INVENTORY TARGETS IN DATABASE" [| "TARGET ID"; "SKU ID"; "STOCKING POINT ID"; "SAFETY STOCK"; "MIN QTY"; "MAX QTY" |] targetRows
+
+        // 10. Supplier Offers Table
+        let offers = supplyContext.SupplierOffer.QueryService.GetAll().Result
+        let offerRows =
+            offers
+            |> List.map (fun o ->
+                let moqStr = o.Moq |> Option.map (fun q -> q.ToString()) |> Option.defaultValue "None"
+                let lotStr = o.LotSize |> Option.map (fun q -> q.ToString()) |> Option.defaultValue "None"
+                [| o.Id
+                   o.SupplierId
+                   o.SkuId
+                   moqStr
+                   lotStr
+                   (if o.IsActive then "Active" else "Inactive") |])
+            |> List.toArray
+        printTable "SUPPLIER OFFERS IN DATABASE" [| "OFFER ID"; "SUPPLIER ID"; "SKU ID"; "MOQ"; "LOT SIZE"; "STATUS" |] offerRows
+
+        // 11. Supply Orders Table
+        let orders = supplyContext.SupplyOrder.QueryService.GetAll().Result
+        let orderRows =
+            orders
+            |> List.map (fun o ->
+                [| o.Id
+                   o.OrderType
+                   o.SkuId
+                   o.StockingPointId
+                   o.Quantity.ToString()
+                   o.State |])
+            |> List.toArray
+        printTable "SUPPLY ORDERS IN DATABASE" [| "ORDER ID"; "TYPE"; "SKU ID"; "STOCKING POINT ID"; "QTY"; "STATE" |] orderRows
+
+        // 12. Live Material Availability ATP Snapshots & Projections
+        printColorLine "bold" "\n================================================================================"
+        printColorLine "bold" "                     LIVE MATERIAL AVAILABILITY SNAPSHOTS                       "
+        printColorLine "bold" "================================================================================"
+
+        let sampleProducts = [ "SKU-BIKE"; "SKU-FRAME"; "SKU-WHEEL" ]
+        let stockingPoints = [ "SP-WAREHOUSE"; "SP-FACTORY" ]
+        let now = DateTimeOffset.UtcNow
+
+        let atpRows =
+            [ for p in sampleProducts do
+                for sp in stockingPoints do
+                    let snapRes = MaterialProvider.getSnapshot supplyContext p sp now |> Async.RunSynchronously
+                    match snapRes with
+                    | Ok snap ->
+                        let net = MaterialProvider.calculateNetAvailable snap
+                        let totalInbound = snap.Inbound |> List.sumBy snd
+                        yield [| p; sp; snap.OnHand.ToString(); totalInbound.ToString(); snap.Safety.ToString(); snap.Reservations.ToString(); net.ToString() |]
+                    | Error _ -> () ]
+            |> List.toArray
+
+        printTable
+            "MATERIAL AVAILABILITY (ATP) SUMMARY"
+            [| "SKU ID"; "STOCKING POINT"; "ON-HAND QTY"; "INBOUND QTY"; "SAFETY QTY"; "RESERVATIONS"; "NET AVAILABLE (ATP)" |]
+            atpRows
+
+        // 13. Time-Phased Availability Projections
+        printColorLine "bold" "\n================================================================================"
+        printColorLine "bold" "             TIME-PHASED AVAILABILITY PROJECTIONS (90-DAY HORIZON)               "
+        printColorLine "bold" "================================================================================"
+
+        let timePhasedRows =
+            [ for p in [ "SKU-BIKE"; "SKU-FRAME" ] do
+                let sp = if p = "SKU-BIKE" then "SP-WAREHOUSE" else "SP-FACTORY"
+                let tpRes = MaterialProvider.getTimePhasedAvailability supplyContext p sp now 10 90 |> Async.RunSynchronously
+                match tpRes with
+                | Ok list ->
+                    for (date, qty) in list do
+                        yield [| p; sp; date.ToString("yyyy-MM-dd"); qty.ToString() |]
+                | Error _ -> () ]
+            |> List.toArray
+
+        printTable
+            "TIME-PHASED NET AVAILABILITY BUCKETS (10-DAY BUCKETS)"
+            [| "SKU ID"; "STOCKING POINT"; "BUCKET START DATE"; "NET AVAILABLE" |]
+            timePhasedRows
+
     [<EntryPoint>]
     let main argv =
         printColorLine "bold" "========================================================="
@@ -298,33 +462,37 @@ module Program =
 
         // Bootstrap projections
         masterDataContext.Initialize().Wait()
+        supplyContext.Initialize().Wait()
 
         let mutable exit = false
 
         while not exit do
             printColorLine "bold" "\nMAIN MENU"
-            printfn "1. Load, Validate and Publish CSV (Generates & Writes Envelope)"
-            printfn "2. View Outbox Envelopes inside EnvelopeStore"
-            printfn "3. View Aggregate Database Snapshot Dashboard"
-            printfn "4. Run End-to-End Automated Demo"
-            printfn "5. Exit"
+            printfn "1. Load, Validate and Publish Master Data CSV"
+            printfn "2. Load, Validate and Publish Dynamic Supply Data (Inventory Positions & Supply Orders)"
+            printfn "3. View Outbox Envelopes inside EnvelopeStore"
+            printfn "4. View Aggregate Database Snapshot Dashboard"
+            printfn "5. Run End-to-End Automated Demo"
+            printfn "6. Exit"
 
-            printf "Select option (1-5): "
+            printf "Select option (1-6): "
             let choice = Console.ReadLine()
 
             match choice with
             | "1" -> loadAndValidateCsv ()
-            | "2" -> viewEnvelopesInStore ()
-            | "3" -> showDashboard ()
-            | "4" ->
+            | "2" -> loadDynamicSupplyData ()
+            | "3" -> viewEnvelopesInStore ()
+            | "4" -> showDashboard ()
+            | "5" ->
                 printColorLine "cyan" "\n>>> RUNNING END-TO-END AUTOMATED DEMO <<<"
                 loadAndValidateCsv ()
+                loadDynamicSupplyData ()
                 // Wait briefly for the background subscriber thread to process and commit
                 System.Threading.Thread.Sleep(1000)
                 showDashboard ()
-            | "5" ->
+            | "6" ->
                 exit <- true
                 printColorLine "cyan" "\nExiting Medhāvī Simulator. Goodbye!"
-            | _ -> printColorLine "red" "Invalid choice. Please enter 1-5."
+            | _ -> printColorLine "red" "Invalid choice. Please enter 1-6."
 
         0

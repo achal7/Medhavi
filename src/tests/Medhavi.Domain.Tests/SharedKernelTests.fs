@@ -64,13 +64,13 @@ let tests =
               test <@ isNotEq @>
               test <@ isEmptyError @>)
 
-          testCase "Qty ratio and trySubtract validation" (fun () ->
-              let q1 = Qty.create 10m
-              let q2 = Qty.create 5m
-              let qZero = Qty.create 0m
+          testCase "Quantity ratio and trySubtract validation" (fun () ->
+              let q1 = Quantity.create 10m |> Result.defaultWith (fun e -> failwith e.Message)
+              let q2 = Quantity.create 5m |> Result.defaultWith (fun e -> failwith e.Message)
+              let qZero = Quantity.Zero
 
-              let ratioOk = Qty.ratio q1 q2
-              let ratioError = Qty.ratio q1 qZero
+              let ratioOk = Quantity.ratio q1 q2
+              let ratioError = Quantity.ratio q1 qZero
 
               let isRatioOk = (ratioOk = Ok 2m)
               let isRatioError = ratioError.IsError
@@ -78,33 +78,27 @@ let tests =
               test <@ isRatioOk @>
               test <@ isRatioError @>
 
-              let subOk = Qty.trySubtract q1 q2
-              let subError = Qty.trySubtract q2 q1
+              let subOk = Quantity.trySubtract q1 q2
+              let subError = Quantity.trySubtract q2 q1
 
-              let isSubOk = (subOk = Ok(Qty.create 5m))
+              let isSubOk = (subOk = Ok q2)
               let isSubError = subError.IsError
 
               test <@ isSubOk @>
               test <@ isSubError @>)
 
-          testCase "NonNegativeQty and PositiveQty type safety" (fun () ->
-              let nnOk = NonNegativeQty.create 0m
-              let nnError = NonNegativeQty.create -1m
+          testCase "Quantity type safety validation" (fun () ->
+              let nnOk = Quantity.create 0m
+              let nnError = Quantity.create -1m
+              let pOk = Quantity.create 1m
 
               let isNnOk = nnOk.IsOk
               let isNnError = nnError.IsError
+              let isPOk = pOk.IsOk
 
               test <@ isNnOk @>
               test <@ isNnError @>
-
-              let pOk = PositiveQty.create 1m
-              let pError = PositiveQty.create 0m
-
-              let isPOk = pOk.IsOk
-              let isPError = pError.IsError
-
-              test <@ isPOk @>
-              test <@ isPError @>)
+              test <@ isPOk @>)
 
           testCase "Window validation and invariants" (fun () ->
               let t1 = Timestamp(DateTimeOffset.UtcNow)
@@ -134,7 +128,7 @@ let tests =
                       | Ok x -> x
                       | Error _ -> failwith "invalid"
 
-              let qty = Qty.create 123.45m
+              let qty = Quantity.create 123.45m |> Result.defaultWith (fun e -> failwith e.Message)
               let money = { Amount = 100.50m; Currency = "USD" }
 
               let roundTripSku = roundTrip sku
@@ -142,7 +136,7 @@ let tests =
               let roundTripMoney = roundTrip money
 
               let isSkuRtOk = (SkuId.value roundTripSku = "SKU-999")
-              let isQtyRtOk = (Qty.value roundTripQty = 123.45m)
+              let isQtyRtOk = (Quantity.value roundTripQty = 123.45m)
               let isMoneyRtOk = (roundTripMoney = money)
 
               test <@ isSkuRtOk @>

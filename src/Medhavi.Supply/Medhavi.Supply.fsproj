@@ -6,12 +6,26 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Domain.fs" />
+    <Compile Include="Domain\Supplier.fs" />
+    <Compile Include="Domain\SupplierOffer.fs" />
+    <Compile Include="Domain\SupplyOrder.fs" />
+    <Compile Include="Domain\Inventory.fs" />
+    <Compile Include="Domain\InventoryTarget.fs" />
+    <Compile Include="Application\Inventory.fs" />
+    <Compile Include="Application\InventoryTarget.fs" />
+    <Compile Include="Application\SupplierOffer.fs" />
+    <Compile Include="Application\SupplyOrder.fs" />
+    <Compile Include="BoundedContext.fs" />
+    <Compile Include="Application\SupplyMasterDataImportedHandler.fs" />
+    <Compile Include="Application\SupplyIntegrationHandler.fs" />
+    <Compile Include="Application\MaterialProvider.fs" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Medhavi.Demand\Medhavi.Demand.fsproj" />
-    <ProjectReference Include="..\Medhavi.Capacity\Medhavi.Capacity.fsproj" />
+    <ProjectReference Include="..\Medhavi.SharedKernel\Medhavi.SharedKernel.fsproj" />
+    <ProjectReference Include="..\Medhavi.Infrastructure\Medhavi.Infrastructure.fsproj" />
+    <ProjectReference Include="..\Medhavi.Common\Medhavi.Common.fsproj" />
+    <ProjectReference Include="..\Medhavi.Contracts\Medhavi.Contracts.fsproj" />
   </ItemGroup>
 
 </Project>

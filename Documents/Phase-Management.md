@@ -322,19 +322,19 @@ The following capabilities **must grow incrementally** across multiple phases ra
 ---
 
 ### Phase 2 — Material Availability (Query Service)
-**Wave**: 1 | **Status**: ❌ Not Started
+**Wave**: 1 | **Status**: ✔️ Completed
 
 **Architecture Note**: Material Availability is a pure **query/knowledge service**. It does NOT make planning decisions — it answers "What material is available?" Used by Promise, MRP, and Material Replenishment.
 
 | Sub-Phase | Feature(s) | Description | Exit Gate | Status |
 |-----------|-----------|-------------|-----------|--------|
-| 2.1 | MP-05 | InventoryProjection schema (on-hand per Product×SP) | Projection schema handles inventory adjustments and returns on-hand stock for a Product×SP. | ❌ Not Started |
-| 2.2 | MP-05 | SupplyOrderProjection (firm inbound with dates) | Query returns list of confirmed supply orders sorted by expected delivery date. | ❌ Not Started |
-| 2.3 | MP-05 | MaterialReservationProjection (active totals per Product×SP) | Query retrieves aggregate active reservation quantities (tentative and confirmed) per Product×SP. | ❌ Not Started |
-| 2.4 | MP-05 | Safety policy query (safety stock levels per Product×SP) | Policy returns target safety stock levels (by quantity or cover days equivalent) per Product×SP. | ❌ Not Started |
-| 2.5 | MP-05 | Net available calculation: OnHand + Inbound − Reservations − Safety | Calculation tested against negative stock cases and returns correct net available quantity. | ❌ Not Started |
-| 2.6 | MP-41 | MaterialProvider contract (GetSnapshot, GetSupplierOptions) | Mock MaterialProvider passes ATP integration tests; compiles cleanly with consumer code. | ❌ Not Started |
-| 2.7 | MP-05 | Time-phased availability projection stub (period-bucketed view for MRP netting) | Query yields net availability bucketed by day/week intervals over a 90-day horizon. | ❌ Not Started |
+| 2.1 | MP-05 | InventoryProjection schema (on-hand per Product×SP) | Projection schema handles inventory adjustments and returns on-hand stock for a Product×SP. | ✔️ Completed |
+| 2.2 | MP-05 | SupplyOrderProjection (firm inbound with dates) | Query returns list of confirmed supply orders sorted by expected delivery date. | ✔️ Completed |
+| 2.3 | MP-05 | MaterialReservationProjection (active totals per Product×SP) | Query retrieves aggregate active reservation quantities (tentative and confirmed) per Product×SP. | ✔️ Completed |
+| 2.4 | MP-05 | Safety policy query (safety stock levels per Product×SP) | Policy returns target safety stock levels (by quantity or cover days equivalent) per Product×SP. | ✔️ Completed |
+| 2.5 | MP-05 | Net available calculation: OnHand + Inbound − Reservations − Safety | Calculation tested against negative stock cases and returns correct net available quantity. | ✔️ Completed |
+| 2.6 | MP-41 | MaterialProvider contract (GetSnapshot, GetSupplierOptions) | Mock MaterialProvider passes ATP integration tests; compiles cleanly with consumer code. | ✔️ Completed |
+| 2.7 | MP-05 | Time-phased availability projection stub (period-bucketed view for MRP netting) | Query yields net availability bucketed by day/week intervals over a 90-day horizon. | ✔️ Completed |
 
 ---
 

@@ -2,7 +2,6 @@ namespace Medhavi.Demand
 
 open System
 open Medhavi.SharedKernel
-open Medhavi.MasterData
 
 /// Customer Order aggregate
 type CustomerOrder = {
@@ -10,7 +9,7 @@ type CustomerOrder = {
     LineId: string
     SkuId: SkuId
     NodeId: NodeId
-    Quantity: Qty
+    Quantity: Quantity
     DueDate: DateTimeOffset
     Priority: int // E.g., Gold = 1, Silver = 2, Bronze = 3
     IsExpedited: bool
@@ -21,7 +20,7 @@ type Forecast = {
     ForecastId: string
     SkuId: SkuId
     NodeId: NodeId
-    Quantity: Qty
+    Quantity: Quantity
     PeriodStart: DateTimeOffset
     PeriodEnd: DateTimeOffset
 }

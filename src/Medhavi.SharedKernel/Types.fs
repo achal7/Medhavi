@@ -23,88 +23,71 @@ module Version =
 
 [<Struct>]
 [<JsonFSharpConverter>]
-type Qty =
+type Quantity =
     private
-    | Qty of decimal
+    | Quantity of decimal
 
-    static member Zero = Qty 0m
+    static member Zero = Quantity 0m
 
-    static member (+)(Qty a, Qty b) = Qty(a + b)
+    static member (+)(Quantity a, Quantity b) = Quantity(a + b)
 
-    static member (-)(Qty a, Qty b) = Qty(a - b)
+    static member (-)(Quantity a, Quantity b) = Quantity(max 0m (a - b)) // saturating subtraction
 
-    static member (*)(Qty a, scalar: decimal) = Qty(a * scalar)
+    static member (*)(Quantity a, scalar: decimal) = Quantity(max 0m (a * scalar))
 
-    static member (/)(Qty a, scalar: decimal) = Qty(a / scalar)
+    static member (/)(Quantity a, scalar: decimal) = Quantity(max 0m (a / scalar))
 
-    static member (~-)(Qty a) = Qty(-a)
+    static member op_Explicit(Quantity a) : decimal = a
 
-    static member op_Explicit(Qty a) : decimal = a
+module Quantity =
 
-module Qty =
+    let create (value: decimal) : Result<Quantity, DomainError> =
+        if value < 0m then
+            Error(DomainError.validation "Quantity must be non-negative")
+        else
+            Ok(Quantity value)
 
-    let create value = Qty value
+    let value (Quantity v) = v
 
-    let value (Qty v) = v
+    let abs (Quantity v) = Quantity(abs v)
 
-    let zero = Qty.Zero
+    let sum (items: Quantity seq) = Seq.fold (+) Quantity.Zero items
 
-    let abs (Qty v) = Qty(abs v)
-
-    let sum (items: Qty seq) = Seq.fold (+) zero items
-
-    let createOrDefault (value: decimal) : Qty = if value < 0m then Qty.Zero else Qty value
+    let clampToZero (value: decimal) : Quantity = Quantity(max 0m value)
 
     // Utility functions
-    let isZero (Qty v) = v = 0m
-    let isPositive (Qty v) = v > 0m
+    let isZero (Quantity v) = v = 0m
+    let isPositive (Quantity v) = v > 0m
 
-    let minOf (Qty a) (Qty b) = Qty(min a b)
-    let maxOf (Qty a) (Qty b) = Qty(max a b)
+    let minOf (Quantity a) (Quantity b) = Quantity(min a b)
+    let maxOf (Quantity a) (Quantity b) = Quantity(max a b)
 
     /// Safe subtraction - clamps to zero if result would be negative
-    let subtract (Qty a) (Qty b) = Qty(max 0m (a - b))
+    let subtract (Quantity a) (Quantity b) = Quantity(max 0m (a - b))
 
     /// Try subtract - returns Error if result would be negative
-    let trySubtract (Qty a) (Qty b) : Result<Qty, DomainError> =
+    let trySubtract (Quantity a) (Quantity b) : Result<Quantity, DomainError> =
         if a >= b then
-            Ok(Qty(a - b))
+            Ok(Quantity(a - b))
         else
-            Error(DomainError.validation ("Subtraction would result in negative quantity"))
+            Error(DomainError.validation "Subtraction would result in negative quantity")
 
     /// Ratio between two quantities (a / b)
-    let ratio (Qty a) (Qty b) : Result<decimal, DomainError> =
+    let ratio (Quantity a) (Quantity b) : Result<decimal, DomainError> =
         if b = 0m then
             Error(DomainError.validation "Division by zero quantity is not allowed")
         else
             Ok(a / b)
 
     /// Scale by a factor
-    let scale (factor: decimal) (Qty v) = Qty(v * factor)
+    let scale (factor: decimal) (Quantity v) = Quantity(max 0m (v * factor))
 
-[<JsonFSharpConverter>]
-type NonNegativeQty = private NonNegativeQty of Qty
+    let fromOption (opt: Option<decimal>) =
+        match opt with
+        | None -> Quantity.Zero
+        | Some v -> clampToZero v
 
-module NonNegativeQty =
-    let create (value: decimal) : Result<NonNegativeQty, DomainError> =
-        if value < 0m then
-            Error(DomainError.validation "Quantity must be non-negative")
-        else
-            Ok(NonNegativeQty(Qty value))
-
-    let value (NonNegativeQty v) = v
-
-[<JsonFSharpConverter>]
-type PositiveQty = private PositiveQty of Qty
-
-module PositiveQty =
-    let create (value: decimal) : Result<PositiveQty, DomainError> =
-        if value <= 0m then
-            Error(DomainError.validation "Quantity must be positive")
-        else
-            Ok(PositiveQty(Qty value))
-
-    let value (PositiveQty v) = v
+    let tryFromOption (opt: Option<decimal>) = opt |> Option.map clampToZero
 
 /// Positive decimal (>= 0m)
 [<Struct>]

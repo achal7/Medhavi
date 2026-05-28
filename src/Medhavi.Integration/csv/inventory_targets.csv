@@ -1,0 +1,4 @@
+SkuId,StockingPointId,SafetyStockQty,MinQty,MaxQty,TargetServiceLevel,CoverDays,IsActive
+SKU-BIKE,SP-WAREHOUSE,10.0,5.0,50.0,0.95,5.0,true
+SKU-FRAME,SP-FACTORY,20.0,10.0,100.0,0.90,10.0,true
+SKU-WHEEL,SP-FACTORY,40.0,20.0,200.0,0.90,10.0,true

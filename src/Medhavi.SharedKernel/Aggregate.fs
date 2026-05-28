@@ -48,8 +48,12 @@ module Aggregate =
 
     let liftCmdValidation f =
         f
-        >> mapError ApplicationError.mapDomainError
-        >> TaskResult.ofValidation
+        >> toResult
+        >> Result.mapError (
+            DomainError.combineValidationErrors
+            >> ApplicationError.mapDomainError
+        )
+        >> TaskResult.ofResult
 
     let handleCommand
         (getId: 'Cmd -> 'Id)
