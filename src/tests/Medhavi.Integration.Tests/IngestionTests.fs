@@ -222,8 +222,8 @@ module IngestionTests =
                   let cmd = {
                       Id = "RES-XYZ"
                       IdempotencyKey = "key-xyz"
-                      SkuId = SkuId.unsafeCreate "SKU-BIKE"
-                      StockingPointId = StockingPointId.unsafeCreate "SP-WAREHOUSE"
+                      SkuId = SkuId.create "SKU-BIKE" |> function Ok x -> x | Error _ -> failwith "invalid SkuId"
+                      StockingPointId = StockingPointId.create "SP-WAREHOUSE" |> function Ok x -> x | Error _ -> failwith "invalid StockingPointId"
                       Quantity = 20.0m
                       RequiredDate = DateTimeOffset.UtcNow.AddDays(10.0)
                       ExpiryTime = DateTimeOffset.UtcNow.AddDays(5.0)
@@ -285,14 +285,21 @@ module IngestionTests =
                   let! _ = supply.Inventory.Define invReq
 
                   // Seed inbound supply order (qty = 50 on Day 10)
-                  let orderReq = {
+                  let orderReq : SupplyOrderCreateReq = {
                       Id = "ORDER-1"
                       OrderType = "purchaseorder"
                       SkuId = "SKU-BIKE"
                       StockingPointId = "SP-WAREHOUSE"
                       Quantity = 50m
-                      RequiredDeliveryDate = Some (DateTimeOffset.UtcNow.AddDays(10.0))
+                      UnitOfMeasure = "UOM-PCS"
+                      RoutingId = None
+                      SupplierId = None
                       IsFirm = true
+                      IsExpedited = false
+                      IsLocked = false
+                      UsesLeadTimeQuantity = false
+                      RequiredDeliveryDate = Some (DateTimeOffset.UtcNow.AddDays(10.0))
+                      CreatedDate = DateTimeOffset.UtcNow
                   }
                   let! _ = supply.SupplyOrder.Create orderReq
 
