@@ -126,5 +126,5 @@ let evolve (state: MaterialReservation option) (event: MaterialReservationEvent)
     | ReservationCreated r -> Some r
     | ReservationConfirmed e -> state |> Option.map (fun s -> { s with State = "Confirmed"; Modified = Timestamp.now })
     | ReservationReleased e -> state |> Option.map (fun s -> { s with State = "Released"; Modified = Timestamp.now })
-    | ReservationReduced e -> state |> Option.map (fun s -> { s with Quantity = Quantity.unsafeCreate e.NewQuantity; State = "Reduced"; Modified = Timestamp.now })
+    | ReservationReduced e -> state |> Option.map (fun s -> { s with Quantity = Quantity.clampToZero e.NewQuantity; State = "Reduced"; Modified = Timestamp.now })
     | ReservationExpired e -> state |> Option.map (fun s -> { s with State = "Expired"; Modified = Timestamp.now })

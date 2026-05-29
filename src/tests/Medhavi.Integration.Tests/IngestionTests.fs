@@ -9,8 +9,14 @@ open Medhavi.Integration
 open Medhavi.Common.Validation
 open Medhavi.Common.Serialization
 open Medhavi.Infrastructure
+open Medhavi.Supply
+open Medhavi.Supply.Domain
+open Medhavi.Supply.Domain.MaterialReservationAgg
+open Medhavi.Supply.Application
 
 module IngestionTests =
+    open Medhavi.SharedKernel
+    open Medhavi.Supply.Application
 
     [<Tests>]
     let tests =
@@ -196,5 +202,133 @@ module IngestionTests =
                       test <@ conversions.[0].SourceUom = "UOM-BOX" @>
                       test <@ conversions.[0].TargetUom = "UOM-PCS" @>
                       test <@ conversions.[0].ConversionFactor = 10.0m @>
+              )
+
+              testCase "should parse MaterialReservations CSV completely" (fun () ->
+                  let csv = "Id,IdempotencyKey,SkuId,StockingPointId,Quantity,RequiredDate,ExpiryTime\nRES-TEST,key-1,SKU-BIKE,SP-WAREHOUSE,15.5,2026-06-15T00:00:00Z,2026-06-05T00:00:00Z"
+                  let res = Medhavi.Integration.Adapters.MaterialReservation.ACL.parse csv
+                  match res with
+                  | Error err -> failwithf "MaterialReservation adapter failed: %s" err
+                  | Ok list ->
+                      test <@ list.Length = 1 @>
+                      test <@ list.[0].Id = "RES-TEST" @>
+                      test <@ list.[0].IdempotencyKey = "key-1" @>
+                      test <@ list.[0].SkuId = "SKU-BIKE" @>
+                      test <@ list.[0].Quantity = 15.5m @>
+              )
+
+              testCase "should enforce MaterialReservation aggregate lifecycle transitions" (fun () ->
+                  let now = Timestamp.now
+                  let cmd = {
+                      Id = "RES-XYZ"
+                      IdempotencyKey = "key-xyz"
+                      SkuId = SkuId.unsafeCreate "SKU-BIKE"
+                      StockingPointId = StockingPointId.unsafeCreate "SP-WAREHOUSE"
+                      Quantity = 20.0m
+                      RequiredDate = DateTimeOffset.UtcNow.AddDays(10.0)
+                      ExpiryTime = DateTimeOffset.UtcNow.AddDays(5.0)
+                  }
+                  
+                  // 1. Create Tentative
+                  let decRes = decide (CreateTentative cmd) None
+                  match decRes with
+                  | Error err -> failwithf "Failed to create reservation: %A" err
+                  | Ok decision ->
+                      let state = Some decision.NewState
+                      test <@ decision.NewState.State = "Tentative" @>
+                      test <@ decision.NewState.Quantity = Quantity.clampToZero 20.0m @>
+
+                      // 2. Try to create again on existing state -> should fail (reject duplicates)
+                      let decDuplicate = decide (CreateTentative cmd) state
+                      test <@ Result.isError decDuplicate @>
+
+                      // 3. Confirm from Tentative -> should succeed
+                      let decConfirm = decide (Confirm { Id = "RES-XYZ" }) state
+                      match decConfirm with
+                      | Error err -> failwithf "Failed to confirm: %A" err
+                      | Ok confirmDec ->
+                          let confirmedState = Some confirmDec.NewState
+                          test <@ confirmDec.NewState.State = "Confirmed" @>
+
+                          // 4. Reduce from Confirmed -> should succeed
+                          let decReduce = decide (Reduce { Id = "RES-XYZ"; NewQuantity = 12.0m }) confirmedState
+                          match decReduce with
+                          | Error err -> failwithf "Failed to reduce: %A" err
+                          | Ok reduceDec ->
+                              test <@ reduceDec.NewState.State = "Reduced" @>
+                              test <@ reduceDec.NewState.Quantity = Quantity.clampToZero 12.0m @>
+
+                          // 5. Expire from Confirmed -> should fail
+                          let decExpire = decide (Expire { Id = "RES-XYZ" }) confirmedState
+                          test <@ Result.isError decExpire @>
+
+                      // 6. Expire from Tentative -> should succeed
+                      let decExpireTentative = decide (Expire { Id = "RES-XYZ" }) state
+                      match decExpireTentative with
+                      | Error err -> failwithf "Failed to expire: %A" err
+                      | Ok expireDec ->
+                          test <@ expireDec.NewState.State = "Expired" @>
+              )
+
+              testCase "should calculate date-wise ATP projections with active reservations correctly" (fun () ->
+                  let supply = BoundedContext.create ()
+                  supply.Initialize().Wait()
+
+                  // Seed inventory (on-hand = 100)
+                  let invReq = {
+                      Id = "INV-1"
+                      SkuId = "SKU-BIKE"
+                      StockingPointId = "SP-WAREHOUSE"
+                      Quantity = 100m
+                      UnitOfMeasure = "UOM-PCS"
+                  }
+                  let! _ = supply.Inventory.Define invReq
+
+                  // Seed inbound supply order (qty = 50 on Day 10)
+                  let orderReq = {
+                      Id = "ORDER-1"
+                      OrderType = "purchaseorder"
+                      SkuId = "SKU-BIKE"
+                      StockingPointId = "SP-WAREHOUSE"
+                      Quantity = 50m
+                      RequiredDeliveryDate = Some (DateTimeOffset.UtcNow.AddDays(10.0))
+                      IsFirm = true
+                  }
+                  let! _ = supply.SupplyOrder.Create orderReq
+
+                  // Seed active reservation (qty = 30 on Day 20)
+                  let resvReq: MaterialReservationCreateReq = {
+                      Id = "RES-1"
+                      IdempotencyKey = "idem-key-1"
+                      SkuId = "SKU-BIKE"
+                      StockingPointId = "SP-WAREHOUSE"
+                      Quantity = 30m
+                      RequiredDate = DateTimeOffset.UtcNow.AddDays(20.0)
+                      ExpiryTime = DateTimeOffset.UtcNow.AddDays(5.0)
+                  }
+                  let! _ = supply.MaterialReservation.CreateTentative resvReq
+
+                  // Query time-phased availability
+                  let startDate = DateTimeOffset.UtcNow
+                  let dailyRes =
+                      MaterialProvider.getDateWiseAvailability supply "SKU-BIKE" "SP-WAREHOUSE" startDate 30
+                      |> Async.RunSynchronously
+
+                  match dailyRes with
+                  | Error err -> failwithf "Date-wise availability failed: %A" err
+                  | Ok list ->
+                      // Day 0 to Day 9: OnHand = 100
+                      let day1Val = list |> List.find (fun (d, _) -> d.Date = startDate.Date) |> snd
+                      test <@ day1Val = 100m @>
+
+                      // Day 10 to Day 19: OnHand + Inbound = 150
+                      let day11Date = startDate.AddDays(10.0).Date
+                      let day11Val = list |> List.find (fun (d, _) -> d.Date = day11Date) |> snd
+                      test <@ day11Val = 150m @>
+
+                      // Day 20 onwards: OnHand + Inbound - Reservation = 120
+                      let day21Date = startDate.AddDays(20.0).Date
+                      let day21Val = list |> List.find (fun (d, _) -> d.Date = day21Date) |> snd
+                      test <@ day21Val = 120m @>
               )
             ]

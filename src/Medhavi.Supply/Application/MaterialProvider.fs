@@ -157,7 +157,7 @@ module MaterialProvider =
                     @ (snap.Inbound |> List.map fst)
                     @ (snap.Reservations |> List.map fst)
                     |> List.filter (fun d -> d >= startDate && d <= endDate)
-                    |> List.map (fun d -> d.Date |> DateTimeOffset) // normalize to start of day
+                    |> List.map (fun d -> DateTimeOffset(d.Date, TimeSpan.Zero)) // normalize to start of day
                     |> List.distinct
                     |> List.sort
 

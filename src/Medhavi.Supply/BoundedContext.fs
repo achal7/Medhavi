@@ -12,7 +12,7 @@ open Medhavi.Supply.Domain.InventoryAgg
 open Medhavi.Supply.Domain.InventoryTargetAgg
 open Medhavi.Supply.Domain.SupplierOfferAgg
 open Medhavi.Domain.Material.SupplyOrder
-open Medhavi.Supply.Domain.MaterialReservationAgg
+open Medhavi.Supply.Domain
 
 type Supply =
     { Inventory: InventoryApi
@@ -31,7 +31,7 @@ module BoundedContext =
         let targetRepo = createInMemoryRepository<InventoryTarget, string, InventoryTargetEvent> ()
         let offerRepo = createInMemoryRepository<SupplierOffer, string, SupplierOfferEvent> ()
         let orderRepo = createInMemoryRepository<SupplyOrder, string, SupplyOrderEvent> ()
-        let reservationRepo = createInMemoryRepository<MaterialReservation, string, MaterialReservationEvent> ()
+        let reservationRepo = createInMemoryRepository<MaterialReservationAgg.MaterialReservation, string, MaterialReservationAgg.MaterialReservationEvent> ()
 
         // 2. Capabilities
         let invCaps = Inventory.createCapabilities invRepo
@@ -103,7 +103,7 @@ module BoundedContext =
                     DomainEventBus.Subscribe<InventoryTargetEvent>(fun ev -> targetAgent.Post(ev, Guid.NewGuid(), None))
                     DomainEventBus.Subscribe<SupplierOfferEvent>(fun ev -> offerAgent.Post(ev, Guid.NewGuid(), None))
                     DomainEventBus.Subscribe<SupplyOrderEvent>(fun ev -> orderAgent.Post(ev, Guid.NewGuid(), None))
-                    DomainEventBus.Subscribe<MaterialReservationEvent>(fun ev -> reservationAgent.Post(ev, Guid.NewGuid(), None))
+                    DomainEventBus.Subscribe<MaterialReservationAgg.MaterialReservationEvent>(fun ev -> reservationAgent.Post(ev, Guid.NewGuid(), None))
                 ]
 
                 // C. TTL Sweeper Loop
