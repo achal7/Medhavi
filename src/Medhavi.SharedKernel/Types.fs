@@ -165,6 +165,38 @@ module Timestamp =
     let isAfter (Timestamp a) (Timestamp b) = a > b
     let isBefore (Timestamp a) (Timestamp b) = a < b
 
+[<Struct>]
+[<JsonFSharpConverter>]
+type DurationMinutes = private DurationMinutes of decimal
+
+module DurationMinutes =
+    let create value =
+        if value < 0m then
+            Error "Duration cannot be negative."
+        else
+            Ok(DurationMinutes value)
+
+    let value (DurationMinutes value) = value
+    let zero = DurationMinutes 0m
+
+[<JsonFSharpConverter>]
+type DateRange =
+    { Start: Timestamp
+      End: Timestamp option }
+
+module DateRange =
+    let isOpenEnded range = range.End.IsNone
+
+    let contains timestamp range =
+        let afterStart = timestamp >= range.Start
+
+        let beforeEnd =
+            match range.End with
+            | None -> true
+            | Some endDate -> timestamp <= endDate
+
+        afterStart && beforeEnd
+
 [<JsonFSharpConverter>]
 type Window =
     private
@@ -230,3 +262,18 @@ module Status =
         match status with
         | true -> Active
         | false -> Inactive
+
+[<JsonFSharpConverter>]
+type Revision = Revision of int
+
+module Revision =
+    let initial = Revision 1
+    let increment (Revision r) = Revision(r + 1)
+    let value (Revision r) = r
+
+    let create value =
+        if value < 0 then
+            Error(DomainError.validation "Revision must be non-negative")
+        else
+            Ok(Revision value)
+

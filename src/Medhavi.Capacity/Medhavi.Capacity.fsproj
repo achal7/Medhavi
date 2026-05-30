@@ -7,10 +7,12 @@
 
   <ItemGroup>
     <Compile Include="Domain.fs" />
+    <Compile Include="RoutingInterpreter.fs" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Medhavi.MasterData\Medhavi.MasterData.fsproj" />
+    <ProjectReference Include="..\Medhavi.Contracts\Medhavi.Contracts.fsproj" />
+    <ProjectReference Include="..\Medhavi.SharedKernel\Medhavi.SharedKernel.fsproj" />
   </ItemGroup>
 
 </Project>

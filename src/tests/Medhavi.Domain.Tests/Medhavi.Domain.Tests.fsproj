@@ -9,12 +9,16 @@
   <ItemGroup>
     <Compile Include="Tests.fs" />
     <Compile Include="SharedKernelTests.fs" />
+    <Compile Include="RoutingTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\Medhavi.Common\Medhavi.Common.fsproj" />
     <ProjectReference Include="..\..\Medhavi.Scenario\Medhavi.Scenario.fsproj" />
+    <ProjectReference Include="..\..\Medhavi.Contracts\Medhavi.Contracts.fsproj" />
+    <ProjectReference Include="..\..\Medhavi.MasterData\Medhavi.MasterData.fsproj" />
+    <ProjectReference Include="..\..\Medhavi.Capacity\Medhavi.Capacity.fsproj" />
   </ItemGroup>
 
   <ItemGroup>

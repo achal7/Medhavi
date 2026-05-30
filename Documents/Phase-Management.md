@@ -1,7 +1,7 @@
 # Phase Planning & Progress
 **Version**: 1.2  
 **Date**: 2026-05-25  
-**Status**: Wave 1 in progress
+**Status**: Wave 1 completed
 
 ---
 
@@ -11,9 +11,9 @@
 |-------|------|------|--------|------------|
 | 0 | Foundational Shared Core | 1 | ✔️ Completed | 100% |
 | 1 | Integration & Ingest | 1 | ✔️ Completed | 100% |
-| 2 | Material Availability Query | 1 | ❌ Not Started | 0% |
-| 3 | Material Reservations | 1 | ❌ Not Started | 0% |
-| 4 | Routing & Process Master Data | 1 | ❌ Not Started | 0% |
+| 2 | Material Availability Query | 1 | ✔️ Completed | 100% |
+| 3 | Material Reservations | 1 | ✔️ Completed | 100% |
+| 4 | Routing & Process Master Data | 1 | ✔️ Completed | 100% |
 | 5 | Capacity CTP Module | 2 | ❌ Not Started | 0% |
 | 6 | Transport ATP Module | 2 | ❌ Not Started | 0% |
 | 7 | Postgres/Marten Repository Integration | 2 | ❌ Not Started | 0% |
@@ -38,7 +38,7 @@
 ## 2. Wave Execution Summary
 
 ```
-Wave 1: Core Deterministic Foundations [MVP] (Phases 0–4)          ▓▓▓▓▓▓▓░░░░░░░░░░░ 40%
+Wave 1: Core Deterministic Foundations [MVP] (Phases 0–4)          ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ 100%
 Wave 2: Finite Heuristic Planning & Persistence [MVP] (Phases 5–8)  ░░░░░░░░░░░░░░░░░░ 0%
 Wave 3: Demand/Supply Netting & Execution [MVP] (Phases 9–13)       ░░░░░░░░░░░░░░░░░░ 0%
 Wave 4: Advanced AI/ML & Optimization [Post-MVP] (Phases 14–17)     ░░░░░░░░░░░░░░░░░░ 0%
@@ -276,7 +276,7 @@ The following capabilities **must grow incrementally** across multiple phases ra
 ## 8. Phase Details & Progress
 
 ### Phase 0 — Foundational Shared Core
-**Wave**: 1 | **Status**: ❌ Not Started
+**Wave**: 1 | **Status**: ✔️ Completed
 
 | Sub-Phase | Feature(s) | Description | Exit Gate | Status |
 |-----------|-----------|-------------|-----------|--------|
@@ -339,34 +339,34 @@ The following capabilities **must grow incrementally** across multiple phases ra
 ---
 
 ### Phase 3 — Material Reservations
-**Wave**: 1 | **Status**: ❌ Not Started
+**Wave**: 1 | **Status**: ✔️ Completed
 
 **Architecture Note**: Material Reservation depends on Material Availability. Prevents double-booking of material.
 
 | Sub-Phase | Feature(s) | Description | Exit Gate | Status |
 |-----------|-----------|-------------|-----------|--------|
-| 3.1 | MP-05, MP-42 | MaterialReservation aggregate (deterministic ID, idempotency key) | Reservation created with unique ID; duplicates with same idempotency key are rejected. | ❌ Not Started |
-| 3.2 | MP-42 | Lifecycle: Tentative → Confirmed → Released/Expired/Reduced | Unit tests verify all valid state transition paths; invalid transitions throw DomainError. | ❌ Not Started |
-| 3.3 | MP-42 | Commands: CreateTentative, Confirm, Release, Reduce, Expire | Handler processes all 5 commands, emitting correct domain events for each. | ❌ Not Started |
-| 3.4 | MP-42 | Projection (keyed by Product×SP, active totals by state) | Reservation events automatically update projection table totals; tested with event streams. | ❌ Not Started |
-| 3.5 | MP-42 | Integration with Material Availability (subtract active reservations) | Net availability queries correctly reduce returned stock values by active reservation amounts. | ❌ Not Started |
-| 3.6 | MP-42 | TTL/expiry sweeper | Background process periodically identifies and expires tentative reservations past TTL. | ❌ Not Started |
+| 3.1 | MP-05, MP-42 | MaterialReservation aggregate (deterministic ID, idempotency key) | Reservation created with unique ID; duplicates with same idempotency key are rejected. | ✔️ Completed |
+| 3.2 | MP-42 | Lifecycle: Tentative → Confirmed → Released/Expired/Reduced | Unit tests verify all valid state transition paths; invalid transitions throw DomainError. | ✔️ Completed |
+| 3.3 | MP-42 | Commands: CreateTentative, Confirm, Release, Reduce, Expire | Handler processes all 5 commands, emitting correct domain events for each. | ✔️ Completed |
+| 3.4 | MP-42 | Projection (keyed by Product×SP, active totals by state) | Reservation events automatically update projection table totals; tested with event streams. | ✔️ Completed |
+| 3.5 | MP-42 | Integration with Material Availability (subtract active reservations) | Net availability queries correctly reduce returned stock values by active reservation amounts. | ✔️ Completed |
+| 3.6 | MP-42 | TTL/expiry sweeper | Background process periodically identifies and expires tentative reservations past TTL. | ✔️ Completed |
 
 ---
 
 ### Phase 4 — Routing & Process Master Data
-**Wave**: 1 | **Status**: ❌ Not Started
+**Wave**: 1 | **Status**: ✔️ Completed
 
 **Architecture Note**: Routing is **master data** (not owned by Capacity CTP or MRP). Capacity CTP owns Work Routing **knowledge** (looks up routing for capacity checking). Transport ATP owns Transport Routing **knowledge**.
 
 | Sub-Phase | Feature(s) | Description | Exit Gate | Status |
 |-----------|-----------|-------------|-----------|--------|
-| 4.1 | MP-06 | Routing aggregate (steps, precedence, validity, preferences) | Routing aggregate defined; validation catches invalid precedence sequences or circular steps. | ❌ Not Started |
-| 4.2 | MP-06 | Qty-duration calculation (base + qty × rate, with fallback) | Duration formula calculates operation times correctly; uses fallback default when rates are missing. | ❌ Not Started |
-| 4.3 | MP-06 | Alternates modeling & policy-driven selection (Fastest/Cheapest/Balanced) | Selector matches configured policy constraints and returns the correct alternate path. | ❌ Not Started |
-| 4.4 | MP-45 | Rework/inspection step modeling (yield, rework duration) | Model incorporates scrap yield and recalculates total run times for loop-back rework steps. | ❌ Not Started |
-| 4.5 | MP-41 | Routing/alternate selection primitives | Selection policy primitives (Fastest, Cheapest, Balanced) compile. | ❌ Not Started |
-| 4.6 | MP-06 | Routing unit tests (selection, validity, qty-duration, rework steps, alternates) | Test suite runs green; achieves >90% coverage on routing calculation logic. | ❌ Not Started |
+| 4.1 | MP-06 | Routing aggregate & static validations | Routing defined; validation catches invalid sequence ordering, duplicate step IDs, and invalid loop references. | ✔️ Completed |
+| 4.2 | MP-06 | Qty-duration, cost, and efficiency math | Duration and cost formulas calculate times and costs using run-rates, setup, and resource efficiencies. | ✔️ Completed |
+| 4.3 | MP-45 | Rework/inspection step modeling | Solver nets step-level quantities under scrap yield and loop-back rework rates using fixed-point iteration. | ✔️ Completed |
+| 4.4 | MP-06 | Alternate selection & preference priority | Selector matches Fastest/Cheapest/Balanced policies and obeys PreferencePriority. | ✔️ Completed |
+| 4.5 | MP-41 | Ingestion mappings | Routing adapter parses and maps SetupHours to step resource setup minutes. | ✔️ Completed |
+| 4.6 | MP-06 | Routing & selection unit tests | Tests run green with >90% coverage on validation, calculation, and selection logic. | ✔️ Completed |
 
 ---
 

@@ -363,21 +363,50 @@ module Program =
         let routingRows =
             routings
             |> List.collect (fun r ->
-                r.Steps
-                |> List.map (fun s ->
-                    let resIdStr = s.ResourceGroupId |> Option.defaultValue ""
+                match r.Details with
+                | Medhavi.Contracts.Domain.RoutingDetails.Work work ->
+                    work.Steps
+                    |> List.map (fun s ->
+                        let resIdStr =
+                            s.ResourceRequirements
+                            |> List.tryHead
+                            |> Option.map (fun req ->
+                                req.Options
+                                |> List.tryHead
+                                |> Option.map (fun o -> o.ResourceGroupId)
+                                |> Option.defaultValue req.RequirementId)
+                            |> Option.defaultValue ""
 
-                    let yieldStr =
-                        s.Yield
-                        |> Option.map (fun y -> y.ToString())
-                        |> Option.defaultValue "1.0"
+                        let yieldStr =
+                            match s.YieldPolicy with
+                            | Medhavi.Contracts.Domain.StepYieldPolicy.NoYieldLoss -> "1.0"
+                            | Medhavi.Contracts.Domain.StepYieldPolicy.ExpectedYield y -> y.ToString()
 
-                    [| r.Id; s.StepId; s.Sequence.ToString(); resIdStr; yieldStr |]))
+                        [| r.Id
+                           $"WORK: {work.ProductId}"
+                           s.StepId
+                           s.Sequence.ToString()
+                           resIdStr
+                           yieldStr |])
+                | Medhavi.Contracts.Domain.RoutingDetails.Transport trans ->
+                    [ [| r.Id
+                         $"TRANSPORT: {trans.SkuId}"
+                         "Move"
+                         "-"
+                         $"{trans.FromNodeId} -> {trans.ToNodeId}"
+                         $"Lead: {trans.TransitLeadTime}m" |] ]
+                | Medhavi.Contracts.Domain.RoutingDetails.Purchase pur ->
+                    [ [| r.Id
+                         $"PURCHASE: {pur.SkuId}"
+                         "Buy"
+                         "-"
+                         $"Supplier: {pur.SupplierId}"
+                         $"Lead: {pur.SupplierLeadTime}m" |] ])
             |> List.toArray
 
         printTable
-            "ROUTINGS AND PRODUCTION STEPS"
-            [| "ROUTING ID"; "STEP ID"; "SEQ"; "RESOURCE GROUP"; "YIELD" |]
+            "ROUTINGS AND PRODUCTION/LOGISTICS PATHS"
+            [| "ROUTING ID"; "TYPE/SKU"; "STEP/OP"; "SEQ"; "RESOURCE GROUP / PATH"; "YIELD / LEAD" |]
             routingRows
 
         // 5. Transport Legs Table

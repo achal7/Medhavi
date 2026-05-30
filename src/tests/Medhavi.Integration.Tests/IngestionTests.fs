@@ -81,16 +81,20 @@ module IngestionTests =
               )
 
               testCase "should parse Routings and Steps from CSV completely (grouping steps)" (fun () ->
-                  let csv = "SkuId,Sequence,ResourceId,SetupHours,RunHoursPerUnit\nSKU-1,10,RES-1,1.5,0.25\nSKU-1,20,RES-2,0.5,0.1"
-                  let res = Medhavi.Integration.Adapters.Routing.ACL.parse csv "" ""
+                  let routingCsv = "RoutingId,Name,RoutingType,SkuId,StockingPointId,EffectiveStart,PreferencePriority,IsPreferred,CostPolicyType\nROUTING-SKU-1,Routing for SKU-1,Work,SKU-1,SP-FACTORY,2026-01-01T00:00:00Z,1,true,NoRoutingCost"
+                  let stepsCsv = "RoutingId,StepId,Sequence,OperationCode,Name,ResourceRequirementId,ResourceKind,ResourceLoadBasis,ResourceRequiredUnits,ResourceSelectionRule,OptionId,ResourceGroupId,ResourceId,SetupTimeMinutes,RunTimePerBaseQuantityMinutes\nROUTING-SKU-1,STEP-SKU-1-10,10,OP-10,Step 10,REQ-10,WorkCenter,PerUnit,1.0,AnyAllowed,OPT-10,RG-1,RES-1,90.0,15.0\nROUTING-SKU-1,STEP-SKU-1-20,20,OP-20,Step 20,REQ-20,WorkCenter,PerUnit,1.0,AnyAllowed,OPT-20,RG-2,RES-2,30.0,6.0"
+                  let res = Medhavi.Integration.Adapters.Routing.ACL.parse routingCsv stepsCsv "" ""
                   match res with
                   | Error err -> failwithf "Failed CSV: %s" err
                   | Ok list ->
                       test <@ list.Length = 1 @>
                       test <@ list.[0].Id = "ROUTING-SKU-1" @>
-                      test <@ list.[0].Steps.Length = 2 @>
-                      test <@ list.[0].Steps.[0].Sequence = 10 @>
-                      test <@ list.[0].Steps.[0].ResourceGroupId = Some "RES-1" @>
+                      match list.[0].Details with
+                      | WorkDetails work ->
+                          test <@ work.Steps.Length = 2 @>
+                          test <@ work.Steps.[0].Sequence = 10 @>
+                          test <@ work.Steps.[0].ResourceRequirements.[0].Options.[0].ResourceId = Some "RES-1" @>
+                      | _ -> failwith "Expected WorkDetails"
               )
 
               testCase "should parse TransportLegs CSV completely (handling constraints splitting)" (fun () ->
@@ -276,9 +280,9 @@ module IngestionTests =
 
                   // Seed inventory (on-hand = 100)
                   let invReq = {
-                      Id = "INV-1"
-                      SkuId = "SKU-BIKE"
-                      StockingPointId = "SP-WAREHOUSE"
+                      Id = "INV-SKU-BIKE-PROJ-SP-WAREHOUSE-PROJ"
+                      SkuId = "SKU-BIKE-PROJ"
+                      StockingPointId = "SP-WAREHOUSE-PROJ"
                       Quantity = 100m
                       UnitOfMeasure = "UOM-PCS"
                   }
@@ -288,8 +292,8 @@ module IngestionTests =
                   let orderReq : SupplyOrderCreateReq = {
                       Id = "ORDER-1"
                       OrderType = "purchaseorder"
-                      SkuId = "SKU-BIKE"
-                      StockingPointId = "SP-WAREHOUSE"
+                      SkuId = "SKU-BIKE-PROJ"
+                      StockingPointId = "SP-WAREHOUSE-PROJ"
                       Quantity = 50m
                       UnitOfMeasure = "UOM-PCS"
                       RoutingId = None
@@ -307,8 +311,8 @@ module IngestionTests =
                   let resvReq: MaterialReservationCreateReq = {
                       Id = "RES-1"
                       IdempotencyKey = "idem-key-1"
-                      SkuId = "SKU-BIKE"
-                      StockingPointId = "SP-WAREHOUSE"
+                      SkuId = "SKU-BIKE-PROJ"
+                      StockingPointId = "SP-WAREHOUSE-PROJ"
                       Quantity = 30m
                       RequiredDate = DateTimeOffset.UtcNow.AddDays(20.0)
                       ExpiryTime = DateTimeOffset.UtcNow.AddDays(5.0)
@@ -318,7 +322,7 @@ module IngestionTests =
                   // Query time-phased availability
                   let startDate = DateTimeOffset.UtcNow
                   let dailyRes =
-                      MaterialProvider.getDateWiseAvailability supply "SKU-BIKE" "SP-WAREHOUSE" startDate 30
+                      MaterialProvider.getDateWiseAvailability supply "SKU-BIKE-PROJ" "SP-WAREHOUSE-PROJ" startDate 30
                       |> Async.RunSynchronously
 
                   match dailyRes with
