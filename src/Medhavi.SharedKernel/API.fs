@@ -108,3 +108,24 @@ type MaterialReservationApi =
       Expire: MaterialReservationExpireReq -> TaskResult<MaterialReservation, ApplicationError>
       QueryService: QueryService<MaterialReservation, string> }
 
+type ResourceGroupApi =
+    { Define: ResourceGroupDefineReq -> TaskResult<ResourceGroup, ApplicationError>
+      DefineBulk: ResourceGroupDefineReq list -> TaskResult<ResourceGroup list, ApplicationError>
+      Rename: ResourceGroupRenameReq -> TaskResult<ResourceGroup, ApplicationError>
+      Retire: ResourceGroupRetireReq -> TaskResult<ResourceGroup, ApplicationError>
+      QueryService: QueryService<ResourceGroup, string> }
+
+type StandardResourceApi =
+    { Define: StandardResourceDefineReq -> TaskResult<StandardResource, ApplicationError>
+      DefineBulk: StandardResourceDefineReq list -> TaskResult<StandardResource list, ApplicationError>
+      Rename: StandardResourceRenameReq -> TaskResult<StandardResource, ApplicationError>
+      Retire: StandardResourceRetireReq -> TaskResult<StandardResource, ApplicationError>
+      QueryService: QueryService<StandardResource, string> }
+
+type PhysicalResourceApi =
+    { Define: PhysicalResourceDefineReq -> TaskResult<PhysicalResource, ApplicationError>
+      DefineBulk: PhysicalResourceDefineReq list -> TaskResult<PhysicalResource list, ApplicationError>
+      Rename: PhysicalResourceRenameReq -> TaskResult<PhysicalResource, ApplicationError>
+      Retire: PhysicalResourceRetireReq -> TaskResult<PhysicalResource, ApplicationError>
+      QueryService: QueryService<PhysicalResource, string> }
+

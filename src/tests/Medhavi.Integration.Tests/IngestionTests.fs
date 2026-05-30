@@ -69,15 +69,39 @@ module IngestionTests =
                       test <@ nodes.[0].Id = "SP-1" @>
               )
 
-              testCase "should parse Resources CSV completely" (fun () ->
-                  let csv = "ResourceId,Name,NodeId,IsActive\nRES-1,Assembly Line,SP-1,true"
-                  let res = Medhavi.Integration.Adapters.Resource.ACL.parse csv
+              testCase "should parse Resource Groups CSV completely" (fun () ->
+                  let csv = "ResourceGroupId,PlantId,Name,Description,DefaultCalendarId,IsActive\nRG-1,PLANT-1,Group 1,Desc,CAL-1,true"
+                  let res = Medhavi.Integration.Adapters.Resource.ACL.parseResourceGroups csv
                   match res with
                   | Error err -> failwithf "Failed CSV: %s" err
                   | Ok list ->
                       test <@ list.Length = 1 @>
-                      test <@ list.[0].ResourceId = "RES-1" @>
-                      test <@ list.[0].NodeId = "SP-1" @>
+                      test <@ list.[0].ResourceGroupId = "RG-1" @>
+                      test <@ list.[0].PlantId = Some "PLANT-1" @>
+              )
+
+              testCase "should parse Standard Resources CSV completely" (fun () ->
+                  let csv = "StandardResourceId,ResourceGroupId,Name,Description,DefaultEfficiency,DefaultCostRateAmount,DefaultCostRateCurrency,IsActive\nSR-1,RG-1,Standard 1,Desc,0.85,150.0,USD,true"
+                  let res = Medhavi.Integration.Adapters.Resource.ACL.parseStandardResources csv
+                  match res with
+                  | Error err -> failwithf "Failed CSV: %s" err
+                  | Ok list ->
+                      test <@ list.Length = 1 @>
+                      test <@ list.[0].StandardResourceId = "SR-1" @>
+                      test <@ list.[0].ResourceGroupId = "RG-1" @>
+                      test <@ list.[0].DefaultEfficiency = 0.85M @>
+              )
+
+              testCase "should parse Physical Resources CSV completely" (fun () ->
+                  let csv = "PhysicalResourceId,StandardResourceId,Name,SerialNumber,Location,EfficiencyOverride,CostRateOverrideAmount,CostRateOverrideCurrency,CalendarId,IsActive\nPR-1,SR-1,Physical 1,SN123,Room A,0.90,120.0,USD,CAL-2,true"
+                  let res = Medhavi.Integration.Adapters.Resource.ACL.parsePhysicalResources csv
+                  match res with
+                  | Error err -> failwithf "Failed CSV: %s" err
+                  | Ok list ->
+                      test <@ list.Length = 1 @>
+                      test <@ list.[0].PhysicalResourceId = "PR-1" @>
+                      test <@ list.[0].StandardResourceId = "SR-1" @>
+                      test <@ list.[0].EfficiencyOverride = Some 0.90M @>
               )
 
               testCase "should parse Routings and Steps from CSV completely (grouping steps)" (fun () ->

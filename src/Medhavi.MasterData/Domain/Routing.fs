@@ -132,11 +132,6 @@ type RoutingResourceOptionId = RoutingResourceOptionId of string
 module RoutingResourceOptionId =
     let value (RoutingResourceOptionId v) = v
 
-type WorkCenterId = WorkCenterId of string
-
-module WorkCenterId =
-    let value (WorkCenterId v) = v
-
 type RoutingResourceRequirementId = RoutingResourceRequirementId of string
 
 module RoutingResourceRequirementId =
@@ -146,7 +141,6 @@ type RoutingResourceOption =
     { OptionId: RoutingResourceOptionId
 
       ResourceGroupId: ResourceGroupId
-      ResourceId: ResourceId option
       WorkCenterId: WorkCenterId option
 
       Usage: ResourceUsage
@@ -181,11 +175,6 @@ type RoutingStepResourceRequirement =
 type StepYieldPolicy =
     | NoYieldLoss
     | ExpectedYield of Percent
-
-type RoutingStepId = RoutingStepId of string
-
-module RoutingStepId =
-    let value (RoutingStepId v) = v
 
 type ReworkPolicy =
     | NoRework
@@ -249,7 +238,6 @@ type TransportResourceOption =
     { OptionId: RoutingResourceOptionId
 
       ResourceGroupId: ResourceGroupId option
-      ResourceId: ResourceId option
       CarrierId: CarrierId option
 
       Usage: ResourceUsage
@@ -621,10 +609,9 @@ module private RoutingValidationHelpers =
         <*> validatePositiveOpt "Quantity ratio to primary output" output.QuantityRatioToPrimaryOutput
 
     let validateResourceOption (opt: DefineRoutingResourceOption) =
-        let makeOption optId rgId resId wcId priority setup run teardown cooling minLead cost eff period =
+        let makeOption optId rgId wcId priority setup run teardown cooling minLead cost eff period =
             { OptionId = RoutingResourceOptionId optId
               ResourceGroupId = rgId
-              ResourceId = resId
               WorkCenterId = wcId
               Usage = opt.Usage
               Priority = priority
@@ -643,10 +630,9 @@ module private RoutingValidationHelpers =
         makeOption opt.OptionId
         <!> (ResourceGroupId.create opt.ResourceGroupId
              |> fromResult)
-        <*> optionalStringId ResourceId.create opt.ResourceId
         <*> (match opt.WorkCenterId with
              | None -> Valid None
-             | Some wc -> Valid(Some(WorkCenterId wc)))
+             | Some wc -> WorkCenterId.create wc |> fromResult |> Medhavi.Common.Validation.map Some)
         <*> Valid opt.Priority
         <*> validateDurationOpt "Setup time" opt.SetupTime
         <*> validateDurationOpt "Run time per base quantity" opt.RunTimePerBaseQuantity
@@ -692,7 +678,7 @@ module private RoutingValidationHelpers =
 
     let validateStep (step: DefineRoutingStep) =
         let makeStep stepId name desc inputs outputs reqs timing period =
-            { StepId = RoutingStepId stepId
+            { StepId = stepId
               Sequence = step.Sequence
               OperationCode = step.OperationCode
               Name = name
@@ -707,8 +693,9 @@ module private RoutingValidationHelpers =
               OverlapPolicy = step.OverlapPolicy
               EffectivePeriod = period }
 
-        makeStep step.StepId
-        <!> requiredText "Step name" step.Name
+        makeStep
+        <!> (RoutingStepId.create step.StepId |> fromResult)
+        <*> requiredText "Step name" step.Name
         <*> Valid step.Description
         <*> traverse validateStepInput step.Inputs
         <*> traverse validateStepOutput step.Outputs
@@ -741,7 +728,7 @@ module private RoutingValidationHelpers =
                     steps
                     |> List.choose (fun s ->
                         match s.ReworkPolicy with
-                        | ReworkToStep(RoutingStepId refId, rate) -> Some(s.StepId, refId, rate)
+                        | ReworkToStep(refId, rate) -> Some(s.StepId, RoutingStepId.value refId, rate)
                         | NoRework -> None)
                     |> List.filter (fun (_, refId, _) -> not (List.contains refId stepIds))
 
@@ -794,10 +781,9 @@ module private RoutingValidationHelpers =
         <*> validateStepsList work.Steps
 
     let validateTransportResourceOption (opt: DefineTransportResourceOption) =
-        let makeOption optId rgId resId carrierId priority transit loading unloading costUnit costTrip period =
+        let makeOption optId rgId carrierId priority transit loading unloading costUnit costTrip period =
             { OptionId = RoutingResourceOptionId optId
               ResourceGroupId = rgId
-              ResourceId = resId
               CarrierId = carrierId
               Usage = opt.Usage
               Priority = priority
@@ -810,7 +796,6 @@ module private RoutingValidationHelpers =
 
         makeOption opt.OptionId
         <!> optionalStringId ResourceGroupId.create opt.ResourceGroupId
-        <*> optionalStringId ResourceId.create opt.ResourceId
         <*> (match opt.CarrierId with
              | None -> Valid None
              | Some c -> Valid(Some(CarrierId c)))

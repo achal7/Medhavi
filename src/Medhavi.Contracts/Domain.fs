@@ -190,7 +190,6 @@ type ResourceTimingProfile =
 type RoutingResourceOption =
     { OptionId: string
       ResourceGroupId: string
-      ResourceId: string option
       WorkCenterId: string option
       Usage: ResourceUsage
       Priority: int option
@@ -209,6 +208,42 @@ type RoutingStepResourceRequirement =
       RequiredUnits: decimal
       SelectionRule: ResourceSelectionRule
       Options: RoutingResourceOption list }
+
+type ResourceGroup =
+    { Id: string
+      PlantId: string option
+      Name: string
+      Description: string option
+      DefaultCalendarId: string option
+      IsActive: bool
+      Created: DateTimeOffset
+      Modified: DateTimeOffset }
+
+type StandardResource =
+    { Id: string
+      ResourceGroupId: string
+      Name: string
+      Description: string option
+      DefaultEfficiency: decimal
+      DefaultCostRateAmount: decimal option
+      DefaultCostRateCurrency: string option
+      IsActive: bool
+      Created: DateTimeOffset
+      Modified: DateTimeOffset }
+
+type PhysicalResource =
+    { Id: string
+      StandardResourceId: string
+      Name: string
+      SerialNumber: string option
+      Location: string option
+      EfficiencyOverride: decimal option
+      CostRateOverrideAmount: decimal option
+      CostRateOverrideCurrency: string option
+      CalendarId: string option
+      IsActive: bool
+      Created: DateTimeOffset
+      Modified: DateTimeOffset }
 
 type StepYieldPolicy =
     | NoYieldLoss
@@ -259,7 +294,6 @@ type TransportMode =
 type TransportResourceOption =
     { OptionId: string
       ResourceGroupId: string option
-      ResourceId: string option
       CarrierId: string option
       Usage: ResourceUsage
       Priority: int option
@@ -347,8 +381,6 @@ type SeasonalAdjustment =
       PeriodEnd: DateTimeOffset
       AdjustmentFactor: decimal }
 
-
-
 type ReplenishmentPolicy =
     { Safety: decimal
       MinQty: decimal option
@@ -425,13 +457,14 @@ type MaterialSnapshot =
       Reservations: (DateTimeOffset * decimal) list
       Safety: decimal }
 
-type ProviderError =
-    | UnknownError of string
+type ProviderError = UnknownError of string
 
 type MaterialProvider =
     { GetSnapshot: string -> string -> DateTimeOffset -> Async<Result<MaterialSnapshot, ProviderError>>
-      GetSupplierOptions: string -> string option -> decimal -> DateTimeOffset -> Async<Result<SupplierOffer list, ProviderError>>
-      GetDateWiseAvailability: string -> string -> DateTimeOffset -> int -> Async<Result<(DateTimeOffset * decimal) list, ProviderError>> }
+      GetSupplierOptions:
+          string -> string option -> decimal -> DateTimeOffset -> Async<Result<SupplierOffer list, ProviderError>>
+      GetDateWiseAvailability:
+          string -> string -> DateTimeOffset -> int -> Async<Result<(DateTimeOffset * decimal) list, ProviderError>> }
 
 type MaterialReservation =
     { Id: string

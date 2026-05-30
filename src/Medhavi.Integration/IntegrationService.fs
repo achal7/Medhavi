@@ -42,7 +42,9 @@ module IntegrationService =
               fun () -> Sku.ingestAndPublishSkus "products.csv" store
               fun () -> UnitConversion.ingestAndPublishUnitConversions "unit_conversions.csv" store
               fun () -> StockingPoint.ingestAndPublishStockingPoints "stocking_points.csv" store
-              fun () -> Resource.ingestAndPublishResources "resources.csv" store
+              fun () -> Resource.ingestAndPublishResourceGroups "resource_groups.csv" store
+              fun () -> Resource.ingestAndPublishStandardResources "standard_resources.csv" store
+              fun () -> Resource.ingestAndPublishPhysicalResources "physical_resources.csv" store
               fun () -> Bom.ingestAndPublishBoms "boms.csv" store
               fun () -> Routing.ingestAndPublishRoutings "routings.csv" store
               fun () -> TransportLeg.ingestAndPublishTransportLegs "transport_legs.csv" store

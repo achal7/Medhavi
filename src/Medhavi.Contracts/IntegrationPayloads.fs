@@ -20,10 +20,34 @@ type StockingPointImportedPayload =
       Name: string
       IsActive: bool }
 
-type ResourceImportedPayload =
-    { ResourceId: string
+type ResourceGroupImportedPayload =
+    { ResourceGroupId: string
+      PlantId: string option
       Name: string
-      NodeId: string
+      Description: string option
+      DefaultCalendarId: string option
+      IsActive: bool }
+
+type StandardResourceImportedPayload =
+    { StandardResourceId: string
+      ResourceGroupId: string
+      Name: string
+      Description: string option
+      DefaultEfficiency: decimal
+      DefaultCostRateAmount: decimal option
+      DefaultCostRateCurrency: string option
+      IsActive: bool }
+
+type PhysicalResourceImportedPayload =
+    { PhysicalResourceId: string
+      StandardResourceId: string
+      Name: string
+      SerialNumber: string option
+      Location: string option
+      EfficiencyOverride: decimal option
+      CostRateOverrideAmount: decimal option
+      CostRateOverrideCurrency: string option
+      CalendarId: string option
       IsActive: bool }
 
 type RoutingStepResourceOptionImportedPayload =
@@ -75,7 +99,9 @@ type MasterDataPayload =
     { Products: ProductImportedPayload list
       Boms: BomLineImportedPayload list
       StockingPoints: StockingPointImportedPayload list
-      Resources: ResourceImportedPayload list
+      ResourceGroups: ResourceGroupImportedPayload list
+      StandardResources: StandardResourceImportedPayload list
+      PhysicalResources: PhysicalResourceImportedPayload list
       Routings: RoutingImportedPayload list
       Suppliers: SupplierImportedPayload list }
 

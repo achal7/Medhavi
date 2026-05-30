@@ -15,6 +15,9 @@
     <Compile Include="Domain\BillofMaterials.fs" />
     <Compile Include="Domain\Routing.fs" />
     <Compile Include="Domain\TransportLeg.fs" />
+    <Compile Include="Domain\ResourceGroup.fs" />
+    <Compile Include="Domain\StandardResource.fs" />
+    <Compile Include="Domain\PhysicalResource.fs" />
 
     <Compile Include="Application\UnitOfMeasure.fs" />
     <Compile Include="Application\UoMConversion.fs" />
@@ -25,6 +28,9 @@
     <Compile Include="Application\BillOfMaterials.fs" />
     <Compile Include="Application\Routing.fs" />
     <Compile Include="Application\TransportLeg.fs" />
+    <Compile Include="Application\ResourceGroup.fs" />
+    <Compile Include="Application\StandardResource.fs" />
+    <Compile Include="Application\PhysicalResource.fs" />
     <Compile Include="BoundedContext.fs" />
     <Compile Include="Application\MasterDataImportedHandler.fs" />
   </ItemGroup>

@@ -222,8 +222,11 @@ module ACL =
     let toReworkPolicy (reworkStepId: string option) (reworkRate: decimal option) =
         match reworkStepId, reworkRate with
         | Some stepId, Some rate ->
-            Percent.create rate
-            |> Result.map (fun per -> ReworkPolicy.ReworkToStep(RoutingStepId stepId, per))
+            RoutingStepId.create stepId
+            |> Result.bind (fun stepId ->
+                Percent.create rate
+                |> Result.map (fun rate -> ReworkPolicy.ReworkToStep(stepId, rate)))
+            |> Result.mapError (fun err -> DomainError.validation (sprintf "Rework step id: %A" err))
         | _ -> Ok ReworkPolicy.NoRework
 
     let toOverlapPolicy (policyType: string) (policyValue: decimal option) =
@@ -592,7 +595,6 @@ module Mappers =
           ResourceGroupId =
             opt.ResourceGroupId
             |> Option.map ResourceGroupId.value
-          ResourceId = opt.ResourceId |> Option.map ResourceId.value
           CarrierId = opt.CarrierId |> Option.map CarrierId.value
           Usage = mapResourceUsage opt.Usage
           Priority = opt.Priority
@@ -619,7 +621,6 @@ module Mappers =
     let mapWorkResourceOption (opt: RoutingResourceOption) : Medhavi.Contracts.Domain.RoutingResourceOption =
         { OptionId = RoutingResourceOptionId.value opt.OptionId
           ResourceGroupId = ResourceGroupId.value opt.ResourceGroupId
-          ResourceId = opt.ResourceId |> Option.map ResourceId.value
           WorkCenterId = opt.WorkCenterId |> Option.map WorkCenterId.value
           Usage = mapResourceUsage opt.Usage
           Priority = opt.Priority

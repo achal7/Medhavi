@@ -11,6 +11,7 @@ open Medhavi.Supply
 open Medhavi.Supply.Application
 open Medhavi.Infrastructure.Stores.EnvelopeStore
 open Medhavi.Infrastructure.Stores.EnvelopeStoreMem
+open Medhavi.Contracts.Integration
 
 module Program =
     open Medhavi.Common.Patterns
@@ -151,7 +152,45 @@ module Program =
                     | PlantsImported plants ->
                         let! _ = masterDataContext.Plant.DefineBulk(plants)
                         ()
-                    | ResourcesImported resources -> logger.LogError(" Pending...")
+                    | ResourceGroupsImported groups ->
+                        let reqs = groups |> List.map (fun p ->
+                            { Id = p.ResourceGroupId
+                              PlantId = p.PlantId
+                              Name = p.Name
+                              Description = p.Description
+                              DefaultCalendarId = p.DefaultCalendarId
+                              IsActive = p.IsActive
+                              Created = DateTimeOffset.UtcNow } : ResourceGroupDefineReq)
+                        let! _ = masterDataContext.ResourceGroup.DefineBulk(reqs)
+                        ()
+                    | StandardResourcesImported standards ->
+                        let reqs = standards |> List.map (fun p ->
+                            { Id = p.StandardResourceId
+                              ResourceGroupId = p.ResourceGroupId
+                              Name = p.Name
+                              Description = p.Description
+                              DefaultEfficiency = p.DefaultEfficiency
+                              DefaultCostRateAmount = p.DefaultCostRateAmount
+                              DefaultCostRateCurrency = p.DefaultCostRateCurrency
+                              IsActive = p.IsActive
+                              Created = DateTimeOffset.UtcNow } : StandardResourceDefineReq)
+                        let! _ = masterDataContext.StandardResource.DefineBulk(reqs)
+                        ()
+                    | PhysicalResourcesImported physicals ->
+                        let reqs = physicals |> List.map (fun p ->
+                            { Id = p.PhysicalResourceId
+                              StandardResourceId = p.StandardResourceId
+                              Name = p.Name
+                              SerialNumber = p.SerialNumber
+                              Location = p.Location
+                              EfficiencyOverride = p.EfficiencyOverride
+                              CostRateOverrideAmount = p.CostRateOverrideAmount
+                              CostRateOverrideCurrency = p.CostRateOverrideCurrency
+                              CalendarId = p.CalendarId
+                              IsActive = p.IsActive
+                              Created = DateTimeOffset.UtcNow } : PhysicalResourceDefineReq)
+                        let! _ = masterDataContext.PhysicalResource.DefineBulk(reqs)
+                        ()
                     | SupplyOffersImported supplyOffers ->
                         let! _ = supplyContext.SupplierOffer.DefineBulk(supplyOffers)
                         ()

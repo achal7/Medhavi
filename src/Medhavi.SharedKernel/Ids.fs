@@ -25,6 +25,17 @@ module PlantId =
     let value (PlantId id) = id
 
 [<JsonFSharpConverter>]
+type CalendarId = CalendarId of string
+
+module CalendarId =
+    let create id =
+        if System.String.IsNullOrWhiteSpace id then
+            Error (DomainError.validation "CalendarId cannot be empty")
+        else
+            Ok (CalendarId id)
+    let value (CalendarId id) = id
+
+[<JsonFSharpConverter>]
 type StockingPointId = private StockingPointId of string
 
 module StockingPointId =
@@ -44,13 +55,6 @@ type ResourceGroupId = private ResourceGroupId of string
 module ResourceGroupId =
     let create = IdsFactory.createExplicitId ResourceGroupId "ResourceGroupId"
     let value (ResourceGroupId id) = id
-
-[<JsonFSharpConverter>]
-type ResourceId = private ResourceId of string
-
-module ResourceId =
-    let create = IdsFactory.createExplicitId ResourceId "ResourceId"
-    let value (ResourceId id) = id
 
 [<JsonFSharpConverter>]
 type StandardResourceId = private StandardResourceId of string
@@ -74,11 +78,62 @@ module CombinedResourceId =
     let value (CombinedResourceId id) = id
 
 [<JsonFSharpConverter>]
+type CapacityReservationId = private CapacityReservationId of string
+
+module CapacityReservationId =
+    let create =
+        IdsFactory.createExplicitId CapacityReservationId "CapacityReservationId"
+
+    let value (CapacityReservationId id) = id
+
+[<JsonFSharpConverter>]
+type CapacityRequirementId = private CapacityRequirementId of string
+
+module CapacityRequirementId =
+    let create =
+        IdsFactory.createExplicitId CapacityRequirementId "CapacityRequirementId"
+
+    let value (CapacityRequirementId id) = id
+
+[<JsonFSharpConverter>]
+type CapacityBucketId = private CapacityBucketId of string
+
+module CapacityBucketId =
+    let create (resId: PhysicalResourceId) (window: Window) =
+        let resVal = PhysicalResourceId.value resId
+        let startVal = Timestamp.value window.Start
+        let endVal = Timestamp.value window.End
+        CapacityBucketId $"{resVal}_{startVal:yyyyMMddHHmmss}_{endVal:yyyyMMddHHmmss}"
+
+    let value (CapacityBucketId id) = id
+
+[<JsonFSharpConverter>]
+type WorkCenterId = private WorkCenterId of string
+
+module WorkCenterId =
+    let create = IdsFactory.createExplicitId WorkCenterId "WorkCenterId"
+    let value (WorkCenterId id) = id
+
+[<JsonFSharpConverter>]
 type RoutingId = private RoutingId of string
 
 module RoutingId =
     let create = IdsFactory.createExplicitId RoutingId "RoutingId"
     let value (RoutingId id) = id
+
+[<JsonFSharpConverter>]
+type RoutingStepId = private RoutingStepId of string
+
+module RoutingStepId =
+    let create = IdsFactory.createExplicitId RoutingStepId "RoutingStepId"
+    let value (RoutingStepId id) = id
+
+[<JsonFSharpConverter>]
+type OperationId = private OperationId of string
+
+module OperationId =
+    let create = IdsFactory.createExplicitId OperationId "OperationId"
+    let value (OperationId id) = id
 
 [<JsonFSharpConverter>]
 type SupplierId = private SupplierId of string

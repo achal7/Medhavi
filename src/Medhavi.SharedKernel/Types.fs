@@ -126,7 +126,11 @@ type PositiveDecimal =
 
 /// Percent in the range [0.0, 1.0]
 [<JsonFSharpConverter>]
-type Percent = private Percent of decimal
+type Percent =
+    | Percent of decimal
+
+    static member Zero = Percent 0m
+    static member Hundred = Percent 1m
 
 module Percent =
     let create (value: decimal) =
@@ -276,4 +280,3 @@ module Revision =
             Error(DomainError.validation "Revision must be non-negative")
         else
             Ok(Revision value)
-

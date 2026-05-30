@@ -24,7 +24,9 @@ type IntegrationEvent =
     | SkusImported of SkuDefineReq list
     | StockingPointsImported of StockingPointDefineReq list
     | PlantsImported of PlantDefineReq list
-    | ResourcesImported of ResourceImportedPayload list
+    | ResourceGroupsImported of ResourceGroupImportedPayload list
+    | StandardResourcesImported of StandardResourceImportedPayload list
+    | PhysicalResourcesImported of PhysicalResourceImportedPayload list
     | SupplyOffersImported of SupplierOfferDefineReq list
     | DemandSignalsImported of DemandSignalsPayload
     | InventoryPositionsImported of InventoryDefineReq list

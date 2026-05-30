@@ -206,7 +206,7 @@ module RoutingTests =
                           work.Steps
                           |> List.map (fun s ->
                               if s.StepId = "STEP-10" then
-                                  { s with ReworkPolicy = ReworkPolicy.ReworkToStep(RoutingStepId "STEP-NONEXISTENT", getPercent 0.5m) }
+                                  { s with ReworkPolicy = ReworkPolicy.ReworkToStep(getSomeId "RoutingStepId" RoutingStepId.create "STEP-NONEXISTENT", getPercent 0.5m) }
                               else
                                   s)
                       let cmd = { cmd with Details = DefineRoutingDetails.Work { work with Steps = steps } }
@@ -312,7 +312,7 @@ module RoutingTests =
                   match cmd.Details with
                   | DefineRoutingDetails.Work work ->
                       let step1 = { work.Steps.[0] with StepId = "STEP-10"; Sequence = 10; YieldPolicy = StepYieldPolicy.NoYieldLoss; ReworkPolicy = ReworkPolicy.NoRework }
-                      let step2 = { work.Steps.[1] with StepId = "STEP-20"; Sequence = 20; YieldPolicy = StepYieldPolicy.ExpectedYield (getPercent 0.9m); ReworkPolicy = ReworkPolicy.ReworkToStep(RoutingStepId "STEP-10", getPercent 0.8m) }
+                      let step2 = { work.Steps.[1] with StepId = "STEP-20"; Sequence = 20; YieldPolicy = StepYieldPolicy.ExpectedYield (getPercent 0.9m); ReworkPolicy = ReworkPolicy.ReworkToStep(getSomeId "RoutingStepId" RoutingStepId.create "STEP-10", getPercent 0.8m) }
                       let cmd = { cmd with Details = DefineRoutingDetails.Work { work with Steps = [ step1; step2 ] } }
 
                       let decRes =

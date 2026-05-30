@@ -17,6 +17,9 @@ open Medhavi.MasterData.Domain.TransportAgg
 open Medhavi.MasterData.Domain.PlantAgg
 open Medhavi.MasterData.Domain.NodeAgg
 open Medhavi.MasterData.Domain.UnitConversionAgg
+open Medhavi.MasterData.Domain.ResourceGroupAgg
+open Medhavi.MasterData.Domain.StandardResourceAgg
+open Medhavi.MasterData.Domain.PhysicalResourceAgg
 
 type MasterData =
     { Uom: UomApi
@@ -28,6 +31,9 @@ type MasterData =
       Plant: PlantApi
       UnitConversion: UnitConversionApi
       Node: Node.NodeCapabilities
+      ResourceGroup: ResourceGroupApi
+      StandardResource: StandardResourceApi
+      PhysicalResource: PhysicalResourceApi
       Initialize: unit -> Task<unit>
       Dispose: unit -> unit }
 
@@ -45,6 +51,9 @@ module BoundedContext =
         let plantRepo = createInMemoryRepository<Plant, string, PlantEvent> ()
         let nodeRepo = createInMemoryRepository<Node, string, NodeEvent> ()
         let conversionRepo = createInMemoryRepository<UnitConversion, string, UnitConversionEvent> ()
+        let groupRepo = createInMemoryRepository<ResourceGroup, string, ResourceGroupEvent> ()
+        let standardRepo = createInMemoryRepository<StandardResource, string, StandardResourceEvent> ()
+        let physicalRepo = createInMemoryRepository<PhysicalResource, string, PhysicalResourceEvent> ()
 
         // 2. Capabilities
         let uomCaps = Uom.createCapabilities uomRepo
@@ -57,6 +66,9 @@ module BoundedContext =
         let plantCaps = Plant.createCapabilities plantRepo
         let nodeCaps = Node.createCapabilities nodeRepo
         let conversionCaps = UoMConversion.createCapabilities conversionRepo
+        let groupCaps = ResourceGroup.createCapabilities groupRepo
+        let standardCaps = StandardResource.createCapabilities standardRepo
+        let physicalCaps = PhysicalResource.createCapabilities physicalRepo
 
         // 3. Projection Agents
         let uomAgent = Uom.createProjectionAgent ()
@@ -67,6 +79,9 @@ module BoundedContext =
         let legAgent = TransportLeg.createProjectionAgent ()
         let plantAgent = Plant.createProjectionAgent ()
         let conversionAgent = UoMConversion.createProjectionAgent ()
+        let groupAgent = ResourceGroup.createProjectionAgent ()
+        let standardAgent = StandardResource.createProjectionAgent ()
+        let physicalAgent = PhysicalResource.createProjectionAgent ()
 
         // 4. APIs
         let uomApi = Uom.createUomApi uomCaps uomAgent
@@ -77,6 +92,9 @@ module BoundedContext =
         let legApi = TransportLeg.createTransportLegApi legCaps legAgent
         let plantApi = Plant.createPlantApi plantCaps plantAgent
         let conversionApi = UoMConversion.createUnitConversionApi conversionCaps conversionAgent
+        let groupApi = ResourceGroup.createResourceGroupApi groupCaps groupAgent
+        let standardApi = StandardResource.createStandardResourceApi standardCaps standardAgent
+        let physicalApi = PhysicalResource.createPhysicalResourceApi physicalCaps physicalAgent
 
         // 5. Subscriptions List
         let mutable subscriptions : IDisposable list = []
@@ -141,6 +159,27 @@ module BoundedContext =
                     conversionAgent.SetState(m)
                 | Error _ -> ()
 
+                let! groups = groupRepo.GetAll()
+                match groups with
+                | Ok list ->
+                    let m = list |> List.map (fun g -> ResourceGroupId.value g.Id, ResourceGroup.mapResourceGroupDto g) |> Map.ofList
+                    groupAgent.SetState(m)
+                | Error _ -> ()
+
+                let! standards = standardRepo.GetAll()
+                match standards with
+                | Ok list ->
+                    let m = list |> List.map (fun s -> StandardResourceId.value s.Id, StandardResource.mapStandardResourceDto s) |> Map.ofList
+                    standardAgent.SetState(m)
+                | Error _ -> ()
+
+                let! physicals = physicalRepo.GetAll()
+                match physicals with
+                | Ok list ->
+                    let m = list |> List.map (fun p -> PhysicalResourceId.value p.Id, PhysicalResource.mapPhysicalResourceDto p) |> Map.ofList
+                    physicalAgent.SetState(m)
+                | Error _ -> ()
+
                 // B. Subscriptions
                 subscriptions <- [
                     DomainEventBus.Subscribe<UnitOfMeasureEvent>(fun ev -> uomAgent.Post(ev, Guid.NewGuid(), None))
@@ -151,6 +190,9 @@ module BoundedContext =
                     DomainEventBus.Subscribe<TransportLegEvent>(fun ev -> legAgent.Post(ev, Guid.NewGuid(), None))
                     DomainEventBus.Subscribe<PlantEvent>(fun ev -> plantAgent.Post(ev, Guid.NewGuid(), None))
                     DomainEventBus.Subscribe<UnitConversionEvent>(fun ev -> conversionAgent.Post(ev, Guid.NewGuid(), None))
+                    DomainEventBus.Subscribe<ResourceGroupEvent>(fun ev -> groupAgent.Post(ev, Guid.NewGuid(), None))
+                    DomainEventBus.Subscribe<StandardResourceEvent>(fun ev -> standardAgent.Post(ev, Guid.NewGuid(), None))
+                    DomainEventBus.Subscribe<PhysicalResourceEvent>(fun ev -> physicalAgent.Post(ev, Guid.NewGuid(), None))
                 ]
             }
 
@@ -168,5 +210,8 @@ module BoundedContext =
           Plant = plantApi
           UnitConversion = conversionApi
           Node = nodeCaps
+          ResourceGroup = groupApi
+          StandardResource = standardApi
+          PhysicalResource = physicalApi
           Initialize = initialize
           Dispose = dispose }

@@ -434,3 +434,45 @@ type MaterialReservationConfirmReq = { Id: string }
 type MaterialReservationReleaseReq = { Id: string }
 type MaterialReservationReduceReq = { Id: string; NewQuantity: decimal }
 type MaterialReservationExpireReq = { Id: string }
+
+type ResourceGroupDefineReq =
+    { Id: string
+      PlantId: string option
+      Name: string
+      Description: string option
+      DefaultCalendarId: string option
+      IsActive: bool
+      Created: DateTimeOffset }
+
+type StandardResourceDefineReq =
+    { Id: string
+      ResourceGroupId: string
+      Name: string
+      Description: string option
+      DefaultEfficiency: decimal
+      DefaultCostRateAmount: decimal option
+      DefaultCostRateCurrency: string option
+      IsActive: bool
+      Created: DateTimeOffset }
+
+type PhysicalResourceDefineReq =
+    { Id: string
+      StandardResourceId: string
+      Name: string
+      SerialNumber: string option
+      Location: string option
+      EfficiencyOverride: decimal option
+      CostRateOverrideAmount: decimal option
+      CostRateOverrideCurrency: string option
+      CalendarId: string option
+      IsActive: bool
+      Created: DateTimeOffset }
+
+type ResourceGroupRenameReq = { Id: string; NewName: string }
+type ResourceGroupRetireReq = { Id: string }
+
+type StandardResourceRenameReq = { Id: string; NewName: string }
+type StandardResourceRetireReq = { Id: string }
+
+type PhysicalResourceRenameReq = { Id: string; NewName: string }
+type PhysicalResourceRetireReq = { Id: string }
