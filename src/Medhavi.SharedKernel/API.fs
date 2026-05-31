@@ -89,7 +89,7 @@ type SupplierOfferApi =
 type SupplyOrderApi =
     { Create: SupplyOrderCreateReq -> TaskResult<SupplyOrder, ApplicationError>
       CreateBulk: SupplyOrderCreateReq list -> TaskResult<SupplyOrder list, ApplicationError>
-      ProcessStatusUpdates: SupplyOrderStatusPayload list -> TaskResult<SupplyOrder list, ApplicationError>
+      ProcessStatusUpdates: SupplyOrderUpdateReq list -> TaskResult<SupplyOrder list, ApplicationError>
       Start: SupplyOrderStartReq -> TaskResult<SupplyOrder, ApplicationError>
       PartialComplete: SupplyOrderPartialCompleteReq -> TaskResult<SupplyOrder, ApplicationError>
       Complete: SupplyOrderCompleteReq -> TaskResult<SupplyOrder, ApplicationError>
