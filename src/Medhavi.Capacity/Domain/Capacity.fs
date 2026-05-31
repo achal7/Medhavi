@@ -1,18 +1,7 @@
 module Medhavi.Capacity.Domain.CapacityAgg
 
 open Medhavi.SharedKernel
-
-type CapacityResourceKind =
-    | Machine
-    | WorkCenter
-    | LaborPool
-    | Tool
-    | Utility
-    | Berth
-    | Conveyor
-    | RailTrack
-    | TruckFleet
-    | VesselClass
+open Medhavi.Capacity
 
 type CapacityPlanningMode =
     | Infinite
@@ -38,14 +27,6 @@ type CapacityBucketStatus =
     | Open
     | Frozen
     | Closed
-
-type CapacityLoadBasis =
-    | PerOrder
-    | PerUnit
-    | PerBatch
-    | PerTonne
-    | PerPallet
-    | PerContainer
 
 type LoadSource =
     | FromRouting

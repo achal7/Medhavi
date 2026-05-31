@@ -10,6 +10,7 @@
     <Compile Include="Tests.fs" />
     <Compile Include="SharedKernelTests.fs" />
     <Compile Include="RoutingTests.fs" />
+    <Compile Include="TransportTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
@@ -19,6 +20,7 @@
     <ProjectReference Include="..\..\Medhavi.Contracts\Medhavi.Contracts.fsproj" />
     <ProjectReference Include="..\..\Medhavi.MasterData\Medhavi.MasterData.fsproj" />
     <ProjectReference Include="..\..\Medhavi.Capacity\Medhavi.Capacity.fsproj" />
+    <ProjectReference Include="..\..\Medhavi.Transport\Medhavi.Transport.fsproj" />
   </ItemGroup>
 
   <ItemGroup>

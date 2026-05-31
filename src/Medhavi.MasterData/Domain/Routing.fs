@@ -630,7 +630,7 @@ module private RoutingValidationHelpers =
         makeOption opt.OptionId
         <!> (ResourceGroupId.create opt.ResourceGroupId
              |> fromResult)
-        <*> (match opt.WorkCenterId with
+        <*> (match opt.ResourceId |> Option.orElse opt.WorkCenterId with
              | None -> Valid None
              | Some wc -> WorkCenterId.create wc |> fromResult |> Medhavi.Common.Validation.map Some)
         <*> Valid opt.Priority

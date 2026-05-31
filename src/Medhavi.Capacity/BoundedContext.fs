@@ -8,6 +8,7 @@ open Medhavi.Infrastructure.Stores.InMemRepository
 open Medhavi.SharedKernel.BoundedContexts
 open Medhavi.Capacity.Domain.CalendarAgg
 open Medhavi.Capacity.Domain.CapacityAgg
+open Medhavi.Capacity.Domain.CapacityReservationAgg
 open Medhavi.Capacity.Domain.OperationAgg
 open Medhavi.Capacity.Domain.CapacityResourceAgg
 open Medhavi.Capacity.Application
@@ -20,10 +21,12 @@ type CapacityContext =
       Capacity: CapacityApp.CapacityCapabilities
       Operation: OperationApp.OperationCapabilities
       CapacityResource: CapacityResourceApp.CapacityResourceCapabilities
+      CapacityReservation: CapacityReservationApp.CapacityReservationCapabilities
       CalendarAgent: ProjectionAgent<Map<string, Calendar>, CalendarsEvent>
       CapacityAgent: ProjectionAgent<Map<string, CapacityBucket>, CapacityEvent>
       OperationAgent: ProjectionAgent<Map<string, Operation>, OperationEvent>
       CapacityResourceAgent: ProjectionAgent<Map<string, CapacityResource>, CapacityResourceEvent>
+      CapacityReservationAgent: ProjectionAgent<Map<string, CapacityReservation>, CapacityReservationEvent>
       Initialize: unit -> Task<unit>
       Dispose: unit -> unit }
 
@@ -41,6 +44,9 @@ module BoundedContext =
         let capacityResourceRepo =
             createInMemoryRepository<CapacityResource, string, CapacityResourceEvent> ()
 
+        let capacityReservationRepo =
+            createInMemoryRepository<CapacityReservation, string, CapacityReservationEvent> ()
+
         // 2. Capabilities
         let calendarCaps = CalendarApp.createCapabilities calendarRepo
         let capacityCaps = CapacityApp.createCapabilities capacityRepo
@@ -49,11 +55,15 @@ module BoundedContext =
         let capacityResourceCaps =
             CapacityResourceApp.createCapabilities capacityResourceRepo
 
+        let capacityReservationCaps =
+            CapacityReservationApp.createCapabilities capacityReservationRepo
+
         // 3. Projection Agents
         let calendarAgent = CalendarApp.createProjectionAgent ()
         let capacityAgent = CapacityApp.createProjectionAgent ()
         let operationAgent = OperationApp.createProjectionAgent ()
         let capacityResourceAgent = CapacityResourceApp.createProjectionAgent ()
+        let capacityReservationAgent = CapacityReservationApp.createProjectionAgent ()
 
         // 4. Subscriptions List
         let mutable subscriptions: IDisposable list = []
@@ -112,13 +122,27 @@ module BoundedContext =
                     capacityResourceAgent.SetState(m)
                 | Error _ -> ()
 
+                let! reservations = capacityReservationRepo.GetAll()
+
+                match reservations with
+                | Ok list ->
+                    let m =
+                        list
+                        |> List.map (fun r -> CapacityReservationId.value r.Id, r)
+                        |> Map.ofList
+
+                    capacityReservationAgent.SetState(m)
+                | Error _ -> ()
+
                 // B. Subscriptions (Internal)
                 let localSubs =
                     [ DomainEventBus.Subscribe<CalendarsEvent>(fun ev -> calendarAgent.Post(ev, Guid.NewGuid(), None))
                       DomainEventBus.Subscribe<CapacityEvent>(fun ev -> capacityAgent.Post(ev, Guid.NewGuid(), None))
                       DomainEventBus.Subscribe<OperationEvent>(fun ev -> operationAgent.Post(ev, Guid.NewGuid(), None))
                       DomainEventBus.Subscribe<CapacityResourceEvent>(fun ev ->
-                          capacityResourceAgent.Post(ev, Guid.NewGuid(), None)) ]
+                          capacityResourceAgent.Post(ev, Guid.NewGuid(), None))
+                      DomainEventBus.Subscribe<CapacityReservationEvent>(fun ev ->
+                          capacityReservationAgent.Post(ev, Guid.NewGuid(), None)) ]
 
                 // C. Subscription to MasterData events to build resolved CapacityResources
                 let mutable masterState = CapacityResourceApp.emptyMasterState
@@ -174,7 +198,28 @@ module BoundedContext =
                                         |> ignore
                         | _ -> ())
 
-                subscriptions <- localSubs @ masterSubs @ [ bucketGenSub ]
+                // E. Forward Reservation Events to Buckets to update Planned/Free Minutes
+                let reservationForwardSub =
+                    DomainEventBus.Subscribe<CapacityReservationEvent>(fun ev ->
+                        match ev with
+                        | CapacityReservationCreated e ->
+                            task {
+                                let! _ = capacityCaps.Reserve(e.Id, e.RequirementId, e.Minutes, e.Start, e.End, e.Source, e.BucketId)
+                                return ()
+                            }
+                            |> ignore
+                        | CapacityReservationReleased e ->
+                            task {
+                                let! resOpt = capacityReservationRepo.Get(CapacityReservationId.value e.Id)
+                                match resOpt with
+                                | Ok (Some res) ->
+                                    let! _ = capacityCaps.Cancel(e.Id, res.BucketId)
+                                    ()
+                                | _ -> ()
+                            }
+                            |> ignore)
+
+                subscriptions <- localSubs @ masterSubs @ [ bucketGenSub; reservationForwardSub ]
             }
 
         // 6. Dispose
@@ -188,9 +233,11 @@ module BoundedContext =
           Capacity = capacityCaps
           Operation = operationCaps
           CapacityResource = capacityResourceCaps
+          CapacityReservation = capacityReservationCaps
           CalendarAgent = calendarAgent
           CapacityAgent = capacityAgent
           OperationAgent = operationAgent
           CapacityResourceAgent = capacityResourceAgent
+          CapacityReservationAgent = capacityReservationAgent
           Initialize = initialize
           Dispose = dispose }

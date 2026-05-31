@@ -12,6 +12,13 @@ open Medhavi.Supply.Application
 open Medhavi.Infrastructure.Stores.EnvelopeStore
 open Medhavi.Infrastructure.Stores.EnvelopeStoreMem
 open Medhavi.Contracts.Integration
+open Medhavi.Capacity
+open Medhavi.Capacity.Application
+open Medhavi.Capacity.Domain.CapacityResourceAgg
+open Medhavi.Capacity.Domain.CapacityAgg
+open Medhavi.Infrastructure.Projections
+open Medhavi.Transport
+open Medhavi.Transport.Application
 
 module Program =
     open Medhavi.Common.Patterns
@@ -37,6 +44,30 @@ module Program =
     // Initialize Bounded Contexts via modular composition roots
     let masterDataContext = Medhavi.MasterData.BoundedContext.create ()
     let supplyContext = Medhavi.Supply.BoundedContext.create ()
+    let capacityContext = Medhavi.Capacity.BoundedContext.create ()
+
+    // Transport context: legs are loaded from MasterData's projection on demand
+    let getTransportLegs () = async {
+        let! legs = masterDataContext.TransportLeg.QueryService.GetAll() |> Async.AwaitTask
+        return
+            legs
+            |> List.filter (fun l -> l.Status)
+            |> List.map (fun l ->
+                { LegId              = l.Id
+                  Origin             = l.Origin
+                  Destination        = l.Destination
+                  Mode               = l.Mode
+                  LeadTimeMinutes    = l.LeadTimeMinutes
+                  Capacity           = l.Capacity
+                  CapacityUnit       = l.CapacityUnit
+                  Reliability        = None   // enrichable from full domain leg
+                  CO2PerUnit         = None
+                  FixedCost          = 0.0m
+                  VariableCostPerUnit = None
+                  Status             = l.Status } : Medhavi.Transport.TransportLegRef)
+    }
+
+    let transportContext = Medhavi.Transport.BoundedContext.create getTransportLegs
 
     // Real EnvelopeStore instance (Mailbox-agent based)
     let envelopeStore = createEnvelopeStoreMem ()
@@ -249,7 +280,6 @@ module Program =
                     | TransportDelays transportDelays ->
                         // do! supplyContext.TransportDelay.DefineBulk(transportDelays)
                         ()
-                    | _ -> printfn "   [ INFO ] [Subscription] Received event: %A" event
             }
 
         let subscribeTask =
@@ -648,6 +678,49 @@ module Program =
             [| "RESERVATION ID"; "SKU ID"; "STOCKING POINT ID"; "QTY"; "STATE"; "REQUIRED DATE"; "EXPIRY TIME" |]
             resvRows
 
+        // 11.6 Capacity Resources in Database
+        let capResources : CapacityResource list = QueryServiceBase.getAll capacityContext.CapacityResourceAgent |> fun t -> t.Result
+        let capResRows =
+            capResources
+            |> List.map (fun (r: CapacityResource) ->
+                let costStr = r.EffectiveCostRate |> Option.map (fun c -> c.ToString()) |> Option.defaultValue "-"
+                let calStr = r.EffectiveCalendarId |> Option.map CalendarId.value |> Option.defaultValue "-"
+                [| PhysicalResourceId.value r.Id
+                   StandardResourceId.value r.StandardResourceId
+                   ResourceGroupId.value r.ResourceGroupId
+                   r.Name
+                   (if r.IsActive then "Active" else "Inactive")
+                   (Percent.value r.EffectiveEfficiency).ToString() + "%"
+                   costStr
+                   calStr |])
+            |> List.toArray
+
+        printTable
+            "CAPACITY RESOURCES (CLEAN BOUNDED VIEW WITH HIERARCHICAL FALLBACKS)"
+            [| "RESOURCE ID"; "STD RESOURCE ID"; "GROUP ID"; "NAME"; "STATUS"; "EFFICIENCY"; "COST RATE"; "CALENDAR ID" |]
+            capResRows
+
+        // 11.7 Capacity Buckets in Database
+        let capBuckets : CapacityBucket list = QueryServiceBase.getAll capacityContext.CapacityAgent |> fun t -> t.Result
+        let bucketRows =
+            capBuckets
+            |> List.map (fun (b: CapacityBucket) ->
+                let startStr = (Timestamp.value b.Window.Start).ToString("yyyy-MM-dd HH:mm")
+                let endStr = (Timestamp.value b.Window.End).ToString("yyyy-MM-dd HH:mm")
+                [| CapacityBucketId.value b.Id
+                   PhysicalResourceId.value b.ResourceId
+                   $"{startStr} to {endStr}"
+                   (DurationMinutes.value b.AvailableMinutes).ToString() + "m"
+                   (DurationMinutes.value b.PlannedMinutes).ToString() + "m"
+                   (DurationMinutes.value b.FreeMinutes).ToString() + "m"
+                   b.Status.ToString() |])
+            |> List.toArray
+
+        printTable
+            "CAPACITY BUCKETS IN DATABASE"
+            [| "BUCKET ID"; "RESOURCE ID"; "WINDOW"; "AVAILABLE"; "PLANNED"; "FREE"; "STATUS" |]
+            bucketRows
+
         // 12. Live Material Availability ATP Snapshots & Projections
         printColorLine "bold" "\n================================================================================"
         printColorLine "bold" "                     LIVE MATERIAL AVAILABILITY SNAPSHOTS                       "
@@ -750,6 +823,110 @@ module Program =
             [| "SKU ID"; "STOCKING POINT"; "DATE"; "NET AVAILABLE" |]
             dailyRows
 
+    let runCapacityCheckDemo () =
+        printColorLine "bold" "\n--- [CTP CAPACITY CHECK DEMO] ---"
+        
+        let productId = "SKU-FRAME"
+        let quantity = 10.0m
+        let needDate = DateTimeOffset.UtcNow.AddDays(5.0)
+        
+        printfn "Running check for Product=%s, Qty=%M, NeedDate=%s" productId quantity (needDate.ToString("yyyy-MM-dd HH:mm"))
+        
+        let getRoutings productId =
+            task {
+                let! list = masterDataContext.Routing.QueryService.GetAll()
+                let filtered = 
+                    list 
+                    |> List.filter (fun r -> 
+                        match r.Details with
+                        | Medhavi.Contracts.Domain.RoutingDetails.Work work -> work.ProductId = productId
+                        | _ -> false)
+                return Ok filtered
+            }
+            
+        let resources = capacityContext.CapacityResourceAgent.GetStateAsync().Result
+        let calendars = capacityContext.CalendarAgent.GetStateAsync().Result
+        let buckets = capacityContext.CapacityAgent.GetStateAsync().Result
+        
+        // 1. Run Infinite check
+        let checkInfinite = 
+            SchedulerApp.checkCapacity productId quantity needDate CapacityPlanningMode.Infinite resources calendars buckets getRoutings
+            |> Async.AwaitTask
+            |> Async.RunSynchronously
+            
+        match checkInfinite with
+        | Error err -> printColorLine "red" (sprintf "Infinite capacity check failed: %A" err)
+        | Ok res ->
+            printColorLine "green" "\n--- INFINITE CAPACITY CHECK RESULT ---"
+            printfn "  Is Feasible: %b" res.IsFeasible
+            printfn "  Suggested Date: %s" (res.SuggestedDate.ToString("yyyy-MM-dd HH:mm"))
+            res.LatenessReason |> Option.iter (fun r -> printfn "  Reason: %s" r)
+            printfn "  Required Loads:"
+            for KeyValue(resId, dm) in res.RequiredLoads do
+                printfn "    - %s: %Mm" resId (DurationMinutes.value dm)
+
+        // 2. Run Finite check
+        let checkFinite = 
+            SchedulerApp.checkCapacity productId quantity needDate CapacityPlanningMode.Finite resources calendars buckets getRoutings
+            |> Async.AwaitTask
+            |> Async.RunSynchronously
+            
+        match checkFinite with
+        | Error err -> printColorLine "red" (sprintf "Finite capacity check failed: %A" err)
+        | Ok res ->
+            printColorLine "green" "\n--- FINITE CAPACITY CHECK RESULT ---"
+            printfn "  Is Feasible: %b" res.IsFeasible
+            printfn "  Suggested Date: %s" (res.SuggestedDate.ToString("yyyy-MM-dd HH:mm"))
+            res.LatenessReason |> Option.iter (fun r -> printfn "  Reason: %s" r)
+            printfn "  Bottleneck Resource: %A" res.BottleneckResourceId
+            printfn "  Required Loads:"
+            for KeyValue(resId, dm) in res.RequiredLoads do
+                printfn "    - %s: %Mm" resId (DurationMinutes.value dm)
+
+    let runTransportAtpDemo () =
+        printColorLine "bold" "\n--- [TRANSPORT ATP DEMO — K-SHORTEST PATHS] ---"
+
+        let fromNode = "SP-FACTORY"
+        let toNode   = "SP-CUSTOMER"
+        let needDate = DateTimeOffset.UtcNow.AddDays(3.0)
+        let qty      = 50.0m
+
+        printfn "Finding transport routes: %s → %s | NeedBy: %s | Qty: %M"
+            fromNode toNode (needDate.ToString("yyyy-MM-dd")) qty
+
+        let req : Medhavi.Transport.GetTransportOptionsReq =
+            { FromNode          = fromNode
+              ToNode            = toNode
+              SkuId             = Some "SKU-FRAME"
+              RequiredQuantity  = Some qty
+              NeedByDate        = needDate
+              MaxHops           = Some 4
+              MaxItineraries    = Some 5 }
+
+        let result =
+            transportContext.Atp.GetOptions req
+            |> Async.RunSynchronously
+
+        match result with
+        | Error err ->
+            printColorLine "red" (sprintf "Transport ATP failed: %s" err)
+        | Ok options ->
+            printColorLine "green" (sprintf "\nFound %d feasible transport itineraries:" options.Length)
+
+            for i, opt in options |> List.indexed do
+                printColorLine "cyan" (sprintf "\n  Route #%d %s" (i + 1) (if opt.IsPreferred then "★ PREFERRED" else ""))
+                printfn "    Hops:         %d" opt.Itinerary.HopCount
+                printfn "    Lead Time:    %.1f hours" (float opt.Itinerary.TotalLeadTimeMinutes / 60.0)
+                printfn "    Est. Cost:    %M" opt.EstimatedCost
+                printfn "    Reliability:  %.1f%%" (float opt.ReliabilityScore * 100.0)
+                printfn "    Earliest Dep: %s" (opt.EarliestDeparture.ToString("yyyy-MM-dd HH:mm"))
+                printfn "    Earliest Arr: %s" (opt.EarliestArrival.ToString("yyyy-MM-dd HH:mm"))
+                opt.CO2Estimate |> Option.iter (fun co2 -> printfn "    CO₂ Estimate: %M kg" co2)
+
+                printfn "    Hops detail:"
+                for hop in opt.Itinerary.Hops do
+                    printfn "      [%s] %s → %s  (%.0f min)" hop.Mode hop.Origin hop.Destination (float hop.LeadTimeMinutes)
+
     [<EntryPoint>]
     let main argv =
         printColorLine "bold" "========================================================="
@@ -761,6 +938,8 @@ module Program =
         // Bootstrap projections
         masterDataContext.Initialize().Wait()
         supplyContext.Initialize().Wait()
+        capacityContext.Initialize().Wait()
+        transportContext.Initialize().Wait()
 
         let mutable exit = false
 
@@ -771,9 +950,11 @@ module Program =
             printfn "3. View Outbox Envelopes inside EnvelopeStore"
             printfn "4. View Aggregate Database Snapshot Dashboard"
             printfn "5. Run End-to-End Automated Demo"
-            printfn "6. Exit"
+            printfn "6. Run CTP Capacity Check Demo"
+            printfn "7. Run Transport ATP Demo (K-Shortest Paths)"
+            printfn "8. Exit"
 
-            printf "Select option (1-6): "
+            printf "Select option (1-8): "
             let choice = Console.ReadLine()
 
             match choice with
@@ -788,9 +969,19 @@ module Program =
                 // Wait briefly for the background subscriber thread to process and commit
                 System.Threading.Thread.Sleep(1000)
                 showDashboard ()
-            | "6" ->
+            | "6" -> runCapacityCheckDemo ()
+            | "7" ->
+                // Invalidate transport cache so fresh legs are used after CSV load
+                transportContext.Atp.InvalidateCache()
+                runTransportAtpDemo ()
+            | "8" ->
                 exit <- true
                 printColorLine "cyan" "\nExiting Medhāvī Simulator. Goodbye!"
-            | _ -> printColorLine "red" "Invalid choice. Please enter 1-6."
+            | _ -> printColorLine "red" "Invalid choice. Please enter 1-8."
+
+        masterDataContext.Dispose()
+        supplyContext.Dispose()
+        capacityContext.Dispose()
+        transportContext.Dispose()
 
         0

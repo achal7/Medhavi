@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Medhavi.Capacity/Medhavi.Capacity.fsproj" />
+    <Project Path="src/Medhavi.Transport/Medhavi.Transport.fsproj" />
     <Project Path="src/Medhavi.Common/Medhavi.Common.fsproj" />
     <Project Path="src/Medhavi.Contracts/Medhavi.Contracts.fsproj" />
     <Project Path="src/Medhavi.Demand/Medhavi.Demand.fsproj" />

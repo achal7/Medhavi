@@ -35,7 +35,13 @@ module RoutingAcl =
                                 match ro.EfficiencyPolicy with
                                 | Medhavi.Contracts.Domain.ResourceEfficiencyPolicy.StandardEfficiency -> 1.0M
                                 | Medhavi.Contracts.Domain.ResourceEfficiencyPolicy.EfficiencyFactor f -> f
-                            { Target = LoadTarget.Resource (ro.ResourceGroupId, CapacityResourceKind.WorkCenter)
+                            let target =
+                                match ro.WorkCenterId with
+                                | Some resId when not (String.IsNullOrWhiteSpace resId) ->
+                                    LoadTarget.WorkCenter (resId, CapacityResourceKind.WorkCenter)
+                                | _ ->
+                                    LoadTarget.Resource (ro.ResourceGroupId, CapacityResourceKind.WorkCenter)
+                            { Target = target
                               LoadBasis = capacityLoadBasis
                               UnitsRequired = req.RequiredUnits
                               SetupLoadMinutes = ro.TimingProfile.SetupTime

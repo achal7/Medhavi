@@ -319,3 +319,188 @@ let decide: DecideResourceCalendar =
                   Events = [ CalendarDeactivated evt ] })
 
         | _, None -> Error(DomainError.validation "Calendar not found")
+
+type ExpandedEvent =
+    { Schedule: EventSchedule
+      EventType: EventType }
+
+module CalendarNormalization =
+    let parseDayOfWeek (s: string) =
+        match s.Trim().ToLowerInvariant() with
+        | "sunday" -> DayOfWeek.Sunday
+        | "monday" -> DayOfWeek.Monday
+        | "tuesday" -> DayOfWeek.Tuesday
+        | "wednesday" -> DayOfWeek.Wednesday
+        | "thursday" -> DayOfWeek.Thursday
+        | "friday" -> DayOfWeek.Friday
+        | "saturday" -> DayOfWeek.Saturday
+        | _ -> DayOfWeek.Monday
+
+    let getStartOfWeek (d: DateTimeOffset) =
+        let daysToSub = int d.DayOfWeek
+
+        DateTimeOffset(d.Year, d.Month, d.Day, 0, 0, 0, d.Offset)
+            .AddDays(float -daysToSub)
+
+    let expandEvent (event: CalendarEvent) (window: Window) : EventSchedule list =
+        let eventDur =
+            (Timestamp.value event.Window.End)
+            - (Timestamp.value event.Window.Start)
+
+        match event.Recurrence with
+        | None ->
+            if Window.overlaps event.Window window then
+                [ { EventId = event.Id
+                    CalendarId = event.CalendarId
+                    Window = event.Window
+                    CapacityFactor = event.CapacityFactor } ]
+            else
+                []
+        | Some pattern ->
+            let startT = Timestamp.value event.Window.Start
+            let windowEndT = Timestamp.value window.End
+            let maxDate = windowEndT.AddDays(1.0)
+
+            match pattern with
+            | Daily interval ->
+                let intv = max 1 interval
+
+                let rec loop (curr: DateTimeOffset) acc =
+                    if curr > maxDate then
+                        acc
+                    else
+                        let occStart = curr
+                        let occEnd = curr.Add(eventDur)
+
+                        match Window.createFromTime occStart occEnd with
+                        | Error _ -> loop (curr.AddDays(float intv)) acc
+                        | Ok occWin ->
+                            let acc' =
+                                if Window.overlaps occWin window then
+                                    { EventId = event.Id
+                                      CalendarId = event.CalendarId
+                                      Window = occWin
+                                      CapacityFactor = event.CapacityFactor }
+                                    :: acc
+                                else
+                                    acc
+
+                            loop (curr.AddDays(float intv)) acc'
+
+                loop startT []
+
+            | Weekly(interval, days) ->
+                let intv = max 1 interval
+                let targetDays = days |> List.map parseDayOfWeek |> Set.ofList
+                let startOfWeek = getStartOfWeek startT
+
+                let rec loop (curr: DateTimeOffset) acc =
+                    if curr > maxDate then
+                        acc
+                    else
+                        let currOfWeek = getStartOfWeek curr
+                        let weeksDiff = int (currOfWeek - startOfWeek).TotalDays / 7
+
+                        let isMatch =
+                            weeksDiff % intv = 0
+                            && curr >= startT
+                            && Set.contains curr.DayOfWeek targetDays
+
+                        let acc' =
+                            if isMatch then
+                                let occStart =
+                                    DateTimeOffset(
+                                        curr.Year,
+                                        curr.Month,
+                                        curr.Day,
+                                        startT.Hour,
+                                        startT.Minute,
+                                        startT.Second,
+                                        startT.Offset
+                                    )
+
+                                let occEnd = occStart.Add(eventDur)
+
+                                match Window.createFromTime occStart occEnd with
+                                | Error _ -> acc
+                                | Ok occWin ->
+                                    if Window.overlaps occWin window then
+                                        { EventId = event.Id
+                                          CalendarId = event.CalendarId
+                                          Window = occWin
+                                          CapacityFactor = event.CapacityFactor }
+                                        :: acc
+                                    else
+                                        acc
+                            else
+                                acc
+
+                        loop (curr.AddDays(1.0)) acc'
+
+                loop (DateTimeOffset(startT.Year, startT.Month, startT.Day, 0, 0, 0, startT.Offset)) []
+            | _ ->
+                if Window.overlaps event.Window window then
+                    [ { EventId = event.Id
+                        CalendarId = event.CalendarId
+                        Window = event.Window
+                        CapacityFactor = event.CapacityFactor } ]
+                else
+                    []
+
+    let calculateAvailableMinutes (calendar: Calendar) (day: DateTimeOffset) : DurationMinutes =
+        let startOfDay = DateTimeOffset(day.Year, day.Month, day.Day, 0, 0, 0, day.Offset)
+        let endOfDay = startOfDay.AddDays(1.0)
+
+        match Window.createFromTime startOfDay endOfDay with
+        | Error _ -> DurationMinutes.zero
+        | Ok dayWindow ->
+            let expandedEvents =
+                calendar.Events
+                |> List.collect (fun ev ->
+                    expandEvent ev dayWindow
+                    |> List.map (fun s ->
+                        { Schedule = s
+                          EventType = ev.EventType }))
+
+            let mutable totalMins = 0.0m
+
+            for m in 0..1439 do
+                let slotStart = startOfDay.AddMinutes(float m)
+                let slotEnd = slotStart.AddMinutes(1.0)
+
+                match Window.createFromTime slotStart slotEnd with
+                | Error _ -> ()
+                | Ok slotWin ->
+                    let matching =
+                        expandedEvents
+                        |> List.filter (fun ee -> Window.overlaps ee.Schedule.Window slotWin)
+
+                    let factor =
+                        if List.isEmpty matching then
+                            let hasDefaultShifts =
+                                calendar.Events
+                                |> List.exists (fun e -> e.IsDefault)
+
+                            if hasDefaultShifts then 0.0m else 1.0m
+                        else
+                            let getPriority et =
+                                match et with
+                                | Holiday
+                                | Downtime
+                                | Maintenance -> 3
+                                | Overtime
+                                | ExtraShift -> 2
+                                | Shift -> 1
+                                | _ -> 0
+
+                            let highest =
+                                matching
+                                |> List.maxBy (fun ee -> getPriority ee.EventType)
+
+                            Percent.value highest.Schedule.CapacityFactor
+
+                    totalMins <- totalMins + factor
+
+            match DurationMinutes.create totalMins with
+            | Ok dm -> dm
+            | Error _ -> DurationMinutes.zero

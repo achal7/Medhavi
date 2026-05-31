@@ -7,14 +7,10 @@
 
   <ItemGroup>
     <Compile Include="Domain.fs" />
-    <Compile Include="Domain\Calendar.fs" />
-    <Compile Include="Domain\Capacity.fs" />
-    <Compile Include="Domain\CapacityReservation.fs" />
-    <Compile Include="Domain\CapacityResource.fs" />
-    <Compile Include="Domain\Operation.fs" />
-    <Compile Include="RoutingInterpreter.fs" />
-    <Compile Include="Application\CapacityResource.fs" />
-    <Compile Include="Application\CapacityApplication.fs" />
+    <Compile Include="Domain\TransportReservation.fs" />
+    <Compile Include="Domain\TransportGraph.fs" />
+    <Compile Include="Application\TransportReservationApp.fs" />
+    <Compile Include="Application\TransportAtpApp.fs" />
     <Compile Include="BoundedContext.fs" />
   </ItemGroup>
 
@@ -22,8 +18,8 @@
     <ProjectReference Include="..\Medhavi.Common\Medhavi.Common.fsproj" />
     <ProjectReference Include="..\Medhavi.Contracts\Medhavi.Contracts.fsproj" />
     <ProjectReference Include="..\Medhavi.SharedKernel\Medhavi.SharedKernel.fsproj" />
-    <ProjectReference Include="..\Medhavi.MasterData\Medhavi.MasterData.fsproj" />
     <ProjectReference Include="..\Medhavi.Infrastructure\Medhavi.Infrastructure.fsproj" />
+    <ProjectReference Include="..\Medhavi.MasterData\Medhavi.MasterData.fsproj" />
   </ItemGroup>
 
 </Project>
