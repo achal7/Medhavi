@@ -14,14 +14,21 @@ module ACL =
     let parse (csvText: string) : Result<(StockingPointDefineReq list * NodeDefineReq list), string> =
         try
             let rows = CsvHelper.parseCsv csvText
+
             let sps =
                 rows
                 |> Array.toList
                 |> List.map (fun row ->
-                    let id = row.Get "StockingPointId" |> Option.defaultValue ""
+                    let id =
+                        row.Get "StockingPointId"
+                        |> Option.defaultValue ""
+
                     let name = row.Get "Name" |> Option.defaultValue ""
                     let active = row.GetBool "IsActive" |> Option.defaultValue true
-                    { StockingPointId = id; Name = name; IsActive = active })
+
+                    {| StockingPointId = id
+                       Name = name
+                       IsActive = active |})
 
             let spReqs =
                 sps
@@ -35,6 +42,7 @@ module ACL =
                       Level = None
                       PlanningLevel = None
                       SupplyCanBeSplit = false })
+
             let nodeReqs =
                 sps
                 |> List.map (fun sp ->
@@ -42,13 +50,19 @@ module ACL =
                       Code = sp.StockingPointId
                       Name = sp.Name
                       Type = "StockingPoint"
-                      Attributes = { LocationCode = None; PlanningLevel = None; StockingPointRef = Some sp.StockingPointId }
+                      Attributes =
+                        { LocationCode = None
+                          PlanningLevel = None
+                          StockingPointRef = Some sp.StockingPointId }
                       Created = DateTimeOffset.UtcNow })
-            Ok (spReqs, nodeReqs)
+
+            Ok(spReqs, nodeReqs)
         with ex ->
             Error ex.Message
 
-let ingestStockingPoints (file: string) : TaskResult<StockingPointDefineReq list * NodeDefineReq list, IntegrationError> =
+let ingestStockingPoints
+    (file: string)
+    : TaskResult<StockingPointDefineReq list * NodeDefineReq list, IntegrationError> =
     task {
         try
             return
@@ -60,7 +74,10 @@ let ingestStockingPoints (file: string) : TaskResult<StockingPointDefineReq list
             return Error(IngestionError ex.Message)
     }
 
-let publishStockingPoints (store: EnvelopeStoreOps) (sps: StockingPointDefineReq list, nodes: NodeDefineReq list) : TaskResult<Envelope, IntegrationError> =
+let publishStockingPoints
+    (store: EnvelopeStoreOps)
+    (sps: StockingPointDefineReq list, nodes: NodeDefineReq list)
+    : TaskResult<Envelope, IntegrationError> =
     task {
         try
             let tenantId = "tenant-mountain-bike"
@@ -71,11 +88,7 @@ let publishStockingPoints (store: EnvelopeStoreOps) (sps: StockingPointDefineReq
             | Error err -> return Error(IngestionError(sprintf "Serialization failed: %A" err))
             | Ok envelope ->
                 let! publishRes =
-                    store.PublishSingle
-                        "master-data-stream"
-                        envelope
-                        ExpectedRevision.Any
-                        CancellationToken.None
+                    store.PublishSingle "master-data-stream" envelope ExpectedRevision.Any CancellationToken.None
 
                 match publishRes with
                 | Error err -> return Error(IngestionError(sprintf "Failed to write to EnvelopeStore: %A" err))

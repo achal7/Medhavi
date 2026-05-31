@@ -3,7 +3,6 @@ module Medhavi.Integration.Adapters.SupplyOrder
 open System
 open System.Threading
 open Medhavi.Common.Patterns
-open Medhavi.Contracts
 open Medhavi.Contracts.Integration
 open Medhavi.Integration
 open Medhavi.Infrastructure.IO
@@ -11,7 +10,7 @@ open Medhavi.Infrastructure.Stores.EnvelopeStore
 open Medhavi.Infrastructure
 
 module ACL =
-    let parse (csvText: string) : Result<SupplyOrderStatusPayload list, string> =
+    let parse (csvText: string) : Result<SupplyOrderUpdateReq list, string> =
         try
             let rows = CsvHelper.parseCsv csvText
 
@@ -44,7 +43,7 @@ module ACL =
         with ex ->
             Error ex.Message
 
-let ingestSupplyOrders (file: string) : TaskResult<SupplyOrderStatusPayload list, IntegrationError> =
+let ingestSupplyOrders (file: string) : TaskResult<SupplyOrderUpdateReq list, IntegrationError> =
     task {
         try
             return
@@ -56,7 +55,10 @@ let ingestSupplyOrders (file: string) : TaskResult<SupplyOrderStatusPayload list
             return Error(IngestionError ex.Message)
     }
 
-let publishSupplyOrders (store: EnvelopeStoreOps) (orders: SupplyOrderStatusPayload list) : TaskResult<Envelope, IntegrationError> =
+let publishSupplyOrders
+    (store: EnvelopeStoreOps)
+    (orders: SupplyOrderUpdateReq list)
+    : TaskResult<Envelope, IntegrationError> =
     task {
         try
             let tenantId = "tenant-mountain-bike"
@@ -67,11 +69,7 @@ let publishSupplyOrders (store: EnvelopeStoreOps) (orders: SupplyOrderStatusPayl
             | Error err -> return Error(IngestionError(sprintf "Serialization failed: %A" err))
             | Ok envelope ->
                 let! publishRes =
-                    store.PublishSingle
-                        "supply-orders-stream"
-                        envelope
-                        ExpectedRevision.Any
-                        CancellationToken.None
+                    store.PublishSingle "supply-orders-stream" envelope ExpectedRevision.Any CancellationToken.None
 
                 match publishRes with
                 | Error err -> return Error(IngestionError(sprintf "Failed to write to EnvelopeStore: %A" err))

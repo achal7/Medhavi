@@ -6,10 +6,7 @@ open Medhavi.Infrastructure.Stores.EnvelopeStore
 open Medhavi.Integration.Adapters
 
 type IntegrationCapabilities =
-    { IngestAndPublishMasterData: unit -> TaskResult<Envelope list, IntegrationError>
-      IngestAndPublishInventoryPositions: unit -> TaskResult<IntegrationSuccess, IntegrationError>
-      IngestAndPublishSupplyOrders: unit -> TaskResult<IntegrationSuccess, IntegrationError>
-      IngestAndPublishReservations: unit -> TaskResult<IntegrationSuccess, IntegrationError> }
+    { IngestAndPublishMasterData: unit -> TaskResult<Envelope list, IntegrationError> }
 
 module IntegrationService =
 
@@ -55,36 +52,4 @@ module IntegrationService =
               fun () -> MaterialReservation.ingestAndPublishReservations "reservations.csv" store ]
 
     let createCapabilities (store: EnvelopeStoreOps) : IntegrationCapabilities =
-        { IngestAndPublishMasterData = fun () -> ingestAndPublishMasterData store
-          IngestAndPublishInventoryPositions =
-            fun () ->
-                task {
-                    let! res = Inventory.ingestAndPublishInventoryPositions "inventory_positions.csv" store
-
-                    return
-                        res
-                        |> Result.map (fun env ->
-                            { EnvelopeId = env.EventId
-                              CorrelationId = env.CorrelationId })
-                }
-          IngestAndPublishSupplyOrders =
-            fun () ->
-                task {
-                    let! res = SupplyOrder.ingestAndPublishSupplyOrders "supply_orders.csv" store
-
-                    return
-                        res
-                        |> Result.map (fun env ->
-                            { EnvelopeId = env.EventId
-                              CorrelationId = env.CorrelationId })
-                }
-          IngestAndPublishReservations =
-            fun () ->
-                task {
-                    let! res = MaterialReservation.ingestAndPublishReservations "reservations.csv" store
-                    return
-                        res
-                        |> Result.map (fun env ->
-                            { EnvelopeId = env.EventId
-                              CorrelationId = env.CorrelationId })
-                } }
+        { IngestAndPublishMasterData = fun () -> ingestAndPublishMasterData store }

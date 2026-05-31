@@ -10,12 +10,6 @@ type UnitOfMeasure =
       ConversionFactor: decimal
       IsBase: bool }
 
-type Plant =
-    { Id: string
-      Code: string
-      Name: string
-      Status: bool }
-
 type UnitConversion =
     { Id: string
       ProductId: string option
@@ -24,27 +18,10 @@ type UnitConversion =
       Ratio: decimal
       Status: bool }
 
-/// Request DTO for requesting order promising (ATP/CTP)
-type PromiseRequest =
-    { OrderId: string
-      SkuId: string
-      NodeId: string
-      Quantity: decimal
-      RequestedDate: DateTimeOffset }
-
-/// Response DTO for order promising (ATP/CTP)
-type PromiseResponse =
-    { OrderId: string
-      SkuId: string
-      PromiseDate: DateTimeOffset
-      IsFeasible: bool
-      LimiterReason: string }
-
-type Sku =
+type Plant =
     { Id: string
       Code: string
       Name: string
-      Group: string
       Status: bool }
 
 type StockingPoint =
@@ -53,6 +30,13 @@ type StockingPoint =
       Code: string
       Name: string
       Type: string
+      Status: bool }
+
+type Sku =
+    { Id: string
+      Code: string
+      Name: string
+      Group: string
       Status: bool }
 
 type BomItem =
@@ -65,6 +49,145 @@ type Bom =
       SkuId: string
       Items: BomItem list
       Status: bool }
+
+type ResourceGroup =
+    { Id: string
+      PlantId: string option
+      Name: string
+      Description: string option
+      DefaultCalendarId: string option
+      IsActive: bool
+      Created: DateTimeOffset
+      Modified: DateTimeOffset }
+
+type StandardResource =
+    { Id: string
+      ResourceGroupId: string
+      Name: string
+      Description: string option
+      DefaultEfficiency: decimal
+      DefaultCostRateAmount: decimal option
+      DefaultCostRateCurrency: string option
+      IsActive: bool
+      Created: DateTimeOffset
+      Modified: DateTimeOffset }
+
+type PhysicalResource =
+    { Id: string
+      StandardResourceId: string
+      Name: string
+      SerialNumber: string option
+      Location: string option
+      EfficiencyOverride: decimal option
+      CostRateOverrideAmount: decimal option
+      CostRateOverrideCurrency: string option
+      CalendarId: string option
+      IsActive: bool
+      Created: DateTimeOffset
+      Modified: DateTimeOffset }
+
+type Inventory =
+    { Id: string
+      SkuId: string
+      StockingPointId: string
+      Quantity: decimal
+      UnitOfMeasure: string
+      InTransitInbound: decimal
+      InTransitOutbound: decimal
+      QualityHold: decimal
+      Damaged: decimal
+      AvailableToPromise: decimal
+      Created: DateTimeOffset
+      Modified: DateTimeOffset }
+
+type SeasonalAdjustment =
+    { PeriodStart: DateTimeOffset
+      PeriodEnd: DateTimeOffset
+      AdjustmentFactor: decimal }
+
+type ReplenishmentPolicy =
+    { Safety: decimal
+      MinQty: decimal option
+      MaxQty: decimal option
+      CoverDays: decimal option
+      LotSize: decimal option
+      Expedite: bool }
+
+type InventoryTarget =
+    { Id: string
+      SkuId: string
+      StockingPointId: string
+      ReplenishmentPolicy: ReplenishmentPolicy option
+      SafetyStockQty: decimal option
+      MinQty: decimal option
+      MaxQty: decimal option
+      TargetServiceLevel: decimal option
+      CoverDays: decimal option
+      SeasonalAdjustments: SeasonalAdjustment list
+      EffectiveStart: DateTimeOffset option
+      EffectiveEnd: DateTimeOffset option
+      IsActive: bool }
+
+type PriceTier =
+    { TierNumber: int
+      MinQuantity: decimal
+      MaxQuantity: decimal option
+      PricePerUnit: decimal
+      Currency: string }
+
+type SupplierCapacityWindow =
+    { WindowId: string
+      StartDate: DateTimeOffset
+      EndDate: DateTimeOffset
+      MaxQuantity: decimal
+      AvailableQuantity: decimal }
+
+type SupplierOffer =
+    { Id: string
+      SupplierId: string
+      SkuId: string
+      StockingPointId: string option
+      Moq: decimal option
+      LotSize: decimal option
+      LeadTimeP50Minutes: float option
+      LeadTimeP95Minutes: float option
+      PriceTiers: PriceTier list
+      Reliability: decimal option
+      Incoterm: string option
+      CapacityWindows: SupplierCapacityWindow list
+      IsActive: bool }
+
+type SupplyOrder =
+    { Id: string
+      OrderType: string
+      SkuId: string
+      StockingPointId: string
+      Quantity: decimal
+      UnitOfMeasure: string
+      State: string
+      RoutingId: string option
+      SupplierId: string option
+      IsFirm: bool
+      IsExpedited: bool
+      IsLocked: bool
+      UsesLeadTimeQuantity: bool
+      RequiredDeliveryDate: DateTimeOffset option
+      CreatedDate: DateTimeOffset
+      ModifiedDate: DateTimeOffset }
+
+type PromiseRequest =
+    { OrderId: string
+      SkuId: string
+      NodeId: string
+      Quantity: decimal
+      RequestedDate: DateTimeOffset }
+
+type PromiseResponse =
+    { OrderId: string
+      SkuId: string
+      PromiseDate: DateTimeOffset
+      IsFeasible: bool
+      LimiterReason: string }
 
 type RoutingPreference = { Priority: int; IsPreferred: bool }
 
@@ -209,42 +332,6 @@ type RoutingStepResourceRequirement =
       SelectionRule: ResourceSelectionRule
       Options: RoutingResourceOption list }
 
-type ResourceGroup =
-    { Id: string
-      PlantId: string option
-      Name: string
-      Description: string option
-      DefaultCalendarId: string option
-      IsActive: bool
-      Created: DateTimeOffset
-      Modified: DateTimeOffset }
-
-type StandardResource =
-    { Id: string
-      ResourceGroupId: string
-      Name: string
-      Description: string option
-      DefaultEfficiency: decimal
-      DefaultCostRateAmount: decimal option
-      DefaultCostRateCurrency: string option
-      IsActive: bool
-      Created: DateTimeOffset
-      Modified: DateTimeOffset }
-
-type PhysicalResource =
-    { Id: string
-      StandardResourceId: string
-      Name: string
-      SerialNumber: string option
-      Location: string option
-      EfficiencyOverride: decimal option
-      CostRateOverrideAmount: decimal option
-      CostRateOverrideCurrency: string option
-      CalendarId: string option
-      IsActive: bool
-      Created: DateTimeOffset
-      Modified: DateTimeOffset }
-
 type StepYieldPolicy =
     | NoYieldLoss
     | ExpectedYield of decimal
@@ -361,95 +448,6 @@ type TransportLeg =
       Capacity: decimal option
       CapacityUnit: string option
       Status: bool }
-
-type Inventory =
-    { Id: string
-      SkuId: string
-      StockingPointId: string
-      Quantity: decimal
-      UnitOfMeasure: string
-      InTransitInbound: decimal
-      InTransitOutbound: decimal
-      QualityHold: decimal
-      Damaged: decimal
-      AvailableToPromise: decimal
-      Created: DateTimeOffset
-      Modified: DateTimeOffset }
-
-type SeasonalAdjustment =
-    { PeriodStart: DateTimeOffset
-      PeriodEnd: DateTimeOffset
-      AdjustmentFactor: decimal }
-
-type ReplenishmentPolicy =
-    { Safety: decimal
-      MinQty: decimal option
-      MaxQty: decimal option
-      CoverDays: decimal option
-      LotSize: decimal option
-      Expedite: bool }
-
-type InventoryTarget =
-    { Id: string
-      SkuId: string
-      StockingPointId: string
-      ReplenishmentPolicy: ReplenishmentPolicy option
-      SafetyStockQty: decimal option
-      MinQty: decimal option
-      MaxQty: decimal option
-      TargetServiceLevel: decimal option
-      CoverDays: decimal option
-      SeasonalAdjustments: SeasonalAdjustment list
-      EffectiveStart: DateTimeOffset option
-      EffectiveEnd: DateTimeOffset option
-      IsActive: bool }
-
-type PriceTier =
-    { TierNumber: int
-      MinQuantity: decimal
-      MaxQuantity: decimal option
-      PricePerUnit: decimal
-      Currency: string }
-
-type SupplierCapacityWindow =
-    { WindowId: string
-      StartDate: DateTimeOffset
-      EndDate: DateTimeOffset
-      MaxQuantity: decimal
-      AvailableQuantity: decimal }
-
-type SupplierOffer =
-    { Id: string
-      SupplierId: string
-      SkuId: string
-      StockingPointId: string option
-      Moq: decimal option
-      LotSize: decimal option
-      LeadTimeP50Minutes: float option
-      LeadTimeP95Minutes: float option
-      PriceTiers: PriceTier list
-      Reliability: decimal option
-      Incoterm: string option
-      CapacityWindows: SupplierCapacityWindow list
-      IsActive: bool }
-
-type SupplyOrder =
-    { Id: string
-      OrderType: string
-      SkuId: string
-      StockingPointId: string
-      Quantity: decimal
-      UnitOfMeasure: string
-      State: string
-      RoutingId: string option
-      SupplierId: string option
-      IsFirm: bool
-      IsExpedited: bool
-      IsLocked: bool
-      UsesLeadTimeQuantity: bool
-      RequiredDeliveryDate: DateTimeOffset option
-      CreatedDate: DateTimeOffset
-      ModifiedDate: DateTimeOffset }
 
 type MaterialSnapshot =
     { OnHand: decimal

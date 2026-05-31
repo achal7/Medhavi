@@ -95,40 +95,6 @@ module IntegrationContractsTests =
                                       test <@ skus.[0].Id = "SKU-999" @>
                                   | _ -> failwith "Expected SkusImported payload")
 
-              testCase "should preserve metadata when converting roundtrip for demand signals" (fun () ->
-                  let tenantId = "tenant-test-3"
-                  let correlationId = Guid.NewGuid()
-
-                  let order =
-                      { OrderId = "ORD-001"
-                        SkuId = "SKU-100"
-                        NodeId = "NODE-1"
-                        Quantity = 50m
-                        RequestedDateUtc = DateTimeOffset.UtcNow }
-
-                  let payload =
-                      { CustomerOrders = [ order ]
-                        Forecasts = [] }
-
-                  let event = DemandSignalsImported payload
-
-                  let createResult = IntegrationEventEnvelope.create tenantId correlationId event
-
-                  match createResult with
-                  | Error err -> failwithf "Failed to create envelope: %A" err
-                  | Ok envelope ->
-                      let payloadResult = IntegrationEventEnvelope.tryGetPayload envelope
-
-                      match payloadResult with
-                      | Error err -> failwithf "Failed to extract payload: %A" err
-                      | Ok extractedEvent ->
-                          match extractedEvent with
-                          | DemandSignalsImported ds ->
-                              test <@ ds.CustomerOrders.Length = 1 @>
-                              test <@ ds.CustomerOrders.[0].OrderId = "ORD-001" @>
-                              test <@ ds.CustomerOrders.[0].Quantity = 50m @>
-                          | _ -> failwith "Expected DemandSignalsImported payload")
-
               testCase "Envelope first-class TenantId and withTenantId" (fun () ->
                   let env = Envelope.createEnvelope "TestEvent" "{\"value\":42}" 1
 

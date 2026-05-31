@@ -11,42 +11,61 @@ open Medhavi.Infrastructure.Stores.EnvelopeStore
 open Medhavi.Infrastructure
 
 module ACL =
-    let parseResourceGroups (csvText: string) : Result<ResourceGroupImportedPayload list, string> =
+    let parseResourceGroups (csvText: string) : Result<ResourceGroupDefineReq list, string> =
         try
             let rows = CsvHelper.parseCsv csvText
+
             let parseRow (row: CsvHelper.CsvRow) =
-                { ResourceGroupId = row.Get "ResourceGroupId" |> Option.defaultValue ""
+                { Id =
+                    row.Get "ResourceGroupId"
+                    |> Option.defaultValue ""
                   PlantId = row.Get "PlantId"
                   Name = row.Get "Name" |> Option.defaultValue ""
                   Description = row.Get "Description"
                   DefaultCalendarId = row.Get "DefaultCalendarId"
-                  IsActive = row.GetBool "IsActive" |> Option.defaultValue true }
+                  IsActive = row.GetBool "IsActive" |> Option.defaultValue true
+                  Created = DateTimeOffset.UtcNow }
+
             rows |> Array.toList |> List.map parseRow |> Ok
         with ex ->
             Error ex.Message
 
-    let parseStandardResources (csvText: string) : Result<StandardResourceImportedPayload list, string> =
+    let parseStandardResources (csvText: string) : Result<StandardResourceDefineReq list, string> =
         try
             let rows = CsvHelper.parseCsv csvText
+
             let parseRow (row: CsvHelper.CsvRow) =
-                { StandardResourceId = row.Get "StandardResourceId" |> Option.defaultValue ""
-                  ResourceGroupId = row.Get "ResourceGroupId" |> Option.defaultValue ""
+                { Id =
+                    row.Get "StandardResourceId"
+                    |> Option.defaultValue ""
+                  ResourceGroupId =
+                    row.Get "ResourceGroupId"
+                    |> Option.defaultValue ""
                   Name = row.Get "Name" |> Option.defaultValue ""
                   Description = row.Get "Description"
-                  DefaultEfficiency = row.GetDecimal "DefaultEfficiency" |> Option.defaultValue 1.0M
+                  DefaultEfficiency =
+                    row.GetDecimal "DefaultEfficiency"
+                    |> Option.defaultValue 1.0M
                   DefaultCostRateAmount = row.GetDecimal "DefaultCostRateAmount"
                   DefaultCostRateCurrency = row.Get "DefaultCostRateCurrency"
-                  IsActive = row.GetBool "IsActive" |> Option.defaultValue true }
+                  IsActive = row.GetBool "IsActive" |> Option.defaultValue true
+                  Created = DateTimeOffset.UtcNow }
+
             rows |> Array.toList |> List.map parseRow |> Ok
         with ex ->
             Error ex.Message
 
-    let parsePhysicalResources (csvText: string) : Result<PhysicalResourceImportedPayload list, string> =
+    let parsePhysicalResources (csvText: string) : Result<PhysicalResourceDefineReq list, string> =
         try
             let rows = CsvHelper.parseCsv csvText
+
             let parseRow (row: CsvHelper.CsvRow) =
-                { PhysicalResourceId = row.Get "PhysicalResourceId" |> Option.defaultValue ""
-                  StandardResourceId = row.Get "StandardResourceId" |> Option.defaultValue ""
+                { Id =
+                    row.Get "PhysicalResourceId"
+                    |> Option.defaultValue ""
+                  StandardResourceId =
+                    row.Get "StandardResourceId"
+                    |> Option.defaultValue ""
                   Name = row.Get "Name" |> Option.defaultValue ""
                   SerialNumber = row.Get "SerialNumber"
                   Location = row.Get "Location"
@@ -54,20 +73,29 @@ module ACL =
                   CostRateOverrideAmount = row.GetDecimal "CostRateOverrideAmount"
                   CostRateOverrideCurrency = row.Get "CostRateOverrideCurrency"
                   CalendarId = row.Get "CalendarId"
-                  IsActive = row.GetBool "IsActive" |> Option.defaultValue true }
+                  IsActive = row.GetBool "IsActive" |> Option.defaultValue true
+                  Created = DateTimeOffset.UtcNow }
+
             rows |> Array.toList |> List.map parseRow |> Ok
         with ex ->
             Error ex.Message
 
-let ingestResourceGroups (file: string) : TaskResult<ResourceGroupImportedPayload list, IntegrationError> =
+let ingestResourceGroups (file: string) : TaskResult<ResourceGroupDefineReq list, IntegrationError> =
     task {
         try
-            return file |> readCsvFile |> ACL.parseResourceGroups |> Result.mapError IngestionError
+            return
+                file
+                |> readCsvFile
+                |> ACL.parseResourceGroups
+                |> Result.mapError IngestionError
         with ex ->
             return Error(IngestionError ex.Message)
     }
 
-let publishResourceGroups (store: EnvelopeStoreOps) (payloads: ResourceGroupImportedPayload list) : TaskResult<Envelope, IntegrationError> =
+let publishResourceGroups
+    (store: EnvelopeStoreOps)
+    (payloads: ResourceGroupDefineReq list)
+    : TaskResult<Envelope, IntegrationError> =
     task {
         try
             let tenantId = "tenant-mountain-bike"
@@ -77,7 +105,9 @@ let publishResourceGroups (store: EnvelopeStoreOps) (payloads: ResourceGroupImpo
             match IntegrationEventEnvelope.create tenantId correlationId event with
             | Error err -> return Error(IngestionError(sprintf "Serialization failed: %A" err))
             | Ok envelope ->
-                let! publishRes = store.PublishSingle "master-data-stream" envelope ExpectedRevision.Any CancellationToken.None
+                let! publishRes =
+                    store.PublishSingle "master-data-stream" envelope ExpectedRevision.Any CancellationToken.None
+
                 match publishRes with
                 | Error err -> return Error(IngestionError(sprintf "Failed to write to EnvelopeStore: %A" err))
                 | Ok _ -> return Ok envelope
@@ -91,15 +121,22 @@ let ingestAndPublishResourceGroups (file: string) (store: EnvelopeStoreOps) : Ta
         return! publishResourceGroups store payloads
     }
 
-let ingestStandardResources (file: string) : TaskResult<StandardResourceImportedPayload list, IntegrationError> =
+let ingestStandardResources (file: string) : TaskResult<StandardResourceDefineReq list, IntegrationError> =
     task {
         try
-            return file |> readCsvFile |> ACL.parseStandardResources |> Result.mapError IngestionError
+            return
+                file
+                |> readCsvFile
+                |> ACL.parseStandardResources
+                |> Result.mapError IngestionError
         with ex ->
             return Error(IngestionError ex.Message)
     }
 
-let publishStandardResources (store: EnvelopeStoreOps) (payloads: StandardResourceImportedPayload list) : TaskResult<Envelope, IntegrationError> =
+let publishStandardResources
+    (store: EnvelopeStoreOps)
+    (payloads: StandardResourceDefineReq list)
+    : TaskResult<Envelope, IntegrationError> =
     task {
         try
             let tenantId = "tenant-mountain-bike"
@@ -109,7 +146,9 @@ let publishStandardResources (store: EnvelopeStoreOps) (payloads: StandardResour
             match IntegrationEventEnvelope.create tenantId correlationId event with
             | Error err -> return Error(IngestionError(sprintf "Serialization failed: %A" err))
             | Ok envelope ->
-                let! publishRes = store.PublishSingle "master-data-stream" envelope ExpectedRevision.Any CancellationToken.None
+                let! publishRes =
+                    store.PublishSingle "master-data-stream" envelope ExpectedRevision.Any CancellationToken.None
+
                 match publishRes with
                 | Error err -> return Error(IngestionError(sprintf "Failed to write to EnvelopeStore: %A" err))
                 | Ok _ -> return Ok envelope
@@ -117,21 +156,31 @@ let publishStandardResources (store: EnvelopeStoreOps) (payloads: StandardResour
             return Error(IngestionError ex.Message)
     }
 
-let ingestAndPublishStandardResources (file: string) (store: EnvelopeStoreOps) : TaskResult<Envelope, IntegrationError> =
+let ingestAndPublishStandardResources
+    (file: string)
+    (store: EnvelopeStoreOps)
+    : TaskResult<Envelope, IntegrationError> =
     taskResult {
         let! payloads = ingestStandardResources file
         return! publishStandardResources store payloads
     }
 
-let ingestPhysicalResources (file: string) : TaskResult<PhysicalResourceImportedPayload list, IntegrationError> =
+let ingestPhysicalResources (file: string) : TaskResult<PhysicalResourceDefineReq list, IntegrationError> =
     task {
         try
-            return file |> readCsvFile |> ACL.parsePhysicalResources |> Result.mapError IngestionError
+            return
+                file
+                |> readCsvFile
+                |> ACL.parsePhysicalResources
+                |> Result.mapError IngestionError
         with ex ->
             return Error(IngestionError ex.Message)
     }
 
-let publishPhysicalResources (store: EnvelopeStoreOps) (payloads: PhysicalResourceImportedPayload list) : TaskResult<Envelope, IntegrationError> =
+let publishPhysicalResources
+    (store: EnvelopeStoreOps)
+    (payloads: PhysicalResourceDefineReq list)
+    : TaskResult<Envelope, IntegrationError> =
     task {
         try
             let tenantId = "tenant-mountain-bike"
@@ -141,7 +190,9 @@ let publishPhysicalResources (store: EnvelopeStoreOps) (payloads: PhysicalResour
             match IntegrationEventEnvelope.create tenantId correlationId event with
             | Error err -> return Error(IngestionError(sprintf "Serialization failed: %A" err))
             | Ok envelope ->
-                let! publishRes = store.PublishSingle "master-data-stream" envelope ExpectedRevision.Any CancellationToken.None
+                let! publishRes =
+                    store.PublishSingle "master-data-stream" envelope ExpectedRevision.Any CancellationToken.None
+
                 match publishRes with
                 | Error err -> return Error(IngestionError(sprintf "Failed to write to EnvelopeStore: %A" err))
                 | Ok _ -> return Ok envelope
@@ -149,7 +200,10 @@ let publishPhysicalResources (store: EnvelopeStoreOps) (payloads: PhysicalResour
             return Error(IngestionError ex.Message)
     }
 
-let ingestAndPublishPhysicalResources (file: string) (store: EnvelopeStoreOps) : TaskResult<Envelope, IntegrationError> =
+let ingestAndPublishPhysicalResources
+    (file: string)
+    (store: EnvelopeStoreOps)
+    : TaskResult<Envelope, IntegrationError> =
     taskResult {
         let! payloads = ingestPhysicalResources file
         return! publishPhysicalResources store payloads

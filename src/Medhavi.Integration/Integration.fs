@@ -24,14 +24,13 @@ type IntegrationEvent =
     | SkusImported of SkuDefineReq list
     | StockingPointsImported of StockingPointDefineReq list
     | PlantsImported of PlantDefineReq list
-    | ResourceGroupsImported of ResourceGroupImportedPayload list
-    | StandardResourcesImported of StandardResourceImportedPayload list
-    | PhysicalResourcesImported of PhysicalResourceImportedPayload list
+    | ResourceGroupsImported of ResourceGroupDefineReq list
+    | StandardResourcesImported of StandardResourceDefineReq list
+    | PhysicalResourcesImported of PhysicalResourceDefineReq list
     | SupplyOffersImported of SupplierOfferDefineReq list
-    | DemandSignalsImported of DemandSignalsPayload
     | InventoryPositionsImported of InventoryDefineReq list
     | InventoryTargetsImported of InventoryTargetDefineReq list
-    | SupplyOrdersImported of SupplyOrderStatusPayload list
+    | SupplyOrdersImported of SupplyOrderUpdateReq list
     | ResourceCalendarsImported of ResourceCalendarPayload list
     | WorkOrdersCompleted of WorkOrderCompletedPayload list
     | MaterialsReceived of MaterialReceivedPayload list
@@ -57,7 +56,6 @@ module IntegrationEventEnvelope =
     /// Helper to parse the typed IntegrationEvent out of a generic Envelope.
     let tryGetPayload (env: Envelope) : Result<IntegrationEvent, SerializationError> =
         Envelope.deserialize<IntegrationEvent> env
-
 
 module CsvHelper =
     type CsvRow =

@@ -421,6 +421,14 @@ type SupplyOrderLockReq =
       Locked: bool
       ModifiedDate: DateTimeOffset }
 
+type SupplyOrderUpdateReq =
+    { SupplyOrderId: string
+      ProductId: string
+      StockingPointId: string
+      Quantity: decimal
+      ExpectedDeliveryUtc: DateTimeOffset
+      Status: string } 
+
 type MaterialReservationCreateReq =
     { Id: string
       IdempotencyKey: string
