@@ -19,7 +19,6 @@
     <ProjectReference Include="..\Medhavi.Contracts\Medhavi.Contracts.fsproj" />
     <ProjectReference Include="..\Medhavi.SharedKernel\Medhavi.SharedKernel.fsproj" />
     <ProjectReference Include="..\Medhavi.Infrastructure\Medhavi.Infrastructure.fsproj" />
-    <ProjectReference Include="..\Medhavi.MasterData\Medhavi.MasterData.fsproj" />
   </ItemGroup>
 
 </Project>
