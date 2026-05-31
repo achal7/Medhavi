@@ -18,7 +18,6 @@
     <Compile Include="Application\SupplyOrder.fs" />
     <Compile Include="Application\MaterialReservation.fs" />
     <Compile Include="BoundedContext.fs" />
-    <Compile Include="Application\SupplyMasterDataImportedHandler.fs" />
     <Compile Include="Application\MaterialProvider.fs" />
   </ItemGroup>
 

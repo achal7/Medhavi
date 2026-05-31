@@ -32,7 +32,6 @@
     <Compile Include="Application\StandardResource.fs" />
     <Compile Include="Application\PhysicalResource.fs" />
     <Compile Include="BoundedContext.fs" />
-    <Compile Include="Application\MasterDataImportedHandler.fs" />
   </ItemGroup>
 
   <ItemGroup>

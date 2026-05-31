@@ -179,7 +179,7 @@ module Service =
 
     let private createIfMissing
         capabilities
-        (item: SupplyOrderStatusPayload)
+        (item: SupplyOrderUpdateReq)
         (existingOpt: Contracts.Domain.SupplyOrder option)
         =
         taskResult {
@@ -216,7 +216,7 @@ module Service =
                 return ACL.toContract decision.NewState
         }
 
-    let private transitionState capabilities (item: SupplyOrderStatusPayload) (order: Contracts.Domain.SupplyOrder) =
+    let private transitionState capabilities (item: SupplyOrderUpdateReq) (order: Contracts.Domain.SupplyOrder) =
         taskResult {
             let normalizedStatus = item.Status.Trim().ToLowerInvariant()
             let currentStatus = order.State.Trim().ToLowerInvariant()
@@ -278,7 +278,7 @@ module Service =
                 return order
         }
 
-    let processSingleUpdate capabilities query (item: SupplyOrderStatusPayload) =
+    let processSingleUpdate capabilities query (item: SupplyOrderUpdateReq) =
         taskResult {
             let! existing =
                 task {
@@ -293,7 +293,7 @@ module Service =
     let processStatusUpdates
         (capabilities: SupplyOrderCapabilities)
         (query: QueryService<Contracts.Domain.SupplyOrder, string>)
-        (statusUpdates: SupplyOrderStatusPayload list)
+        (statusUpdates: SupplyOrderUpdateReq list)
         : TaskResult<Contracts.Domain.SupplyOrder list, ApplicationError> =
         statusUpdates
         |> List.map (processSingleUpdate capabilities query)
