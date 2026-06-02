@@ -14,10 +14,10 @@
 | 2 | Material Availability Query | 1 | ✔️ Completed | 100% |
 | 3 | Material Reservations | 1 | ✔️ Completed | 100% |
 | 4 | Routing & Process Master Data | 1 | ✔️ Completed | 100% |
-| 5 | Capacity CTP Module | 2 | ❌ Not Started | 0% |
-| 6 | Transport ATP Module | 2 | ❌ Not Started | 0% |
+| 5 | Capacity CTP Module | 2 | ✔️ Completed | 100% |
+| 6 | Transport ATP Module | 2 | ✔️ Completed | 100% |
 | 7 | Postgres/Marten Repository Integration | 2 | ❌ Not Started | 0% |
-| 8 | Promise/ATP Orchestrator | 2 | ❌ Not Started | 0% |
+| 8 | Promise/ATP Orchestrator | 2 | ✔️ Completed | 100% |
 | 9 | Heuristic MRP Module | 3 | ❌ Not Started | 0% |
 | 10 | Material Replenishment Module | 3 | ❌ Not Started | 0% |
 | 11 | Pegging & Traceability | 3 | ❌ Not Started | 0% |
@@ -39,7 +39,7 @@
 
 ```
 Wave 1: Core Deterministic Foundations [MVP] (Phases 0–4)          ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ 100%
-Wave 2: Finite Heuristic Planning & Persistence [MVP] (Phases 5–8)  ░░░░░░░░░░░░░░░░░░ 0%
+Wave 2: Finite Heuristic Planning & Persistence [MVP] (Phases 5–8)  ▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░ 75%
 Wave 3: Demand/Supply Netting & Execution [MVP] (Phases 9–13)       ░░░░░░░░░░░░░░░░░░ 0%
 Wave 4: Advanced AI/ML & Optimization [Post-MVP] (Phases 14–17)     ░░░░░░░░░░░░░░░░░░ 0%
 Wave 5: Cognitive, Agentic, & Governance Layer [Post-MVP] (Phases 18–22) ░░░░░░░░░░░░░ 0%
@@ -423,28 +423,28 @@ The following capabilities **must grow incrementally** across multiple phases ra
 ---
 
 ### Phase 8 — Promise/ATP Orchestrator (Heuristic ATP/CTP-lite)
-**Wave**: 2 | **Status**: ❌ Not Started
+**Wave**: 2 | **Status**: ✔️ Completed
 
 **Architecture Note**: Promise is **real-time, per-order, sub-30s**. It orchestrates Material Availability, Material Reservation, Capacity CTP, Transport ATP. It does **NOT** call MRP (too slow, different purpose). Routing selection happens **FIRST**.
 
 | Sub-Phase | Feature(s) | Description | Exit Gate | Status |
 |-----------|-----------|-------------|-----------|--------|
-| 8.1 | MP-41 | Scenario aggregate (Version, PlanSnapshot, MarkDirty, optimistic concurrency) | Scenario aggregate updates increment Scenario.Version and track dirty state in unit tests. | ❌ Not Started |
-| 8.2 | MP-41 | Core policy & SLA presets (Gold/Silver/Bronze presets, merge logic) | Presets defined; merging unit tests verify priority resolution behavior. | ❌ Not Started |
-| 8.3 | MP-44 | Scoring type stubs (time/cost/risk/CO2 record shapes; logic wired in Phase 8) | Scoring types compile and support addition/comparison operations. | ❌ Not Started |
-| 8.4 | MP-01 | Material ATP service (uses Material Availability) | Query returns material availability date per product; returns Infinite/Unavailable if stock-out. | ❌ Not Started |
-| 8.5 | MP-01 | Capacity window finder (uses Capacity CTP) | Capacity query returns start/end dates for routing requirements. | ❌ Not Started |
-| 8.6 | MP-01 | Transport ATP integration (uses Transport ATP) | Pathfinder resolves valid transit legs and returns expected arrival date. | ❌ Not Started |
-| 8.7 | MP-23 | Multi-hop material flow (graph-based upstream availability) | Orchestrator resolves multi-hop material constraints by tracing upstream bill-of-materials locations. | ❌ Not Started |
-| 8.8 | MP-01 | Promise orchestrator (compose all providers, step ordering) | Orchestrator aggregates material, capacity, and transport outputs into a combined promise request. | ❌ Not Started |
-| 8.9 | MP-01 | Promise date = max(material_ready, capacity_ready, transport_arrival) | Orchestrator accurately sets promise date using the max of ready dates; unit tests verify calculations. | ❌ Not Started |
-| 8.10 | MP-01 | Limiter selection (argmax contributor + rationale) | Output payload identifies the exact bottleneck limiting a promise (Material, Capacity, or Transport). | ❌ Not Started |
-| 8.11 | MP-42 | Tentative reservation creation (material/capacity/transport) | Orchestrator successfully creates tentative reservations across all 3 domains, rollback occurs on failure. | ❌ Not Started |
-| 8.12 | MP-01 | Priority/full-order/full-delivery enforcement | Order promising respects priority parameters, enforcing full-order delivery rules when requested. | ❌ Not Started |
-| 8.13 | MP-41 | Provider injection (light vs full mode) | Config changes switch orchestrator between mock providers and real repository implementations. | ❌ Not Started |
-| 8.14 | MP-01 | Risk/confidence stub (deterministic date with confidence=1.0; hook for Phase 18 upgrade) | Response includes risk metadata; returns 1.0 confidence stub; hook compiles cleanly. | ❌ Not Started |
-| 8.15 | MP-44 | Cost calculation (material + production + transport + holding + lateness penalties) | Total cost matches expected sum of material, capacity, transit, and late penalty parameters. | ❌ Not Started |
-| 8.16 | MP-41 | Promise telemetry instrumentation (latency per provider, limiter frequency, cache hit/miss) | Latencies, cache hits, and limiter counts are successfully published to telemetry sinks. | ❌ Not Started |
+| 8.1 | MP-41 | Scenario aggregate (Version, PlanSnapshot, MarkDirty, optimistic concurrency) | Scenario aggregate updates increment Scenario.Version and track dirty state in unit tests. | ✔️ Completed |
+| 8.2 | MP-41 | Core policy & SLA presets (Gold/Silver/Bronze presets, merge logic) | Presets defined; merging unit tests verify priority resolution behavior. | ✔️ Completed |
+| 8.3 | MP-44 | Scoring type stubs (time/cost/risk/CO2 record shapes; logic wired in Phase 8) | Scoring types compile and support addition/comparison operations. | ✔️ Completed |
+| 8.4 | MP-01 | Material ATP service (uses Material Availability) | Query returns material availability date per product; returns Infinite/Unavailable if stock-out. | ✔️ Completed |
+| 8.5 | MP-01 | Capacity window finder (uses Capacity CTP) | Capacity query returns start/end dates for routing requirements. | ✔️ Completed |
+| 8.6 | MP-01 | Transport ATP integration (uses Transport ATP) | Pathfinder resolves valid transit legs and returns expected arrival date. | ✔️ Completed |
+| 8.7 | MP-23 | Multi-hop material flow (graph-based upstream availability) | Orchestrator resolves multi-hop material constraints by tracing upstream bill-of-materials locations. | ✔️ Completed |
+| 8.8 | MP-01 | Promise orchestrator (compose all providers, step ordering) | Orchestrator aggregates material, capacity, and transport outputs into a combined promise request. | ✔️ Completed |
+| 8.9 | MP-01 | Promise date = max(material_ready, capacity_ready, transport_arrival) | Orchestrator accurately sets promise date using the max of ready dates; unit tests verify calculations. | ✔️ Completed |
+| 8.10 | MP-01 | Limiter selection (argmax contributor + rationale) | Output payload identifies the exact bottleneck limiting a promise (Material, Capacity, or Transport). | ✔️ Completed |
+| 8.11 | MP-42 | Tentative reservation creation (material/capacity/transport) | Orchestrator successfully creates tentative reservations across all 3 domains, rollback occurs on failure. | ✔️ Completed |
+| 8.12 | MP-01 | Priority/full-order/full-delivery enforcement | Order promising respects priority parameters, enforcing full-order delivery rules when requested. | ✔️ Completed |
+| 8.13 | MP-41 | Provider injection (light vs full mode) | Config changes switch orchestrator between mock providers and real repository implementations. | ✔️ Completed |
+| 8.14 | MP-01 | Risk/confidence stub (deterministic date with confidence=1.0; hook for Phase 18 upgrade) | Response includes risk metadata; returns 1.0 confidence stub; hook compiles cleanly. | ✔️ Completed |
+| 8.15 | MP-44 | Cost calculation (material + production + transport + holding + lateness penalties) | Total cost matches expected sum of material, capacity, transit, and late penalty parameters. | ✔️ Completed |
+| 8.16 | MP-41 | Promise telemetry instrumentation (latency per provider, limiter frequency, cache hit/miss) | Latencies, cache hits, and limiter counts are successfully published to telemetry sinks. | ✔️ Completed |
 
 ---
 

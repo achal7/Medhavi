@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -7,6 +7,22 @@
 
   <ItemGroup>
     <Compile Include="Library.fs" />
+    <Compile Include="PromiseTypes.fs" />
+    <Compile Include="Scenario.fs" />
+    <Compile Include="Scoring.fs" />
+    <Compile Include="MaterialAtp.fs" />
+    <Compile Include="TransportAtp.fs" />
+    <Compile Include="CapacityAtp.fs" />
+    <Compile Include="Routing.fs" />
+    <Compile Include="LimiterSelection.fs" />
+    <Compile Include="CostCalculation.fs" />
+    <Compile Include="PromiseService.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Medhavi.Common\Medhavi.Common.fsproj" />
+    <ProjectReference Include="..\Medhavi.SharedKernel\Medhavi.SharedKernel.fsproj" />
+    <ProjectReference Include="..\Medhavi.Transport\Medhavi.Transport.fsproj" />
   </ItemGroup>
 
 </Project>

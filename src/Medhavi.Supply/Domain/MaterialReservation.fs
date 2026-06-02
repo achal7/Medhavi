@@ -121,10 +121,12 @@ let decide: DecideMaterialReservation =
         | Expire _, None ->
             Error(DomainError.validation "Reservation not found.")
 
-let evolve (state: MaterialReservation option) (event: MaterialReservationEvent) : MaterialReservation option =
-    match event with
-    | ReservationCreated r -> Some r
-    | ReservationConfirmed e -> state |> Option.map (fun s -> { s with State = "Confirmed"; Modified = Timestamp.now })
-    | ReservationReleased e -> state |> Option.map (fun s -> { s with State = "Released"; Modified = Timestamp.now })
-    | ReservationReduced e -> state |> Option.map (fun s -> { s with Quantity = Quantity.clampToZero e.NewQuantity; State = "Reduced"; Modified = Timestamp.now })
-    | ReservationExpired e -> state |> Option.map (fun s -> { s with State = "Expired"; Modified = Timestamp.now })
+let evolve: EvolveMaterialReservation =
+    fun event stateOpt ->
+        match event, stateOpt with
+        | ReservationCreated r, None -> Some r
+        | ReservationConfirmed e, Some s -> Some { s with State = "Confirmed"; Modified = Timestamp.now }
+        | ReservationReleased e, Some s -> Some { s with State = "Released"; Modified = Timestamp.now }
+        | ReservationReduced e, Some s -> Some { s with Quantity = Quantity.clampToZero e.NewQuantity; State = "Reduced"; Modified = Timestamp.now }
+        | ReservationExpired e, Some s -> Some { s with State = "Expired"; Modified = Timestamp.now }
+        | _, _ -> stateOpt
