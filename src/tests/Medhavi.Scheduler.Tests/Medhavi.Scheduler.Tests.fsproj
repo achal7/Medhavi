@@ -12,7 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Medhavi.Planning\Medhavi.Planning.fsproj" />
+    <ProjectReference Include="..\..\Medhavi.Scheduler\Medhavi.Scheduler.fsproj" />
   </ItemGroup>
 
   <ItemGroup>

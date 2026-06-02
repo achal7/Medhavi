@@ -11,7 +11,7 @@
     <Project Path="src/Medhavi.Integration/Medhavi.Integration.fsproj" />
     <Project Path="src/Medhavi.MasterData/Medhavi.MasterData.fsproj" />
     <Project Path="src/Medhavi.Nexus/Medhavi.Nexus.fsproj" />
-    <Project Path="src/Medhavi.Planning/Medhavi.Planning.fsproj" />
+    <Project Path="src/Medhavi.Scheduler/Medhavi.Scheduler.fsproj" />
     <Project Path="src/Medhavi.Scenario/Medhavi.Scenario.fsproj" />
     <Project Path="src/Medhavi.SharedKernel/Medhavi.SharedKernel.fsproj" />
     <Project Path="src/Medhavi.Supply/Medhavi.Supply.fsproj" />
@@ -23,6 +23,6 @@
     <Project Path="src/tests/Medhavi.Domain.Tests/Medhavi.Domain.Tests.fsproj" />
     <Project Path="src/tests/Medhavi.E2E.Tests/Medhavi.E2E.Tests.fsproj" />
     <Project Path="src/tests/Medhavi.Integration.Tests/Medhavi.Integration.Tests.fsproj" />
-    <Project Path="src/tests/Medhavi.Planning.Tests/Medhavi.Planning.Tests.fsproj" />
+    <Project Path="src/tests/Medhavi.Scheduler.Tests/Medhavi.Scheduler.Tests.fsproj" />
   </Folder>
 </Solution>
