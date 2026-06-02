@@ -455,15 +455,6 @@ type MaterialSnapshot =
       Reservations: (DateTimeOffset * decimal) list
       Safety: decimal }
 
-type ProviderError = UnknownError of string
-
-type MaterialProvider =
-    { GetSnapshot: string -> string -> DateTimeOffset -> Async<Result<MaterialSnapshot, ProviderError>>
-      GetSupplierOptions:
-          string -> string option -> decimal -> DateTimeOffset -> Async<Result<SupplierOffer list, ProviderError>>
-      GetDateWiseAvailability:
-          string -> string -> DateTimeOffset -> int -> Async<Result<(DateTimeOffset * decimal) list, ProviderError>> }
-
 type MaterialReservation =
     { Id: string
       IdempotencyKey: string

@@ -50,11 +50,10 @@ let mapResourceGroupDto (rg: ResourceGroup) : Contracts.Domain.ResourceGroup =
       PlantId = rg.PlantId |> Option.map PlantId.value
       Name = rg.Name
       Description = rg.Description
-      DefaultCalendarId = rg.DefaultCalendarId |> Option.map CalendarId.value
-      IsActive =
-        match rg.Status with
-        | Active -> true
-        | Inactive -> false
+      DefaultCalendarId =
+        rg.DefaultCalendarId
+        |> Option.map CalendarId.value
+      IsActive = rg.Status.ToBool()
       Created = Timestamp.value rg.Created
       Modified = Timestamp.value rg.Modified }
 
@@ -76,17 +75,33 @@ let evolveProjection (state: Map<string, Contracts.Domain.ResourceGroup>) (evt: 
         let key = ResourceGroupId.value e.Id
 
         match Map.tryFind key state with
-        | Some existing -> Map.add key { existing with Name = e.NewName; Modified = Timestamp.value e.Modified } state
+        | Some existing ->
+            Map.add
+                key
+                { existing with
+                    Name = e.NewName
+                    Modified = Timestamp.value e.Modified }
+                state
         | None -> state
     | ResourceGroupRetired e ->
         let key = ResourceGroupId.value e.Id
 
         match Map.tryFind key state with
-        | Some existing -> Map.add key { existing with IsActive = false; Modified = Timestamp.value e.RetiredAt } state
+        | Some existing ->
+            Map.add
+                key
+                { existing with
+                    IsActive = false
+                    Modified = Timestamp.value e.RetiredAt }
+                state
         | None -> state
 
 let createProjectionAgent () =
-    ProjectionAgent<Map<string, Contracts.Domain.ResourceGroup>, ResourceGroupEvent>(evolveProjection, Map.empty, "ResourceGroupReadModel")
+    ProjectionAgent<Map<string, Contracts.Domain.ResourceGroup>, ResourceGroupEvent>(
+        evolveProjection,
+        Map.empty,
+        "ResourceGroupReadModel"
+    )
 
 let createResourceGroupApi (capabilities: ResourceGroupCapabilities) agent =
     { Define =
@@ -112,6 +127,5 @@ let createResourceGroupApi (capabilities: ResourceGroupCapabilities) agent =
         fun req ->
             capabilities.Retire req
             |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map mapResourceGroupDto
-      QueryService = QueryServiceBase.getQueryService agent id }
+            |> TaskResult.map mapResourceGroupDto }
     : ResourceGroupApi

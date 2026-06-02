@@ -11,15 +11,28 @@ open Medhavi.Supply.Application
 open Medhavi.Supply.Domain.InventoryAgg
 open Medhavi.Supply.Domain.InventoryTargetAgg
 open Medhavi.Supply.Domain.SupplierOfferAgg
-open Medhavi.Domain.Material.SupplyOrder
+open Medhavi.Supply.Domain.SupplyOrderAgg
 open Medhavi.Supply.Domain
 
-type Supply =
+open Medhavi.SharedKernel.Projections
+
+type SupplyQueries =
+    { Inventory: InventoryQueryService
+      InventoryTarget: InventoryTargetQueryService
+      SupplierOffer: SupplierOfferQueryService
+      SupplyOrder: SupplyOrderQueryService
+      MaterialReservation: MaterialReservationQueryService }
+
+type SupplyCommands =
     { Inventory: InventoryApi
       InventoryTarget: InventoryTargetApi
       SupplierOffer: SupplierOfferApi
       SupplyOrder: SupplyOrderApi
-      MaterialReservation: MaterialReservationApi
+      MaterialReservation: MaterialReservationApi }
+
+type Supply =
+    { Commands: SupplyCommands
+      Queries: SupplyQueries
       Initialize: unit -> Task<unit>
       Dispose: unit -> unit }
 
@@ -135,11 +148,22 @@ module BoundedContext =
             for sub in subscriptions do sub.Dispose()
             subscriptions <- []
 
-        { Inventory = invApi
-          InventoryTarget = targetApi
-          SupplierOffer = offerApi
-          SupplyOrder = orderApi
-          MaterialReservation = reservationApi
+        let queries : SupplyQueries =
+            { Inventory = QueryServiceBase.getQueryService invAgent id
+              InventoryTarget = QueryServiceBase.getQueryService targetAgent id
+              SupplierOffer = QueryServiceBase.getQueryService offerAgent id
+              SupplyOrder = QueryServiceBase.getQueryService orderAgent id
+              MaterialReservation = QueryServiceBase.getQueryService reservationAgent id }
+
+        let commands : SupplyCommands =
+            { Inventory = invApi
+              InventoryTarget = targetApi
+              SupplierOffer = offerApi
+              SupplyOrder = orderApi
+              MaterialReservation = reservationApi }
+
+        { Commands = commands
+          Queries = queries
           Initialize = initialize
           Dispose = dispose }
 

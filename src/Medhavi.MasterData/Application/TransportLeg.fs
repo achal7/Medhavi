@@ -333,6 +333,5 @@ let createTransportLegApi (capabilities: TransportLegCapabilities) agent =
         fun req ->
             capabilities.Deactivate req
             |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map mapTransportLegDto
-      QueryService = QueryServiceBase.getQueryService agent id }
+            |> TaskResult.map mapTransportLegDto }
     : TransportLegApi

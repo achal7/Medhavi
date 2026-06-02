@@ -322,6 +322,5 @@ let createInventoryTargetApi (capabilities: InventoryTargetCapabilities) agent =
         fun reqId ->
             capabilities.Deactivate reqId
             |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map ACL.toContract
-      QueryService = QueryServiceBase.getQueryService agent id }
+            |> TaskResult.map ACL.toContract }
     : InventoryTargetApi

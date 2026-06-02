@@ -3,10 +3,10 @@ module Medhavi.MasterData.Application.Plant
 open Medhavi
 open Medhavi.Common.Patterns
 open Medhavi.Contracts.Integration
-open Medhavi.Infrastructure
-open Medhavi.SharedKernel
-open Medhavi.SharedKernel.Aggregate
 open Medhavi.MasterData.Domain.PlantAgg
+open Medhavi.SharedKernel
+open Medhavi.SharedKernel.API
+open Medhavi.SharedKernel.Aggregate
 open Medhavi.Infrastructure.Projections
 
 module ACL =
@@ -46,10 +46,7 @@ let mapPlantDto (p: Plant) : Contracts.Domain.Plant =
     { Id = PlantId.value p.Id
       Code = p.Code
       Name = p.Name
-      Status =
-        match p.Status with
-        | Active -> true
-        | Retired -> false }
+      Status = p.Status.ToBool() }
 
 let evolveProjection (state: Map<string, Contracts.Domain.Plant>) (evt: PlantEvent) =
     match evt with
@@ -77,9 +74,6 @@ let evolveProjection (state: Map<string, Contracts.Domain.Plant>) (evt: PlantEve
 let createProjectionAgent () =
     ProjectionAgent<Map<string, Contracts.Domain.Plant>, PlantEvent>(evolveProjection, Map.empty, "PlantReadModel")
 
-open Medhavi.SharedKernel.API
-open Medhavi.Infrastructure.Projections
-
 let createPlantApi (capabilities: PlantCapabilities) agent =
     { Define =
         fun req ->
@@ -104,6 +98,5 @@ let createPlantApi (capabilities: PlantCapabilities) agent =
         fun req ->
             capabilities.Retire req
             |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map mapPlantDto
-      QueryService = QueryServiceBase.getQueryService agent id }
+            |> TaskResult.map mapPlantDto }
     : PlantApi

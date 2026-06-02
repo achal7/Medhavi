@@ -1,4 +1,4 @@
-module Medhavi.Domain.Material.SupplyOrder
+module Medhavi.Supply.Domain.SupplyOrderAgg
 
 open System
 open System.Text.Json.Serialization
@@ -20,6 +20,27 @@ type SupplyOrderState =
     | InProgress
     | Completed
     | Cancelled
+
+    override state.ToString() =
+        match state with
+        | Created -> "Created"
+        | Planned -> "Planned"
+        | Confirmed -> "Confirmed"
+        | Released -> "Released"
+        | InProgress -> "InProgress"
+        | Completed -> "Completed"
+        | Cancelled -> "Cancelled"
+
+    static member FromString str =
+        match str with
+        | "Created" -> Ok Created
+        | "Planned" -> Ok Planned
+        | "Confirmed" -> Ok Confirmed
+        | "Released" -> Ok Released
+        | "InProgress" -> Ok InProgress
+        | "Completed" -> Ok Completed
+        | "Cancelled" -> Ok Cancelled
+        | _ -> Error(DomainError.validation $"Invalid supply order state: '{str}'")
 
 [<JsonFSharpConverter>]
 type SupplyOrderId = private SupplyOrderId of string

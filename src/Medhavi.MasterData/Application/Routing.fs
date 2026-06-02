@@ -849,6 +849,5 @@ let createRoutingApi (capabilities: RoutingCapabilities) agent =
         fun req ->
             capabilities.Deactivate req
             |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map mapRoutingDto
-      QueryService = QueryServiceBase.getQueryService agent id }
+            |> TaskResult.map mapRoutingDto }
     : RoutingApi

@@ -53,12 +53,13 @@ let mapStandardResourceDto (sr: StandardResource) : Contracts.Domain.StandardRes
       Name = sr.Name
       Description = sr.Description
       DefaultEfficiency = Percent.value sr.DefaultEfficiency
-      DefaultCostRateAmount = sr.DefaultCostRate |> Option.map (fun c -> c.Amount)
-      DefaultCostRateCurrency = sr.DefaultCostRate |> Option.map (fun c -> c.Currency)
-      IsActive =
-        match sr.Status with
-        | Active -> true
-        | Inactive -> false
+      DefaultCostRateAmount =
+        sr.DefaultCostRate
+        |> Option.map (fun c -> c.Amount)
+      DefaultCostRateCurrency =
+        sr.DefaultCostRate
+        |> Option.map (fun c -> c.Currency)
+      IsActive = sr.Status.ToBool()
       Created = Timestamp.value sr.Created
       Modified = Timestamp.value sr.Modified }
 
@@ -71,8 +72,12 @@ let evolveProjection (state: Map<string, Contracts.Domain.StandardResource>) (ev
               Name = e.Name
               Description = e.Description
               DefaultEfficiency = Percent.value e.DefaultEfficiency
-              DefaultCostRateAmount = e.DefaultCostRate |> Option.map (fun c -> c.Amount)
-              DefaultCostRateCurrency = e.DefaultCostRate |> Option.map (fun c -> c.Currency)
+              DefaultCostRateAmount =
+                e.DefaultCostRate
+                |> Option.map (fun c -> c.Amount)
+              DefaultCostRateCurrency =
+                e.DefaultCostRate
+                |> Option.map (fun c -> c.Currency)
               IsActive = true
               Created = Timestamp.value e.Created
               Modified = Timestamp.value e.Created }
@@ -82,17 +87,33 @@ let evolveProjection (state: Map<string, Contracts.Domain.StandardResource>) (ev
         let key = StandardResourceId.value e.Id
 
         match Map.tryFind key state with
-        | Some existing -> Map.add key { existing with Name = e.NewName; Modified = Timestamp.value e.Modified } state
+        | Some existing ->
+            Map.add
+                key
+                { existing with
+                    Name = e.NewName
+                    Modified = Timestamp.value e.Modified }
+                state
         | None -> state
     | StandardResourceRetired e ->
         let key = StandardResourceId.value e.Id
 
         match Map.tryFind key state with
-        | Some existing -> Map.add key { existing with IsActive = false; Modified = Timestamp.value e.RetiredAt } state
+        | Some existing ->
+            Map.add
+                key
+                { existing with
+                    IsActive = false
+                    Modified = Timestamp.value e.RetiredAt }
+                state
         | None -> state
 
 let createProjectionAgent () =
-    ProjectionAgent<Map<string, Contracts.Domain.StandardResource>, StandardResourceEvent>(evolveProjection, Map.empty, "StandardResourceReadModel")
+    ProjectionAgent<Map<string, Contracts.Domain.StandardResource>, StandardResourceEvent>(
+        evolveProjection,
+        Map.empty,
+        "StandardResourceReadModel"
+    )
 
 let createStandardResourceApi (capabilities: StandardResourceCapabilities) agent =
     { Define =
@@ -118,6 +139,5 @@ let createStandardResourceApi (capabilities: StandardResourceCapabilities) agent
         fun req ->
             capabilities.Retire req
             |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map mapStandardResourceDto
-      QueryService = QueryServiceBase.getQueryService agent id }
+            |> TaskResult.map mapStandardResourceDto }
     : StandardResourceApi

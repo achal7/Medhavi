@@ -64,10 +64,7 @@ let mapToUomDto (uom: UnitOfMeasure) : Contracts.Domain.UnitOfMeasure =
       Name = uom.Name
       IsBase = isBase
       ConversionFactor = factorVal
-      Status =
-        match uom.Status with
-        | Active -> true
-        | Retired -> false }
+      Status = uom.Status.ToBool() }
 
 let evolveProjection (state: Map<string, Contracts.Domain.UnitOfMeasure>) (evt: UnitOfMeasureEvent) =
     match evt with
@@ -141,6 +138,5 @@ let createUomApi
         fun req ->
             capabilities.ChangeConversionFactor req
             |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map mapToUomDto
-      QueryService = QueryServiceBase.getQueryService agent id }
+            |> TaskResult.map mapToUomDto }
     : UomApi

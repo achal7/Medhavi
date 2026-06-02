@@ -130,7 +130,7 @@ module IntegrationContractsTests =
                         EffectiveEnd = None
                         IsActive = true }
 
-                  let defineTargetRes = supplyBC.InventoryTarget.Define(targetReq).Result
+                  let defineTargetRes = supplyBC.Commands.InventoryTarget.Define(targetReq).Result
                   test <@ Result.isOk defineTargetRes @>
 
                   let invReq: InventoryDefineReq =
@@ -140,7 +140,7 @@ module IntegrationContractsTests =
                         Quantity = 50.0m
                         UnitOfMeasure = "UOM-PCS" }
 
-                  let defineInvRes = supplyBC.Inventory.Define(invReq).Result
+                  let defineInvRes = supplyBC.Commands.Inventory.Define(invReq).Result
                   test <@ Result.isOk defineInvRes @>
 
                   let now = DateTimeOffset.UtcNow
@@ -177,8 +177,8 @@ module IntegrationContractsTests =
                         RequiredDeliveryDate = Some(now.AddDays(5.0))
                         CreatedDate = now }
 
-                  let createPoRes = supplyBC.SupplyOrder.Create(poReq).Result
-                  let createWoRes = supplyBC.SupplyOrder.Create(woReq).Result
+                  let createPoRes = supplyBC.Commands.SupplyOrder.Create(poReq).Result
+                  let createWoRes = supplyBC.Commands.SupplyOrder.Create(woReq).Result
                   test <@ Result.isOk createPoRes @>
                   test <@ Result.isOk createWoRes @>
 

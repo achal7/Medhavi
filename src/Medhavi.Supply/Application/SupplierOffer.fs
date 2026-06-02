@@ -5,12 +5,10 @@ open Medhavi.Common.Patterns
 open Medhavi.Common.Validation
 open Medhavi.Contracts.Domain
 open Medhavi.Contracts.Integration
-open Medhavi.Infrastructure
 open Medhavi.Infrastructure.Projections
 open Medhavi.SharedKernel
 open Medhavi.SharedKernel.API
 open Medhavi.SharedKernel.Aggregate
-open Medhavi.Supply.Domain
 open Medhavi.Supply.Domain.SupplierOfferAgg
 
 module ACL =
@@ -276,6 +274,5 @@ let createSupplierOfferApi (capabilities: SupplierOfferCapabilities) agent =
         fun req ->
             capabilities.ChangeStatus req
             |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map ACL.toContract
-      QueryService = QueryServiceBase.getQueryService agent id }
+            |> TaskResult.map ACL.toContract }
     : SupplierOfferApi

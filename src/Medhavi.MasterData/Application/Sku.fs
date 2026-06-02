@@ -48,10 +48,7 @@ let mapSkuDto (s: Sku) : Contracts.Domain.Sku =
       Code = s.Code
       Name = s.Name
       Group = s.Group
-      Status =
-        match s.Status with
-        | Active -> true
-        | Retired -> false }
+      Status = s.Status.ToBool() }
 
 let evolveProjection (state: Map<string, Contracts.Domain.Sku>) (evt: SkuEvent) =
     match evt with
@@ -98,6 +95,5 @@ let createSkuApi (capabilities: SkuCapabilities) agent =
         fun req ->
             capabilities.Retire req
             |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map mapSkuDto
-      QueryService = QueryServiceBase.getQueryService agent id }
+            |> TaskResult.map mapSkuDto }
     : SkuApi

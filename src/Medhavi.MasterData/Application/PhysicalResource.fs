@@ -3,11 +3,10 @@ module Medhavi.MasterData.Application.PhysicalResource
 open Medhavi
 open Medhavi.Common.Patterns
 open Medhavi.Contracts.Integration
-open Medhavi.Infrastructure
+open Medhavi.Infrastructure.Projections
+open Medhavi.MasterData.Domain.PhysicalResourceAgg
 open Medhavi.SharedKernel
 open Medhavi.SharedKernel.Aggregate
-open Medhavi.MasterData.Domain.PhysicalResourceAgg
-open Medhavi.Infrastructure.Projections
 open Medhavi.SharedKernel.API
 
 module ACL =
@@ -56,8 +55,12 @@ let mapPhysicalResourceDto (pr: PhysicalResource) : Contracts.Domain.PhysicalRes
       SerialNumber = pr.SerialNumber
       Location = pr.Location
       EfficiencyOverride = pr.EfficiencyOverride |> Option.map Percent.value
-      CostRateOverrideAmount = pr.CostRateOverride |> Option.map (fun c -> c.Amount)
-      CostRateOverrideCurrency = pr.CostRateOverride |> Option.map (fun c -> c.Currency)
+      CostRateOverrideAmount =
+        pr.CostRateOverride
+        |> Option.map (fun c -> c.Amount)
+      CostRateOverrideCurrency =
+        pr.CostRateOverride
+        |> Option.map (fun c -> c.Currency)
       CalendarId = pr.CalendarId |> Option.map CalendarId.value
       IsActive =
         match pr.Status with
@@ -76,8 +79,12 @@ let evolveProjection (state: Map<string, Contracts.Domain.PhysicalResource>) (ev
               SerialNumber = e.SerialNumber
               Location = e.Location
               EfficiencyOverride = e.EfficiencyOverride |> Option.map Percent.value
-              CostRateOverrideAmount = e.CostRateOverride |> Option.map (fun c -> c.Amount)
-              CostRateOverrideCurrency = e.CostRateOverride |> Option.map (fun c -> c.Currency)
+              CostRateOverrideAmount =
+                e.CostRateOverride
+                |> Option.map (fun c -> c.Amount)
+              CostRateOverrideCurrency =
+                e.CostRateOverride
+                |> Option.map (fun c -> c.Currency)
               CalendarId = e.CalendarId |> Option.map CalendarId.value
               IsActive = true
               Created = Timestamp.value e.Created
@@ -88,17 +95,33 @@ let evolveProjection (state: Map<string, Contracts.Domain.PhysicalResource>) (ev
         let key = PhysicalResourceId.value e.Id
 
         match Map.tryFind key state with
-        | Some existing -> Map.add key { existing with Name = e.NewName; Modified = Timestamp.value e.Modified } state
+        | Some existing ->
+            Map.add
+                key
+                { existing with
+                    Name = e.NewName
+                    Modified = Timestamp.value e.Modified }
+                state
         | None -> state
     | PhysicalResourceRetired e ->
         let key = PhysicalResourceId.value e.Id
 
         match Map.tryFind key state with
-        | Some existing -> Map.add key { existing with IsActive = false; Modified = Timestamp.value e.RetiredAt } state
+        | Some existing ->
+            Map.add
+                key
+                { existing with
+                    IsActive = false
+                    Modified = Timestamp.value e.RetiredAt }
+                state
         | None -> state
 
 let createProjectionAgent () =
-    ProjectionAgent<Map<string, Contracts.Domain.PhysicalResource>, PhysicalResourceEvent>(evolveProjection, Map.empty, "PhysicalResourceReadModel")
+    ProjectionAgent<Map<string, Contracts.Domain.PhysicalResource>, PhysicalResourceEvent>(
+        evolveProjection,
+        Map.empty,
+        "PhysicalResourceReadModel"
+    )
 
 let createPhysicalResourceApi (capabilities: PhysicalResourceCapabilities) agent =
     { Define =
@@ -124,6 +147,5 @@ let createPhysicalResourceApi (capabilities: PhysicalResourceCapabilities) agent
         fun req ->
             capabilities.Retire req
             |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map mapPhysicalResourceDto
-      QueryService = QueryServiceBase.getQueryService agent id }
+            |> TaskResult.map mapPhysicalResourceDto }
     : PhysicalResourceApi

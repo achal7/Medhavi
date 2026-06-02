@@ -5,7 +5,6 @@ open Medhavi.Common.Patterns
 open Medhavi.Common.Validation
 open Medhavi.Contracts.Integration
 open Medhavi.Contracts.Domain
-open Medhavi.Infrastructure
 open Medhavi.Infrastructure.Projections
 open Medhavi.SharedKernel
 open Medhavi.SharedKernel.API
@@ -23,22 +22,21 @@ module ACL =
               Quantity = req.Quantity
               RequiredDate = req.RequiredDate
               ExpiryTime = req.ExpiryTime }
-              
-        make
-        <!> (SkuId.create req.SkuId |> fromResult)
-        <*> (StockingPointId.create req.StockingPointId |> fromResult)
 
-    let toConfirmCommand (req: MaterialReservationConfirmReq) : Result<ConfirmCmd, DomainError> =
-        Ok { Id = req.Id }
+        make <!> (SkuId.create req.SkuId |> fromResult)
+        <*> (StockingPointId.create req.StockingPointId
+             |> fromResult)
 
-    let toReleaseCommand (req: MaterialReservationReleaseReq) : Result<ReleaseCmd, DomainError> =
-        Ok { Id = req.Id }
+    let toConfirmCommand (req: MaterialReservationConfirmReq) : Result<ConfirmCmd, DomainError> = Ok { Id = req.Id }
+
+    let toReleaseCommand (req: MaterialReservationReleaseReq) : Result<ReleaseCmd, DomainError> = Ok { Id = req.Id }
 
     let toReduceCommand (req: MaterialReservationReduceReq) : Result<ReduceCmd, DomainError> =
-        Ok { Id = req.Id; NewQuantity = req.NewQuantity }
+        Ok
+            { Id = req.Id
+              NewQuantity = req.NewQuantity }
 
-    let toExpireCommand (req: MaterialReservationExpireReq) : Result<ExpireCmd, DomainError> =
-        Ok { Id = req.Id }
+    let toExpireCommand (req: MaterialReservationExpireReq) : Result<ExpireCmd, DomainError> = Ok { Id = req.Id }
 
     let toContract (res: MaterialReservationAgg.MaterialReservation) : Medhavi.Contracts.Domain.MaterialReservation =
         { Id = res.Id
@@ -61,7 +59,9 @@ type MaterialReservationCapabilities =
       Reduce: MaterialReservationReduceReq -> TaskResult<Decision, ApplicationError>
       Expire: MaterialReservationExpireReq -> TaskResult<Decision, ApplicationError> }
 
-let createCapabilities (repo: Repository<MaterialReservationAgg.MaterialReservation, string, MaterialReservationEvent>) =
+let createCapabilities
+    (repo: Repository<MaterialReservationAgg.MaterialReservation, string, MaterialReservationEvent>)
+    =
     { CreateTentative =
         liftCmdValidation ACL.toCreateTentativeCommand
         >=> handleCommand (fun cmd -> cmd.Id) repo CreateTentative decide
@@ -82,24 +82,52 @@ let createCapabilities (repo: Repository<MaterialReservationAgg.MaterialReservat
         liftCmdResult ACL.toExpireCommand
         >=> handleCommand (fun cmd -> cmd.Id) repo Expire decide }
 
-let evolveProjection (state: Map<string, Medhavi.Contracts.Domain.MaterialReservation>) (evt: MaterialReservationEvent) =
+let evolveProjection
+    (state: Map<string, Medhavi.Contracts.Domain.MaterialReservation>)
+    (evt: MaterialReservationEvent)
+    =
     match evt with
     | ReservationCreated res -> Map.add res.Id (ACL.toContract res) state
     | ReservationConfirmed e ->
         match Map.tryFind e.Id state with
-        | Some s -> Map.add e.Id { s with State = "Confirmed"; Modified = DateTimeOffset.UtcNow } state
+        | Some s ->
+            Map.add
+                e.Id
+                { s with
+                    State = "Confirmed"
+                    Modified = DateTimeOffset.UtcNow }
+                state
         | None -> state
     | ReservationReleased e ->
         match Map.tryFind e.Id state with
-        | Some s -> Map.add e.Id { s with State = "Released"; Modified = DateTimeOffset.UtcNow } state
+        | Some s ->
+            Map.add
+                e.Id
+                { s with
+                    State = "Released"
+                    Modified = DateTimeOffset.UtcNow }
+                state
         | None -> state
     | ReservationReduced e ->
         match Map.tryFind e.Id state with
-        | Some s -> Map.add e.Id { s with Quantity = e.NewQuantity; State = "Reduced"; Modified = DateTimeOffset.UtcNow } state
+        | Some s ->
+            Map.add
+                e.Id
+                { s with
+                    Quantity = e.NewQuantity
+                    State = "Reduced"
+                    Modified = DateTimeOffset.UtcNow }
+                state
         | None -> state
     | ReservationExpired e ->
         match Map.tryFind e.Id state with
-        | Some s -> Map.add e.Id { s with State = "Expired"; Modified = DateTimeOffset.UtcNow } state
+        | Some s ->
+            Map.add
+                e.Id
+                { s with
+                    State = "Expired"
+                    Modified = DateTimeOffset.UtcNow }
+                state
         | None -> state
 
 let createProjectionAgent () =
@@ -136,6 +164,5 @@ let createMaterialReservationApi (capabilities: MaterialReservationCapabilities)
         fun req ->
             capabilities.Expire req
             |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map ACL.toContract
-      QueryService = QueryServiceBase.getQueryService agent id }
+            |> TaskResult.map ACL.toContract }
     : MaterialReservationApi

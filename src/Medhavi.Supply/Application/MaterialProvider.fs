@@ -1,186 +1,541 @@
-namespace Medhavi.Supply.Application
+module Medhavi.Supply.Application.MaterialProvider
 
 open System
 open System.Threading.Tasks
+open Medhavi.Common.Patterns
+open Medhavi.SharedKernel
+open Medhavi.SharedKernel.Projections
+open Medhavi.SharedKernel.API
 open Medhavi.Contracts.Domain
 open Medhavi.Supply
 
-module MaterialProvider =
+type MaterialSnapshot =
+    { SkuId: SkuId
+      StockingPointId: StockingPointId
+      AsOf: Timestamp
+      OnHand: Quantity
+      Inbound: (Timestamp * Quantity) list // Supply orders arriving (date, quantity)
+      Reservations: (Timestamp * Quantity) list // Active reservations (date, quantity)
+      Safety: Quantity } // Safety stock target
 
-    let getSnapshot
-        (caps: Supply)
-        (productId: string)
-        (stockingPointId: string)
-        (asOf: DateTimeOffset)
-        : Async<Result<MaterialSnapshot, ProviderError>> =
-        task {
-            try
-                // 1. Get OnHand Inventory
-                let invId = $"INV-{productId}-{stockingPointId}"
-                let! invOpt = caps.Inventory.QueryService.GetById invId
-                let onHand =
-                    match invOpt with
-                    | Some inv -> inv.Quantity
-                    | None -> 0.0m
-
-                // 2. Get Firm Inbound (PO, WO, TO)
-                let! allOrders =
-                    caps.SupplyOrder.QueryService.Filter (fun o ->
-                        o.SkuId = productId &&
-                        o.StockingPointId = stockingPointId &&
-                        (o.IsFirm || o.State = "Confirmed" || o.State = "Released" || o.State = "InProgress")
-                    )
-
-                // Sort by expected delivery date
-                let inbound =
-                    allOrders
-                    |> List.choose (fun o -> o.RequiredDeliveryDate |> Option.map (fun d -> d, o.Quantity))
-                    |> List.sortBy fst
-
-                // 3. Get Safety Stock
-                let targetId = $"{productId}-{stockingPointId}"
-                let! targetOpt = caps.InventoryTarget.QueryService.GetById targetId
-                let safety =
-                    match targetOpt with
-                    | Some (t: InventoryTarget) when t.IsActive ->
-                        t.SafetyStockQty |> Option.defaultValue 0.0m
-                    | _ -> 0.0m
-
-                // 4. Get active reservations (Tentative or Confirmed)
-                let! activeReservations =
-                    caps.MaterialReservation.QueryService.Filter (fun r ->
-                        r.SkuId = productId &&
-                        r.StockingPointId = stockingPointId &&
-                        (r.State = "Tentative" || r.State = "Confirmed")
-                    )
-
-                let reservations =
-                    activeReservations
-                    |> List.map (fun r -> r.RequiredDate, r.Quantity)
-                    |> List.sortBy fst
-
-                let snapshot : MaterialSnapshot = {
-                    OnHand = onHand
-                    Inbound = inbound
-                    Reservations = reservations
-                    Safety = safety
-                }
-                return Ok snapshot
-            with ex ->
-                return Error (UnknownError ex.Message)
-        } |> Async.AwaitTask
-
-    let getSupplierOptions
-        (caps: Supply)
-        (productId: string)
-        (stockingPointId: string option)
-        (quantity: decimal)
-        (needDate: DateTimeOffset)
-        : Async<Result<SupplierOffer list, ProviderError>> =
-        task {
-            try
-                let! offers =
-                    caps.SupplierOffer.QueryService.Filter (fun o ->
-                        o.SkuId = productId &&
-                        (match stockingPointId, o.StockingPointId with
-                         | Some sp, Some offerSp -> sp = offerSp
-                         | None, _ -> true
-                         | _, None -> true) &&
-                        o.IsActive
-                    )
-                return Ok offers
-            with ex ->
-                return Error (UnknownError ex.Message)
-        } |> Async.AwaitTask
-
+module DomainCore =
     /// Calculates the net available quantity from a snapshot
-    let calculateNetAvailable (snapshot: MaterialSnapshot) : decimal =
-        let totalInbound = snapshot.Inbound |> List.sumBy snd
-        let totalReservations = snapshot.Reservations |> List.sumBy snd
-        snapshot.OnHand + totalInbound - totalReservations - snapshot.Safety
+    let calculateNetAvailable (snapshot: MaterialSnapshot) : Quantity =
+        let totalInbound = snapshot.Inbound |> List.map snd |> Quantity.sum
+
+        let totalReservations =
+            snapshot.Reservations
+            |> List.map snd
+            |> Quantity.sum
+
+        // Saturating subtraction (+) and (-) defined on Quantity type
+        snapshot.OnHand + totalInbound
+        - totalReservations
+        - snapshot.Safety
 
     /// Generates a time-phased bucketed view of net availability over a horizon
     let getTimePhasedAvailability
-        (caps: Supply)
-        (productId: string)
-        (stockingPointId: string)
-        (startDate: DateTimeOffset)
+        (snapshot: MaterialSnapshot)
+        (startDate: Timestamp)
         (bucketDays: int)
         (horizonDays: int)
-        : Async<Result<(DateTimeOffset * decimal) list, ProviderError>> =
-        async {
-            let! snapRes = getSnapshot caps productId stockingPointId startDate
-            match snapRes with
-            | Error e -> return Error e
-            | Ok (snap: MaterialSnapshot) ->
-                let buckets = [
-                    for i in 0 .. (horizonDays / bucketDays) - 1 do
-                        yield startDate.AddDays(float (i * bucketDays))
-                ]
+        : (Timestamp * Quantity) list =
+        let startDto = Timestamp.value startDate
 
-                let result =
-                    buckets
-                    |> List.map (fun bucketStart ->
-                        let bucketEnd = bucketStart.AddDays(float bucketDays)
-                        let inboundUpTo =
-                            snap.Inbound
-                            |> List.filter (fun (date, _) -> date < bucketEnd)
-                            |> List.sumBy snd
-                        let reservationsUpTo =
-                            snap.Reservations
-                            |> List.filter (fun (date, _) -> date < bucketEnd)
-                            |> List.sumBy snd
-                        let net = snap.OnHand + inboundUpTo - reservationsUpTo - snap.Safety
-                        (bucketStart, net)
-                    )
-                return Ok result
-        }
+        let buckets =
+            [ for i in 0 .. (horizonDays / bucketDays) - 1 do
+                  yield Timestamp.create (startDto.AddDays(float (i * bucketDays))) ]
+
+        buckets
+        |> List.map (fun bucketStart ->
+            let bucketEnd =
+                (Timestamp.value bucketStart)
+                    .AddDays(float bucketDays)
+
+            let inboundUpTo =
+                snapshot.Inbound
+                |> List.filter (fun (date, _) -> Timestamp.value date < bucketEnd)
+                |> List.map snd
+                |> Quantity.sum
+
+            let reservationsUpTo =
+                snapshot.Reservations
+                |> List.filter (fun (date, _) -> Timestamp.value date < bucketEnd)
+                |> List.map snd
+                |> Quantity.sum
+
+            let net =
+                snapshot.OnHand + inboundUpTo
+                - reservationsUpTo
+                - snapshot.Safety
+
+            (bucketStart, net))
 
     /// Generates a daily date-wise availability step-curve over a horizon
     let getDateWiseAvailability
-        (caps: Supply)
-        (productId: string)
-        (stockingPointId: string)
-        (startDate: DateTimeOffset)
+        (snapshot: MaterialSnapshot)
+        (startDate: Timestamp)
         (horizonDays: int)
-        : Async<Result<(DateTimeOffset * decimal) list, ProviderError>> =
-        async {
-            let! snapRes = getSnapshot caps productId stockingPointId startDate
-            match snapRes with
+        : (Timestamp * Quantity) list =
+        let startDto = Timestamp.value startDate
+        let endDate = startDto.AddDays(float horizonDays)
+
+        // Collect all event dates in horizon, including startDate
+        let eventDates =
+            [ startDto ]
+            @ (snapshot.Inbound
+               |> List.map (fst >> Timestamp.value))
+            @ (snapshot.Reservations
+               |> List.map (fst >> Timestamp.value))
+            |> List.filter (fun d -> d >= startDto && d <= endDate)
+            |> List.map (fun d -> DateTimeOffset(d.Date, TimeSpan.Zero)) // normalize to start of day
+            |> List.distinct
+            |> List.sort
+            |> List.map Timestamp.create
+
+        eventDates
+        |> List.map (fun d ->
+            let dVal = Timestamp.value d
+            let endOfDay = dVal.AddDays(1.0).AddTicks(-1L)
+
+            let inboundUpTo =
+                snapshot.Inbound
+                |> List.filter (fun (date, _) -> Timestamp.value date <= endOfDay)
+                |> List.map snd
+                |> Quantity.sum
+
+            let reservationsUpTo =
+                snapshot.Reservations
+                |> List.filter (fun (date, _) -> Timestamp.value date <= endOfDay)
+                |> List.map snd
+                |> Quantity.sum
+
+            let net =
+                snapshot.OnHand + inboundUpTo
+                - reservationsUpTo
+                - snapshot.Safety
+
+            (d, net))
+
+// ============================================================================
+// 3. Adapter Layer (Queries execution and mapping to/from Domain types)
+// ============================================================================
+
+let private findInventoryBySkuAndSp (inventoryQuery: InventoryQueryService) (skuId: SkuId) (spId: StockingPointId) =
+    task {
+        let! allInventories = inventoryQuery.GetAll()
+
+        return
+            allInventories
+            |> List.filter (fun inv ->
+                inv.SkuId = SkuId.value skuId
+                && inv.StockingPointId = StockingPointId.value spId)
+    }
+
+let private findSafetyStock
+    (inventoryTargetQuery: InventoryTargetQueryService)
+    (skuId: SkuId)
+    (spId: StockingPointId)
+    (asOf: Timestamp)
+    : Task<Quantity> =
+    task {
+        let! allTargets = inventoryTargetQuery.GetAll()
+        let asOfDto = Timestamp.value asOf
+
+        let rawSafety =
+            allTargets
+            |> List.tryFind (fun target ->
+                target.SkuId = SkuId.value skuId
+                && target.StockingPointId = StockingPointId.value spId
+                && target.IsActive
+                && (target.EffectiveStart
+                    |> Option.map (fun x -> x <= asOfDto)
+                    |> Option.defaultValue true)
+                && (target.EffectiveEnd
+                    |> Option.map (fun x -> x >= asOfDto)
+                    |> Option.defaultValue true))
+            |> Option.bind (fun target -> target.SafetyStockQty)
+            |> Option.defaultValue 0.0m
+
+        return Quantity.clampToZero rawSafety
+    }
+
+/// Fetches a type-safe snapshot of material availability from the read projections
+let getSnapshotInternal
+    (inventoryQuery: InventoryQueryService)
+    (supplyOrderQuery: SupplyOrderQueryService)
+    (inventoryTargetQuery: InventoryTargetQueryService)
+    (reservationQuery: MaterialReservationQueryService)
+    (skuId: SkuId)
+    (stockingPointId: StockingPointId)
+    (asOf: Timestamp)
+    : TaskResult<MaterialSnapshot, ApplicationError> =
+    task {
+        try
+            // 1. Get OnHand Inventory (mapped safely)
+            let! inventories = findInventoryBySkuAndSp inventoryQuery skuId stockingPointId
+
+            let onHand =
+                inventories
+                |> List.map (fun inv -> Quantity.clampToZero inv.Quantity)
+                |> Quantity.sum
+
+            // 2. Get Firm Inbound Orders (PO, WO, TO)
+            let! allOrders =
+                supplyOrderQuery.Filter(fun o ->
+                    o.SkuId = SkuId.value skuId
+                    && o.StockingPointId = StockingPointId.value stockingPointId
+                    && (o.IsFirm
+                        || o.State = "Confirmed"
+                        || o.State = "Released"
+                        || o.State = "InProgress"))
+
+            let inbound =
+                allOrders
+                |> List.choose (fun o ->
+                    o.RequiredDeliveryDate
+                    |> Option.map (fun d -> Timestamp.create d, Quantity.clampToZero o.Quantity))
+                |> List.sortBy fst
+
+            // 3. Get Safety Stock Target (mapped safely)
+            let! safety = findSafetyStock inventoryTargetQuery skuId stockingPointId asOf
+
+            // 4. Get active reservations (Tentative or Confirmed, mapped safely)
+            let! activeReservations =
+                reservationQuery.Filter(fun r ->
+                    r.SkuId = SkuId.value skuId
+                    && r.StockingPointId = StockingPointId.value stockingPointId
+                    && (r.State = "Tentative" || r.State = "Confirmed"))
+
+            let reservations =
+                activeReservations
+                |> List.map (fun r -> Timestamp.create r.RequiredDate, Quantity.clampToZero r.Quantity)
+                |> List.sortBy fst
+
+            let snapshot: MaterialSnapshot =
+                { SkuId = skuId
+                  StockingPointId = stockingPointId
+                  AsOf = asOf
+                  OnHand = onHand
+                  Inbound = inbound
+                  Reservations = reservations
+                  Safety = safety }
+
+            return Ok snapshot
+        with ex ->
+            return Error(ApplicationError.Unknown ex.Message)
+    }
+
+/// Fetches supplier options for a SKU
+let getSupplierOptionsInternal
+    (supplierOfferQuery: SupplierOfferQueryService)
+    (skuId: SkuId)
+    (stockingPointId: StockingPointId option)
+    : TaskResult<SupplierOffer list, ApplicationError> =
+    task {
+        try
+            let! offers =
+                supplierOfferQuery.Filter(fun o ->
+                    o.SkuId = SkuId.value skuId
+                    && (match stockingPointId, o.StockingPointId with
+                        | Some sp, Some offerSp -> StockingPointId.value sp = offerSp
+                        | None, _ -> true
+                        | _, None -> true)
+                    && o.IsActive)
+
+            return Ok offers
+        with ex ->
+            return Error(ApplicationError.Unknown ex.Message)
+    }
+
+// ============================================================================
+// 4. Backward-Compatible API Wrapper (createMaterialProvider)
+// ============================================================================
+let createMaterialProvider
+    (inventoryQuery: InventoryQueryService)
+    (supplyOrderQuery: SupplyOrderQueryService)
+    (inventoryTargetQuery: InventoryTargetQueryService)
+    (reservationQuery: MaterialReservationQueryService)
+    (supplierOfferQuery: SupplierOfferQueryService)
+    : MaterialProviderApi =
+
+    let toContractSnap (snap: MaterialSnapshot) : Medhavi.Contracts.Domain.MaterialSnapshot =
+        { OnHand = Quantity.value snap.OnHand
+          Inbound =
+            snap.Inbound
+            |> List.map (fun (t, q) -> Timestamp.value t, Quantity.value q)
+          Reservations =
+            snap.Reservations
+            |> List.map (fun (t, q) -> Timestamp.value t, Quantity.value q)
+          Safety = Quantity.value snap.Safety }
+
+    { GetSnapshot =
+        fun skuIdStr spIdStr asOf ->
+            async {
+                match SkuId.create skuIdStr, StockingPointId.create spIdStr with
+                | Ok skuId, Ok spId ->
+                    let! result =
+                        getSnapshotInternal
+                            inventoryQuery
+                            supplyOrderQuery
+                            inventoryTargetQuery
+                            reservationQuery
+                            skuId
+                            spId
+                            asOf
+                        |> Async.AwaitTask
+
+                    match result with
+                    | Ok snap -> return Ok(toContractSnap snap)
+                    | Error e -> return Error e
+                | Error e, _
+                | _, Error e -> return Error(ApplicationError.Domain e)
+            }
+
+      GetNetAvailable =
+        fun skuIdStr spIdStr asOf ->
+            async {
+                match SkuId.create skuIdStr, StockingPointId.create spIdStr with
+                | Ok skuId, Ok spId ->
+                    let! result =
+                        getSnapshotInternal
+                            inventoryQuery
+                            supplyOrderQuery
+                            inventoryTargetQuery
+                            reservationQuery
+                            skuId
+                            spId
+                            asOf
+                        |> Async.AwaitTask
+
+                    match result with
+                    | Ok snap ->
+                        let net = DomainCore.calculateNetAvailable snap
+                        return Ok(Quantity.value net)
+                    | Error e -> return Error e
+                | Error e, _
+                | _, Error e -> return Error(ApplicationError.Domain e)
+            }
+
+      GetTimePhasedAvailability =
+        fun skuIdStr spIdStr asOf bucketDays horizonDays ->
+            async {
+                match SkuId.create skuIdStr, StockingPointId.create spIdStr with
+                | Ok skuId, Ok spId ->
+                    let! result =
+                        getSnapshotInternal
+                            inventoryQuery
+                            supplyOrderQuery
+                            inventoryTargetQuery
+                            reservationQuery
+                            skuId
+                            spId
+                            asOf
+                        |> Async.AwaitTask
+
+                    match result with
+                    | Ok snap ->
+                        let availability =
+                            DomainCore.getTimePhasedAvailability snap asOf bucketDays horizonDays
+
+                        let contractAvailability =
+                            availability
+                            |> List.map (fun (t, q) -> t, Quantity.value q)
+
+                        return Ok contractAvailability
+                    | Error e -> return Error e
+                | Error e, _
+                | _, Error e -> return Error(ApplicationError.Domain e)
+            }
+
+      GetDateWiseAvailability =
+        fun skuIdStr spIdStr asOf horizonDays ->
+            async {
+                match SkuId.create skuIdStr, StockingPointId.create spIdStr with
+                | Ok skuId, Ok spId ->
+                    let! result =
+                        getSnapshotInternal
+                            inventoryQuery
+                            supplyOrderQuery
+                            inventoryTargetQuery
+                            reservationQuery
+                            skuId
+                            spId
+                            asOf
+                        |> Async.AwaitTask
+
+                    match result with
+                    | Ok snap ->
+                        let availability = DomainCore.getDateWiseAvailability snap asOf horizonDays
+
+                        let contractAvailability =
+                            availability
+                            |> List.map (fun (t, q) -> t, Quantity.value q)
+
+                        return Ok contractAvailability
+                    | Error e -> return Error e
+                | Error e, _
+                | _, Error e -> return Error(ApplicationError.Domain e)
+            }
+
+      GetSupplierOptions =
+        fun skuIdStr spIdStr qty asOf ->
+            async {
+                match SkuId.create skuIdStr with
+                | Error e -> return Error(ApplicationError.Domain e)
+                | Ok skuId ->
+                    let spId =
+                        spIdStr
+                        |> Option.map (fun s ->
+                            StockingPointId.create s
+                            |> Result.defaultWith (fun _ -> failwith "Invalid StockingPointId"))
+
+                    let! result =
+                        getSupplierOptionsInternal supplierOfferQuery skuId spId
+                        |> Async.AwaitTask
+
+                    return result
+            } }
+
+let getSnapshot
+    (caps: Supply)
+    (productId: string)
+    (stockingPointId: string)
+    (asOf: DateTimeOffset)
+    : Async<Result<Medhavi.Contracts.Domain.MaterialSnapshot, ApplicationError>> =
+    async {
+        match SkuId.create productId, StockingPointId.create stockingPointId with
+        | Ok skuId, Ok spId ->
+            let! res =
+                getSnapshotInternal
+                    caps.Queries.Inventory
+                    caps.Queries.SupplyOrder
+                    caps.Queries.InventoryTarget
+                    caps.Queries.MaterialReservation
+                    skuId
+                    spId
+                    (Timestamp.create asOf)
+                |> Async.AwaitTask
+
+            match res with
+            | Ok snap ->
+                let contractSnap: Medhavi.Contracts.Domain.MaterialSnapshot =
+                    { OnHand = Quantity.value snap.OnHand
+                      Inbound =
+                        snap.Inbound
+                        |> List.map (fun (t, q) -> Timestamp.value t, Quantity.value q)
+                      Reservations =
+                        snap.Reservations
+                        |> List.map (fun (t, q) -> Timestamp.value t, Quantity.value q)
+                      Safety = Quantity.value snap.Safety }
+
+                return Ok contractSnap
             | Error e -> return Error e
-            | Ok (snap: MaterialSnapshot) ->
-                let endDate = startDate.AddDays(float horizonDays)
+        | Error e, _
+        | _, Error e -> return Error(ApplicationError.Domain e)
+    }
 
-                // Collect all event dates in horizon, including startDate
-                let eventDates =
-                    [ startDate ]
-                    @ (snap.Inbound |> List.map fst)
-                    @ (snap.Reservations |> List.map fst)
-                    |> List.filter (fun d -> d >= startDate && d <= endDate)
-                    |> List.map (fun d -> DateTimeOffset(d.Date, TimeSpan.Zero)) // normalize to start of day
-                    |> List.distinct
-                    |> List.sort
+let getSupplierOptions
+    (caps: Supply)
+    (productId: string)
+    (stockingPointId: string option)
+    (quantity: decimal)
+    (needDate: DateTimeOffset)
+    : Async<Result<SupplierOffer list, ApplicationError>> =
+    async {
+        match SkuId.create productId with
+        | Ok skuId ->
+            let spId =
+                stockingPointId
+                |> Option.map (fun s ->
+                    StockingPointId.create s
+                    |> Result.defaultWith (fun _ -> failwith "Invalid StockingPointId"))
 
-                let result =
-                    eventDates
-                    |> List.map (fun d ->
-                        let endOfDay = d.AddDays(1.0).AddTicks(-1L)
-                        let inboundUpTo =
-                            snap.Inbound
-                            |> List.filter (fun (date, _) -> date <= endOfDay)
-                            |> List.sumBy snd
-                        let reservationsUpTo =
-                            snap.Reservations
-                            |> List.filter (fun (date, _) -> date <= endOfDay)
-                            |> List.sumBy snd
-                        let net = snap.OnHand + inboundUpTo - reservationsUpTo - snap.Safety
-                        (d, net)
-                    )
-                return Ok result
-        }
+            let! res =
+                getSupplierOptionsInternal caps.Queries.SupplierOffer skuId spId
+                |> Async.AwaitTask
 
-    /// Creates an instance of MaterialProvider record-of-functions
-    let createMaterialProvider (caps: Supply) : MaterialProvider =
-        { GetSnapshot = getSnapshot caps
-          GetSupplierOptions = getSupplierOptions caps
-          GetDateWiseAvailability = getDateWiseAvailability caps }
+            return res
+        | Error e -> return Error(ApplicationError.Domain e)
+    }
+
+let calculateNetAvailable (snapshot: Medhavi.Contracts.Domain.MaterialSnapshot) : decimal =
+    let totalInbound = snapshot.Inbound |> List.sumBy snd
+    let totalReservations = snapshot.Reservations |> List.sumBy snd
+
+    snapshot.OnHand + totalInbound
+    - totalReservations
+    - snapshot.Safety
+
+let getTimePhasedAvailability
+    (caps: Supply)
+    (productId: string)
+    (stockingPointId: string)
+    (startDate: DateTimeOffset)
+    (bucketDays: int)
+    (horizonDays: int)
+    : Async<Result<(DateTimeOffset * decimal) list, ApplicationError>> =
+    async {
+        match SkuId.create productId, StockingPointId.create stockingPointId with
+        | Ok skuId, Ok spId ->
+            let! res =
+                getSnapshotInternal
+                    caps.Queries.Inventory
+                    caps.Queries.SupplyOrder
+                    caps.Queries.InventoryTarget
+                    caps.Queries.MaterialReservation
+                    skuId
+                    spId
+                    (Timestamp.create startDate)
+                |> Async.AwaitTask
+
+            match res with
+            | Ok snap ->
+                let availability =
+                    DomainCore.getTimePhasedAvailability snap (Timestamp.create startDate) bucketDays horizonDays
+
+                let mappedAvailability =
+                    availability
+                    |> List.map (fun (t, q) -> Timestamp.value t, Quantity.value q)
+
+                return Ok mappedAvailability
+            | Error e -> return Error e
+        | Error e, _
+        | _, Error e -> return Error(ApplicationError.Domain e)
+    }
+
+let getDateWiseAvailability
+    (caps: Supply)
+    (productId: string)
+    (stockingPointId: string)
+    (startDate: DateTimeOffset)
+    (horizonDays: int)
+    : Async<Result<(DateTimeOffset * decimal) list, ApplicationError>> =
+    async {
+        match SkuId.create productId, StockingPointId.create stockingPointId with
+        | Ok skuId, Ok spId ->
+            let! res =
+                getSnapshotInternal
+                    caps.Queries.Inventory
+                    caps.Queries.SupplyOrder
+                    caps.Queries.InventoryTarget
+                    caps.Queries.MaterialReservation
+                    skuId
+                    spId
+                    (Timestamp.create startDate)
+                |> Async.AwaitTask
+
+            match res with
+            | Ok snap ->
+                let availability =
+                    DomainCore.getDateWiseAvailability snap (Timestamp.create startDate) horizonDays
+
+                let mappedAvailability =
+                    availability
+                    |> List.map (fun (t, q) -> Timestamp.value t, Quantity.value q)
+
+                return Ok mappedAvailability
+            | Error e -> return Error e
+        | Error e, _
+        | _, Error e -> return Error(ApplicationError.Domain e)
+    }

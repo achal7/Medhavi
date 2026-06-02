@@ -12,79 +12,86 @@ type UomApi =
       DefineBulk: UomDefineReq list -> TaskResult<UnitOfMeasure list, ApplicationError>
       ChangeConversionFactor: UomChangeConversionFactorReq -> TaskResult<UnitOfMeasure, ApplicationError>
       Retire: string -> TaskResult<UnitOfMeasure, ApplicationError>
-      Activate: string -> TaskResult<UnitOfMeasure, ApplicationError>
-      QueryService: QueryService<UnitOfMeasure, string> }
-
-type PlantApi =
-    { Define: PlantDefineReq -> TaskResult<Plant, ApplicationError>
-      DefineBulk: PlantDefineReq list -> TaskResult<Plant list, ApplicationError>
-      Rename: PlantRenameReq -> TaskResult<Plant, ApplicationError>
-      Retire: PlantRetireReq -> TaskResult<Plant, ApplicationError>
-      QueryService: QueryService<Plant, string> }
+      Activate: string -> TaskResult<UnitOfMeasure, ApplicationError> }
 
 type UnitConversionApi =
     { Define: UnitConversionDefineReq -> TaskResult<UnitConversion, ApplicationError>
       DefineBulk: UnitConversionDefineReq list -> TaskResult<UnitConversion list, ApplicationError>
       UpdateRatio: UnitConversionUpdateReq -> TaskResult<UnitConversion, ApplicationError>
-      Retire: UnitConversionRetireReq -> TaskResult<UnitConversion, ApplicationError>
-      QueryService: QueryService<UnitConversion, string> }
+      Retire: UnitConversionRetireReq -> TaskResult<UnitConversion, ApplicationError> }
 
-type SkuApi =
-    { Define: SkuDefineReq -> TaskResult<Sku, ApplicationError>
-      DefineBulk: SkuDefineReq list -> TaskResult<Sku list, ApplicationError>
-      Rename: SkuRenameReq -> TaskResult<Sku, ApplicationError>
-      Retire: SkuRetireReq -> TaskResult<Sku, ApplicationError>
-      QueryService: QueryService<Sku, string> }
+type PlantApi =
+    { Define: PlantDefineReq -> TaskResult<Plant, ApplicationError>
+      DefineBulk: PlantDefineReq list -> TaskResult<Plant list, ApplicationError>
+      Rename: PlantRenameReq -> TaskResult<Plant, ApplicationError>
+      Retire: PlantRetireReq -> TaskResult<Plant, ApplicationError> }
 
 type StockingPointApi =
     { Define: StockingPointDefineReq -> TaskResult<StockingPoint, ApplicationError>
       DefineBulk: StockingPointDefineReq list -> TaskResult<StockingPoint list, ApplicationError>
       Rename: StockingPointRenameReq -> TaskResult<StockingPoint, ApplicationError>
-      Retire: StockingPointRetireReq -> TaskResult<StockingPoint, ApplicationError>
-      QueryService: QueryService<StockingPoint, string> }
+      Retire: StockingPointRetireReq -> TaskResult<StockingPoint, ApplicationError> }
+
+type SkuApi =
+    { Define: SkuDefineReq -> TaskResult<Sku, ApplicationError>
+      DefineBulk: SkuDefineReq list -> TaskResult<Sku list, ApplicationError>
+      Rename: SkuRenameReq -> TaskResult<Sku, ApplicationError>
+      Retire: SkuRetireReq -> TaskResult<Sku, ApplicationError> }
 
 type BomApi =
     { Define: BomDefineReq -> TaskResult<Bom, ApplicationError>
       DefineBulk: BomDefineReq list -> TaskResult<Bom list, ApplicationError>
       Activate: BomActivateReq -> TaskResult<Bom, ApplicationError>
-      Deactivate: BomDeactivateReq -> TaskResult<Bom, ApplicationError>
-      QueryService: QueryService<Bom, string> }
+      Deactivate: BomDeactivateReq -> TaskResult<Bom, ApplicationError> }
+
+type ResourceGroupApi =
+    { Define: ResourceGroupDefineReq -> TaskResult<ResourceGroup, ApplicationError>
+      DefineBulk: ResourceGroupDefineReq list -> TaskResult<ResourceGroup list, ApplicationError>
+      Rename: ResourceGroupRenameReq -> TaskResult<ResourceGroup, ApplicationError>
+      Retire: ResourceGroupRetireReq -> TaskResult<ResourceGroup, ApplicationError> }
+
+type StandardResourceApi =
+    { Define: StandardResourceDefineReq -> TaskResult<StandardResource, ApplicationError>
+      DefineBulk: StandardResourceDefineReq list -> TaskResult<StandardResource list, ApplicationError>
+      Rename: StandardResourceRenameReq -> TaskResult<StandardResource, ApplicationError>
+      Retire: StandardResourceRetireReq -> TaskResult<StandardResource, ApplicationError> }
+
+type PhysicalResourceApi =
+    { Define: PhysicalResourceDefineReq -> TaskResult<PhysicalResource, ApplicationError>
+      DefineBulk: PhysicalResourceDefineReq list -> TaskResult<PhysicalResource list, ApplicationError>
+      Rename: PhysicalResourceRenameReq -> TaskResult<PhysicalResource, ApplicationError>
+      Retire: PhysicalResourceRetireReq -> TaskResult<PhysicalResource, ApplicationError> }
 
 type RoutingApi =
     { Define: RoutingDefineReq -> TaskResult<Routing, ApplicationError>
       DefineBulk: RoutingDefineReq list -> TaskResult<Routing list, ApplicationError>
       Activate: RoutingActivateReq -> TaskResult<Routing, ApplicationError>
-      Deactivate: RoutingDeactivateReq -> TaskResult<Routing, ApplicationError>
-      QueryService: QueryService<Routing, string> }
+      Deactivate: RoutingDeactivateReq -> TaskResult<Routing, ApplicationError> }
 
 type TransportLegApi =
     { Define: TransportLegDefineReq -> TaskResult<TransportLeg, ApplicationError>
       DefineBulk: TransportLegDefineReq list -> TaskResult<TransportLeg list, ApplicationError>
       Update: TransportLegUpdateReq -> TaskResult<TransportLeg, ApplicationError>
-      Deactivate: TransportLegDeactivateReq -> TaskResult<TransportLeg, ApplicationError>
-      QueryService: QueryService<TransportLeg, string> }
+      Deactivate: TransportLegDeactivateReq -> TaskResult<TransportLeg, ApplicationError> }
 
 type InventoryApi =
     { Define: InventoryDefineReq -> TaskResult<Inventory, ApplicationError>
       DefineBulk: InventoryDefineReq list -> TaskResult<Inventory list, ApplicationError>
-      Remove: string -> TaskResult<Inventory, ApplicationError>
-      QueryService: QueryService<Inventory, string> }
+      Remove: string -> TaskResult<Inventory, ApplicationError> }
 
 type InventoryTargetApi =
     { Define: InventoryTargetDefineReq -> TaskResult<InventoryTarget, ApplicationError>
       DefineBulk: InventoryTargetDefineReq list -> TaskResult<InventoryTarget list, ApplicationError>
       Update: InventoryTargetUpdateReq -> TaskResult<InventoryTarget, ApplicationError>
       Activate: string -> TaskResult<InventoryTarget, ApplicationError>
-      Deactivate: string -> TaskResult<InventoryTarget, ApplicationError>
-      QueryService: QueryService<InventoryTarget, string> }
+      Deactivate: string -> TaskResult<InventoryTarget, ApplicationError> }
 
 type SupplierOfferApi =
     { Define: SupplierOfferDefineReq -> TaskResult<SupplierOffer, ApplicationError>
       DefineBulk: SupplierOfferDefineReq list -> TaskResult<SupplierOffer list, ApplicationError>
       Update: SupplierOfferUpdateReq -> TaskResult<SupplierOffer, ApplicationError>
       Revoke: string -> TaskResult<SupplierOffer, ApplicationError>
-      ChangeStatus: SupplierOfferChangeStatusReq -> TaskResult<SupplierOffer, ApplicationError>
-      QueryService: QueryService<SupplierOffer, string> }
+      ChangeStatus: SupplierOfferChangeStatusReq -> TaskResult<SupplierOffer, ApplicationError> }
 
 type SupplyOrderApi =
     { Create: SupplyOrderCreateReq -> TaskResult<SupplyOrder, ApplicationError>
@@ -97,35 +104,22 @@ type SupplyOrderApi =
       Confirm: SupplyOrderConfirmReq -> TaskResult<SupplyOrder, ApplicationError>
       Release: SupplyOrderReleaseReq -> TaskResult<SupplyOrder, ApplicationError>
       Cancel: SupplyOrderCancelReq -> TaskResult<SupplyOrder, ApplicationError>
-      Lock: SupplyOrderLockReq -> TaskResult<SupplyOrder, ApplicationError>
-      QueryService: QueryService<SupplyOrder, string> }
+      Lock: SupplyOrderLockReq -> TaskResult<SupplyOrder, ApplicationError> }
+
+type MaterialProviderApi =
+    { GetSnapshot: string -> string -> Timestamp -> Async<Result<MaterialSnapshot, ApplicationError>>
+      GetNetAvailable: string -> string -> Timestamp -> Async<Result<decimal, ApplicationError>>
+      GetTimePhasedAvailability:
+          string -> string -> Timestamp -> int -> int -> Async<Result<(Timestamp * decimal) list, ApplicationError>>
+      GetDateWiseAvailability:
+          string -> string -> Timestamp -> int -> Async<Result<(Timestamp * decimal) list, ApplicationError>>
+      GetSupplierOptions:
+          string -> string option -> decimal -> Timestamp -> Async<Result<SupplierOffer list, ApplicationError>> }
 
 type MaterialReservationApi =
     { CreateTentative: MaterialReservationCreateReq -> TaskResult<MaterialReservation, ApplicationError>
       Confirm: MaterialReservationConfirmReq -> TaskResult<MaterialReservation, ApplicationError>
       Release: MaterialReservationReleaseReq -> TaskResult<MaterialReservation, ApplicationError>
       Reduce: MaterialReservationReduceReq -> TaskResult<MaterialReservation, ApplicationError>
-      Expire: MaterialReservationExpireReq -> TaskResult<MaterialReservation, ApplicationError>
-      QueryService: QueryService<MaterialReservation, string> }
-
-type ResourceGroupApi =
-    { Define: ResourceGroupDefineReq -> TaskResult<ResourceGroup, ApplicationError>
-      DefineBulk: ResourceGroupDefineReq list -> TaskResult<ResourceGroup list, ApplicationError>
-      Rename: ResourceGroupRenameReq -> TaskResult<ResourceGroup, ApplicationError>
-      Retire: ResourceGroupRetireReq -> TaskResult<ResourceGroup, ApplicationError>
-      QueryService: QueryService<ResourceGroup, string> }
-
-type StandardResourceApi =
-    { Define: StandardResourceDefineReq -> TaskResult<StandardResource, ApplicationError>
-      DefineBulk: StandardResourceDefineReq list -> TaskResult<StandardResource list, ApplicationError>
-      Rename: StandardResourceRenameReq -> TaskResult<StandardResource, ApplicationError>
-      Retire: StandardResourceRetireReq -> TaskResult<StandardResource, ApplicationError>
-      QueryService: QueryService<StandardResource, string> }
-
-type PhysicalResourceApi =
-    { Define: PhysicalResourceDefineReq -> TaskResult<PhysicalResource, ApplicationError>
-      DefineBulk: PhysicalResourceDefineReq list -> TaskResult<PhysicalResource list, ApplicationError>
-      Rename: PhysicalResourceRenameReq -> TaskResult<PhysicalResource, ApplicationError>
-      Retire: PhysicalResourceRetireReq -> TaskResult<PhysicalResource, ApplicationError>
-      QueryService: QueryService<PhysicalResource, string> }
+      Expire: MaterialReservationExpireReq -> TaskResult<MaterialReservation, ApplicationError> }
 

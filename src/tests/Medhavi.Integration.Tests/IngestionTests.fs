@@ -354,7 +354,7 @@ module IngestionTests =
                         Quantity = 100m
                         UnitOfMeasure = "UOM-PCS" }
 
-                  let! _ = supply.Inventory.Define invReq
+                  let! _ = supply.Commands.Inventory.Define invReq
 
                   // Seed inbound supply order (qty = 50 on Day 10)
                   let orderReq: SupplyOrderCreateReq =
@@ -373,7 +373,7 @@ module IngestionTests =
                         RequiredDeliveryDate = Some(DateTimeOffset.UtcNow.AddDays(10.0))
                         CreatedDate = DateTimeOffset.UtcNow }
 
-                  let! _ = supply.SupplyOrder.Create orderReq
+                  let! _ = supply.Commands.SupplyOrder.Create orderReq
 
                   // Seed active reservation (qty = 30 on Day 20)
                   let resvReq: MaterialReservationCreateReq =
@@ -385,7 +385,7 @@ module IngestionTests =
                         RequiredDate = DateTimeOffset.UtcNow.AddDays(20.0)
                         ExpiryTime = DateTimeOffset.UtcNow.AddDays(5.0) }
 
-                  let! _ = supply.MaterialReservation.CreateTentative resvReq
+                  let! _ = supply.Commands.MaterialReservation.CreateTentative resvReq
 
                   // Query time-phased availability
                   let startDate = DateTimeOffset.UtcNow

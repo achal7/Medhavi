@@ -5,12 +5,11 @@ open Medhavi.Common.Patterns
 open Medhavi.Common.Validation
 open Medhavi.Contracts.Domain
 open Medhavi.Contracts.Integration
-open Medhavi.Infrastructure
 open Medhavi.Infrastructure.Projections
 open Medhavi.SharedKernel
 open Medhavi.SharedKernel.API
 open Medhavi.SharedKernel.Aggregate
-open Medhavi.Domain.Material.SupplyOrder
+open Medhavi.Supply.Domain.SupplyOrderAgg
 open System
 
 module ACL =
@@ -500,6 +499,5 @@ let createSupplyOrderApi (capabilities: SupplyOrderCapabilities) agent =
         fun req ->
             capabilities.Lock req
             |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map ACL.toContract
-      QueryService = query }
+            |> TaskResult.map ACL.toContract }
     : SupplyOrderApi

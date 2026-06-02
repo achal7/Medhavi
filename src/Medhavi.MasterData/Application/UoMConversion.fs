@@ -1,15 +1,13 @@
 module Medhavi.MasterData.Application.UoMConversion
 
 open Medhavi
+open Medhavi.Contracts.Integration
 open Medhavi.Common.Validation
 open Medhavi.Common.Patterns
-open Medhavi.SharedKernel
-open Medhavi.MasterData.Domain.UomAgg
-open Medhavi.MasterData.Domain.UnitConversionAgg
-open Medhavi.Contracts.Integration
-open Medhavi.SharedKernel.Aggregate
-open Medhavi.Infrastructure
 open Medhavi.Infrastructure.Projections
+open Medhavi.MasterData.Domain.UnitConversionAgg
+open Medhavi.SharedKernel
+open Medhavi.SharedKernel.Aggregate
 
 module ACL =
     let toDefineCommand (req: UnitConversionDefineReq) : Result<DefineUnitConversionCmd, DomainError> =
@@ -133,6 +131,5 @@ let createUnitConversionApi (capabilities: UnitConversionCapabilities) agent =
         fun req ->
             capabilities.Retire req
             |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map mapUnitConversionDto
-      QueryService = QueryServiceBase.getQueryService agent id }
+            |> TaskResult.map mapUnitConversionDto }
     : UnitConversionApi

@@ -39,7 +39,7 @@ module SupplyIntegrationHandler =
             logger.LogInfo "\n  [Supply BC] Processing Supply Orders..."
             for item in payload do
                 // 1. Check if the order already exists
-                let! existingOpt = caps.SupplyOrder.QueryService.GetById item.SupplyOrderId
+                let! existingOpt = caps.Queries.SupplyOrder.GetById item.SupplyOrderId
                 
                 let mutable isCreated = false
                 match existingOpt with
@@ -76,7 +76,7 @@ module SupplyIntegrationHandler =
                 | Some _ -> ()
 
                 // 2. Perform State Transitions
-                let! currentOpt = caps.SupplyOrder.QueryService.GetById item.SupplyOrderId
+                let! currentOpt = caps.Queries.SupplyOrder.GetById item.SupplyOrderId
                 match currentOpt with
                 | Some current ->
                     let normalizedStatus = item.Status.Trim().ToLowerInvariant()

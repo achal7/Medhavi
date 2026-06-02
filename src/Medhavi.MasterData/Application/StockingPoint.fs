@@ -130,6 +130,5 @@ let createStockingPointApi (capabilities: StockingPointCapabilities) agent =
         fun req ->
             capabilities.Retire req
             |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map mapStockingPointDto
-      QueryService = QueryServiceBase.getQueryService agent id }
+            |> TaskResult.map mapStockingPointDto }
     : StockingPointApi

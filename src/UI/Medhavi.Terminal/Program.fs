@@ -50,7 +50,7 @@ module Program =
     let getTransportLegs () =
         async {
             let! legs =
-                masterDataContext.TransportLeg.QueryService.GetAll()
+                masterDataContext.Queries.TransportLeg.GetAll()
                 |> Async.AwaitTask
 
             return
@@ -165,43 +165,43 @@ module Program =
 
                     match event with
                     | UomImported uoms ->
-                        let! _ = masterDataContext.Uom.DefineBulk(uoms)
+                        let! _ = masterDataContext.Commands.Uom.DefineBulk(uoms)
                         ()
                     | UnitConversionsImported unitConversions ->
-                        let! _ = masterDataContext.UnitConversion.DefineBulk(unitConversions)
+                        let! _ = masterDataContext.Commands.UnitConversion.DefineBulk(unitConversions)
                         ()
                     | TransportLegsImported transportLegs ->
-                        let! _ = masterDataContext.TransportLeg.DefineBulk(transportLegs)
+                        let! _ = masterDataContext.Commands.TransportLeg.DefineBulk(transportLegs)
                         ()
                     | RoutingsImported routings ->
-                        let! _ = masterDataContext.Routing.DefineBulk(routings)
+                        let! _ = masterDataContext.Commands.Routing.DefineBulk(routings)
                         ()
                     | BomImported boms ->
-                        let! _ = masterDataContext.Bom.DefineBulk(boms)
+                        let! _ = masterDataContext.Commands.Bom.DefineBulk(boms)
                         ()
                     | SkusImported skus ->
-                        let! _ = masterDataContext.Sku.DefineBulk(skus)
+                        let! _ = masterDataContext.Commands.Sku.DefineBulk(skus)
                         ()
                     | StockingPointsImported stockingPoints ->
-                        let! _ = masterDataContext.StockingPoint.DefineBulk(stockingPoints)
+                        let! _ = masterDataContext.Commands.StockingPoint.DefineBulk(stockingPoints)
                         ()
                     | PlantsImported plants ->
-                        let! _ = masterDataContext.Plant.DefineBulk(plants)
+                        let! _ = masterDataContext.Commands.Plant.DefineBulk(plants)
                         ()
                     | ResourceGroupsImported groups ->
-                        let! _ = masterDataContext.ResourceGroup.DefineBulk(groups)
+                        let! _ = masterDataContext.Commands.ResourceGroup.DefineBulk(groups)
                         ()
                     | StandardResourcesImported reqs ->
-                        let! _ = masterDataContext.StandardResource.DefineBulk(reqs)
+                        let! _ = masterDataContext.Commands.StandardResource.DefineBulk(reqs)
                         ()
                     | PhysicalResourcesImported reqs ->
-                        let! _ = masterDataContext.PhysicalResource.DefineBulk(reqs)
+                        let! _ = masterDataContext.Commands.PhysicalResource.DefineBulk(reqs)
                         ()
                     | SupplyOffersImported supplyOffers ->
-                        let! _ = supplyContext.SupplierOffer.DefineBulk(supplyOffers)
+                        let! _ = supplyContext.Commands.SupplierOffer.DefineBulk(supplyOffers)
                         ()
                     | InventoryPositionsImported inventoryPositions ->
-                        let! res = supplyContext.Inventory.DefineBulk(inventoryPositions)
+                        let! res = supplyContext.Commands.Inventory.DefineBulk(inventoryPositions)
 
                         match res with
                         | Ok items ->
@@ -217,15 +217,15 @@ module Program =
 
                         ()
                     | InventoryTargetsImported inventoryTargets ->
-                        let! _ = supplyContext.InventoryTarget.DefineBulk(inventoryTargets)
+                        let! _ = supplyContext.Commands.InventoryTarget.DefineBulk(inventoryTargets)
                         ()
                     | SupplyOrdersImported supplyOrders ->
-                        let! _ = supplyContext.SupplyOrder.ProcessStatusUpdates(supplyOrders)
+                        let! _ = supplyContext.Commands.SupplyOrder.ProcessStatusUpdates(supplyOrders)
                         ()
                     | MaterialReservationsImported reservations ->
                         let! res =
                             reservations
-                            |> List.map supplyContext.MaterialReservation.CreateTentative
+                            |> List.map supplyContext.Commands.MaterialReservation.CreateTentative
                             |> TaskResult.sequence
 
                         match res with
@@ -318,7 +318,7 @@ module Program =
         printColorLine "bold" "================================================================================"
 
         // 1. SKUs Table
-        let skus = masterDataContext.Sku.QueryService.GetAll().Result
+        let skus = masterDataContext.Queries.Sku.GetAll().Result
 
         let skuRows =
             skus
@@ -329,7 +329,7 @@ module Program =
 
         // 2. Stocking Points Table
         let sps =
-            masterDataContext.StockingPoint.QueryService
+            masterDataContext.Queries.StockingPoint
                 .GetAll()
                 .Result
 
@@ -341,7 +341,7 @@ module Program =
         printTable "STOCKING POINTS IN DATABASE" [| "STOCKING POINT ID"; "PLANT ID"; "NAME"; "TYPE" |] spRows
 
         // 3. BOM Table
-        let boms = masterDataContext.Bom.QueryService.GetAll().Result
+        let boms = masterDataContext.Queries.Bom.GetAll().Result
 
         let bomRows =
             boms
@@ -357,7 +357,7 @@ module Program =
 
         // 4. Routings Table
         let routings =
-            masterDataContext.Routing.QueryService
+            masterDataContext.Queries.Routing
                 .GetAll()
                 .Result
 
@@ -417,7 +417,7 @@ module Program =
 
         // 5. Transport Legs Table
         let legs =
-            masterDataContext.TransportLeg.QueryService
+            masterDataContext.Queries.TransportLeg
                 .GetAll()
                 .Result
 
@@ -444,7 +444,7 @@ module Program =
 
         // 6. Plants Table
         let plants =
-            masterDataContext.Plant.QueryService
+            masterDataContext.Queries.Plant
                 .GetAll()
                 .Result
 
@@ -457,7 +457,7 @@ module Program =
 
         // 7. Unit Conversions Table
         let conversions =
-            masterDataContext.UnitConversion.QueryService
+            masterDataContext.Queries.UnitConversion
                 .GetAll()
                 .Result
 
@@ -478,7 +478,7 @@ module Program =
 
         // 8. Inventories Table
         let inventories =
-            supplyContext.Inventory.QueryService
+            supplyContext.Queries.Inventory
                 .GetAll()
                 .Result
 
@@ -505,7 +505,7 @@ module Program =
 
         // 9. Inventory Targets Table
         let targets =
-            supplyContext.InventoryTarget.QueryService
+            supplyContext.Queries.InventoryTarget
                 .GetAll()
                 .Result
 
@@ -542,7 +542,7 @@ module Program =
 
         // 10. Supplier Offers Table
         let offers =
-            supplyContext.SupplierOffer.QueryService
+            supplyContext.Queries.SupplierOffer
                 .GetAll()
                 .Result
 
@@ -574,7 +574,7 @@ module Program =
 
         // 11. Supply Orders Table
         let orders =
-            supplyContext.SupplyOrder.QueryService
+            supplyContext.Queries.SupplyOrder
                 .GetAll()
                 .Result
 
@@ -596,7 +596,7 @@ module Program =
 
         // 11.5 Material Reservations In Database
         let reservationsList =
-            supplyContext.MaterialReservation.QueryService
+            supplyContext.Queries.MaterialReservation
                 .GetAll()
                 .Result
 
@@ -822,7 +822,7 @@ module Program =
 
         let getRoutings productId =
             task {
-                let! list = masterDataContext.Routing.QueryService.GetAll()
+                let! list = masterDataContext.Queries.Routing.GetAll()
 
                 let filtered =
                     list

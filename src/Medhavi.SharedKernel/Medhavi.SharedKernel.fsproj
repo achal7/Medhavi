@@ -20,6 +20,7 @@
     <Compile Include="Aggregate.fs" />
     <Compile Include="Projections.fs" />
     <Compile Include="API.fs" />
+    <Compile Include="PromisePolicy.fs" />
   </ItemGroup>
 
   <ItemGroup>

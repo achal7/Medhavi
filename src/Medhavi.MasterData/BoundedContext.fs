@@ -21,7 +21,22 @@ open Medhavi.MasterData.Domain.ResourceGroupAgg
 open Medhavi.MasterData.Domain.StandardResourceAgg
 open Medhavi.MasterData.Domain.PhysicalResourceAgg
 
-type MasterData =
+open Medhavi.SharedKernel.Projections
+
+type MasterDataQueries =
+    { Uom: UomQueryService
+      Sku: SkuQueryService
+      StockingPoint: StockingPointQueryService
+      Bom: BomQueryService
+      Routing: RoutingQueryService
+      TransportLeg: TransportLegQueryService
+      Plant: PlantQueryService
+      UnitConversion: UnitConversionQueryService
+      ResourceGroup: ResourceGroupQueryService
+      StandardResource: StandardResourceQueryService
+      PhysicalResource: PhysicalResourceQueryService }
+
+type MasterDataCommands =
     { Uom: UomApi
       Sku: SkuApi
       StockingPoint: StockingPointApi
@@ -33,7 +48,11 @@ type MasterData =
       Node: Node.NodeCapabilities
       ResourceGroup: ResourceGroupApi
       StandardResource: StandardResourceApi
-      PhysicalResource: PhysicalResourceApi
+      PhysicalResource: PhysicalResourceApi }
+
+type MasterData =
+    { Commands: MasterDataCommands
+      Queries: MasterDataQueries
       Initialize: unit -> Task<unit>
       Dispose: unit -> unit }
 
@@ -201,17 +220,34 @@ module BoundedContext =
             for sub in subscriptions do sub.Dispose()
             subscriptions <- []
 
-        { Uom = uomApi
-          Sku = skuApi
-          StockingPoint = spApi
-          Bom = bomApi
-          Routing = routingApi
-          TransportLeg = legApi
-          Plant = plantApi
-          UnitConversion = conversionApi
-          Node = nodeCaps
-          ResourceGroup = groupApi
-          StandardResource = standardApi
-          PhysicalResource = physicalApi
+        let queries : MasterDataQueries =
+            { Uom = QueryServiceBase.getQueryService uomAgent id
+              Sku = QueryServiceBase.getQueryService skuAgent id
+              StockingPoint = QueryServiceBase.getQueryService spAgent id
+              Bom = QueryServiceBase.getQueryService bomAgent id
+              Routing = QueryServiceBase.getQueryService routingAgent id
+              TransportLeg = QueryServiceBase.getQueryService legAgent id
+              Plant = QueryServiceBase.getQueryService plantAgent id
+              UnitConversion = QueryServiceBase.getQueryService conversionAgent id
+              ResourceGroup = QueryServiceBase.getQueryService groupAgent id
+              StandardResource = QueryServiceBase.getQueryService standardAgent id
+              PhysicalResource = QueryServiceBase.getQueryService physicalAgent id }
+
+        let commands : MasterDataCommands =
+            { Uom = uomApi
+              Sku = skuApi
+              StockingPoint = spApi
+              Bom = bomApi
+              Routing = routingApi
+              TransportLeg = legApi
+              Plant = plantApi
+              UnitConversion = conversionApi
+              Node = nodeCaps
+              ResourceGroup = groupApi
+              StandardResource = standardApi
+              PhysicalResource = physicalApi }
+
+        { Commands = commands
+          Queries = queries
           Initialize = initialize
           Dispose = dispose }

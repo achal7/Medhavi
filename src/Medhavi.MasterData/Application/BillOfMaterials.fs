@@ -3,12 +3,10 @@ module Medhavi.MasterData.Application.BillOfMaterials
 open Medhavi.Common.Validation
 open Medhavi.Common.Patterns
 open Medhavi.Contracts.Integration
-open Medhavi.Infrastructure
 open Medhavi.Infrastructure.Projections
+open Medhavi.MasterData.Domain.BoMAgg
 open Medhavi.SharedKernel
 open Medhavi.SharedKernel.Aggregate
-open Medhavi.MasterData.Domain.UomAgg
-open Medhavi.MasterData.Domain.BoMAgg
 
 module ACL =
     let toBomItem (req: BomItemReq) : Validation<DefineBomItemCmd, DomainError> =
@@ -124,6 +122,5 @@ let createBomApi (capabilities: BomCapabilities) agent =
         fun req ->
             capabilities.Deactivate req
             |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map mapBomDto
-      QueryService = QueryServiceBase.getQueryService agent id }
+            |> TaskResult.map mapBomDto }
     : BomApi
