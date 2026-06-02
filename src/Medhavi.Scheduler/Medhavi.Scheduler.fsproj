@@ -6,6 +6,36 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Foundation (Correct Dependency Order: Policies -> Errors -> Types) -->
+    <Compile Include="Mrp\Domain\Policies.fs" />
+    <Compile Include="Mrp\Domain\Errors.fs" />
+    <Compile Include="Mrp\Domain\Types.fs" />
+
+    <!-- Pure Algorithms -->
+    <Compile Include="Mrp\Domain\Algorithms\BomExplosion.fs" />
+    <Compile Include="Mrp\Domain\Algorithms\LotSizing.fs" />
+    <Compile Include="Mrp\Domain\Algorithms\SafetyStock.fs" />
+    <Compile Include="Mrp\Domain\Algorithms\Netting.fs" />
+    <Compile Include="Mrp\Domain\Algorithms\ForecastConsumption.fs" />
+    <Compile Include="Mrp\Domain\Algorithms\TimePhasedBuckets.fs" />
+
+    <!-- Pipeline Infrastructure & Steps -->
+    <Compile Include="Mrp\Pipeline\PipelineTypes.fs" />
+    <Compile Include="Mrp\Steps\PreprocessStep.fs" />
+    <Compile Include="Mrp\Steps\BomExplosionStep.fs" />
+    <Compile Include="Mrp\Steps\NettingStep.fs" />
+    <Compile Include="Mrp\Steps\SupplyGenerationStep.fs" />
+    <Compile Include="Mrp\Steps\CapacityCheckStep.fs" />
+    <Compile Include="Mrp\Steps\PeggingStep.fs" />
+    <Compile Include="Mrp\Steps\PostprocessStep.fs" />
+    <Compile Include="Mrp\Pipeline\Orchestrator.fs" />
+
+    <!-- Aggregate & Application -->
+    <Compile Include="Mrp\Aggregate\MrpRunAggregate.fs" />
+    <Compile Include="Mrp\Application\MrpDependencies.fs" />
+    <Compile Include="Mrp\Application\MrpService.fs" />
+
+    <!-- Main Scheduler Entry -->
     <Compile Include="Engine.fs" />
   </ItemGroup>
 
@@ -14,6 +44,7 @@
     <ProjectReference Include="..\Medhavi.Contracts\Medhavi.Contracts.fsproj" />
     <ProjectReference Include="..\Medhavi.SharedKernel\Medhavi.SharedKernel.fsproj" />
     <ProjectReference Include="..\Medhavi.Infrastructure\Medhavi.Infrastructure.fsproj" />
+    <ProjectReference Include="..\Medhavi.Demand\Medhavi.Demand.fsproj" />
   </ItemGroup>
 
 </Project>
