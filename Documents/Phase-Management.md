@@ -18,7 +18,7 @@
 | 6 | Transport ATP Module | 2 | ✔️ Completed | 100% |
 | 7 | Postgres/Marten Repository Integration | 2 | ❌ Not Started | 0% |
 | 8 | Promise/ATP Orchestrator | 2 | ✔️ Completed | 100% |
-| 9 | Heuristic MRP Module | 3 | ❌ Not Started | 0% |
+| 9 | Heuristic MRP Module | 3 | ✔️ Completed | 100% |
 | 10 | Material Replenishment Module | 3 | ❌ Not Started | 0% |
 | 11 | Pegging & Traceability | 3 | ❌ Not Started | 0% |
 | 12 | Work Orders & Execution Feedback | 3 | ❌ Not Started | 0% |
@@ -449,21 +449,21 @@ The following capabilities **must grow incrementally** across multiple phases ra
 ---
 
 ### Phase 9 — Heuristic MRP Module (Material Requirements Planning)
-**Wave**: 3 | **Status**: ❌ Not Started
+**Wave**: 3 | **Status**: ✔️ Completed
 
 **Architecture Note**: MRP is a **batch** planning module. It checks capacity via **Capacity CTP** (finite capacity MRP — never assumes infinite). MRP does **NOT** own routing knowledge. Material Replenishment **triggers** MRP when shortfall detected.
 
 | Sub-Phase | Feature(s) | Description | Exit Gate | Status |
 |-----------|-----------|-------------|-----------|--------|
-| 9.1 | MP-21, MP-17 | Multi-level BOM explosion (recursive, cycle detection, alternates, phantoms) | BOM explodes down all parent-child levels; catches infinite recursion loops and throws exception. | ❌ Not Started |
-| 9.2 | MP-02, MP-17 | Material netting (net = OnHand + Inbound − Reservations − Safety) | Net requirement calculations verify correctly across multiple demand intervals. | ❌ Not Started |
-| 9.3 | MP-18 | Lot sizing (fixed lot, min lot, EOQ, rounding) | Proposal quantities adjust to respect MOQ, lot size multiples, and rounding rules. | ❌ Not Started |
-| 9.4 | MP-02 | Supply order proposals (PO/WO/TO with capacity checking via CTP) | System generates planned purchase, work, and transfer order proposals matching netting shortfalls. | ❌ Not Started |
-| 9.5 | MP-22 | Forecast consumption | Incoming order quantities consume forecast values inside the same period. | ❌ Not Started |
-| 9.6 | MP-02 | Idempotent proposal generation (keyed by demandId/period/type) | Repeated MRP runs under identical inputs overwrite or preserve proposals without duplicates. | ❌ Not Started |
-| 9.7 | MP-02 | Time-phased netting buckets (daily/weekly/monthly) | Netting engine outputs report data correctly bucketed into configured periods. | ❌ Not Started |
-| 9.8 | MP-02 | MRP ↔ Capacity CTP integration (call CheckCapacity per WO proposal; adjust dates; try alternates) | Proposals shift forward or fall back onto alternates when capacity check fails; tests verify shifts. | ❌ Not Started |
-| 9.9 | MP-04 | SupplyOrder aggregate (Planned → Firm → Released state machine; typed PO/WO/TO; deterministic IDs) | SupplyOrder state transitions and deterministic ID generation verified in unit tests. | ❌ Not Started |
+| 9.1 | MP-21, MP-17 | Multi-level BOM explosion (recursive, cycle detection, alternates, phantoms) | BOM explodes down all parent-child levels; catches infinite recursion loops and throws exception. | ✔️ Completed |
+| 9.2 | MP-02, MP-17 | Material netting (net = OnHand + Inbound − Reservations − Safety) | Net requirement calculations verify correctly across multiple demand intervals. | ✔️ Completed |
+| 9.3 | MP-18 | Lot sizing (fixed lot, min lot, EOQ, rounding) | Proposal quantities adjust to respect MOQ, lot size multiples, and rounding rules. | ✔️ Completed |
+| 9.4 | MP-02 | Supply order proposals (PO/WO/TO with capacity checking via CTP) | System generates planned purchase, work, and transfer order proposals matching netting shortfalls. | ✔️ Completed |
+| 9.5 | MP-22 | Forecast consumption | Incoming order quantities consume forecast values inside the same period. | ✔️ Completed |
+| 9.6 | MP-02 | Idempotent proposal generation (keyed by demandId/period/type) | Repeated MRP runs under identical inputs overwrite or preserve proposals without duplicates. | ✔️ Completed |
+| 9.7 | MP-02 | Time-phased netting buckets (daily/weekly/monthly) | Netting engine outputs report data correctly bucketed into configured periods. | ✔️ Completed |
+| 9.8 | MP-02 | MRP ↔ Capacity CTP integration (call CheckCapacity per WO proposal; adjust dates; try alternates) | Proposals shift forward or fall back onto alternates when capacity check fails; tests verify shifts. | ✔️ Completed |
+| 9.9 | MP-04 | SupplyOrder aggregate (Planned → Firm → Released state machine; typed PO/WO/TO; deterministic IDs) | SupplyOrder state transitions and deterministic ID generation verified in unit tests. | ✔️ Completed |
 
 ---
 
