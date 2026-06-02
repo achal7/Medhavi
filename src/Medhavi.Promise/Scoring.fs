@@ -26,9 +26,9 @@ type ScoredItinerary =
 /// Policy-driven weights for scoring
 let getPolicyWeights (policy: PromisePolicy) =
     match policy.TimePreference with
-    | Fastest -> (0.6, 0.2, 0.1, 0.1) // Time most important
-    | Cheapest -> (0.2, 0.6, 0.1, 0.1) // Cost most important
-    | Balanced -> (0.33, 0.33, 0.24, 0.1)
+    | Fastest -> (0.6, 0.2, 0.2) // Time most important
+    | Cheapest -> (0.2, 0.6, 0.2) // Cost most important
+    | Balanced -> (0.33, 0.33, 0.34) // Sum to 1.0
 
 /// Normalize cost to scale (avoid division by large numbers)
 let private normalizeCost (cost: decimal option) =
@@ -37,26 +37,19 @@ let private normalizeCost (cost: decimal option) =
     | Some c -> float c / 1000.0
 
 /// Normalize reliability to risk score (higher reliability = lower risk = better score)
-let private normalizeReliability (rel: float option) =
+let private normalizeReliability (rel: decimal option) =
     match rel with
-    | None -> 0.5 // Unknown reliability gets neutral score
-    | Some r -> 1.0 - r
-
-/// Normalize CO2 to scale
-let private normalizeCo2 (co2: decimal option) =
-    match co2 with
-    | None -> 0.0
-    | Some c -> float c / 1000.0
+    | None -> 0.5
+    | Some r -> 1.0 - (float r)
 
 /// Score a routing choice based on policy
 let scoreRoutingChoice (policy: PromisePolicy) (choice: RoutingChoice) =
-    let (timeW, costW, riskW, co2W) = getPolicyWeights policy
+    let (timeW, costW, riskW) = getPolicyWeights policy
 
-    // Time score (lower is better, so we invert)
     let timeScore =
         match choice.EstimatedDuration with
-        | None -> float(1e6) // Penalize unknown duration
-        | Some d -> d.TotalMinutes
+        | None -> 0.5 // Unknown duration gets neutral score
+        | Some d -> (float d.TotalMinutes / 1440.0) ** 2.0  // Squared penalty for longer durations
 
     let relScore = normalizeReliability choice.Reliability
 
@@ -64,12 +57,11 @@ let scoreRoutingChoice (policy: PromisePolicy) (choice: RoutingChoice) =
 
 /// Score an itinerary based on policy
 let scoreItinerary (policy: PromisePolicy) (itinerary: Itinerary) =
-    let (timeW, costW, riskW, co2W) = getPolicyWeights policy
+    let (timeW, costW, riskW) = getPolicyWeights policy
 
-    let timeScore = float itinerary.TotalLeadTimeMinutes
-    let costScore = normalizeCost(Some itinerary.TotalFixedCost)
-    let relScore = float itinerary.TotalReliability
-    let co2Score = normalizeCo2 itinerary.TotalCO2
+    let timeScore = (float itinerary.TotalLeadTimeMinutes / 1440.0) ** 2.0
+    let costScore = min 1.0 (normalizeCost(Some itinerary.TotalFixedCost))
+    let relScore = float itinerary.TotalReliability  // Already 0-1 range
 
     timeScore * timeW + costScore * costW + relScore * riskW
 

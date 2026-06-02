@@ -109,7 +109,8 @@ type PromiseRequest =
     { Order: Order
       AsOfDate: DateTimeOffset
       CustomerTier: string option
-      SkuTier: string option }
+      SkuTier: string option
+      Currency: string option }
 
 /// Material snapshot used for promise calculations
 type MaterialSnapshot =
@@ -126,7 +127,7 @@ type SupplierOption =
       Earliest: DateTimeOffset
       Qty: decimal
       Cost: decimal
-      Reliability: float option
+      Reliability: decimal option
       Moq: decimal option
       LeadTimeP50: TimeSpan option
       LeadTimeP95: TimeSpan option
@@ -137,7 +138,7 @@ type RoutingChoice =
     { RoutingId: RoutingId
       AlternateUsed: bool
       EstimatedDuration: TimeSpan option
-      Reliability: float option }
+      Reliability: decimal option }
 
 /// Routing selection (primary plus alternates)
 type RoutingSelection =

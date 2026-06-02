@@ -35,6 +35,14 @@ type ReservationProvider =
 type FxProvider =
     { GetRate: string * string * DateTimeOffset -> Async<Result<decimal option, ProviderError>> }
 
+/// Production rate provider for capacity-based production cost calculation
+type ProductionRateProvider =
+    { GetHourlyRate: string -> Async<Result<decimal, ProviderError>>  // resourceId -> rate }
+}
+
 /// Tenant provider interface
 type TenantProvider =
     { GetTenant: unit -> string * TimeZoneInfo * string option }
+
+/// Scenario provider interface for snapshots and optimistic concurrency (placeholder)
+type ScenarioProvider = obj

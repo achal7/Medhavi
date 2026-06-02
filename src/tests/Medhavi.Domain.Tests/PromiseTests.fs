@@ -8,6 +8,8 @@ open Medhavi.SharedKernel.PromisePolicy
 open Medhavi.Promise
 open Medhavi.Promise.PromiseTypes
 open Medhavi.Promise.PromiseService
+open Medhavi.Promise.CostCalculation
+open Medhavi.Promise.LimiterSelection
 open Medhavi.Transport
 
 module PromiseTests =
@@ -80,7 +82,7 @@ module PromiseTests =
                 { RoutingId = routingId
                   AlternateUsed = false
                   EstimatedDuration = Some dur
-                  Reliability = Some 0.95 }
+                  Reliability = Some 0.95m }
               Alternates = [] }
         
         { Select =
@@ -140,7 +142,7 @@ module PromiseTests =
                   let line = defaultOrderLine due sku sp 10m
                   let orderId = OrderId.create (Guid.NewGuid().ToString()) |> getOk
                   let order = { OrderId = orderId; Lines = [ line ]; CustomerId = Some "CUST-1"; RequestDate = asOf }
-                  let req = { Order = order; AsOfDate = asOf; CustomerTier = None; SkuTier = None }
+                  let req = { Order = order; AsOfDate = asOf; CustomerTier = None; SkuTier = None; Currency = None }
 
                   let response =
                       tryPromiseOrder matProv capProv transProv routingProv resvProv mockTenantProvider req
@@ -221,7 +223,7 @@ module PromiseTests =
                   let orderId = OrderId.create (Guid.NewGuid().ToString()) |> getOk
                   let order = { OrderId = orderId; Lines = [ line1; line2 ]; CustomerId = Some "CUST-1"; RequestDate = asOf }
                   
-                  let req = { Order = order; AsOfDate = asOf; CustomerTier = Some "gold"; SkuTier = None }
+                  let req = { Order = order; AsOfDate = asOf; CustomerTier = Some "gold"; SkuTier = None; Currency = None }
 
                   let response =
                       tryPromiseOrder matProv capProv transProv routingProv resvProv mockTenantProvider req
@@ -257,7 +259,7 @@ module PromiseTests =
                   let customPolicy = { PolicyPresets.silverPreset with CostCap = Some 500m }
                   
                   let dates = asOf
-                  let cost = CostCalculation.calculateCost customPolicy 10m (Some { SkuId = sku; StockingPointId = sp; OnHand = 100m; Inbound = []; Reservations = 0m; Safety = 0m }) None (Some { Id = ItineraryId.generate(); SkuId = None; FromNode = "SP-1"; ToNode = "SP-1"; Hops = []; TotalLeadTimeMinutes = 0m; TotalFixedCost = 1000m; TotalVariableCostPerUnit = None; TotalCO2 = None; TotalReliability = 1m; HopCount = 0 }) dates due
+                  let cost = CostCalculation.calculateCost customPolicy 10m (Some { SkuId = sku; StockingPointId = sp; OnHand = 100m; Inbound = []; Reservations = 0m; Safety = 0m }) None (Some { Id = ItineraryId.generate(); SkuId = None; FromNode = "SP-1"; ToNode = "SP-1"; Hops = []; TotalLeadTimeMinutes = 0m; TotalFixedCost = 1000m; TotalVariableCostPerUnit = None; TotalCO2 = None; TotalReliability = 1m; HopCount = 0 }) dates due 100.0m None None
                   test <@ cost.TotalCost > 500m @>
               )
 
