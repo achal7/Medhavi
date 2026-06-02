@@ -6,7 +6,6 @@
     <Project Path="src/Medhavi.Common/Medhavi.Common.fsproj" />
     <Project Path="src/Medhavi.Contracts/Medhavi.Contracts.fsproj" />
     <Project Path="src/Medhavi.Demand/Medhavi.Demand.fsproj" />
-    <Project Path="src/Medhavi.Hub/Medhavi.Hub.fsproj" />
     <Project Path="src/Medhavi.Infrastructure/Medhavi.Infrastructure.fsproj" />
     <Project Path="src/Medhavi.Integration/Medhavi.Integration.fsproj" />
     <Project Path="src/Medhavi.MasterData/Medhavi.MasterData.fsproj" />
