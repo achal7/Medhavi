@@ -8,11 +8,9 @@
   <ItemGroup>
     <Compile Include="Library.fs" />
     <Compile Include="PromiseTypes.fs" />
+    <Compile Include="Ports.fs" />
     <Compile Include="Scenario.fs" />
     <Compile Include="Scoring.fs" />
-    <Compile Include="MaterialAtp.fs" />
-    <Compile Include="TransportAtp.fs" />
-    <Compile Include="CapacityAtp.fs" />
     <Compile Include="Routing.fs" />
     <Compile Include="LimiterSelection.fs" />
     <Compile Include="CostCalculation.fs" />

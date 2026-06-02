@@ -68,6 +68,27 @@ module PromiseTests =
                     return Ok [ itinerary ]
                 } }
 
+    let createMockRoutingProvider () : RoutingProvider =
+        let dur = TimeSpan.FromHours(24.0)
+        let routingId =
+            match RoutingId.create "RT-DEFAULT" with
+            | Ok id -> id
+            | Error _ -> failwith "Invalid routing id"
+        
+        let routingSelection =
+            { Primary =
+                { RoutingId = routingId
+                  AlternateUsed = false
+                  EstimatedDuration = Some dur
+                  Reliability = Some 0.95 }
+              Alternates = [] }
+        
+        { Select =
+            fun (_skuId, _stockingPointId) ->
+                async {
+                    return Ok routingSelection
+          } }
+
     let mockTenantProvider =
         { GetTenant = fun () -> "tenant-default", TimeZoneInfo.Utc, Some "USD" }
 
@@ -114,7 +135,7 @@ module PromiseTests =
                   let matProv = createMockMaterialProvider 100m []
                   let capProv = createMockCapacityProvider (asOf.AddDays(2.0)) (Some "RES-1")
                   let transProv = createMockTransportProvider 1440m 50m 5m // 1 day, $50 fixed, $5 var/unit
-                  let routingProv = Routing.createInMemoryRoutingProvider()
+                  let routingProv = createMockRoutingProvider()
 
                   let line = defaultOrderLine due sku sp 10m
                   let orderId = OrderId.create (Guid.NewGuid().ToString()) |> getOk
@@ -192,7 +213,7 @@ module PromiseTests =
 
                   let capProv = createMockCapacityProvider asOf None
                   let transProv = createMockTransportProvider 0m 0m 0m
-                  let routingProv = Routing.createInMemoryRoutingProvider()
+                  let routingProv = createMockRoutingProvider()
 
                   let line1 = { defaultOrderLine due sku sp 10m with LineId = "line-1" }
                   let line2 = { defaultOrderLine due skuB sp 10m with LineId = "line-2" }
@@ -227,7 +248,7 @@ module PromiseTests =
                       { CreateTentative = fun reqs -> async { return Ok (reqs |> List.map (fun r -> $"res-{r.Scope}")) }
                         Confirm = fun _ -> async { return Ok() }
                         Release = fun _ -> async { return Ok() } }
-                  let routingProv = Routing.createInMemoryRoutingProvider()
+                  let routingProv = createMockRoutingProvider()
 
                   let line = defaultOrderLine due sku sp 10m
                   let orderId = OrderId.create (Guid.NewGuid().ToString()) |> getOk
