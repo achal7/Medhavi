@@ -129,7 +129,8 @@ let netDemands
                       SafetyStock = safetyStock
                       NetRequirement = finalNet
                       RequiredDate = targetDate
-                      BomPath = None }
+                      BomPath = None
+                      PeggingRefs = [ demand.DemandId ] }
 
                 let newOnHand =
                     let withSupply = onHandBeforeDemand + finalNet
@@ -154,7 +155,8 @@ let netDemands
                       SafetyStock = safetyStock
                       NetRequirement = Quantity.Zero
                       RequiredDate = targetDate
-                      BomPath = None }
+                      BomPath = None
+                      PeggingRefs = [ demand.DemandId ] }
 
                 let newOnHand = Quantity.subtract onHandBeforeDemand gross
                 loop newOnHand inboundRemaining resRemaining restDemands (netReq :: accNetReqs) accProposals

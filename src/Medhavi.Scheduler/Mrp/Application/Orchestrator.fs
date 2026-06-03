@@ -3,11 +3,11 @@ module Medhavi.Scheduler.Mrp.Pipeline.Orchestrator
 open System
 open Medhavi.Common.Patterns
 open Medhavi.SharedKernel
+open Medhavi.Scheduler.Mrp.Domain
 open Medhavi.Scheduler.Mrp.Domain.Types
 open Medhavi.Scheduler.Mrp.Domain.Errors
 open Medhavi.Scheduler.Mrp.Domain.Policies
 open Medhavi.Scheduler.Mrp.Domain.MrpRunAggregate
-open Medhavi.Scheduler.Mrp.Pipeline
 open Medhavi.Scheduler.Mrp.Domain.Algorithms
 open Medhavi.Scheduler.Mrp.Steps
 open Medhavi.Planning.Mrp.Steps
@@ -109,13 +109,17 @@ let execute
     (stockingPointId: StockingPointId)
     (policy: MrpPolicy)
     (demands: MrpDemand list)
+    (firmedPegs: PeggingLink list)
     : TaskResult<MrpRunResult, MrpApplicationError> =
     task {
         let runIdObj =
             MrpRunId.create runId
             |> Result.defaultWith (fun _ -> failwith "Invalid RunId")
 
-        let ctx = MrpContext.create runIdObj startDate endDate stockingPointId policy
+        let ctx =
+            { MrpContext.create runIdObj startDate endDate stockingPointId policy with
+                Demands = demands
+                FirmedPegs = firmedPegs }
 
         try
             let! result = pipeline demands ctx
@@ -137,13 +141,17 @@ let executeWithTimeout
     (stockingPointId: StockingPointId)
     (policy: MrpPolicy)
     (demands: MrpDemand list)
+    (firmedPegs: PeggingLink list)
     : Async<Result<MrpRunResult, MrpApplicationError>> =
     async {
         let runIdObj =
             MrpRunId.create runId
             |> Result.defaultWith (fun _ -> failwith "Invalid RunId")
 
-        let ctx = MrpContext.create runIdObj startDate endDate stockingPointId policy
+        let ctx =
+            { MrpContext.create runIdObj startDate endDate stockingPointId policy with
+                Demands = demands
+                FirmedPegs = firmedPegs }
 
         try
             let! child = Async.StartChild(Async.AwaitTask(pipeline demands ctx), int timeout.TotalMilliseconds)

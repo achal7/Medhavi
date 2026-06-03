@@ -20,16 +20,6 @@ type ReservationCreator = SkuId -> StockingPointId -> Quantity -> Timestamp -> A
 // HELPERS
 // ============================================================================
 
-let private createPeggingLinks (proposals: SupplyProposal list) : PeggingLink list =
-    proposals
-    |> List.collect (fun p ->
-        p.PeggingRefs
-        |> List.map (fun pegId ->
-            { DemandId = pegId
-              SupplyId = SupplyProposalId.value p.Id
-              Quantity = p.Quantity
-              SkuId = p.SkuId }))
-
 let private createReservations
     (reservationCreatorOpt: ReservationCreator option)
     (proposals: SupplyProposal list)
@@ -57,8 +47,6 @@ let private createReservations
     }
 
 let private buildRunResult (proposals: SupplyProposal list) (ctx: MrpContext) (endTime: Timestamp) : MrpRunResult =
-    let pegLinks = createPeggingLinks proposals
-
     { RunId = ctx.RunId
       StartTime = ctx.StartDate
       EndTime = endTime
@@ -67,7 +55,7 @@ let private buildRunResult (proposals: SupplyProposal list) (ctx: MrpContext) (e
       NetRequirements = [] // Will be mapped in Orchestrator
       Proposals = proposals
       ActionMessages = ctx.ActionMessages
-      Peggings = pegLinks
+      Peggings = ctx.Peggings @ ctx.FirmedPegs
       Errors = []
       Warnings = ctx.Warnings }
 

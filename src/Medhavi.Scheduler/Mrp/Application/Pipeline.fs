@@ -3,6 +3,7 @@ namespace Medhavi.Scheduler.Mrp.Pipeline
 open System
 open Medhavi.Common.Patterns
 open Medhavi.SharedKernel
+open Medhavi.Scheduler.Mrp.Domain
 open Medhavi.Scheduler.Mrp.Domain.Types
 open Medhavi.Scheduler.Mrp.Domain.Errors
 open Medhavi.Scheduler.Mrp.Domain.MrpRunAggregate
@@ -52,7 +53,10 @@ type MrpContext =
       Telemetry: MrpTelemetry
       Events: MrpEvent list
       ActionMessages: ActionMessageRecord list
-      Warnings: string list }
+      Warnings: string list
+      Demands: MrpDemand list
+      FirmedPegs: PeggingLink list
+      Peggings: PeggingLink list }
 
 module MrpContext =
     /// Create initial context from request
@@ -71,7 +75,10 @@ module MrpContext =
           Telemetry = MrpTelemetry.empty
           Events = []
           ActionMessages = []
-          Warnings = [] }
+          Warnings = []
+          Demands = []
+          FirmedPegs = []
+          Peggings = [] }
 
     /// Add event to context
     let addEvent (event: MrpEvent) (ctx: MrpContext) : MrpContext =

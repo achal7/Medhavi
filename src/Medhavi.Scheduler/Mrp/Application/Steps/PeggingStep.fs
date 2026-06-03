@@ -4,10 +4,9 @@ open System
 open System.Threading.Tasks
 open Medhavi.Common.Patterns
 open Medhavi.SharedKernel
+open Medhavi.Scheduler.Mrp.Domain
 open Medhavi.Scheduler.Mrp.Domain.Types
-open Medhavi.Scheduler.Mrp.Domain.Errors
 open Medhavi.Scheduler.Mrp.Pipeline
-open Medhavi.Scheduler.Mrp.Domain.MrpRunAggregate
 
 // ============================================================================
 // DEPENDENCIES
@@ -29,19 +28,28 @@ let createStep (peggingCreatorOpt: PeggingCreator option) : MrpStepAsync<SupplyP
 
             match peggingCreatorOpt with
             | None ->
-                // No pegging service injected: use synthetic pegging links
+                let resolvedPolicy =
+                    PeggingPolicy.resolvePolicy ctx.Policy.PeggingPolicyTier
+
+                let newPeggingLinks =
+                    PeggingEngine.pegSuppliesToDemands resolvedPolicy ctx.Demands proposals
+
                 let proposalsWithPegs =
                     proposals
-                    |> List.mapi (fun idx p ->
-                        let syntheticPegId = $"peg-{MrpRunId.value ctx.RunId}-{SkuId.value p.SkuId}-{idx}"
+                    |> List.map (fun p ->
+                        let pPegs =
+                            newPeggingLinks
+                            |> List.filter (fun peg ->
+                                match peg.Target with
+                                | Supply s -> s.SupplyId = SupplyProposalId.value p.Id
+                                | _ -> false)
+                            |> List.map (fun peg -> PeggingId.value peg.Id)
 
-                        { p with
-                            PeggingRefs = [ syntheticPegId ] })
+                        { p with PeggingRefs = pPegs })
 
                 let updatedCtx =
-                    ctx
-                    |> MrpContext.addEvent (PeggingCompleted(List.length proposals))
-                    |> MrpContext.addWarning "No pegging service injected — generated synthetic pegging references"
+                    { ctx with Peggings = newPeggingLinks }
+                    |> MrpContext.addEvent (PeggingCompleted(List.length proposalsWithPegs))
 
                 return Ok(proposalsWithPegs, updatedCtx)
 
@@ -51,7 +59,6 @@ let createStep (peggingCreatorOpt: PeggingCreator option) : MrpStepAsync<SupplyP
                     proposals
                     |> List.map (fun proposal ->
                         task {
-                            // Find the demand references keyed on the proposal
                             let demandId =
                                 match proposal.PeggingRefs with
                                 | head :: _ -> head
@@ -66,19 +73,57 @@ let createStep (peggingCreatorOpt: PeggingCreator option) : MrpStepAsync<SupplyP
 
                             match pegResult with
                             | Ok pegLinkId ->
+                                let pegId =
+                                    PeggingId.create pegLinkId
+                                    |> Result.defaultWith (fun _ ->
+                                        PeggingId.createDeterministic demandId (SupplyProposalId.value proposal.Id))
+
+                                let link =
+                                    { Id = pegId
+                                      Demand =
+                                        { DemandId = demandId
+                                          SkuId = proposal.SkuId
+                                          NodeId = proposal.NodeId
+                                          StockingPointId = proposal.StockingPointId
+                                          NeedDate = proposal.DueDate
+                                          Quantity = proposal.Quantity }
+                                      Target =
+                                        Supply
+                                            { SupplyId = SupplyProposalId.value proposal.Id
+                                              ProposalType = proposal.ProposalType
+                                              SkuId = proposal.SkuId
+                                              NodeId = proposal.NodeId
+                                              StockingPointId = proposal.StockingPointId
+                                              DeliveryDate = proposal.DueDate
+                                              Quantity = proposal.Quantity }
+                                      PeggedQty = proposal.Quantity
+                                      Status = PegStatus.Active
+                                      IsLocked = false
+                                      Created = DateTimeOffset.UtcNow
+                                      Modified = DateTimeOffset.UtcNow }
+
                                 return
                                     Ok(
                                         { proposal with
-                                            PeggingRefs = [ pegLinkId ] }
+                                            PeggingRefs = [ pegLinkId ] },
+                                        link
                                     )
                             | Error err -> return Error(proposal, err)
                         })
+
                 let! results = Task.WhenAll(peggingTasks)
 
                 let successes =
                     results
                     |> Array.choose (function
-                        | Ok p -> Some p
+                        | Ok(p, _) -> Some p
+                        | _ -> None)
+                    |> List.ofArray
+
+                let successLinks =
+                    results
+                    |> Array.choose (function
+                        | Ok(_, link) -> Some link
                         | _ -> None)
                     |> List.ofArray
 
@@ -97,7 +142,7 @@ let createStep (peggingCreatorOpt: PeggingCreator option) : MrpStepAsync<SupplyP
                 let duration = endTime - startTime
 
                 let updatedCtx =
-                    ctx
+                    { ctx with Peggings = successLinks }
                     |> MrpContext.addEvent (PeggingCompleted(List.length allProposals))
                     |> (fun c ->
                         failures

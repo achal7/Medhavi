@@ -7,13 +7,11 @@
 
   <ItemGroup>
 
-    <!-- Pegging -->
-    <Compile Include="Pegging\Domain.fs" />
-
     <!-- MRP Domain -->
     <Compile Include="Mrp\Domain\Policies.fs" />
     <Compile Include="Mrp\Domain\Errors.fs" />
     <Compile Include="Mrp\Domain\Types.fs" />
+    <Compile Include="Mrp\Domain\Pegging.fs" />
     <Compile Include="Mrp\Domain\MrpRunAggregate.fs" />
     
     <Compile Include="Mrp\Domain\Algorithms\BomExplosion.fs" />

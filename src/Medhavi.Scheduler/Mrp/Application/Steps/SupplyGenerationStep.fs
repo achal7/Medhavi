@@ -151,7 +151,7 @@ let private generateProposal
                       Priority = priority
                       IsExpedite = isExpedite
                       Status = status
-                      PeggingRefs = []
+                      PeggingRefs = netReq.PeggingRefs
                       CapacityCheckedDate = None
                       CreatedAt = currentDate }
     }

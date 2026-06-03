@@ -3,6 +3,7 @@ module Medhavi.Scheduler.Mrp.Steps.NettingStep
 open System
 open System.Threading.Tasks
 open Medhavi.SharedKernel
+open Medhavi.Scheduler.Mrp.Domain
 open Medhavi.Scheduler.Mrp.Domain.Types
 open Medhavi.Scheduler.Mrp.Domain.Errors
 open Medhavi.Scheduler.Mrp.Pipeline
@@ -13,9 +14,84 @@ open Medhavi.Scheduler.Mrp.Domain.Algorithms
 // ============================================================================
 
 type OnHandQuery = SkuId -> StockingPointId -> Task<Quantity>
-type InboundQuery = SkuId -> StockingPointId -> Timestamp -> Timestamp -> Task<(Timestamp * Quantity * bool) list>
-type ReservationsQuery = SkuId -> StockingPointId -> Timestamp -> Timestamp -> Task<(Timestamp * Quantity) list>
+type InboundQuery = SkuId -> StockingPointId -> Timestamp -> Timestamp -> Task<(Timestamp * Quantity * bool * string) list>
+type ReservationsQuery = SkuId -> StockingPointId -> Timestamp -> Timestamp -> Task<(Timestamp * Quantity * string) list>
 type SafetyStockQuery = SkuId -> StockingPointId -> Task<Quantity>
+
+// ============================================================================
+// HELPERS
+// ============================================================================
+
+let adjustForFirmedPegs
+    (skuId: SkuId)
+    (spId: StockingPointId)
+    (demands: MrpDemand list)
+    (inbound: (Timestamp * Quantity * bool * string) list)
+    (reservations: (Timestamp * Quantity * string) list)
+    (firmedPegs: PeggingLink list)
+    =
+    let skuPegs =
+        firmedPegs
+        |> List.filter (fun peg -> 
+            peg.Demand.SkuId = skuId && 
+            peg.Demand.StockingPointId = spId &&
+            peg.Status = Active && 
+            peg.IsLocked)
+
+    let mutable demandMap = demands |> List.map (fun d -> d.DemandId, Quantity.value d.Quantity) |> Map.ofList
+    let mutable inboundMap = inbound |> List.map (fun (t, q, f, id) -> id, Quantity.value q) |> Map.ofList
+    let mutable resMap = reservations |> List.map (fun (t, q, id) -> id, Quantity.value q) |> Map.ofList
+
+    for peg in skuPegs do
+        let pegQty = Quantity.value peg.PeggedQty
+        
+        match Map.tryFind peg.Demand.DemandId demandMap with
+        | Some dQty ->
+            let newDQty = max 0m (dQty - pegQty)
+            demandMap <- Map.add peg.Demand.DemandId newDQty demandMap
+        | None -> ()
+
+        match peg.Target with
+        | Supply s ->
+            match Map.tryFind s.SupplyId inboundMap with
+            | Some sQty ->
+                let newSQty = max 0m (sQty - pegQty)
+                inboundMap <- Map.add s.SupplyId newSQty inboundMap
+            | None -> ()
+        | Reservation r ->
+            let rId =
+                match r with
+                | Material id -> id
+                | Capacity id -> CapacityReservationId.value id
+                | Transport id -> id
+            match Map.tryFind rId resMap with
+            | Some rQty ->
+                let newRQty = max 0m (rQty - pegQty)
+                resMap <- Map.add rId newRQty resMap
+            | None -> ()
+
+    let adjustedDemands =
+        demands
+        |> List.map (fun d ->
+            let qty = Map.tryFind d.DemandId demandMap |> Option.defaultValue (Quantity.value d.Quantity) |> Quantity.clampToZero
+            { d with Quantity = qty })
+        |> List.filter (fun d -> Quantity.isPositive d.Quantity)
+
+    let adjustedInbound =
+        inbound
+        |> List.map (fun (t, q, f, id) ->
+            let qty = Map.tryFind id inboundMap |> Option.defaultValue (Quantity.value q) |> Quantity.clampToZero
+            (t, qty, f, id))
+        |> List.filter (fun (_, q, _, _) -> Quantity.isPositive q)
+
+    let adjustedReservations =
+        reservations
+        |> List.map (fun (t, q, id) ->
+            let qty = Map.tryFind id resMap |> Option.defaultValue (Quantity.value q) |> Quantity.clampToZero
+            (t, qty, id))
+        |> List.filter (fun (_, q, _) -> Quantity.isPositive q)
+
+    adjustedDemands, adjustedInbound, adjustedReservations
 
 // ============================================================================
 // STEP EXECUTION
@@ -74,6 +150,13 @@ let createStep
                                         )
                                       Priority = None })
 
+                            // Pre-net using firmed pegs
+                            let adjustedDemands, adjustedInbound, adjustedReservations =
+                                adjustForFirmedPegs skuId spId demands inbound reservations ctx.FirmedPegs
+
+                            let nettingInbound = adjustedInbound |> List.map (fun (t, q, f, id) -> (t, q, f))
+                            let nettingReservations = adjustedReservations |> List.map (fun (t, q, id) -> (t, q))
+
                             // Execute pure netting logic
                             let netReqs, _proposals =
                                 Netting.netDemands
@@ -81,10 +164,10 @@ let createStep
                                     nodeId
                                     spId
                                     onHand
-                                    inbound
-                                    reservations
+                                    nettingInbound
+                                    nettingReservations
                                     safetyStock
-                                    demands
+                                    adjustedDemands
                                     ctx.Policy.NettingPolicy
 
                             return Ok netReqs

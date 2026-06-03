@@ -21,6 +21,7 @@ type MrpService =
                 -> StockingPointId
                 -> MrpPolicy
                 -> MrpDemand list
+                -> PeggingLink list
                 -> TaskResult<MrpRunResult, MrpApplicationError>
 
         /// Run in dry-run mode (returns proposals without creating them in Supply BC)
@@ -31,6 +32,7 @@ type MrpService =
                 -> StockingPointId
                 -> MrpPolicy
                 -> MrpDemand list
+                -> PeggingLink list
                 -> TaskResult<MrpRunResult, MrpApplicationError>
     }
 
@@ -40,10 +42,10 @@ let create (deps: MrpDependencies) : MrpService =
     let pipeline = createPipeline deps
 
     { ExecuteRun =
-        fun runId startDate endDate spId policy demands ->
+        fun runId startDate endDate spId policy demands firmedPegs ->
             task {
                 // 1. Run the pipeline
-                let! pipeResult = execute pipeline runId startDate endDate spId policy demands
+                let! pipeResult = execute pipeline runId startDate endDate spId policy demands firmedPegs
 
                 match pipeResult with
                 | Error err -> return Error err
@@ -67,4 +69,5 @@ let create (deps: MrpDependencies) : MrpService =
             }
 
       ExecuteDryRun =
-        fun runId startDate endDate spId policy demands -> execute pipeline runId startDate endDate spId policy demands }
+        fun runId startDate endDate spId policy demands firmedPegs ->
+            execute pipeline runId startDate endDate spId policy demands firmedPegs }

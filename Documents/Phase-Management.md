@@ -482,16 +482,16 @@ The following capabilities **must grow incrementally** across multiple phases ra
 ---
 
 ### Phase 11 — Pegging & Traceability
-**Wave**: 3 | **Status**: ❌ Not Started
+**Wave**: 3 | **Status**: ✔️ Completed
 
 **Architecture Note**: Pegging is part of **PlanSnapshot** (not independent aggregate). Links DemandId+Version to SupplyRef. Fix/Firm logic handled at PlanningRun level.
 
 | Sub-Phase | Feature(s) | Description | Exit Gate | Status |
 |-----------|-----------|-------------|-----------|--------|
-| 11.1 | MP-09 | PeggingLink schema (DemandRef, SupplyRef, ReservationRef, PeggedQty, Status) | PeggingLink schema maps demand references directly to supply/reservation references. | ❌ Not Started |
-| 11.2 | MP-09 | Pegging projection (bi-directional: by DemandRef and by SupplyRef) | Traceability query returns complete upstream supplies for demand and downstream demands for supply. | ❌ Not Started |
-| 11.3 | MP-09 | Replan rules (deterministic, supersede on change, release on cancel) | Replan rules preserve user-firmed pegs while re-pegging unfirmed elements during MRP runs. | ❌ Not Started |
-| 11.4 | MP-09 | Integration with MRP (proposals create pegs) | MRP run completes and saves corresponding PeggingLinks in the plan snapshot. | ❌ Not Started |
+| 11.1 | MP-09 | PeggingLink schema (DemandRef, SupplyRef, ReservationRef, PeggedQty, Status) | PeggingLink schema maps demand references directly to supply/reservation references. | ✔️ Completed |
+| 11.2 | MP-09 | Pegging projection (bi-directional: by DemandRef and by SupplyRef) | Traceability query returns complete upstream supplies for demand and downstream demands for supply. | ✔️ Completed |
+| 11.3 | MP-09 | Replan rules (deterministic, supersede on change, release on cancel) | Replan rules preserve user-firmed pegs while re-pegging unfirmed elements during MRP runs. | ✔️ Completed |
+| 11.4 | MP-09 | Integration with MRP (proposals create pegs) | MRP run completes and saves corresponding PeggingLinks in the plan snapshot. | ✔️ Completed |
 
 ---
 

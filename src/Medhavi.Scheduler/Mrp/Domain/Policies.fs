@@ -172,7 +172,8 @@ type MrpPolicy =
       ForecastConsumption: ForecastConsumptionPolicy option
       FrozenHorizon: FrozenHorizonPolicy option
       Firming: FirmingPolicy option
-      TimeBucketGranularity: TimeBucketGranularity }
+      TimeBucketGranularity: TimeBucketGranularity
+      PeggingPolicyTier: string option } // Added for pegging configuration
 
 module MrpPolicy =
     /// Default MRP policy — infinite capacity, lot-for-lot, no forecast consumption
@@ -185,4 +186,5 @@ module MrpPolicy =
           ForecastConsumption = None
           FrozenHorizon = None
           Firming = None
-          TimeBucketGranularity = Daily }
+          TimeBucketGranularity = Daily
+          PeggingPolicyTier = None }

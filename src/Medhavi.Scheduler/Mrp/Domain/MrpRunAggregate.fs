@@ -4,18 +4,6 @@ open Medhavi.SharedKernel
 open Medhavi.Scheduler.Mrp.Domain.Types
 open Medhavi.Scheduler.Mrp.Domain.Policies
 
-type SupplyProposalId = private SupplyProposalId of string
-
-module SupplyProposalId =
-    let create = IdsFactory.createExplicitId SupplyProposalId "SupplyProposalId"
-    let value (SupplyProposalId id) = id
-
-    /// Deterministic proposal ID for idempotent generation (Phase 9.6)
-    /// Keyed by demandId/period/type to prevent duplicates across repeated runs
-    let createDeterministic (proposalType: string) (anchorId: string) (dueDate: System.DateTimeOffset) =
-        let id = IdsFactory.DeterministicIds.proposalId proposalType anchorId dueDate
-        SupplyProposalId id
-
 // ============================================================================
 // AGGREGATE STATE
 // ============================================================================
@@ -27,49 +15,7 @@ type MrpRunStatus =
     | Failed of error: string
     | Cancelled
 
-
-// ============================================================================
-// SUPPLY PROPOSALS
-// ============================================================================
-
-/// Supply proposal type — maps to SupplyOrderType in Medhavi.Supply
-type ProposalType =
-    | PlannedPurchaseOrder
-    | PlannedWorkOrder
-    | PlannedTransferOrder
-
-/// Supply proposal status within MRP lifecycle
-type ProposalStatus =
-    | Planned // Initial state — can be modified by subsequent runs
-    | Firmed // Firmed — protected from automatic changes
-    | Released // Released to execution (converted to SupplyOrder)
-    | Cancelled // Cancelled
-
-/// Supply Proposal — output of MRP planning
-type SupplyProposal =
-    { Id: SupplyProposalId
-      ProposalType: ProposalType
-      SkuId: SkuId
-      NodeId: NodeId
-      StockingPointId: StockingPointId
-      Quantity: Quantity
-      DueDate: Timestamp
-      StartDate: Timestamp option
-      RoutingId: RoutingId option
-      SupplierId: SupplierId option
-      Priority: int
-      IsExpedite: bool
-      Status: ProposalStatus
-      PeggingRefs: string list
-      CapacityCheckedDate: Timestamp option
-      CreatedAt: Timestamp }
-
-/// Pegging link — traces demand to supply
-type PeggingLink =
-    { DemandId: string
-      SupplyId: string
-      Quantity: Quantity
-      SkuId: SkuId }
+type PeggingLink = Medhavi.Scheduler.Mrp.Domain.PeggingLink
 
 /// Action message types — planner recommendations
 type ActionMessage =
