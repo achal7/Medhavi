@@ -19,7 +19,7 @@
 | 7 | Postgres/Marten Repository Integration | 2 | ❌ Not Started | 0% |
 | 8 | Promise/ATP Orchestrator | 2 | ✔️ Completed | 100% |
 | 9 | Heuristic MRP Module | 3 | ✔️ Completed | 100% |
-| 10 | Material Replenishment Module | 3 | ❌ Not Started | 0% |
+| 10 | Material Replenishment Module | 3 | ✔️ Completed | 100% |
 | 11 | Pegging & Traceability | 3 | ❌ Not Started | 0% |
 | 12 | Work Orders & Execution Feedback | 3 | ❌ Not Started | 0% |
 | 13 | Heuristic Replanning (Disruption Handling) | 3 | ❌ Not Started | 0% |
@@ -40,7 +40,7 @@
 ```
 Wave 1: Core Deterministic Foundations [MVP] (Phases 0–4)          ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ 100%
 Wave 2: Finite Heuristic Planning & Persistence [MVP] (Phases 5–8)  ▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░ 75%
-Wave 3: Demand/Supply Netting & Execution [MVP] (Phases 9–13)       ░░░░░░░░░░░░░░░░░░ 0%
+Wave 3: Demand/Supply Netting & Execution [MVP] (Phases 9–13)       ▓▓▓▓▓▓▓░░░░░░░░░░░ 40%
 Wave 4: Advanced AI/ML & Optimization [Post-MVP] (Phases 14–17)     ░░░░░░░░░░░░░░░░░░ 0%
 Wave 5: Cognitive, Agentic, & Governance Layer [Post-MVP] (Phases 18–22) ░░░░░░░░░░░░░ 0%
 ```
@@ -468,16 +468,16 @@ The following capabilities **must grow incrementally** across multiple phases ra
 ---
 
 ### Phase 10 — Material Replenishment Module
-**Wave**: 3 | **Status**: ❌ Not Started
+**Wave**: 3 | **Status**: ✔️ Completed
 
 **Architecture Note**: Material Replenishment **triggers** MRP — it doesn't generate orders directly. MRP is the single source of truth for supply order generation.
 
 | Sub-Phase | Feature(s) | Description | Exit Gate | Status |
 |-----------|-----------|-------------|-----------|--------|
-| 10.1 | MP-20 | Stock level monitoring (current vs targets: min/max/safety/cover days; configurable policies) | Stock projections identify min/max/safety levels incorporating cover day policies per Product×SP. | ❌ Not Started |
-| 10.2 | MP-20 | Shortfall detection (stock < min/safety) | Shortfalls generate shortfall alerts/events containing Product, SP, and needed quantity. | ❌ Not Started |
-| 10.3 | MP-20 | Trigger MRP on shortfall | Shortfall events automatically queue/trigger planning runs for the affected scopes. | ❌ Not Started |
-| 10.4 | MP-20 | Replenishment scheduling (configurable interval: hourly/on-demand; batch vs event-triggered) | Scheduler triggers monitoring evaluations at configured intervals; event handler responds immediately. | ❌ Not Started |
+| 10.1 | MP-20 | Stock level monitoring (current vs targets: min/max/safety/cover days; configurable policies) | Stock projections identify min/max/safety levels incorporating cover day policies per Product×SP. | ✔️ Completed |
+| 10.2 | MP-20 | Shortfall detection (stock < min/safety) | Shortfalls generate shortfall alerts/events containing Product, SP, and needed quantity. | ✔️ Completed |
+| 10.3 | MP-20 | Trigger MRP on shortfall | Shortfall events automatically queue/trigger planning runs for the affected scopes. | ✔️ Completed |
+| 10.4 | MP-20 | Replenishment scheduling (configurable interval: hourly/on-demand; batch vs event-triggered) | Scheduler triggers monitoring evaluations at configured intervals; event handler responds immediately. | ✔️ Completed |
 
 ---
 

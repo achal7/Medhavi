@@ -36,6 +36,10 @@
     <Compile Include="Mrp\Application\Orchestrator.fs" />
     <Compile Include="Mrp\Application\MrpService.fs" />
 
+    <!-- Replenishment -->
+    <Compile Include="Replenishment\Domain.fs" />
+    <Compile Include="Replenishment\Application.fs" />
+
     <!-- Main Scheduler Entry -->
     <Compile Include="Engine.fs" />
   </ItemGroup>
