@@ -1,11 +1,9 @@
 /// Lot Sizing Algorithms — Pure functions for order quantity optimization
-/// Phase 9.3: Fixed lot, min lot, EOQ, rounding
-/// FP Pattern: Pure functions, no side effects, pattern matching
-module Medhavi.Planning.Mrp.Domain.Algorithms.LotSizing
+module Medhavi.Scheduler.Mrp.Domain.Algorithms.LotSizing
 
 open System
 open Medhavi.SharedKernel
-open Medhavi.Planning.Mrp.Domain.Policies
+open Medhavi.Scheduler.Mrp.Domain.Policies
 
 // ============================================================================
 // LOT-FOR-LOT
@@ -35,8 +33,7 @@ let fixedLot (lotSize: Quantity) (netRequirement: Quantity) : Quantity =
 // ============================================================================
 
 /// Ensure order is at least the minimum quantity
-let minimumLot (minQty: Quantity) (netRequirement: Quantity) : Quantity =
-    Quantity.maxOf minQty netRequirement
+let minimumLot (minQty: Quantity) (netRequirement: Quantity) : Quantity = Quantity.maxOf minQty netRequirement
 
 // ============================================================================
 // ECONOMIC ORDER QUANTITY (EOQ)
@@ -44,16 +41,34 @@ let minimumLot (minQty: Quantity) (netRequirement: Quantity) : Quantity =
 
 /// Classic Wilson EOQ formula: sqrt(2 * D * S / H)
 /// D = annual demand, S = ordering/setup cost per order, H = holding cost per unit per year
-let eoq (annualDemand: decimal) (orderingCost: decimal) (holdingCost: decimal) : Quantity =
-    if annualDemand <= 0m || orderingCost <= 0m || holdingCost <= 0m then
+let eoq (annualDemand: Quantity) (orderingCost: PositiveDecimal) (holdingCost: PositiveDecimal) : Quantity =
+    if
+        annualDemand.IsZero
+        || orderingCost.IsZero
+        || holdingCost.IsZero
+    then
         Quantity.Zero
     else
-        let eoqValue = Math.Sqrt(float (2m * annualDemand * orderingCost / holdingCost))
+        let eoqValue =
+            Math.Sqrt(
+                float (
+                    2m
+                    * Quantity.value annualDemand
+                    * PositiveDecimal.value orderingCost
+                    / PositiveDecimal.value holdingCost
+                )
+            )
+
         let rounded = Math.Ceiling(decimal eoqValue)
         Quantity.clampToZero rounded
 
 /// Apply EOQ: if net requirement < EOQ, order EOQ; otherwise order net requirement
-let applyEoq (annualDemand: decimal) (orderingCost: decimal) (holdingCost: decimal) (netRequirement: Quantity) : Quantity =
+let applyEoq
+    (annualDemand: Quantity)
+    (orderingCost: PositiveDecimal)
+    (holdingCost: PositiveDecimal)
+    (netRequirement: Quantity)
+    : Quantity =
     let eoqQty = eoq annualDemand orderingCost holdingCost
     Quantity.maxOf eoqQty netRequirement
 
@@ -63,8 +78,12 @@ let applyEoq (annualDemand: decimal) (orderingCost: decimal) (holdingCost: decim
 
 /// Silver-Meal: minimize average cost per period
 /// Takes a list of per-period demands and returns the number of periods to combine
-let silverMealPeriods (orderingCost: decimal) (holdingCost: decimal) (demands: Quantity list) : int =
-    if List.isEmpty demands || orderingCost <= 0m || holdingCost <= 0m then
+let silverMealPeriods (orderingCost: PositiveDecimal) (holdingCost: PositiveDecimal) (demands: Quantity list) : int =
+    if
+        List.isEmpty demands
+        || orderingCost.IsZero
+        || holdingCost.IsZero
+    then
         1
     else
         let rec findOptimal periodCount prevAvgCost =
@@ -86,7 +105,7 @@ let silverMealPeriods (orderingCost: decimal) (holdingCost: decimal) (demands: Q
                 else
                     findOptimal (periodCount + 1) avgCost
 
-        findOptimal 1 Decimal.MaxValue |> max 1
+        findOptimal 1 PositiveDecimal.MaxValue |> max 1
 
 // ============================================================================
 // PERIOD ORDER QUANTITY (POQ)
@@ -111,8 +130,12 @@ let roundToLot (lotSize: Quantity) (roundUp: bool) (quantity: Quantity) : Quanti
         quantity
     else
         let rounded =
-            if roundUp then Math.Ceiling(qtyVal / lotVal) * lotVal
-            else Math.Round(qtyVal / lotVal, MidpointRounding.AwayFromZero) * lotVal
+            if roundUp then
+                Math.Ceiling(qtyVal / lotVal) * lotVal
+            else
+                Math.Round(qtyVal / lotVal, MidpointRounding.AwayFromZero)
+                * lotVal
+
         Quantity.clampToZero (max rounded lotVal) // At least one lot
 
 // ============================================================================
@@ -125,27 +148,23 @@ let applyPolicy (policy: LotSizingPolicy) (netRequirement: Quantity) (futureDema
         Quantity.Zero
     else
         match policy with
-        | LotForLot ->
-            lotForLot netRequirement
+        | LotForLot -> lotForLot netRequirement
 
-        | FixedLot lotSize ->
-            fixedLot lotSize netRequirement
+        | FixedLot lotSize -> fixedLot lotSize netRequirement
 
-        | MinimumLot minQty ->
-            minimumLot minQty netRequirement
+        | MinimumLot minQty -> minimumLot minQty netRequirement
 
-        | EOQ (annualDemand, orderingCost, holdingCost) ->
-            applyEoq annualDemand orderingCost holdingCost netRequirement
+        | EOQ(annualDemand, orderingCost, holdingCost) -> applyEoq annualDemand orderingCost holdingCost netRequirement
 
-        | SilverMeal (orderingCost, holdingCost) ->
-            let periodsToOrder = silverMealPeriods orderingCost holdingCost (netRequirement :: futureDemands)
+        | SilverMeal(orderingCost, holdingCost) ->
+            let periodsToOrder =
+                silverMealPeriods orderingCost holdingCost (netRequirement :: futureDemands)
+
             periodOrderQuantity periodsToOrder (netRequirement :: futureDemands)
 
-        | PeriodOrderQuantity periods ->
-            periodOrderQuantity periods (netRequirement :: futureDemands)
+        | PeriodOrderQuantity periods -> periodOrderQuantity periods (netRequirement :: futureDemands)
 
-        | RoundingLot (lotSize, roundUp) ->
-            roundToLot lotSize roundUp netRequirement
+        | RoundingLot(lotSize, roundUp) -> roundToLot lotSize roundUp netRequirement
 
 /// Apply lot sizing with optional min/max constraints from netting policy
 let applyWithConstraints

@@ -1,7 +1,4 @@
-/// Safety Stock Calculation — Service-level based safety stock
-/// Phase 9.2: Dynamic and static safety stock
-/// FP Pattern: Pure functions for statistical calculations
-module Medhavi.Planning.Mrp.Domain.Algorithms.SafetyStock
+module Medhavi.Scheduler.Mrp.Domain.Algorithms.SafetyStock
 
 open System
 open Medhavi.SharedKernel
@@ -32,7 +29,8 @@ let getZScore (serviceLevel: float) : float =
         elif sl < 0.99 then
             1.65 + (sl - 0.95) * (2.33 - 1.65) / (0.99 - 0.95)
         else
-            2.33 + (sl - 0.99) * (3.09 - 2.33) / (0.999 - 0.99)
+            2.33
+            + (sl - 0.99) * (3.09 - 2.33) / (0.999 - 0.99)
 
 // ============================================================================
 // DEMAND STATISTICS
@@ -41,15 +39,22 @@ let getZScore (serviceLevel: float) : float =
 /// Calculate standard deviation from historical demand data
 /// Pure function — no side effects
 let calculateDemandStdDev (demandHistory: decimal list) : decimal =
-    if List.isEmpty demandHistory || demandHistory.Length < 2 then
+    if
+        List.isEmpty demandHistory
+        || demandHistory.Length < 2
+    then
         0m
     else
-        let mean = (List.sum demandHistory) / decimal (List.length demandHistory)
+        let mean =
+            (List.sum demandHistory)
+            / decimal (List.length demandHistory)
+
         let variance =
             demandHistory
             |> List.map (fun d -> (d - mean) * (d - mean))
             |> List.sum
             |> (fun sum -> sum / decimal (List.length demandHistory))
+
         let stdDev = decimal (sqrt (float variance))
         Math.Round(stdDev, 2)
 
@@ -85,12 +90,12 @@ let calculateSafetyStock (serviceLevel: float) (demandStdDev: decimal) (leadTime
 
 /// Safety stock calculation parameters
 type SafetyStockParameters =
-    { ServiceLevel: float option           // e.g., 0.95 for 95%
-      DemandStdDev: decimal option         // Pre-calculated standard deviation
-      LeadTimeDays: float option           // Known average lead time
-      DemandHistory: decimal list option   // Historical demand for auto std dev calculation
+    { ServiceLevel: float option // e.g., 0.95 for 95%
+      DemandStdDev: decimal option // Pre-calculated standard deviation
+      LeadTimeDays: float option // Known average lead time
+      DemandHistory: decimal list option // Historical demand for auto std dev calculation
       LeadTimeHistory: TimeSpan list option // Historical lead times for auto average
-      StaticOverride: Quantity option }     // Static safety stock (takes precedence)
+      StaticOverride: Quantity option } // Static safety stock (takes precedence)
 
 module SafetyStockParameters =
     let empty =
@@ -133,5 +138,4 @@ let calculateFromParameters (parameters: SafetyStockParameters) : Quantity =
                 calculateSafetyStock serviceLevel demandStdDev leadTimeDays
             else
                 Quantity.Zero
-        | None ->
-            Quantity.Zero
+        | None -> Quantity.Zero

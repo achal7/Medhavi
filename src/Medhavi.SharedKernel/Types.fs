@@ -27,6 +27,8 @@ type Quantity =
     private
     | Quantity of decimal
 
+    member this.IsZero = this = Quantity.Zero
+
     static member Zero = Quantity 0m
 
     static member (+)(Quantity a, Quantity b) = Quantity(a + b)
@@ -96,11 +98,19 @@ type PositiveDecimal =
     private
     | PositiveDecimal of decimal
 
+    member this.IsZero = this = PositiveDecimal.Zero
+
     static member create(value: decimal) =
         if value < 0m then
             Error(DomainError.validation "Value must be non-negative")
         else
             Ok(PositiveDecimal value)
+
+    static member createSafe(value: decimal) =
+        if value < 0m then
+            PositiveDecimal.Zero
+        else
+            PositiveDecimal(value)
 
     static member value(PositiveDecimal v) = v
 
@@ -123,6 +133,8 @@ type PositiveDecimal =
     static member (/)(PositiveDecimal v, scalar: decimal) = PositiveDecimal(v / scalar)
 
     static member op_Multiply(PositiveDecimal a, PositiveDecimal b) = PositiveDecimal(a * b)
+
+    static member MaxValue = PositiveDecimal(Decimal.MaxValue)
 
 /// Percent in the range [0.0, 1.0]
 [<JsonFSharpConverter>]

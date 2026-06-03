@@ -1,95 +1,99 @@
-/// MRP Pipeline Orchestrator — Composes and executes the MRP ROP steps
-/// FP Pattern: Kleisli composition, Railway-Oriented Programming (ROP)
-module Medhavi.Planning.Mrp.Pipeline.Orchestrator
+module Medhavi.Scheduler.Mrp.Pipeline.Orchestrator
 
 open System
+open Medhavi.Common.Patterns
 open Medhavi.SharedKernel
-open Medhavi.Planning.Mrp.Domain.Types
-open Medhavi.Planning.Mrp.Domain.Errors
-open Medhavi.Planning.Mrp.Domain.Policies
-open Medhavi.Planning.Mrp.Pipeline.PipelineTypes
-open Medhavi.Planning.Mrp.Domain.Algorithms
+open Medhavi.Scheduler.Mrp.Domain.Types
+open Medhavi.Scheduler.Mrp.Domain.Errors
+open Medhavi.Scheduler.Mrp.Domain.Policies
+open Medhavi.Scheduler.Mrp.Domain.MrpRunAggregate
+open Medhavi.Scheduler.Mrp.Pipeline
+open Medhavi.Scheduler.Mrp.Domain.Algorithms
+open Medhavi.Scheduler.Mrp.Steps
 open Medhavi.Planning.Mrp.Steps
-
-// ============================================================================
-// MRP PIPELINE DEPENDENCIES
-// ============================================================================
-
-type MrpPipelineDependencies =
-    { BomLookup: BomExplosion.BomLookup
-      OnHandQuery: NettingStep.OnHandQuery
-      InboundQuery: NettingStep.InboundQuery
-      ReservationsQuery: NettingStep.ReservationsQuery
-      SafetyStockQuery: NettingStep.SafetyStockQuery
-      ProductTypeQuery: SupplyGenerationStep.ProductTypeQuery
-      SupplierQuery: SupplyGenerationStep.SupplierQuery
-      RoutingQuery: SupplyGenerationStep.RoutingQuery
-      TransferSourceQuery: SupplyGenerationStep.TransferSourceQuery
-      CapacityQuery: CapacityCheckStep.CapacityCheckQuery
-      AlternateRoutingsQuery: CapacityCheckStep.AlternateRoutingsQuery
-      PeggingCreator: PeggingStep.PeggingCreator option
-      ReservationCreator: PostprocessStep.ReservationCreator option }
+open Medhavi.Scheduler.Mrp.Application
 
 // ============================================================================
 // PIPELINE COMPOSITION
 // ============================================================================
 
 /// Create full MRP pipeline
-let createPipeline (deps: MrpPipelineDependencies) : MrpStepAsync<MrpDemand list, MrpRunResult> =
+let createPipeline (deps: MrpDependencies) : MrpStepAsync<MrpDemand list, MrpRunResult> =
     let preprocessStep = PreprocessStep.execute
     let bomStep = BomExplosionStep.createStep deps.BomLookup
-    let nettingStep = NettingStep.createStep deps.OnHandQuery deps.InboundQuery deps.ReservationsQuery deps.SafetyStockQuery
-    let supplyStep = SupplyGenerationStep.createStep deps.ProductTypeQuery deps.SupplierQuery deps.RoutingQuery deps.TransferSourceQuery
-    let capacityStep = CapacityCheckStep.createStep deps.CapacityQuery deps.AlternateRoutingsQuery
+
+    let nettingStep =
+        NettingStep.createStep deps.OnHandQuery deps.InboundQuery deps.ReservationsQuery deps.SafetyStockQuery
+
+    let supplyStep =
+        SupplyGenerationStep.createStep
+            deps.ProductTypeQuery
+            deps.SupplierQuery
+            deps.RoutingQuery
+            deps.TransferSourceQuery
+
+    let capacityStep =
+        CapacityCheckStep.createStep deps.CapacityQuery deps.AlternateRoutingsQuery
+
     let peggingStep = PeggingStep.createStep deps.PeggingCreator
     let postprocessStep = PostprocessStep.execute deps.ReservationCreator
 
     fun demands ctx ->
-        async {
+        task {
             // Step 1: Preprocess (Validate inputs, consume forecast, group)
             let! step1 = preprocessStep demands ctx
+
             match step1 with
             | Error e -> return Error e
-            | Ok (processedDemands, ctx1) ->
+            | Ok(processedDemands, ctx1) ->
 
                 // Step 2: Multi-level BOM Explosion
                 let! step2 = bomStep processedDemands ctx1
+
                 match step2 with
                 | Error e -> return Error e
-                | Ok (components, ctx2) ->
+                | Ok(components, ctx2) ->
 
                     // Step 3: Material Netting
                     let! step3 = nettingStep components ctx2
+
                     match step3 with
                     | Error e -> return Error e
-                    | Ok (netReqs, ctx3) ->
+                    | Ok(netReqs, ctx3) ->
 
                         // Step 4: Supply Order Proposals
                         let! step4 = supplyStep netReqs ctx3
+
                         match step4 with
                         | Error e -> return Error e
-                        | Ok (proposals, ctx4) ->
+                        | Ok(proposals, ctx4) ->
 
                             // Step 5: Capacity check CTP
                             let! step5 = capacityStep proposals ctx4
+
                             match step5 with
                             | Error e -> return Error e
-                            | Ok (checkedProposals, ctx5) ->
+                            | Ok(checkedProposals, ctx5) ->
 
                                 // Step 6: Pegging (demand -> supply links)
                                 let! step6 = peggingStep checkedProposals ctx5
+
                                 match step6 with
                                 | Error e -> return Error e
-                                | Ok (peggedProposals, ctx6) ->
+                                | Ok(peggedProposals, ctx6) ->
 
                                     // Step 7: Postprocess (Finalize run details, reserve materials)
                                     let! step7 = postprocessStep peggedProposals ctx6
+
                                     match step7 with
                                     | Error e -> return Error e
-                                    | Ok (runResult, ctx7) ->
+                                    | Ok(runResult, ctx7) ->
                                         // Inject netting calculations back into the final result
-                                        let finalResult = { runResult with NetRequirements = netReqs }
-                                        return Ok (finalResult, ctx7)
+                                        let finalResult =
+                                            { runResult with
+                                                NetRequirements = netReqs }
+
+                                        return Ok(finalResult, ctx7)
         }
 
 // ============================================================================
@@ -105,18 +109,22 @@ let execute
     (stockingPointId: StockingPointId)
     (policy: MrpPolicy)
     (demands: MrpDemand list)
-    : Async<Result<MrpRunResult, MrpApplicationError>> =
-    async {
-        let runIdObj = MrpRunId.create runId |> Result.defaultWith (fun _ -> failwith "Invalid RunId")
+    : TaskResult<MrpRunResult, MrpApplicationError> =
+    task {
+        let runIdObj =
+            MrpRunId.create runId
+            |> Result.defaultWith (fun _ -> failwith "Invalid RunId")
+
         let ctx = MrpContext.create runIdObj startDate endDate stockingPointId policy
 
         try
             let! result = pipeline demands ctx
+
             match result with
-            | Ok (mrpResult, _) -> return Ok mrpResult
-            | Error stepError -> return Error (MrpApplicationError.PipelineError stepError)
+            | Ok(mrpResult, _) -> return Ok mrpResult
+            | Error stepError -> return Error(MrpApplicationError.PipelineError stepError)
         with ex ->
-            return Error (MrpApplicationError.UnexpectedError ex)
+            return Error(MrpApplicationError.UnexpectedError ex)
     }
 
 /// Execute MRP pipeline with timeout safety
@@ -131,16 +139,20 @@ let executeWithTimeout
     (demands: MrpDemand list)
     : Async<Result<MrpRunResult, MrpApplicationError>> =
     async {
-        let runIdObj = MrpRunId.create runId |> Result.defaultWith (fun _ -> failwith "Invalid RunId")
+        let runIdObj =
+            MrpRunId.create runId
+            |> Result.defaultWith (fun _ -> failwith "Invalid RunId")
+
         let ctx = MrpContext.create runIdObj startDate endDate stockingPointId policy
 
         try
-            let! child = Async.StartChild (pipeline demands ctx, int timeout.TotalMilliseconds)
+            let! child = Async.StartChild(Async.AwaitTask(pipeline demands ctx), int timeout.TotalMilliseconds)
             let! result = child
+
             match result with
-            | Ok (mrpResult, _) -> return Ok mrpResult
-            | Error stepError -> return Error (MrpApplicationError.PipelineError stepError)
+            | Ok(mrpResult, _) -> return Ok mrpResult
+            | Error stepError -> return Error(MrpApplicationError.PipelineError stepError)
         with
-        | :? TimeoutException -> return Error (MrpApplicationError.Timeout timeout)
-        | ex -> return Error (MrpApplicationError.UnexpectedError ex)
+        | :? TimeoutException -> return Error(MrpApplicationError.Timeout timeout)
+        | ex -> return Error(MrpApplicationError.UnexpectedError ex)
     }

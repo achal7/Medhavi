@@ -30,9 +30,10 @@ type CalendarId = CalendarId of string
 module CalendarId =
     let create id =
         if System.String.IsNullOrWhiteSpace id then
-            Error (DomainError.validation "CalendarId cannot be empty")
+            Error(DomainError.validation "CalendarId cannot be empty")
         else
-            Ok (CalendarId id)
+            Ok(CalendarId id)
+
     let value (CalendarId id) = id
 
 [<JsonFSharpConverter>]
@@ -154,3 +155,10 @@ type OrderId = private OrderId of string
 module OrderId =
     let create = IdsFactory.createExplicitId OrderId "OrderId"
     let value (OrderId id) = id
+
+[<JsonFSharpConverter>]
+type PeggingId = private PeggingId of string
+
+module PeggingId =
+    let create = IdsFactory.createExplicitId PeggingId "Peggings"
+    let value (PeggingId id) = id

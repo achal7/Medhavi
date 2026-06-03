@@ -1,12 +1,7 @@
-namespace Medhavi.Planning.Mrp.Domain.Errors
+namespace Medhavi.Scheduler.Mrp.Domain.Errors
 
 open System
 open System.Text.Json.Serialization
-open Medhavi.SharedKernel
-
-// ============================================================================
-// PIPELINE STEP ERRORS
-// ============================================================================
 
 /// Errors that can occur during preprocessing
 [<JsonFSharpConverter>]
@@ -106,8 +101,9 @@ module MrpStepError =
                     | InvalidDemand(pid, reason) -> $"Invalid demand for {pid}: {reason}"
                     | EmptyDemandList -> "No demands to process"
                     | ForecastConsumptionError msg -> $"Forecast consumption error: {msg}")
+
             String.concat "; " messages
-            
+
         | BomExplosion errors ->
             let messages =
                 errors
@@ -119,6 +115,7 @@ module MrpStepError =
                     | BomSelectionFailed(pid, reason) -> $"BOM selection failed for {pid}: {reason}"
                     | MaxDepthExceeded(pid, depth) -> $"Max depth {depth} exceeded for {pid}"
                     | BomNotEffective(pid, asOf) -> $"BOM not effective for {pid} at {asOf}")
+
             String.concat "; " messages
 
         | Netting errors ->
@@ -131,6 +128,7 @@ module MrpStepError =
                     | SafetyStockCalculationFailed(pid, reason) ->
                         $"Safety stock calculation failed for {pid}: {reason}"
                     | InvalidNettingPolicy reason -> $"Invalid netting policy: {reason}")
+
             String.concat "; " messages
 
         | SupplyGeneration errors ->
@@ -141,6 +139,7 @@ module MrpStepError =
                     | NoRoutingFound pid -> $"No routing found for {pid}"
                     | LotSizingError(pid, reason) -> $"Lot sizing error for {pid}: {reason}"
                     | ProposalCreationFailed(pid, reason) -> $"Proposal creation failed for {pid}: {reason}")
+
             String.concat "; " messages
 
         | CapacityCheck errors ->
@@ -155,6 +154,7 @@ module MrpStepError =
                     | CapacityUnavailable(res, req, avail) ->
                         $"Capacity unavailable for {res}: required {req}, available {avail}"
                     | AllocationFailed reason -> $"Allocation failed: {reason}")
+
             String.concat "; " messages
 
         | Pegging errors ->
@@ -166,6 +166,7 @@ module MrpStepError =
                     | QuantityMismatch(demandQty, supplyQty) ->
                         $"Quantity mismatch: demand {demandQty}, supply {supplyQty}"
                     | PeggingLinkCreationFailed reason -> $"Pegging link creation failed: {reason}")
+
             String.concat "; " messages
 
         | Postprocess errors ->

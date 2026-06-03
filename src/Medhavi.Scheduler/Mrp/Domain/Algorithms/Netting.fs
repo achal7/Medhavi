@@ -1,15 +1,24 @@
-/// Material Netting Algorithms — Pure netting calculations
-/// Phase 9.2: Net requirement calculation
-/// FP Pattern: Pure functions, recursive folds, no side effects
-module Medhavi.Planning.Mrp.Domain.Algorithms.Netting
+module Medhavi.Scheduler.Mrp.Domain.Algorithms.Netting
 
-open System
 open Medhavi.SharedKernel
-open Medhavi.Planning.Mrp.Domain.Types
-open Medhavi.Planning.Mrp.Domain.Policies
+open Medhavi.Scheduler.Mrp.Domain.Types
+open Medhavi.Scheduler.Mrp.Domain.Policies
+
+type NettingSupplyProposal =
+    { SkuId: SkuId
+      NodeId: NodeId
+      StockingPointId: StockingPointId
+      Quantity: Quantity
+      DueDate: Timestamp
+      PeggingRefs: string list }
 
 /// Calculate net available quantity for a simple snapshot
-let calculateNetAvailable (onHand: Quantity) (inbound: Quantity) (reservations: Quantity) (safetyStock: Quantity) : Quantity =
+let calculateNetAvailable
+    (onHand: Quantity)
+    (inbound: Quantity)
+    (reservations: Quantity)
+    (safetyStock: Quantity)
+    : Quantity =
     let totalAvailable = onHand + inbound
     let totalDeductions = reservations + safetyStock
     Quantity.subtract totalAvailable totalDeductions
@@ -25,10 +34,14 @@ let netDemands
     (safetyStock: Quantity)
     (demands: MrpDemand list)
     (policy: NettingPolicy)
-    : NetRequirement list * SupplyProposal list =
+    : NetRequirement list * NettingSupplyProposal list =
 
     let sortedDemands = demands |> List.sortBy (fun d -> d.RequiredDate)
-    let sortedInbound = inboundSupplies |> List.sortBy (fun (t, _, _) -> t)
+
+    let sortedInbound =
+        inboundSupplies
+        |> List.sortBy (fun (t, _, _) -> t)
+
     let sortedReservations = reservations |> List.sortBy (fun (t, _) -> t)
 
     let rec loop
@@ -37,22 +50,29 @@ let netDemands
         (resLeft: (Timestamp * Quantity) list)
         (demandsLeft: MrpDemand list)
         (accNetReqs: NetRequirement list)
-        (accProposals: SupplyProposal list) =
+        (accProposals: NettingSupplyProposal list)
+        =
 
         match demandsLeft with
-        | [] ->
-            (List.rev accNetReqs, List.rev accProposals)
+        | [] -> (List.rev accNetReqs, List.rev accProposals)
         | demand :: restDemands ->
             let targetDate = demand.RequiredDate
 
             // 1. Accrue inbound supplies up to targetDate
             let (inboundToApply, inboundRemaining) =
-                inboundLeft |> List.partition (fun (t, _, _) -> t <= targetDate)
-            let inboundQty = inboundToApply |> List.map (fun (_, q, _) -> q) |> Quantity.sum
+                inboundLeft
+                |> List.partition (fun (t, _, _) -> t <= targetDate)
+
+            let inboundQty =
+                inboundToApply
+                |> List.map (fun (_, q, _) -> q)
+                |> Quantity.sum
 
             // 2. Accrue reservations up to targetDate
             let (resToApply, resRemaining) =
-                resLeft |> List.partition (fun (t, _) -> t <= targetDate)
+                resLeft
+                |> List.partition (fun (t, _) -> t <= targetDate)
+
             let resQty = resToApply |> List.map snd |> Quantity.sum
 
             // Calculate projected on-hand before satisfying this demand
@@ -62,6 +82,7 @@ let netDemands
 
             // 3. Shortfall calculation: gross + safetyStock - onHandBeforeDemand
             let gross = demand.Quantity
+
             let shortfallVal =
                 let grossVal = Quantity.value gross
                 let safetyVal = Quantity.value safetyStock
@@ -87,27 +108,13 @@ let netDemands
 
                 let proposal =
                     if Quantity.isPositive finalNet then
-                        let proposalId = SupplyProposalId.createDeterministic "netting" demand.DemandId (Timestamp.value targetDate)
-                        
-                        // Emit a planned proposal
-                        Some {
-                            Id = proposalId
-                            ProposalType = PlannedPurchaseOrder // Will be resolved to WO/PO/TO in steps
-                            SkuId = skuId
-                            NodeId = nodeId
-                            StockingPointId = stockingPointId
-                            Quantity = finalNet
-                            DueDate = targetDate
-                            StartDate = None
-                            RoutingId = None
-                            SupplierId = None
-                            Priority = 5
-                            IsExpedite = false
-                            Status = Planned
-                            PeggingRefs = [ demand.DemandId ]
-                            CapacityCheckedDate = None
-                            CreatedAt = Timestamp.now
-                        }
+                        Some
+                            { SkuId = skuId
+                              NodeId = nodeId
+                              StockingPointId = stockingPointId
+                              Quantity = finalNet
+                              DueDate = targetDate
+                              PeggingRefs = [ demand.DemandId ] }
                     else
                         None
 

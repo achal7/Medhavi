@@ -1,13 +1,13 @@
-/// Supply Generation Step — Generates PO/WO/TO proposals from net requirements
-/// FP Pattern: Railway-Oriented Programming (ROP) with async pipelines
-module Medhavi.Planning.Mrp.Steps.SupplyGenerationStep
+module Medhavi.Scheduler.Mrp.Steps.SupplyGenerationStep
 
-open System
+open System.Threading.Tasks
+open Medhavi.Common.Patterns
 open Medhavi.SharedKernel
-open Medhavi.Planning.Mrp.Domain.Types
-open Medhavi.Planning.Mrp.Domain.Errors
-open Medhavi.Planning.Mrp.Domain.Policies
-open Medhavi.Planning.Mrp.Pipeline.PipelineTypes
+open Medhavi.Scheduler.Mrp.Domain.Types
+open Medhavi.Scheduler.Mrp.Domain.Errors
+open Medhavi.Scheduler.Mrp.Domain.Policies
+open Medhavi.Scheduler.Mrp.Domain.MrpRunAggregate
+open Medhavi.Scheduler.Mrp.Pipeline
 
 // ============================================================================
 // TYPES & QUERY SIGNATURES
@@ -19,10 +19,10 @@ type ProductType =
     | Transferred
     | Unknown
 
-type ProductTypeQuery = SkuId -> Async<ProductType>
-type SupplierQuery = SkuId -> StockingPointId -> Async<SupplierId option>
-type RoutingQuery = SkuId -> StockingPointId -> Async<RoutingId option>
-type TransferSourceQuery = SkuId -> StockingPointId -> Async<StockingPointId option>
+type ProductTypeQuery = SkuId -> Task<ProductType>
+type SupplierQuery = SkuId -> StockingPointId -> Task<SupplierId option>
+type RoutingQuery = SkuId -> StockingPointId -> Task<RoutingId option>
+type TransferSourceQuery = SkuId -> StockingPointId -> Task<StockingPointId option>
 
 // ============================================================================
 // PRIORITY & EXPEDITE HELPERS
@@ -41,7 +41,10 @@ let private calculatePriority (dueDate: Timestamp) (currentDate: Timestamp) (isE
         elif daysUntilDue <= 30 then 3
         else 1
 
-    if isExpedite then basePriority + 2 else basePriority
+    if isExpedite then
+        basePriority + 2
+    else
+        basePriority
 
 let private shouldExpedite (policy: ExpeditePolicy) (dueDate: Timestamp) (currentDate: Timestamp) : bool =
     let due = Timestamp.value dueDate
@@ -66,8 +69,8 @@ let private generateProposal
     (runId: string)
     (policy: MrpPolicy)
     (netReq: NetRequirement)
-    : Async<Result<SupplyProposal, SupplyGenerationError>> =
-    async {
+    : TaskResult<SupplyProposal, SupplyGenerationError> =
+    task {
         let currentDate = Timestamp.now
 
         // Determine product procurement type
@@ -75,10 +78,11 @@ let private generateProposal
 
         // Query source (routing or supplier or transfer source) based on product type
         let! (propType, routingIdOpt, supplierIdOpt) =
-            async {
+            task {
                 match prodType with
                 | Manufactured ->
                     let! routingOpt = routingQuery netReq.SkuId netReq.StockingPointId
+
                     match routingOpt with
                     | Some rid -> return (PlannedWorkOrder, Some rid, None)
                     | None ->
@@ -87,61 +91,69 @@ let private generateProposal
                         return (PlannedPurchaseOrder, None, supplierOpt)
                 | Transferred ->
                     let! transferSourceOpt = transferSourceQuery netReq.SkuId netReq.StockingPointId
+
                     match transferSourceOpt with
                     | Some sourceSpId ->
                         let supplierId =
                             SupplierId.create (StockingPointId.value sourceSpId)
                             |> Result.defaultWith (fun _ -> failwith "Invalid ID mapping")
+
                         return (PlannedTransferOrder, None, Some supplierId)
                     | None ->
                         // Fallback to purchase if no transfer source defined
                         let! supplierOpt = supplierQuery netReq.SkuId netReq.StockingPointId
                         return (PlannedPurchaseOrder, None, supplierOpt)
-                | Purchased | Unknown ->
+                | Purchased
+                | Unknown ->
                     let! supplierOpt = supplierQuery netReq.SkuId netReq.StockingPointId
                     return (PlannedPurchaseOrder, None, supplierOpt)
             }
 
         // Check if a source was successfully identified
         match propType, routingIdOpt, supplierIdOpt with
-        | PlannedWorkOrder, None, None -> 
-            return Error (NoRoutingFound (SkuId.value netReq.SkuId))
-        | PlannedPurchaseOrder, None, None -> 
-            return Error (NoSupplierFound (SkuId.value netReq.SkuId))
+        | PlannedWorkOrder, None, None -> return Error(NoRoutingFound(SkuId.value netReq.SkuId))
+        | PlannedPurchaseOrder, None, None -> return Error(NoSupplierFound(SkuId.value netReq.SkuId))
         | _ ->
-            let isExpedite = shouldExpedite policy.ExpeditePolicy netReq.RequiredDate currentDate
+            let isExpedite =
+                shouldExpedite policy.ExpeditePolicy netReq.RequiredDate currentDate
+
             let priority = calculatePriority netReq.RequiredDate currentDate isExpedite
-            
+
             // Deterministic proposal ID (idempotent run logic)
-            let proposalId = SupplyProposalId.createDeterministic "mrp" (SkuId.value netReq.SkuId) (Timestamp.value netReq.RequiredDate)
+            let proposalId =
+                SupplyProposalId.createDeterministic
+                    "mrp"
+                    (SkuId.value netReq.SkuId)
+                    (Timestamp.value netReq.RequiredDate)
 
             // Determine status via firming policy
             let status =
                 match policy.Firming with
                 | None -> Planned
                 | Some firmingPolicy ->
-                    if Firming.shouldAutoFirm firmingPolicy currentDate netReq.RequiredDate then Firmed
-                    else Planned
+                    if Firming.shouldAutoFirm firmingPolicy currentDate netReq.RequiredDate then
+                        Firmed
+                    else
+                        Planned
 
             return
-                Ok {
-                    Id = proposalId
-                    ProposalType = propType
-                    SkuId = netReq.SkuId
-                    NodeId = netReq.NodeId
-                    StockingPointId = netReq.StockingPointId
-                    Quantity = netReq.NetRequirement
-                    DueDate = netReq.RequiredDate
-                    StartDate = None
-                    RoutingId = routingIdOpt
-                    SupplierId = supplierIdOpt
-                    Priority = priority
-                    IsExpedite = isExpedite
-                    Status = status
-                    PeggingRefs = []
-                    CapacityCheckedDate = None
-                    CreatedAt = currentDate
-                }
+                Ok
+                    { Id = proposalId
+                      ProposalType = propType
+                      SkuId = netReq.SkuId
+                      NodeId = netReq.NodeId
+                      StockingPointId = netReq.StockingPointId
+                      Quantity = netReq.NetRequirement
+                      DueDate = netReq.RequiredDate
+                      StartDate = None
+                      RoutingId = routingIdOpt
+                      SupplierId = supplierIdOpt
+                      Priority = priority
+                      IsExpedite = isExpedite
+                      Status = status
+                      PeggingRefs = []
+                      CapacityCheckedDate = None
+                      CreatedAt = currentDate }
     }
 
 /// Check frozen horizon and emit warn action messages if needed
@@ -155,25 +167,30 @@ let private checkFrozenHorizon
     | Some horizonPolicy ->
         match FrozenHorizon.getZone horizonPolicy currentDate proposal.DueDate with
         | Frozen ->
-            Some {
-                Id = $"action-{SupplyProposalId.value proposal.Id}-frozen"
-                Message = ActionMessage.Expedite (SupplyProposalId.value proposal.Id, "Proposal falls in frozen horizon", 0)
-                SkuId = proposal.SkuId
-                StockingPointId = proposal.StockingPointId
-                Severity = Critical
-                CreatedAt = currentDate
-                AcknowledgedAt = None
-            }
+            Some
+                { Id = $"action-{SupplyProposalId.value proposal.Id}-frozen"
+                  Message =
+                    ActionMessage.Expedite(SupplyProposalId.value proposal.Id, "Proposal falls in frozen horizon", 0)
+                  SkuId = proposal.SkuId
+                  StockingPointId = proposal.StockingPointId
+                  Severity = Critical
+                  CreatedAt = currentDate
+                  AcknowledgedAt = None }
         | Slushy ->
-            Some {
-                Id = $"action-{SupplyProposalId.value proposal.Id}-slushy"
-                Message = ActionMessage.Reschedule (SupplyProposalId.value proposal.Id, proposal.DueDate, proposal.DueDate, "Proposal in slushy zone - requires approval")
-                SkuId = proposal.SkuId
-                StockingPointId = proposal.StockingPointId
-                Severity = Warning
-                CreatedAt = currentDate
-                AcknowledgedAt = None
-            }
+            Some
+                { Id = $"action-{SupplyProposalId.value proposal.Id}-slushy"
+                  Message =
+                    ActionMessage.Reschedule(
+                        SupplyProposalId.value proposal.Id,
+                        proposal.DueDate,
+                        proposal.DueDate,
+                        "Proposal in slushy zone - requires approval"
+                    )
+                  SkuId = proposal.SkuId
+                  StockingPointId = proposal.StockingPointId
+                  Severity = Warning
+                  CreatedAt = currentDate
+                  AcknowledgedAt = None }
         | Free -> None
 
 // ============================================================================
@@ -188,46 +205,71 @@ let createStep
     (transferSourceQuery: TransferSourceQuery)
     : MrpStepAsync<NetRequirement list, SupplyProposal list> =
     fun netRequirements ctx ->
-        async {
+        task {
             let startTime = Timestamp.now
 
             // Generate proposals in parallel
-            let! results =
+            let supplyTasks =
                 netRequirements
-                |> List.map (generateProposal productTypeQuery supplierQuery routingQuery transferSourceQuery (MrpRunId.value ctx.RunId) ctx.Policy)
-                |> Async.Parallel
+                |> List.map (
+                    generateProposal
+                        productTypeQuery
+                        supplierQuery
+                        routingQuery
+                        transferSourceQuery
+                        (MrpRunId.value ctx.RunId)
+                        ctx.Policy
+                )
+            let! results = Task.WhenAll(supplyTasks)
 
-            let proposals = results |> Array.choose (function Ok p -> Some p | _ -> None) |> List.ofArray
-            let errors = results |> Array.choose (function Error e -> Some e | _ -> None) |> List.ofArray
+            let proposals =
+                results
+                |> Array.choose (function
+                    | Ok p -> Some p
+                    | _ -> None)
+                |> List.ofArray
+
+            let errors =
+                results
+                |> Array.choose (function
+                    | Error e -> Some e
+                    | _ -> None)
+                |> List.ofArray
 
             // Action messages for frozen horizon checks
             let actionMessages =
                 proposals
                 |> List.choose (fun p -> checkFrozenHorizon ctx.Policy.FrozenHorizon p startTime)
 
-            if not (List.isEmpty errors) && List.isEmpty proposals then
-                return Error (SupplyGeneration errors)
+            if
+                not (List.isEmpty errors)
+                && List.isEmpty proposals
+            then
+                return Error(SupplyGeneration errors)
             else
                 let updatedCtx =
                     proposals
                     |> List.fold (fun c p -> MrpContext.addEvent (SupplyProposalCreated p) c) ctx
                     |> (fun c ->
                         actionMessages
-                        |> List.fold (fun c' am ->
-                            c'
-                            |> MrpContext.addActionMessage am
-                            |> MrpContext.addEvent (ActionMessageGenerated am))
+                        |> List.fold
+                            (fun c' am ->
+                                c'
+                                |> MrpContext.addActionMessage am
+                                |> MrpContext.addEvent (ActionMessageGenerated am))
                             c)
                     |> MrpContext.updateTelemetry (fun t ->
-                        { t with ProposalsGenerated = t.ProposalsGenerated + List.length proposals })
+                        { t with
+                            ProposalsGenerated = t.ProposalsGenerated + List.length proposals })
                     |> (fun c ->
                         errors
-                        |> List.fold (fun c' err ->
-                            match err with
-                            | NoSupplierFound sku -> MrpContext.addWarning $"No supplier found for SKU {sku}" c'
-                            | NoRoutingFound sku -> MrpContext.addWarning $"No routing found for SKU {sku}" c'
-                            | _ -> c')
+                        |> List.fold
+                            (fun c' err ->
+                                match err with
+                                | NoSupplierFound sku -> MrpContext.addWarning $"No supplier found for SKU {sku}" c'
+                                | NoRoutingFound sku -> MrpContext.addWarning $"No routing found for SKU {sku}" c'
+                                | _ -> c')
                             c)
 
-                return Ok (proposals, updatedCtx)
+                return Ok(proposals, updatedCtx)
         }

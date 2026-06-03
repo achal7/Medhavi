@@ -1,20 +1,18 @@
 /// Preprocess Step — Input validation, forecast consumption, and demand grouping
-/// FP Pattern: Railway-Oriented Programming (ROP) with async pipelines
-module Medhavi.Planning.Mrp.Steps.PreprocessStep
+module Medhavi.Scheduler.Mrp.Steps.PreprocessStep
 
-open System
 open Medhavi.SharedKernel
 open Medhavi.Demand
-open Medhavi.Planning.Mrp.Domain.Types
-open Medhavi.Planning.Mrp.Domain.Errors
-open Medhavi.Planning.Mrp.Domain.Policies
-open Medhavi.Planning.Mrp.Pipeline.PipelineTypes
-open Medhavi.Planning.Mrp.Domain.Algorithms
+open Medhavi.Scheduler.Mrp.Domain.Types
+open Medhavi.Scheduler.Mrp.Domain.Errors
+open Medhavi.Scheduler.Mrp.Domain.Policies
+open Medhavi.Scheduler.Mrp.Pipeline
+open Medhavi.Scheduler.Mrp.Domain.Algorithms
 
 /// Validate a single demand signal
 let validateDemand (demand: MrpDemand) : Result<MrpDemand, PreprocessError> =
     if Quantity.value demand.Quantity <= 0m then
-        Error (InvalidDemand (SkuId.value demand.SkuId, "Quantity must be positive"))
+        Error(InvalidDemand(SkuId.value demand.SkuId, "Quantity must be positive"))
     else
         Ok demand
 
@@ -24,29 +22,40 @@ let validateDemands (demands: MrpDemand list) : Result<MrpDemand list, Preproces
         Error [ EmptyDemandList ]
     else
         let results = demands |> List.map validateDemand
-        let errors = results |> List.choose (function Error e -> Some e | _ -> None)
-        let valid = results |> List.choose (function Ok d -> Some d | _ -> None)
 
-        if List.isEmpty errors then
-            Ok valid
-        else if List.isEmpty valid then
-            Error errors
-        else
-            Ok valid // Continue with valid, errors can be warnings
+        let errors =
+            results
+            |> List.choose (function
+                | Error e -> Some e
+                | _ -> None)
+
+        let valid =
+            results
+            |> List.choose (function
+                | Ok d -> Some d
+                | _ -> None)
+
+        if List.isEmpty errors then Ok valid
+        else if List.isEmpty valid then Error errors
+        else Ok valid // Continue with valid, errors can be warnings
 
 /// Group demands by SKU, Node, Stocking Point, and Required Date
 let groupDemands (demands: MrpDemand list) : MrpDemand list =
     demands
     |> List.groupBy (fun d -> (d.SkuId, d.NodeId, d.StockingPointId, d.RequiredDate))
     |> List.map (fun ((skuId, nodeId, spId, reqDate), grouped) ->
-        let totalQty = grouped |> List.map (fun d -> d.Quantity) |> Quantity.sum
+        let totalQty =
+            grouped
+            |> List.map (fun d -> d.Quantity)
+            |> Quantity.sum
+
         let highestPriority =
             grouped
             |> List.choose (fun d -> d.Priority)
             |> function
-               | [] -> None
-               | list -> Some (List.min list) // lower number = higher priority
-               
+                | [] -> None
+                | list -> Some(List.min list) // lower number = higher priority
+
         let source =
             match grouped with
             | [ single ] -> single.Source
@@ -64,14 +73,13 @@ let groupDemands (demands: MrpDemand list) : MrpDemand list =
           Priority = highestPriority })
 
 /// Preprocess step execution
-let execute : MrpStepAsync<MrpDemand list, MrpDemand list> =
+let execute: MrpStepAsync<MrpDemand list, MrpDemand list> =
     fun demands ctx ->
-        async {
+        task {
             let startTime = Timestamp.now
 
             match validateDemands demands with
-            | Error errs ->
-                return Error (Preprocess errs)
+            | Error errs -> return Error(Preprocess errs)
             | Ok validDemands ->
                 // Apply forecast consumption if enabled in policy
                 let consumedDemands =
@@ -96,8 +104,10 @@ let execute : MrpStepAsync<MrpDemand list, MrpDemand list> =
                             coDemands
                             |> List.map (fun d ->
                                 match d.Source with
-                                | CustomerOrder (orderId, lineId) ->
-                                    { OrderId = OrderId.create orderId |> Result.defaultWith (fun _ -> failwith "Invalid")
+                                | CustomerOrder(orderId, lineId) ->
+                                    { OrderId =
+                                        OrderId.create orderId
+                                        |> Result.defaultWith (fun _ -> failwith "Invalid")
                                       LineId = lineId
                                       SkuId = d.SkuId
                                       NodeId = d.NodeId
@@ -120,7 +130,8 @@ let execute : MrpStepAsync<MrpDemand list, MrpDemand list> =
                                       PeriodEnd = Timestamp.value d.RequiredDate }
                                 | _ -> failwith "Unreachable")
 
-                        let consumed = ForecastConsumption.consumeForecasts policy demandForecasts demandOrders
+                        let consumed =
+                            ForecastConsumption.consumeForecasts policy demandForecasts demandOrders
 
                         let remainingFcDemands =
                             consumed
@@ -143,18 +154,21 @@ let execute : MrpStepAsync<MrpDemand list, MrpDemand list> =
                                   Priority = None })
 
                         coDemands @ remainingFcDemands @ otherDemands
-                    | _ ->
-                        validDemands
+                    | _ -> validDemands
 
                 let grouped = groupDemands consumedDemands
                 let endTime = Timestamp.now
-                let duration = Timestamp.value endTime - Timestamp.value startTime
+
+                let duration =
+                    Timestamp.value endTime
+                    - Timestamp.value startTime
 
                 let updatedCtx =
                     ctx
-                    |> MrpContext.addEvent (MrpRunStarted (MrpRunId.value ctx.RunId, startTime))
+                    |> MrpContext.addEvent (MrpRunStarted(MrpRunId.value ctx.RunId, startTime))
                     |> MrpContext.updateTelemetry (fun t ->
-                        { t with ComponentsProcessed = List.length grouped })
+                        { t with
+                            ComponentsProcessed = List.length grouped })
 
-                return Ok (grouped, updatedCtx)
+                return Ok(grouped, updatedCtx)
         }
