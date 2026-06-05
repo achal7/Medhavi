@@ -185,6 +185,8 @@ let getSnapshotInternal
                 supplyOrderQuery.Filter(fun o ->
                     o.SkuId = SkuId.value skuId
                     && o.StockingPointId = StockingPointId.value stockingPointId
+                    && o.State <> "Completed"
+                    && o.State <> "Cancelled"
                     && (o.IsFirm
                         || o.State = "Confirmed"
                         || o.State = "Released"
@@ -193,8 +195,12 @@ let getSnapshotInternal
             let inbound =
                 allOrders
                 |> List.choose (fun o ->
-                    o.RequiredDeliveryDate
-                    |> Option.map (fun d -> Timestamp.create d, Quantity.clampToZero o.Quantity))
+                    let remaining = o.Quantity - o.CompletedQuantity - o.ScrapQuantity
+                    if remaining > 0.0m then
+                        o.RequiredDeliveryDate
+                        |> Option.map (fun d -> Timestamp.create d, Quantity.clampToZero remaining)
+                    else
+                        None)
                 |> List.sortBy fst
 
             // 3. Get Safety Stock Target (mapped safely)

@@ -2,7 +2,6 @@ namespace Medhavi.E2E.Tests
 
 open Expecto
 open Swensen.Unquote
-open Medhavi.Hub
 
 module GatewayTests =
 

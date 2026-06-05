@@ -394,11 +394,15 @@ type SupplyOrderStartReq =
 type SupplyOrderPartialCompleteReq =
     { Id: string
       CompletedQuantity: decimal
-      CompletedDate: DateTimeOffset }
+      ScrapQuantity: decimal
+      CompletedDate: DateTimeOffset
+      FeedbackId: string option }
 
 type SupplyOrderCompleteReq =
     { Id: string
-      CompletedDate: DateTimeOffset }
+      ScrapQuantity: decimal
+      CompletedDate: DateTimeOffset
+      FeedbackId: string option }
 
 type SupplyOrderPlanReq =
     { Id: string

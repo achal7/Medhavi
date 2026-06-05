@@ -245,8 +245,105 @@ module Program =
                         // do! supplyContext.ResourceCalendar.DefineBulk(resourceCalendars)
                         ()
                     | WorkOrdersCompleted workOrdersCompleted ->
-                        // do! supplyContext.WorkOrder.DefineBulk(workOrdersCompleted)
-                        ()
+                        for item in workOrdersCompleted do
+                            let! existingOpt = supplyContext.Queries.SupplyOrder.GetById item.WorkOrderId
+                            match existingOpt with
+                            | None ->
+                                logger.LogError(sprintf "    - Work Order Ingestion Error: Work Order %s not found" item.WorkOrderId)
+                            | Some order ->
+                                if order.State.Equals("Completed", StringComparison.OrdinalIgnoreCase) then
+                                    logger.LogInfo(sprintf "    - Work Order %s already Completed. Skipping (Idempotent)." item.WorkOrderId)
+                                else
+                                    // 1. Complete the work order (passing the reported scrap)
+                                    let completeReq =
+                                        { Id = item.WorkOrderId
+                                          ScrapQuantity = item.QuantityScrapped
+                                          CompletedDate = item.CompletedAtUtc }
+                                    let! completeRes = supplyContext.Commands.SupplyOrder.Complete completeReq
+                                    match completeRes with
+                                    | Error err ->
+                                        logger.LogError(sprintf "    - Failed to complete Work Order %s: %A" item.WorkOrderId err)
+                                    | Ok _ ->
+                                        logger.LogSuccess(sprintf "    - Work Order %s Completed successfully [ OK ]" item.WorkOrderId)
+                                        
+                                        // 2. Increase Finished Goods inventory by QuantityCompleted
+                                        let! allInvs = supplyContext.Queries.Inventory.GetAll()
+                                        let fgInvOpt =
+                                            allInvs
+                                            |> List.tryFind (fun inv ->
+                                                inv.SkuId.Equals(order.SkuId, StringComparison.OrdinalIgnoreCase) &&
+                                                inv.StockingPointId.Equals(order.StockingPointId, StringComparison.OrdinalIgnoreCase))
+                                        
+                                        match fgInvOpt with
+                                        | Some fgInv ->
+                                            let newQty = fgInv.Quantity + item.QuantityCompleted
+                                            let! fgRes = supplyContext.Commands.Inventory.Define {
+                                                Id = fgInv.Id
+                                                SkuId = fgInv.SkuId
+                                                StockingPointId = fgInv.StockingPointId
+                                                Quantity = newQty
+                                                UnitOfMeasure = fgInv.UnitOfMeasure
+                                            }
+                                            match fgRes with
+                                            | Ok _ -> logger.LogSuccess(sprintf "      -> Finished Goods Inventory increased for %s to %M" order.SkuId newQty)
+                                            | Error e -> logger.LogError(sprintf "      -> FG Inv update failed: %A" e)
+                                        | None ->
+                                            let fgId = $"INV-{order.SkuId}-{order.StockingPointId}"
+                                            let! fgRes = supplyContext.Commands.Inventory.Define {
+                                                Id = fgId
+                                                SkuId = order.SkuId
+                                                StockingPointId = order.StockingPointId
+                                                Quantity = item.QuantityCompleted
+                                                UnitOfMeasure = "UOM-PCS"
+                                            }
+                                            match fgRes with
+                                            | Ok _ -> logger.LogSuccess(sprintf "      -> Finished Goods Inventory created for %s with %M" order.SkuId item.QuantityCompleted)
+                                            | Error e -> logger.LogError(sprintf "      -> FG Inv create failed: %A" e)
+
+                                        // 3. Deduct BOM components inventory (Backflushing)
+                                        let! boms = masterDataContext.Queries.Bom.GetAll()
+                                        let skuBomOpt =
+                                            boms
+                                            |> List.tryFind (fun b ->
+                                                b.SkuId.Equals(order.SkuId, StringComparison.OrdinalIgnoreCase) &&
+                                                b.IsActive)
+                                        
+                                        match skuBomOpt with
+                                        | None -> ()
+                                        | Some bom ->
+                                            for bomItem in bom.Items do
+                                                let consumedQty = bomItem.Quantity * (item.QuantityCompleted + item.QuantityScrapped)
+                                                let compInvOpt =
+                                                    allInvs
+                                                    |> List.tryFind (fun inv ->
+                                                        inv.SkuId.Equals(bomItem.ComponentSkuId, StringComparison.OrdinalIgnoreCase) &&
+                                                        inv.StockingPointId.Equals(order.StockingPointId, StringComparison.OrdinalIgnoreCase))
+                                                
+                                                match compInvOpt with
+                                                | Some compInv ->
+                                                    let newCompQty = compInv.Quantity - consumedQty
+                                                    let! compRes = supplyContext.Commands.Inventory.Define {
+                                                        Id = compInv.Id
+                                                        SkuId = compInv.SkuId
+                                                        StockingPointId = compInv.StockingPointId
+                                                        Quantity = newCompQty
+                                                        UnitOfMeasure = compInv.UnitOfMeasure
+                                                    }
+                                                    match compRes with
+                                                    | Ok _ -> logger.LogSuccess(sprintf "      -> Component Stock reduced: Component=%s, consumed=%M, newBalance=%M" bomItem.ComponentSkuId consumedQty newCompQty)
+                                                    | Error e -> logger.LogError(sprintf "      -> Component Stock reduction failed: %A" e)
+                                                | None ->
+                                                    let compId = $"INV-{bomItem.ComponentSkuId}-{order.StockingPointId}"
+                                                    let! compRes = supplyContext.Commands.Inventory.Define {
+                                                        Id = compId
+                                                        SkuId = bomItem.ComponentSkuId
+                                                        StockingPointId = order.StockingPointId
+                                                        Quantity = -consumedQty
+                                                        UnitOfMeasure = "UOM-PCS"
+                                                    }
+                                                    match compRes with
+                                                    | Ok _ -> logger.LogSuccess(sprintf "      -> Component Stock created with negative balance: Component=%s, consumed=%M" bomItem.ComponentSkuId consumedQty)
+                                                    | Error e -> logger.LogError(sprintf "      -> Component Stock create failed: %A" e)
                     | MaterialsReceived materialsReceived ->
                         // do! supplyContext.MaterialReceipt.DefineBulk(materialsReceived)
                         ()

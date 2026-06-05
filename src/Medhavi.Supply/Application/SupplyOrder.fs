@@ -76,21 +76,27 @@ module ACL =
     let toPartialCompleteCommand
         (req: SupplyOrderPartialCompleteReq)
         : Validation<PartialCompleteSupplyOrderCmd, DomainError> =
-        let make (orderId: SupplyOrderId) (qty: Quantity) : PartialCompleteSupplyOrderCmd =
+        let make (orderId: SupplyOrderId) (qty: Quantity) (scrapQty: Quantity) : PartialCompleteSupplyOrderCmd =
             { Id = orderId
               CompletedQuantity = qty
-              CompletedDate = Timestamp.create req.CompletedDate }
+              ScrapQuantity = scrapQty
+              CompletedDate = Timestamp.create req.CompletedDate
+              FeedbackId = req.FeedbackId }
 
         make
         <!> (SupplyOrderId.create req.Id |> fromResult)
-        <*> (Quantity.create req.CompletedQuantity
-             |> fromResult)
+        <*> (Quantity.create req.CompletedQuantity |> fromResult)
+        <*> (Quantity.create req.ScrapQuantity |> fromResult)
 
     let toCompleteCommand (req: SupplyOrderCompleteReq) : Result<CompleteSupplyOrderCmd, DomainError> =
-        SupplyOrderId.create req.Id
-        |> Result.map (fun id ->
-            { Id = id
-              CompletedDate = Timestamp.create req.CompletedDate })
+        match SupplyOrderId.create req.Id, Quantity.create req.ScrapQuantity with
+        | Ok id, Ok scrapQty ->
+            Ok { Id = id
+                 ScrapQuantity = scrapQty
+                 CompletedDate = Timestamp.create req.CompletedDate
+                 FeedbackId = req.FeedbackId }
+        | Error e, _ -> Error e
+        | _, Error e -> Error e
 
     let toPlanCommand (req: SupplyOrderPlanReq) : Result<PlanSupplyOrderCmd, DomainError> =
         SupplyOrderId.create req.Id
@@ -157,7 +163,9 @@ module ACL =
             o.RequiredDeliveryDate
             |> Option.map Timestamp.value
           CreatedDate = Timestamp.value o.CreatedDate
-          ModifiedDate = Timestamp.value o.ModifiedDate }
+          ModifiedDate = Timestamp.value o.ModifiedDate
+          CompletedQuantity = Quantity.value o.CompletedQuantity
+          ScrapQuantity = Quantity.value o.ScrapQuantity }
 
 type Decision = Decision<SupplyOrder, SupplyOrderEvent>
 
@@ -239,7 +247,9 @@ module Service =
                 let! res =
                     capabilities.Complete
                         { Id = item.SupplyOrderId
-                          CompletedDate = DateTimeOffset.UtcNow }
+                          ScrapQuantity = 0.0m
+                          CompletedDate = DateTimeOffset.UtcNow
+                          FeedbackId = None }
 
                 return ACL.toContract res.NewState
             elif
@@ -297,6 +307,44 @@ module Service =
         statusUpdates
         |> List.map (processSingleUpdate capabilities query)
         |> TaskResult.sequence
+
+    let autoFirmOrders
+        (capabilities: SupplyOrderCapabilities)
+        (query: QueryService<Medhavi.Contracts.Domain.SupplyOrder, string>)
+        (asOf: DateTimeOffset)
+        (firmingDays: int)
+        : TaskResult<unit, ApplicationError> =
+        taskResult {
+            let! (allOrders: Medhavi.Contracts.Domain.SupplyOrder list) = 
+                task {
+                    let! res = query.GetAll()
+                    return Ok res
+                }
+            
+            let plannedOrders =
+                allOrders
+                |> List.filter (fun (o: Medhavi.Contracts.Domain.SupplyOrder) -> 
+                    String.Equals(o.State, "Planned", StringComparison.OrdinalIgnoreCase) && not o.IsFirm)
+            
+            let firmIfInside (order: Medhavi.Contracts.Domain.SupplyOrder) =
+                match order.RequiredDeliveryDate with
+                | Some dueDate ->
+                    let days = (dueDate - asOf).Days
+                    if days <= firmingDays then
+                        capabilities.Confirm { Id = order.Id; ConfirmedDate = asOf }
+                        |> TaskResult.ignore
+                    else
+                        TaskResult.return_ ()
+                | None ->
+                    TaskResult.return_ ()
+
+            let firmTask = 
+                plannedOrders
+                |> List.map firmIfInside
+                |> TaskResult.sequence
+
+            return! firmTask |> TaskResult.map (fun _ -> ())
+        }
 
 let createCapabilities (repo: Repository<SupplyOrder, string, SupplyOrderEvent>) =
     { Create =
@@ -359,6 +407,7 @@ let evolveProjection (state: Map<string, Contracts.Domain.SupplyOrder>) (evt: Su
                 key
                 { existing with
                     State = "Confirmed"
+                    IsFirm = true
                     ModifiedDate = Timestamp.value e.ConfirmedDate }
                 state
         | None -> state
@@ -383,7 +432,7 @@ let evolveProjection (state: Map<string, Contracts.Domain.SupplyOrder>) (evt: Su
                 key
                 { existing with
                     State = "InProgress"
-                    ModifiedDate = Timestamp.value e.StartedDate }
+                    ModifiedDate = Timestamp.value e.ReleasedDate }
                 state
         | None -> state
     | SupplyOrderCompleted e ->
@@ -391,10 +440,15 @@ let evolveProjection (state: Map<string, Contracts.Domain.SupplyOrder>) (evt: Su
 
         match Map.tryFind key state with
         | Some existing ->
+            let scrapVal = Quantity.value e.ScrapQuantity
+            let newScrap = existing.ScrapQuantity + scrapVal
+            let newCompleted = existing.Quantity - newScrap |> max 0m
             Map.add
                 key
                 { existing with
                     State = "Completed"
+                    CompletedQuantity = newCompleted
+                    ScrapQuantity = newScrap
                     ModifiedDate = Timestamp.value e.CompletedDate }
                 state
         | None -> state
@@ -406,6 +460,9 @@ let evolveProjection (state: Map<string, Contracts.Domain.SupplyOrder>) (evt: Su
             Map.add
                 key
                 { existing with
+                    State = "InProgress"
+                    CompletedQuantity = existing.CompletedQuantity + Quantity.value e.CompletedQuantity
+                    ScrapQuantity = existing.ScrapQuantity + Quantity.value e.ScrapQuantity
                     ModifiedDate = Timestamp.value e.CompletedDate }
                 state
         | None -> state
@@ -499,5 +556,6 @@ let createSupplyOrderApi (capabilities: SupplyOrderCapabilities) agent =
         fun req ->
             capabilities.Lock req
             |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map ACL.toContract }
+            |> TaskResult.map ACL.toContract
+      AutoFirmOrders = Service.autoFirmOrders capabilities query }
     : SupplyOrderApi

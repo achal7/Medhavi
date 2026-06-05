@@ -173,7 +173,9 @@ type SupplyOrder =
       UsesLeadTimeQuantity: bool
       RequiredDeliveryDate: DateTimeOffset option
       CreatedDate: DateTimeOffset
-      ModifiedDate: DateTimeOffset }
+      ModifiedDate: DateTimeOffset
+      CompletedQuantity: decimal
+      ScrapQuantity: decimal }
 
 type PromiseRequest =
     { OrderId: string

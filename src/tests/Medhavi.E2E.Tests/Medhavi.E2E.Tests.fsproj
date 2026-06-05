@@ -12,7 +12,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Medhavi.Hub\Medhavi.Hub.fsproj" />
   </ItemGroup>
 
   <ItemGroup>

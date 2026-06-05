@@ -14,7 +14,9 @@ type WorkOrderCompletedPayload =
     { WorkOrderId: string
       RoutingId: string
       QuantityCompleted: decimal
-      CompletedAtUtc: DateTimeOffset }
+      QuantityScrapped: decimal
+      CompletedAtUtc: DateTimeOffset
+      FeedbackId: string }
 
 type MaterialReceivedPayload =
     { ReceiptId: string

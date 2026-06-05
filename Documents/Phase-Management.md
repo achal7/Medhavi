@@ -496,15 +496,15 @@ The following capabilities **must grow incrementally** across multiple phases ra
 ---
 
 ### Phase 12 — Work Orders & Execution Feedback
-**Wave**: 3 | **Status**: ❌ Not Started
+**Wave**: 3 | **Status**: ✔️ Completed
 
 | Sub-Phase | Feature(s) | Description | Exit Gate | Status |
 |-----------|-----------|-------------|-----------|--------|
-| 12.1 | MP-04, MP-24 | WO creation from planned supply/operations | System converts planned WO proposals into executable WorkOrder aggregates. | ❌ Not Started |
-| 12.2 | MP-04 | WO lifecycle (Planned → InProgress → Completed / Cancelled / PartialComplete) | State machine transitions validate cleanly; invalid status jumps fail with DomainError. | ❌ Not Started |
-| 12.3 | MP-28 | Variance/scrap/rework tracking | Yield scraps record correctly, reducing inventory and triggering netting recalculations. | ❌ Not Started |
-| 12.4 | MP-27, NX-44 | MES payload generation & idempotent reconciliation | MES progress payloads process idempotently; updates apply to WO state without duplication. | ❌ Not Started |
-| 12.5 | MP-04 | Firming workflow (auto-confirm rules when inside firming window; manual approval; policy-driven) | WOs automatically lock/firm when crossing the firming horizon threshold; manual firming compiles. | ❌ Not Started |
+| 12.1 | MP-04, MP-24 | WO creation from planned supply/operations | System converts planned WO proposals into executable WorkOrder aggregates. | ✔️ Completed |
+| 12.2 | MP-04 | WO lifecycle (Planned → InProgress → Completed / Cancelled / PartialComplete) | State machine transitions validate cleanly; invalid status jumps fail with DomainError. | ✔️ Completed |
+| 12.3 | MP-28 | Variance/scrap/rework tracking | Yield scraps record correctly, reducing inventory and triggering netting recalculations. | ✔️ Completed |
+| 12.4 | MP-27, NX-44 | MES payload generation & idempotent reconciliation | MES progress payloads process idempotently; updates apply to WO state without duplication. | ✔️ Completed |
+| 12.5 | MP-04 | Firming workflow (auto-confirm rules when inside firming window; manual approval; policy-driven) | WOs automatically lock/firm when crossing the firming horizon threshold; manual firming compiles. | ✔️ Completed |
 
 ---
 

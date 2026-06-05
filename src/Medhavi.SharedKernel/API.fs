@@ -1,5 +1,6 @@
 namespace Medhavi.SharedKernel.API
 
+open System
 open Medhavi.Common.Patterns
 open Medhavi.Contracts
 open Medhavi.Contracts.Domain
@@ -104,7 +105,8 @@ type SupplyOrderApi =
       Confirm: SupplyOrderConfirmReq -> TaskResult<SupplyOrder, ApplicationError>
       Release: SupplyOrderReleaseReq -> TaskResult<SupplyOrder, ApplicationError>
       Cancel: SupplyOrderCancelReq -> TaskResult<SupplyOrder, ApplicationError>
-      Lock: SupplyOrderLockReq -> TaskResult<SupplyOrder, ApplicationError> }
+      Lock: SupplyOrderLockReq -> TaskResult<SupplyOrder, ApplicationError>
+      AutoFirmOrders: DateTimeOffset -> int -> TaskResult<unit, ApplicationError> }
 
 type MaterialProviderApi =
     { GetSnapshot: string -> string -> Timestamp -> Async<Result<MaterialSnapshot, ApplicationError>>

@@ -65,7 +65,10 @@ type SupplyOrder =
       UsesLeadTimeQuantity: bool
       RequiredDeliveryDate: Timestamp option
       CreatedDate: Timestamp
-      ModifiedDate: Timestamp }
+      ModifiedDate: Timestamp
+      CompletedQuantity: Quantity
+      ScrapQuantity: Quantity
+      ProcessedFeedbackIds: string list }
 
 // Commands
 type CreateSupplyOrderCmd =
@@ -102,12 +105,16 @@ type StartSupplyOrderCmd =
 
 type CompleteSupplyOrderCmd =
     { Id: SupplyOrderId
-      CompletedDate: Timestamp }
+      ScrapQuantity: Quantity
+      CompletedDate: Timestamp
+      FeedbackId: string option }
 
 type PartialCompleteSupplyOrderCmd =
     { Id: SupplyOrderId
       CompletedQuantity: Quantity
-      CompletedDate: Timestamp }
+      ScrapQuantity: Quantity
+      CompletedDate: Timestamp
+      FeedbackId: string option }
 
 type CancelSupplyOrderCmd =
     { Id: SupplyOrderId
@@ -151,16 +158,20 @@ type SupplyOrderReleasedEvt =
 
 type SupplyOrderStartedEvt =
     { Id: SupplyOrderId
-      StartedDate: Timestamp }
+      ReleasedDate: Timestamp } // Keep standard field
 
 type SupplyOrderCompletedEvt =
     { Id: SupplyOrderId
-      CompletedDate: Timestamp }
+      ScrapQuantity: Quantity
+      CompletedDate: Timestamp
+      FeedbackId: string option }
 
 type SupplyOrderPartiallyCompletedEvt =
     { Id: SupplyOrderId
       CompletedQuantity: Quantity
-      CompletedDate: Timestamp }
+      ScrapQuantity: Quantity
+      CompletedDate: Timestamp
+      FeedbackId: string option }
 
 type SupplyOrderCancelledEvt =
     { Id: SupplyOrderId
@@ -207,7 +218,10 @@ let applyCreated (evt: SupplyOrderCreatedEvt) : SupplyOrder =
       UsesLeadTimeQuantity = evt.UsesLeadTimeQuantity
       RequiredDeliveryDate = evt.RequiredDeliveryDate
       CreatedDate = evt.CreatedDate
-      ModifiedDate = evt.CreatedDate }
+      ModifiedDate = evt.CreatedDate
+      CompletedQuantity = Quantity.Zero
+      ScrapQuantity = Quantity.Zero
+      ProcessedFeedbackIds = [] }
 
 let applyPlanned (evt: SupplyOrderPlannedEvt) (state: SupplyOrder) =
     { state with
@@ -217,6 +231,7 @@ let applyPlanned (evt: SupplyOrderPlannedEvt) (state: SupplyOrder) =
 let applyConfirmed (evt: SupplyOrderConfirmedEvt) (state: SupplyOrder) =
     { state with
         State = SupplyOrderState.Confirmed
+        IsFirm = true // Confirmed implies firmed
         ModifiedDate = evt.ConfirmedDate }
 
 let applyReleased (evt: SupplyOrderReleasedEvt) (state: SupplyOrder) =
@@ -227,18 +242,33 @@ let applyReleased (evt: SupplyOrderReleasedEvt) (state: SupplyOrder) =
 let applyStarted (evt: SupplyOrderStartedEvt) (state: SupplyOrder) =
     { state with
         State = SupplyOrderState.InProgress
-        ModifiedDate = evt.StartedDate }
+        ModifiedDate = evt.ReleasedDate } // Use ReleasedDate as event start date field
 
 let applyCompleted (evt: SupplyOrderCompletedEvt) (state: SupplyOrder) =
+    let feedbackIds =
+        match evt.FeedbackId with
+        | Some fid -> fid :: state.ProcessedFeedbackIds
+        | None -> state.ProcessedFeedbackIds
+    let netScrap = state.ScrapQuantity + evt.ScrapQuantity
+    let netCompleted = state.Quantity - netScrap |> max Quantity.Zero
     { state with
         State = SupplyOrderState.Completed
+        CompletedQuantity = netCompleted
+        ScrapQuantity = netScrap
+        ProcessedFeedbackIds = feedbackIds
         ModifiedDate = evt.CompletedDate }
 
 let applyPartiallyCompleted (evt: SupplyOrderPartiallyCompletedEvt) (state: SupplyOrder) =
+    let feedbackIds =
+        match evt.FeedbackId with
+        | Some fid -> fid :: state.ProcessedFeedbackIds
+        | None -> state.ProcessedFeedbackIds
     { state with
-        ModifiedDate = evt.CompletedDate
-    // State remains InProgress for partial completion
-    }
+        State = SupplyOrderState.InProgress // Transition state to InProgress if partial completes
+        CompletedQuantity = state.CompletedQuantity + evt.CompletedQuantity
+        ScrapQuantity = state.ScrapQuantity + evt.ScrapQuantity
+        ProcessedFeedbackIds = feedbackIds
+        ModifiedDate = evt.CompletedDate }
 
 let applyCancelled (evt: SupplyOrderCancelledEvt) (state: SupplyOrder) =
     { state with
@@ -271,6 +301,33 @@ let evolve (state: SupplyOrder option) (event: SupplyOrderEvent) : SupplyOrder o
 
 let validateCreate (cmd: CreateSupplyOrderCmd) = SupplyOrderId.create cmd.Id
 
+let isValidTransition (fromState: SupplyOrderState) (toState: SupplyOrderState) : bool =
+    match fromState, toState with
+    | current, target when current = target -> true
+    
+    | Created, Planned -> true
+    | Created, Confirmed -> true
+    | Created, Cancelled -> true
+    
+    | Planned, Confirmed -> true
+    | Planned, Cancelled -> true
+    
+    | Confirmed, Released -> true
+    | Confirmed, Planned -> true
+    | Confirmed, Cancelled -> true
+    
+    | Released, InProgress -> true
+    | Released, Confirmed -> true
+    | Released, Cancelled -> true
+    
+    | InProgress, Completed -> true
+    | InProgress, Cancelled -> true
+    
+    | Completed, _ -> false
+    | Cancelled, _ -> false
+    
+    | _ -> false
+
 let decide: DecideSupplyOrder =
     fun cmd stateOpt ->
         match cmd, stateOpt with
@@ -294,7 +351,10 @@ let decide: DecideSupplyOrder =
                       UsesLeadTimeQuantity = c.UsesLeadTimeQuantity
                       RequiredDeliveryDate = c.RequiredDeliveryDate
                       CreatedDate = c.CreatedDate
-                      ModifiedDate = c.CreatedDate }
+                      ModifiedDate = c.CreatedDate
+                      CompletedQuantity = Quantity.Zero
+                      ScrapQuantity = Quantity.Zero
+                      ProcessedFeedbackIds = [] }
 
                 let evt: SupplyOrderCreatedEvt = order
 
@@ -303,117 +363,150 @@ let decide: DecideSupplyOrder =
                       Events = [ SupplyOrderCreated evt ] }
 
         | StartSupplyOrder c, Some state ->
-            let evt =
-                SupplyOrderStarted
-                    { Id = c.Id
-                      StartedDate = c.StartedDate }
+            if not (isValidTransition state.State SupplyOrderState.InProgress) then
+                Error(DomainError.validation $"Invalid state transition from {state.State} to InProgress")
+            elif state.State = SupplyOrderState.InProgress then
+                Ok { NewState = state; Events = [] }
+            else
+                let evt =
+                    SupplyOrderStarted
+                        { Id = c.Id
+                          ReleasedDate = c.StartedDate }
 
-            evolve stateOpt evt
-            |> Option.map (fun supplier ->
-                Ok
-                    { NewState = supplier
-                      Events = [ evt ] })
-            |> Option.defaultWith (fun () -> Error(DomainError.validation $"Failed to start supply order {c.Id}"))
-        | PartialCompleteSupplyOrder cmd, Some s ->
-            let evt =
-                SupplyOrderPartiallyCompleted
-                    { Id = cmd.Id
-                      CompletedQuantity = cmd.CompletedQuantity
-                      CompletedDate = cmd.CompletedDate }
+                match evolve stateOpt evt with
+                | Some s -> Ok { NewState = s; Events = [ evt ] }
+                | None -> Error(DomainError.validation $"Failed to start supply order {c.Id}")
 
-            evolve stateOpt evt
-            |> Option.map (fun supplier ->
-                Ok
-                    { NewState = supplier
-                      Events = [ evt ] })
-            |> Option.defaultWith (fun () ->
-                Error(DomainError.validation $"Failed to partially complete supply order {cmd.Id}"))
-        | CompleteSupplyOrder cmd, Some s ->
-            let evt =
-                SupplyOrderCompleted
-                    { Id = cmd.Id
-                      CompletedDate = cmd.CompletedDate }
+        | PartialCompleteSupplyOrder cmd, Some state ->
+            let alreadyProcessed =
+                match cmd.FeedbackId with
+                | Some fid -> List.contains fid state.ProcessedFeedbackIds
+                | None -> false
 
-            evolve stateOpt evt
-            |> Option.map (fun supplier ->
-                Ok
-                    { NewState = supplier
-                      Events = [ evt ] })
-            |> Option.defaultWith (fun () ->
-                Error(DomainError.validation $"Failed to mark supply order {cmd.Id} completed"))
-        | PlanSupplyOrder cmd, Some s ->
-            let evt =
-                SupplyOrderPlanned
-                    { Id = cmd.Id
-                      PlannedDeliveryDate = cmd.PlannedDeliveryDate }
+            if alreadyProcessed then
+                Ok { NewState = state; Events = [] }
+            else
+                let targetState = SupplyOrderState.InProgress
+                if not (isValidTransition state.State targetState) then
+                    Error(DomainError.validation $"Invalid state transition from {state.State} to InProgress on partial completion")
+                else
+                    let evt =
+                        SupplyOrderPartiallyCompleted
+                            { Id = cmd.Id
+                              CompletedQuantity = cmd.CompletedQuantity
+                              ScrapQuantity = cmd.ScrapQuantity
+                              CompletedDate = cmd.CompletedDate
+                              FeedbackId = cmd.FeedbackId }
 
-            evolve stateOpt evt
-            |> Option.map (fun supplier ->
-                Ok
-                    { NewState = supplier
-                      Events = [ evt ] })
-            |> Option.defaultWith (fun () -> Error(DomainError.validation $"Failed to plan Supply order {cmd.Id}"))
-        | ConfirmSupplyOrder cmd, Some s ->
-            let evt =
-                SupplyOrderConfirmed
-                    { Id = cmd.Id
-                      ConfirmedDate = cmd.ConfirmedDate }
+                    match evolve stateOpt evt with
+                    | Some s -> Ok { NewState = s; Events = [ evt ] }
+                    | None -> Error(DomainError.validation $"Failed to partially complete supply order {cmd.Id}")
 
-            evolve stateOpt evt
-            |> Option.map (fun supplier ->
-                Ok
-                    { NewState = supplier
-                      Events = [ evt ] })
-            |> Option.defaultWith (fun () -> Error(DomainError.validation $"Failed to confirm Supply order {cmd.Id}"))
-        | ReleaseSupplyOrder cmd, Some s ->
-            let evt =
-                SupplyOrderReleased
-                    { Id = cmd.Id
-                      ReleasedDate = cmd.ReleasedDate }
+        | CompleteSupplyOrder cmd, Some state ->
+            let alreadyProcessed =
+                match cmd.FeedbackId with
+                | Some fid -> List.contains fid state.ProcessedFeedbackIds
+                | None -> false
 
-            evolve stateOpt evt
-            |> Option.map (fun supplier ->
-                Ok
-                    { NewState = supplier
-                      Events = [ evt ] })
-            |> Option.defaultWith (fun () -> Error(DomainError.validation $"Failed to release Supply order {cmd.Id}"))
-        | CancelSupplyOrder cmd, Some s ->
-            let evt =
-                SupplyOrderCancelled
-                    { Id = cmd.Id
-                      CancelledDate = cmd.CancelledDate }
+            if alreadyProcessed then
+                Ok { NewState = state; Events = [] }
+            elif state.State = SupplyOrderState.Completed then
+                Ok { NewState = state; Events = [] }
+            else
+                let targetState = SupplyOrderState.Completed
+                if not (isValidTransition state.State targetState) then
+                    Error(DomainError.validation $"Invalid state transition from {state.State} to Completed")
+                else
+                    let evt =
+                        SupplyOrderCompleted
+                            { Id = cmd.Id
+                              ScrapQuantity = cmd.ScrapQuantity
+                              CompletedDate = cmd.CompletedDate
+                              FeedbackId = cmd.FeedbackId }
 
-            evolve stateOpt evt
-            |> Option.map (fun supplier ->
-                Ok
-                    { NewState = supplier
-                      Events = [ evt ] })
-            |> Option.defaultWith (fun () -> Error(DomainError.validation $"Failed to cancel Supply order {cmd.Id}"))
-        | LockSupplyOrder cmd, Some s ->
+                    match evolve stateOpt evt with
+                    | Some s -> Ok { NewState = s; Events = [ evt ] }
+                    | None -> Error(DomainError.validation $"Failed to mark supply order {cmd.Id} completed")
+
+        | PlanSupplyOrder cmd, Some state ->
+            if not (isValidTransition state.State SupplyOrderState.Planned) then
+                Error(DomainError.validation $"Invalid state transition from {state.State} to Planned")
+            elif state.State = SupplyOrderState.Planned then
+                Ok { NewState = state; Events = [] }
+            else
+                let evt =
+                    SupplyOrderPlanned
+                        { Id = cmd.Id
+                          PlannedDeliveryDate = cmd.PlannedDeliveryDate }
+
+                match evolve stateOpt evt with
+                | Some s -> Ok { NewState = s; Events = [ evt ] }
+                | None -> Error(DomainError.validation $"Failed to plan Supply order {cmd.Id}")
+
+        | ConfirmSupplyOrder cmd, Some state ->
+            if not (isValidTransition state.State SupplyOrderState.Confirmed) then
+                Error(DomainError.validation $"Invalid state transition from {state.State} to Confirmed")
+            elif state.State = SupplyOrderState.Confirmed then
+                Ok { NewState = state; Events = [] }
+            else
+                let evt =
+                    SupplyOrderConfirmed
+                        { Id = cmd.Id
+                          ConfirmedDate = cmd.ConfirmedDate }
+
+                match evolve stateOpt evt with
+                | Some s -> Ok { NewState = s; Events = [ evt ] }
+                | None -> Error(DomainError.validation $"Failed to confirm Supply order {cmd.Id}")
+
+        | ReleaseSupplyOrder cmd, Some state ->
+            if not (isValidTransition state.State SupplyOrderState.Released) then
+                Error(DomainError.validation $"Invalid state transition from {state.State} to Released")
+            elif state.State = SupplyOrderState.Released then
+                Ok { NewState = state; Events = [] }
+            else
+                let evt =
+                    SupplyOrderReleased
+                        { Id = cmd.Id
+                          ReleasedDate = cmd.ReleasedDate }
+
+                match evolve stateOpt evt with
+                | Some s -> Ok { NewState = s; Events = [ evt ] }
+                | None -> Error(DomainError.validation $"Failed to release Supply order {cmd.Id}")
+
+        | CancelSupplyOrder cmd, Some state ->
+            if not (isValidTransition state.State SupplyOrderState.Cancelled) then
+                Error(DomainError.validation $"Invalid state transition from {state.State} to Cancelled")
+            elif state.State = SupplyOrderState.Cancelled then
+                Ok { NewState = state; Events = [] }
+            else
+                let evt =
+                    SupplyOrderCancelled
+                        { Id = cmd.Id
+                          CancelledDate = cmd.CancelledDate }
+
+                match evolve stateOpt evt with
+                | Some s -> Ok { NewState = s; Events = [ evt ] }
+                | None -> Error(DomainError.validation $"Failed to cancel Supply order {cmd.Id}")
+
+        | LockSupplyOrder cmd, Some state ->
             let evt =
                 SupplyOrderLocked
                     { Id = cmd.Id
                       Locked = cmd.Locked
                       ModifiedDate = cmd.ModifiedDate }
 
-            evolve stateOpt evt
-            |> Option.map (fun supplier ->
-                Ok
-                    { NewState = supplier
-                      Events = [ evt ] })
-            |> Option.defaultWith (fun () -> Error(DomainError.validation $"Failed to lock Supply order {cmd.Id}"))
-        | UpdateSupplyOrderPriority cmd, Some s ->
+            match evolve stateOpt evt with
+            | Some s -> Ok { NewState = s; Events = [ evt ] }
+            | None -> Error(DomainError.validation $"Failed to lock Supply order {cmd.Id}")
+
+        | UpdateSupplyOrderPriority cmd, Some state ->
             let evt =
                 SupplyOrderPriorityUpdated
                     { Id = cmd.Id
                       ModifiedDate = cmd.ModifiedDate }
 
-            evolve stateOpt evt
-            |> Option.map (fun supplier ->
-                Ok
-                    { NewState = supplier
-                      Events = [ evt ] })
-            |> Option.defaultWith (fun () ->
-                Error(DomainError.validation $"Failed to update priority for Supply order {cmd.Id}"))
+            match evolve stateOpt evt with
+            | Some s -> Ok { NewState = s; Events = [ evt ] }
+            | None -> Error(DomainError.validation $"Failed to update priority for Supply order {cmd.Id}")
 
         | _ -> Error(DomainError.validation $"Invalid command for supply order")
