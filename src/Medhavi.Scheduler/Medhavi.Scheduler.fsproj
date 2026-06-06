@@ -13,6 +13,7 @@
     <Compile Include="Mrp\Domain\Types.fs" />
     <Compile Include="Mrp\Domain\Pegging.fs" />
     <Compile Include="Mrp\Domain\MrpRunAggregate.fs" />
+    <Compile Include="Mrp\Domain\Replan.fs" />
     
     <Compile Include="Mrp\Domain\Algorithms\BomExplosion.fs" />
     <Compile Include="Mrp\Domain\Algorithms\LotSizing.fs" />
@@ -33,6 +34,7 @@
     <Compile Include="Mrp\Application\MrpDependencies.fs" />
     <Compile Include="Mrp\Application\Orchestrator.fs" />
     <Compile Include="Mrp\Application\MrpService.fs" />
+    <Compile Include="Mrp\Application\ReplanService.fs" />
 
     <!-- Replenishment -->
     <Compile Include="Replenishment\Domain.fs" />

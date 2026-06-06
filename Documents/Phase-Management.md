@@ -509,19 +509,19 @@ The following capabilities **must grow incrementally** across multiple phases ra
 ---
 
 ### Phase 13 — Heuristic Replanning (Disruption Handling)
-**Wave**: 3 | **Status**: ❌ Not Started
+**Wave**: 3 | **Status**: ✔️ Completed
 
 **Architecture Note**: Replanning is **operational** (react to disruptions quickly, heuristic-based). It does NOT need the Optimizer. Planning modes: ReactiveRepair (feasibility restore), IncrementalInsert (local scope for new demand).
 
 | Sub-Phase | Feature(s) | Description | Exit Gate | Status |
 |-----------|-----------|-------------|-----------|--------|
-| 13.1 | MP-33 | Disruption listeners (resource down, material delay, quality, MES variance) | Event handlers trigger on external delays/downtime messages and start evaluation runs. | ❌ Not Started |
-| 13.2 | MP-34 | Impact assessment (affected ops, promises, supply orders) | Impact analysis lists affected orders, capacity allocations, and delayed customer promises. | ❌ Not Started |
-| 13.3 | MP-35 | Delta planner (minimal changes, preserve locks/fixed) | Delta planner calculates a replan limited to affected order graphs, leaving other pegs intact. | ❌ Not Started |
-| 13.4 | MP-36 | Minimal-move strategy (minimize churn) | Replan engine minimizes date and quantity moves across firmed POs/WOs. | ❌ Not Started |
-| 13.5 | MP-37 | Rollback/fallback (revert if new plan worse) | If the generated plan fails feasibility criteria, system rolls back to the prior plan version. | ❌ Not Started |
-| 13.6 | MP-32 | Plan delta emission | Disruption repair emits a plan delta event containing only added, removed, or modified orders. | ❌ Not Started |
-| 13.7 | MP-32 | Planning mode dispatcher (ReactiveRepair / IncrementalInsert / FullReplan; mode selection logic) | Dispatcher chooses the correct replanning mode based on disruption severity parameters. | ❌ Not Started |
+| 13.1 | MP-33 | Disruption listeners (resource down, material delay, quality, MES variance) | Event handlers trigger on external delays/downtime messages and start evaluation runs. | ✔️ Completed |
+| 13.2 | MP-34 | Impact assessment (affected ops, promises, supply orders) | Impact analysis lists affected orders, capacity allocations, and delayed customer promises. | ✔️ Completed |
+| 13.3 | MP-35 | Delta planner (minimal changes, preserve locks/fixed) | Delta planner calculates a replan limited to affected order graphs, leaving other pegs intact. | ✔️ Completed |
+| 13.4 | MP-36 | Minimal-move strategy (minimize churn) | Replan engine minimizes date and quantity moves across firmed POs/WOs. | ✔️ Completed |
+| 13.5 | MP-37 | Rollback/fallback (revert if new plan worse) | If the generated plan fails feasibility criteria, system rolls back to the prior plan version. | ✔️ Completed |
+| 13.6 | MP-32 | Plan delta emission | Disruption repair emits a plan delta event containing only added, removed, or modified orders. | ✔️ Completed |
+| 13.7 | MP-32 | Planning mode dispatcher (ReactiveRepair / IncrementalInsert / FullReplan; mode selection logic) | Dispatcher chooses the correct replanning mode based on disruption severity parameters. | ✔️ Completed |
 
 ---
 

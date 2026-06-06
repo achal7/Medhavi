@@ -19,6 +19,22 @@ open Medhavi.Capacity.Domain.CapacityAgg
 open Medhavi.Infrastructure.Projections
 open Medhavi.Transport
 open Medhavi.Transport.Application
+open Medhavi.Scheduler.Mrp.Domain
+open Medhavi.Scheduler.Mrp.Domain.Types
+open Medhavi.Scheduler.Mrp.Domain.MrpRunAggregate
+open Medhavi.Scheduler.Mrp.Domain.Policies
+open Medhavi.Scheduler.Mrp.Domain.Algorithms
+open Medhavi.Scheduler.Mrp.Domain.Errors
+open Medhavi.Scheduler.Mrp.Steps
+open Medhavi.Scheduler.Mrp.Application
+open Medhavi.Scheduler.Mrp
+
+[<AutoOpen>]
+module ResultExtensions =
+    module Result =
+        let get = function
+            | Ok x -> x
+            | Error e -> failwithf "Expected Ok, got Error: %A" e
 
 module Program =
     open Medhavi.Common.Patterns
@@ -77,6 +93,283 @@ module Program =
     // Real EnvelopeStore instance (Mailbox-agent based)
     let envelopeStore = createEnvelopeStoreMem ()
     let mutable subscriptionHandle: SubscriptionHandle option = None
+    let mutable latestMrpRun: MrpRunResult option = None
+
+    let bomLookup : BomExplosion.BomLookup =
+        fun skuId _ ->
+            let boms = masterDataContext.Queries.Bom.GetAll().Result
+            boms
+            |> List.tryFind (fun b -> b.SkuId = SkuId.value skuId && b.Status)
+            |> Option.map (fun b ->
+                { BomExplosion.BomRecord.BomId = b.Id
+                  ParentSkuId = skuId
+                  Components =
+                      b.Items
+                      |> List.map (fun item ->
+                          { BomExplosion.BomComponent.ComponentSkuId = SkuId.create item.ComponentSkuId |> Result.get
+                            QuantityPer = Quantity.create item.Quantity |> Result.get
+                            UnitOfMeasureId = UomId.create "UOM-PCS" |> Result.get
+                            Sequence = item.Sequence
+                            IsPhantom = false })
+                  IsActive = b.Status })
+
+    let onHandQuery : NettingStep.OnHandQuery =
+        fun skuId spId ->
+            task {
+                let! invs = supplyContext.Queries.Inventory.GetAll()
+                let matchOpt = invs |> List.tryFind (fun i -> i.SkuId = SkuId.value skuId && i.StockingPointId = StockingPointId.value spId)
+                return matchOpt |> Option.map (fun i -> Quantity.create i.Quantity |> Result.get) |> Option.defaultValue Quantity.Zero
+            }
+
+    let inboundQuery : NettingStep.InboundQuery =
+        fun skuId spId start endT ->
+            task {
+                let! orders = supplyContext.Queries.SupplyOrder.GetAll()
+                let matched =
+                    orders
+                    |> List.filter (fun o ->
+                        o.SkuId = SkuId.value skuId &&
+                        o.StockingPointId = StockingPointId.value spId &&
+                        not (o.State.Equals("Completed", StringComparison.OrdinalIgnoreCase)) &&
+                        not (o.State.Equals("Cancelled", StringComparison.OrdinalIgnoreCase)))
+                return matched |> List.map (fun o ->
+                    let dueDate =
+                        o.RequiredDeliveryDate
+                        |> Option.map Timestamp.create
+                        |> Option.defaultValue Timestamp.now
+                    let qty = Quantity.create o.Quantity |> Result.get
+                    let isFirm = o.IsFirm || o.IsLocked
+                    (dueDate, qty, isFirm, o.Id))
+            }
+
+    let reservationsQuery : NettingStep.ReservationsQuery =
+        fun skuId spId start endT ->
+            task {
+                let! resvs = supplyContext.Queries.MaterialReservation.GetAll()
+                let matched =
+                    resvs
+                    |> List.filter (fun r ->
+                        r.SkuId = SkuId.value skuId &&
+                        r.StockingPointId = StockingPointId.value spId &&
+                        r.State.Equals("Tentative", StringComparison.OrdinalIgnoreCase))
+                return matched |> List.map (fun r ->
+                    (Timestamp.create r.RequiredDate, Quantity.create r.Quantity |> Result.get, r.Id))
+            }
+
+    let safetyStockQuery : NettingStep.SafetyStockQuery =
+        fun skuId spId ->
+            task {
+                let! targets = supplyContext.Queries.InventoryTarget.GetAll()
+                let matchOpt = targets |> List.tryFind (fun t -> t.SkuId = SkuId.value skuId && t.StockingPointId = StockingPointId.value spId)
+                return matchOpt |> Option.bind (fun t -> t.SafetyStockQty) |> Option.map (fun q -> Quantity.create q |> Result.get) |> Option.defaultValue Quantity.Zero
+            }
+
+    let productTypeQuery : SupplyGenerationStep.ProductTypeQuery =
+        fun skuId ->
+            task {
+                let skuStr = SkuId.value skuId
+                if skuStr.Equals("SKU-BIKE", StringComparison.OrdinalIgnoreCase) then
+                    return SupplyGenerationStep.Manufactured
+                elif skuStr.Equals("SKU-FRAME", StringComparison.OrdinalIgnoreCase) then
+                    return SupplyGenerationStep.Manufactured
+                elif skuStr.Equals("SKU-WHEEL", StringComparison.OrdinalIgnoreCase) then
+                    return SupplyGenerationStep.Purchased
+                else
+                    return SupplyGenerationStep.Purchased
+            }
+
+    let supplierQuery : SupplyGenerationStep.SupplierQuery =
+        fun skuId spId ->
+            task {
+                let! offers = supplyContext.Queries.SupplierOffer.GetAll()
+                let offerOpt = offers |> List.tryFind (fun o -> o.SkuId = SkuId.value skuId && o.IsActive)
+                return offerOpt |> Option.map (fun o -> SupplierId.create o.SupplierId |> Result.get)
+            }
+
+    let routingQuery : SupplyGenerationStep.RoutingQuery =
+        fun skuId spId ->
+            task {
+                let! routings = masterDataContext.Queries.Routing.GetAll()
+                let matchOpt =
+                    routings
+                    |> List.tryFind (fun r ->
+                        r.Status &&
+                        match r.Details with
+                        | Medhavi.Contracts.Domain.RoutingDetails.Work w ->
+                            w.ProductId.Equals(SkuId.value skuId, StringComparison.OrdinalIgnoreCase)
+                        | _ -> false)
+                return matchOpt |> Option.map (fun r -> RoutingId.create r.Id |> Result.get)
+            }
+
+    let transferSourceQuery : SupplyGenerationStep.TransferSourceQuery =
+        fun skuId spId ->
+            task {
+                let! legs = masterDataContext.Queries.TransportLeg.GetAll()
+                let matchOpt =
+                    legs
+                    |> List.tryFind (fun l ->
+                        l.Status &&
+                        l.Destination.Equals(StockingPointId.value spId, StringComparison.OrdinalIgnoreCase))
+                return matchOpt |> Option.map (fun l -> StockingPointId.create l.Origin |> Result.get)
+            }
+
+    let capacityCheckQuery : CapacityCheckStep.CapacityCheckQuery =
+        fun spId skuId routingIdOpt qty due policy ->
+            task {
+                let resources = capacityContext.CapacityResourceAgent.GetStateAsync().Result
+                let calendars = capacityContext.CalendarAgent.GetStateAsync().Result
+                let buckets = capacityContext.CapacityAgent.GetStateAsync().Result
+                let getRoutings productId =
+                    task {
+                        let! list = masterDataContext.Queries.Routing.GetAll()
+                        let filtered =
+                            list
+                            |> List.filter (fun r ->
+                                match r.Details with
+                                | Medhavi.Contracts.Domain.RoutingDetails.Work work -> work.ProductId = productId
+                                | _ -> false)
+                        return Ok filtered
+                    }
+                let mode = if policy.Finite then CapacityPlanningMode.Finite else CapacityPlanningMode.Infinite
+                let! res = SchedulerApp.checkCapacity (SkuId.value skuId) (Quantity.value qty) (Timestamp.value due) mode resources calendars buckets getRoutings
+                match res with
+                | Error err -> return Error (CapacityCheckError.AllocationFailed (sprintf "Capacity query failed: %A" err))
+                | Ok result ->
+                    if result.IsFeasible then
+                        return Ok due
+                    else
+                        return Ok (Timestamp.create result.SuggestedDate)
+            }
+
+    let alternateRoutingsQuery : CapacityCheckStep.AlternateRoutingsQuery =
+        fun skuId spId ->
+            task {
+                let! list = masterDataContext.Queries.Routing.GetAll()
+                let filtered =
+                    list
+                    |> List.filter (fun r ->
+                        match r.Details with
+                        | Medhavi.Contracts.Domain.RoutingDetails.Work work -> work.ProductId = SkuId.value skuId
+                        | _ -> false)
+                    |> List.map (fun r -> RoutingId.create r.Id |> Result.get)
+                return filtered
+            }
+
+    let reservationCreator : PostprocessStep.ReservationCreator =
+        fun skuId spId qty reqDate ->
+            async {
+                let resId = $"RES-{Guid.NewGuid()}"
+                let req = {
+                    Id = resId
+                    IdempotencyKey = $"idem-{resId}"
+                    SkuId = SkuId.value skuId
+                    StockingPointId = StockingPointId.value spId
+                    Quantity = Quantity.value qty
+                    RequiredDate = Timestamp.value reqDate
+                    ExpiryTime = (Timestamp.value reqDate).AddDays(30.0)
+                }
+                let! res = supplyContext.Commands.MaterialReservation.CreateTentative req |> Async.AwaitTask
+                match res with
+                | Ok _ -> return Ok ()
+                | Error err -> return Error (sprintf "%A" err)
+            }
+
+    let createSupplyOrders : CreateSupplyOrders =
+        fun runId proposals ->
+            async {
+                let reqs =
+                    proposals
+                    |> List.map (fun p ->
+                        let orderTypeStr =
+                            match p.ProposalType with
+                            | PlannedWorkOrder -> "workorder"
+                            | PlannedPurchaseOrder -> "purchaseorder"
+                            | PlannedTransferOrder -> "transportorder"
+
+                        { SupplyOrderCreateReq.Id = SupplyProposalId.value p.Id
+                          OrderType = orderTypeStr
+                          SkuId = SkuId.value p.SkuId
+                          StockingPointId = StockingPointId.value p.StockingPointId
+                          Quantity = Quantity.value p.Quantity
+                          UnitOfMeasure = "UOM-PCS"
+                          RoutingId = p.RoutingId |> Option.map RoutingId.value
+                          SupplierId = p.SupplierId |> Option.map SupplierId.value
+                          IsFirm = false
+                          IsExpedited = p.IsExpedite
+                          IsLocked = false
+                          UsesLeadTimeQuantity = false
+                          RequiredDeliveryDate = Some (Timestamp.value p.DueDate)
+                          CreatedDate = DateTimeOffset.UtcNow })
+
+                let! res = supplyContext.Commands.SupplyOrder.CreateBulk reqs |> Async.AwaitTask
+                match res with
+                | Ok _ -> return Ok ()
+                | Error err -> return Error (sprintf "%A" err)
+            }
+
+    let buildMrpDependencies () =
+        { BomLookup = bomLookup
+          OnHandQuery = onHandQuery
+          InboundQuery = inboundQuery
+          ReservationsQuery = reservationsQuery
+          SafetyStockQuery = safetyStockQuery
+          ProductTypeQuery = productTypeQuery
+          SupplierQuery = supplierQuery
+          RoutingQuery = routingQuery
+          TransferSourceQuery = transferSourceQuery
+          CapacityQuery = capacityCheckQuery
+          AlternateRoutingsQuery = alternateRoutingsQuery
+          PeggingCreator = None
+          ReservationCreator = Some reservationCreator
+          CreateSupplyOrders = createSupplyOrders }
+
+    let runBaselineMrp () =
+        task {
+            printColorLine "bold" "\n--- [EXECUTING BASELINE MRP RUN] ---"
+
+            let now = DateTimeOffset.UtcNow
+            let bikeSku = SkuId.create "SKU-BIKE" |> Result.get
+            let sp = StockingPointId.create "SP-WAREHOUSE" |> Result.get
+            let node = NodeId.create "SP-WAREHOUSE" |> Result.get
+
+            let demands =
+                [ { MrpDemand.DemandId = "DEMAND-BIKE-1"
+                    SkuId = bikeSku
+                    NodeId = node
+                    StockingPointId = sp
+                    Quantity = Quantity.create 10.0m |> Result.get
+                    RequiredDate = Timestamp.create (now.AddDays(10.0))
+                    Source = CustomerOrder("ORDER-1", "1")
+                    Priority = Some 1 } ]
+
+            let deps = buildMrpDependencies ()
+            let mrpServiceInstance = Medhavi.Scheduler.Mrp.MrpService.create deps
+
+            let! runRes =
+                mrpServiceInstance.ExecuteRun
+                    "MRP-RUN-BASELINE"
+                    (Timestamp.create now)
+                    (Timestamp.create (now.AddDays(30.0)))
+                    sp
+                    MrpPolicy.defaults
+                    demands
+                    []
+
+            match runRes with
+            | Error err ->
+                printColorLine "red" (sprintf "   [ ERR ] Baseline MRP Run failed: %A" err)
+            | Ok result ->
+                latestMrpRun <- Some result
+                printColorLine "green" "   [ OK ] Baseline MRP Run executed and cached."
+                printfn "   Generated Proposals: %d" (List.length result.Proposals)
+                for p in result.Proposals do
+                    printfn "     - PropId: %s | Sku: %s | Qty: %M | Due: %s | Type: %A"
+                        (SupplyProposalId.value p.Id)
+                        (SkuId.value p.SkuId)
+                        (Quantity.value p.Quantity)
+                        ((Timestamp.value p.DueDate).ToString("yyyy-MM-dd HH:mm"))
+                        p.ProposalType
+        }
 
     // Initialize Integration Capabilities injecting the store
     let integrationCaps = IntegrationService.createCapabilities envelopeStore
@@ -255,10 +548,11 @@ module Program =
                                     logger.LogInfo(sprintf "    - Work Order %s already Completed. Skipping (Idempotent)." item.WorkOrderId)
                                 else
                                     // 1. Complete the work order (passing the reported scrap)
-                                    let completeReq =
+                                    let completeReq : SupplyOrderCompleteReq =
                                         { Id = item.WorkOrderId
                                           ScrapQuantity = item.QuantityScrapped
-                                          CompletedDate = item.CompletedAtUtc }
+                                          CompletedDate = item.CompletedAtUtc
+                                          FeedbackId = None }
                                     let! completeRes = supplyContext.Commands.SupplyOrder.Complete completeReq
                                     match completeRes with
                                     | Error err ->
@@ -306,7 +600,7 @@ module Program =
                                             boms
                                             |> List.tryFind (fun b ->
                                                 b.SkuId.Equals(order.SkuId, StringComparison.OrdinalIgnoreCase) &&
-                                                b.IsActive)
+                                                b.Status)
                                         
                                         match skuBomOpt with
                                         | None -> ()
@@ -348,10 +642,101 @@ module Program =
                         // do! supplyContext.MaterialReceipt.DefineBulk(materialsReceived)
                         ()
                     | ResourceDowntimes resourceDowntimes ->
-                        // do! supplyContext.ResourceDowntime.DefineBulk(resourceDowntimes)
+                        for payload in resourceDowntimes do
+                            printColorLine "yellow" (sprintf ">>> [Disruption Ingest] Resource downtime reported: Resource=%s, Start=%s, End=%s, Reason=%s" 
+                                payload.ResourceId 
+                                (payload.StartUtc.ToString("yyyy-MM-dd HH:mm"))
+                                (payload.EndUtc.ToString("yyyy-MM-dd HH:mm"))
+                                payload.Reason)
+                            
+                            match latestMrpRun with
+                            | None -> 
+                                printColorLine "cyan" "   - No baseline MRP run cached. Skipping heuristic reactive repair."
+                            | Some baseline ->
+                                printColorLine "cyan" "   - Evaluating blast radius and triggering reactive repair..."
+                                let event = Medhavi.Scheduler.Mrp.Domain.ResourceBreakdown(payload.ResourceId, Timestamp.create payload.StartUtc, Timestamp.create payload.EndUtc)
+                                
+                                let severityMap = Map.ofList [
+                                    "fullReplanDurationHrs", 24.0
+                                    "ignoreDurationHrs", 1.0
+                                ]
+                                
+                                let deps = buildMrpDependencies ()
+                                let! replanResult = ReplanService.executeReplan deps baseline event severityMap
+                                match replanResult with
+                                | Error err ->
+                                    printColorLine "red" (sprintf "   [ ERR ] Reactive repair failed: %A" err)
+                                | Ok newRun ->
+                                        let delta = Replan.PlanDeltaCalculator.calculate baseline newRun
+                                        printColorLine "green" "   [ OK ] Reactive repair complete."
+                                        printfn "     - Churn (Rescheduled): %d" (List.length delta.RescheduledProposals)
+                                        printfn "     - Added Proposals: %d" (List.length delta.AddedProposals)
+                                        printfn "     - Cancelled Proposals: %d" (List.length delta.CancelledProposals)
+                                        
+                                        // Update cache and persist new proposals
+                                        latestMrpRun <- Some newRun
+                                        let! (persistRes: Result<unit, string>) = createSupplyOrders newRun.RunId newRun.Proposals |> Async.StartAsTask
+                                        match persistRes with
+                                        | Ok _ -> printColorLine "green" "     - Repaired plan successfully persisted to database."
+                                        | Error err -> printColorLine "red" (sprintf "     - Failed to persist repaired proposals: %s" err)
                         ()
+
                     | TransportDelays transportDelays ->
-                        // do! supplyContext.TransportDelay.DefineBulk(transportDelays)
+                        for payload in transportDelays do
+                            printColorLine "yellow" (sprintf ">>> [Disruption Ingest] Transport delay reported: Leg=%s, DelayMins=%.1f, NewArrival=%s, Reason=%s"
+                                payload.TransportLegId
+                                payload.EstimatedDelayMinutes
+                                (payload.NewArrivalUtc.ToString("yyyy-MM-dd HH:mm"))
+                                payload.Reason)
+
+                            match latestMrpRun with
+                            | None ->
+                                printColorLine "cyan" "   - No baseline MRP run cached. Skipping heuristic reactive repair."
+                            | Some baseline ->
+                                // Look up the transport leg details
+                                let! legOpt = masterDataContext.Queries.TransportLeg.GetById(payload.TransportLegId)
+                                match legOpt with
+                                | None ->
+                                    printColorLine "red" (sprintf "   - Transport leg %s not found in database. Skipping." payload.TransportLegId)
+                                | Some leg ->
+                                    // Search for matching proposal in baseline
+                                    let matchedPropOpt =
+                                        baseline.Proposals
+                                        |> List.filter (fun p -> p.ProposalType = PlannedTransferOrder)
+                                        |> List.tryFind (fun p ->
+                                            (StockingPointId.value p.StockingPointId).Equals(leg.Destination, StringComparison.OrdinalIgnoreCase) &&
+                                            (p.SupplierId |> Option.map SupplierId.value |> Option.defaultValue "").Equals(leg.Origin, StringComparison.OrdinalIgnoreCase))
+                                            
+                                    match matchedPropOpt with
+                                    | None ->
+                                        printColorLine "yellow" (sprintf "   - No active transfer order proposal matches leg %s (Origin=%s, Dest=%s). Skipping." payload.TransportLegId leg.Origin leg.Destination)
+                                    | Some prop ->
+                                        printColorLine "cyan" (sprintf "   - Found matching Transfer Order proposal %s. Triggering reactive repair..." (SupplyProposalId.value prop.Id))
+                                        let event = Medhavi.Scheduler.Mrp.Domain.MaterialDelay(prop.SkuId, prop.StockingPointId, Timestamp.create payload.NewArrivalUtc, SupplyProposalId.value prop.Id)
+                                        
+                                        let severityMap = Map.ofList [
+                                            "fullReplanDelayHrs", 48.0
+                                            "ignoreDelayHrs", 2.0
+                                        ]
+                                        
+                                        let deps = buildMrpDependencies ()
+                                        let! replanResult = ReplanService.executeReplan deps baseline event severityMap
+                                        match replanResult with
+                                        | Error err ->
+                                            printColorLine "red" (sprintf "   [ ERR ] Reactive repair failed: %A" err)
+                                        | Ok newRun ->
+                                            let delta = Replan.PlanDeltaCalculator.calculate baseline newRun
+                                            printColorLine "green" "   [ OK ] Reactive repair complete."
+                                            printfn "     - Churn (Rescheduled): %d" (List.length delta.RescheduledProposals)
+                                            printfn "     - Added Proposals: %d" (List.length delta.AddedProposals)
+                                            printfn "     - Cancelled Proposals: %d" (List.length delta.CancelledProposals)
+                                            
+                                            // Update cache and persist new proposals
+                                            latestMrpRun <- Some newRun
+                                            let! (persistRes: Result<unit, string>) = createSupplyOrders newRun.RunId newRun.Proposals |> Async.StartAsTask
+                                            match persistRes with
+                                            | Ok _ -> printColorLine "green" "     - Repaired plan successfully persisted to database."
+                                            | Error err -> printColorLine "red" (sprintf "     - Failed to persist repaired proposals: %s" err)
                         ()
             }
 
@@ -1086,9 +1471,10 @@ module Program =
             printfn "3. Run End-to-End Automated Demo"
             printfn "4. Run CTP Capacity Check Demo"
             printfn "5. Run Transport ATP Demo (K-Shortest Paths)"
-            printfn "6. Exit"
+            printfn "6. Run Baseline MRP Plan"
+            printfn "7. Exit"
 
-            printf "Select option (1-8): "
+            printf "Select option (1-7): "
             let choice = Console.ReadLine()
 
             match choice with
@@ -1101,9 +1487,11 @@ module Program =
                 transportContext.Atp.InvalidateCache()
                 runTransportAtpDemo ()
             | "6" ->
+                (runBaselineMrp ()).Wait()
+            | "7" ->
                 exit <- true
                 printColorLine "cyan" "\nExiting Medhāvī Simulator. Goodbye!"
-            | _ -> printColorLine "red" "Invalid choice. Please enter 1-8."
+            | _ -> printColorLine "red" "Invalid choice. Please enter 1-7."
 
         masterDataContext.Dispose()
         supplyContext.Dispose()

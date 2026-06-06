@@ -20,7 +20,7 @@
     <ProjectReference Include="..\..\Medhavi.Supply\Medhavi.Supply.fsproj" />
     <ProjectReference Include="..\..\Medhavi.Capacity\Medhavi.Capacity.fsproj" />
     <ProjectReference Include="..\..\Medhavi.Transport\Medhavi.Transport.fsproj" />
-
+    <ProjectReference Include="..\..\Medhavi.Scheduler\Medhavi.Scheduler.fsproj" />
   </ItemGroup>
 
 </Project>
