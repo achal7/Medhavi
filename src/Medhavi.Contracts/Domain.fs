@@ -468,3 +468,22 @@ type MaterialReservation =
       ExpiryTime: DateTimeOffset
       Created: DateTimeOffset
       Modified: DateTimeOffset }
+
+type SupplyProposal =
+    { Id: string
+      ProposalType: string // "PlannedPurchaseOrder" | "PlannedWorkOrder" | "PlannedTransferOrder"
+      SkuId: string
+      NodeId: string
+      StockingPointId: string
+      Quantity: decimal
+      DueDate: DateTimeOffset
+      StartDate: DateTimeOffset option
+      RoutingId: string option
+      SupplierId: string option
+      Priority: int
+      IsExpedite: bool
+      Status: string // "Planned" | "Firmed" | "Released" | "Cancelled"
+      PeggingRefs: string list
+      CapacityCheckedDate: DateTimeOffset option
+      CreatedAt: DateTimeOffset }
+

@@ -11,6 +11,14 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Medhavi.Infrastructure\Medhavi.Infrastructure.fsproj" />
+    <ProjectReference Include="..\Medhavi.Analytics\Medhavi.Analytics.fsproj" />
+    <ProjectReference Include="..\Medhavi.Demand\Medhavi.Demand.fsproj" />
+    <ProjectReference Include="..\Medhavi.Supply\Medhavi.Supply.fsproj" />
+    <ProjectReference Include="..\Medhavi.Capacity\Medhavi.Capacity.fsproj" />
+    <ProjectReference Include="..\Medhavi.Transport\Medhavi.Transport.fsproj" />
+    <ProjectReference Include="..\Medhavi.Scenario\Medhavi.Scenario.fsproj" />
+    <ProjectReference Include="..\Medhavi.Scheduler\Medhavi.Scheduler.fsproj" />
+    <ProjectReference Include="..\Medhavi.MasterData\Medhavi.MasterData.fsproj" />
   </ItemGroup>
 
 </Project>

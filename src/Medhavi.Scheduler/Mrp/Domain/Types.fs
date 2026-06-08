@@ -131,3 +131,10 @@ module MrpTelemetry =
           TotalDuration = TimeSpan.Zero
           ComponentsProcessed = 0
           ProposalsGenerated = 0 }
+
+[<JsonFSharpConverter>]
+type PlanningMode =
+    | FullReplan
+    | ReactiveRepair of changedDemandIds: string list
+    | IncrementalInsert of demandId: string
+    | WarmStart of baseRunId: Guid

@@ -61,6 +61,61 @@ module Program =
     let masterDataContext = Medhavi.MasterData.BoundedContext.create ()
     let supplyContext = Medhavi.Supply.BoundedContext.create ()
     let capacityContext = Medhavi.Capacity.BoundedContext.create ()
+    let scenarioContext = Medhavi.Scenario.BoundedContext.create ()
+
+    // In-memory store and query service for Demand Bounded Context
+    let demandStore = ref []
+
+    let demandQueryService : Medhavi.Demand.DemandQueryService =
+        { GetDemandLines = fun plantId start endD ->
+            task {
+                return
+                    !demandStore
+                    |> List.filter (fun (l: Medhavi.Demand.DemandLine) ->
+                        let reqDate = DateOnly.FromDateTime(l.RequestedDeliveryDate.DateTime)
+                        reqDate >= start && reqDate <= endD)
+            }
+          GetByOrderId = fun orderId ->
+            task {
+                return !demandStore |> List.filter (fun l -> l.DemandOrderId = orderId)
+            }
+          GetOpenDemand = fun skuId stockingPointId ->
+            task {
+                return !demandStore |> List.filter (fun l ->
+                    SkuId.value l.SkuId = skuId &&
+                    StockingPointId.value l.StockingPointId = stockingPointId &&
+                    l.Status = Medhavi.Demand.DemandStatus.Open)
+            }
+          GetByStatus = fun status plantId ->
+            task {
+                return !demandStore |> List.filter (fun l -> l.Status = status)
+            }
+        }
+
+    let seedDemands () =
+        let now = DateTimeOffset.UtcNow
+        demandStore := [
+            { Medhavi.Demand.DemandLineId = "DEMAND-1"
+              DemandOrderId = "ORDER-1"
+              SkuId = SkuId.create "SKU-BIKE" |> Result.get
+              StockingPointId = StockingPointId.create "SP-WAREHOUSE" |> Result.get
+              CustomerId = "CUST-1"
+              Quantity = Quantity.create 10.0m |> Result.get
+              UnitOfMeasure = "UOM-PCS"
+              OrderDate = now
+              EarliestDeliveryDate = Some (now.AddDays(8.0))
+              RequestedDeliveryDate = now.AddDays(10.0)
+              LatestDeliveryDate = Some (now.AddDays(12.0))
+              ConfirmedDeliveryDate = Some (now.AddDays(10.0))
+              ActualDeliveryDate = None
+              Priority = 1
+              DemandCategory = Medhavi.Demand.DemandCategory.CustomerOrderDemand
+              IsFirm = true
+              IsFrozen = false
+              OpenQuantity = Quantity.create 10.0m |> Result.get
+              FulfilledQuantity = Quantity.Zero
+              Status = Medhavi.Demand.DemandStatus.Open }
+        ]
 
     // Transport context: legs are loaded from MasterData's projection on demand
     let getTransportLegs () =
@@ -360,6 +415,7 @@ module Program =
                 printColorLine "red" (sprintf "   [ ERR ] Baseline MRP Run failed: %A" err)
             | Ok result ->
                 latestMrpRun <- Some result
+                Medhavi.Nexus.AnalyticsWiring.latestMrpRunRef <- Some result
                 printColorLine "green" "   [ OK ] Baseline MRP Run executed and cached."
                 printfn "   Generated Proposals: %d" (List.length result.Proposals)
                 for p in result.Proposals do
@@ -675,6 +731,7 @@ module Program =
                                         
                                         // Update cache and persist new proposals
                                         latestMrpRun <- Some newRun
+                                        Medhavi.Nexus.AnalyticsWiring.latestMrpRunRef <- Some newRun
                                         let! (persistRes: Result<unit, string>) = createSupplyOrders newRun.RunId newRun.Proposals |> Async.StartAsTask
                                         match persistRes with
                                         | Ok _ -> printColorLine "green" "     - Repaired plan successfully persisted to database."
@@ -733,6 +790,7 @@ module Program =
                                             
                                             // Update cache and persist new proposals
                                             latestMrpRun <- Some newRun
+                                            Medhavi.Nexus.AnalyticsWiring.latestMrpRunRef <- Some newRun
                                             let! (persistRes: Result<unit, string>) = createSupplyOrders newRun.RunId newRun.Proposals |> Async.StartAsTask
                                             match persistRes with
                                             | Ok _ -> printColorLine "green" "     - Repaired plan successfully persisted to database."
@@ -1461,6 +1519,17 @@ module Program =
         supplyContext.Initialize().Wait()
         capacityContext.Initialize().Wait()
         transportContext.Initialize().Wait()
+        scenarioContext.Initialize().Wait()
+
+        seedDemands()
+
+        let kpiQueryService =
+            Medhavi.Nexus.AnalyticsWiring.bootstrapAnalytics
+                demandQueryService
+                supplyContext.Queries
+                capacityContext
+                transportContext
+                scenarioContext.Queries
 
         let mutable exit = false
 
@@ -1472,9 +1541,10 @@ module Program =
             printfn "4. Run CTP Capacity Check Demo"
             printfn "5. Run Transport ATP Demo (K-Shortest Paths)"
             printfn "6. Run Baseline MRP Plan"
-            printfn "7. Exit"
+            printfn "7. View Planning Projections & KPIs"
+            printfn "8. Exit"
 
-            printf "Select option (1-7): "
+            printf "Select option (1-8): "
             let choice = Console.ReadLine()
 
             match choice with
@@ -1489,13 +1559,38 @@ module Program =
             | "6" ->
                 (runBaselineMrp ()).Wait()
             | "7" ->
+                (task {
+                    printColorLine "bold" "\n--- [STEP 7: VIEW PLANNING PROJECTIONS & KPIs] ---"
+                    let request : Medhavi.Analytics.KPI.KpiQueryRequest =
+                        { PlantId = "PLANT-DEFAULT"
+                          Context = Medhavi.Analytics.PlanningHorizon.Live
+                          Periods = [ for i in -5 .. 25 do Medhavi.Analytics.PlanningHorizon.PlanningPeriod.PlanningDay (DateOnly.FromDateTime(DateTime.UtcNow.AddDays(float i))) ]
+                          SkuFilter = None }
+                    let! snapshots = kpiQueryService.GetKpiSnapshots(request)
+                    printColorLine "bold" "\nKPI SUMMARY STATUS:"
+                    for s in snapshots do
+                        let statusColor =
+                            match s.Status with
+                            | Medhavi.Analytics.KPI.Good -> "green"
+                            | Medhavi.Analytics.KPI.Warning -> "yellow"
+                            | Medhavi.Analytics.KPI.Critical -> "red"
+                            | Medhavi.Analytics.KPI.NoTarget -> "gray"
+                        printColorLine statusColor (sprintf "  - %s: Value = %.2f%s | Target = %.2f | Status = %A"
+                            s.Name
+                            s.Value
+                            s.Unit
+                            (s.Target |> Option.defaultValue 0.0m)
+                            s.Status)
+                }).Wait()
+            | "8" ->
                 exit <- true
                 printColorLine "cyan" "\nExiting Medhāvī Simulator. Goodbye!"
-            | _ -> printColorLine "red" "Invalid choice. Please enter 1-7."
+            | _ -> printColorLine "red" "Invalid choice. Please enter 1-8."
 
         masterDataContext.Dispose()
         supplyContext.Dispose()
         capacityContext.Dispose()
         transportContext.Dispose()
+        scenarioContext.Dispose()
 
         0

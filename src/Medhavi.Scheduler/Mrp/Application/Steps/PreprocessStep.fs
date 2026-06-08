@@ -112,7 +112,7 @@ let execute: MrpStepAsync<MrpDemand list, MrpDemand list> =
                                       SkuId = d.SkuId
                                       NodeId = d.NodeId
                                       Quantity = d.Quantity
-                                      DueDate = Timestamp.value d.RequiredDate
+                                      DueDate = d.RequiredDate
                                       Priority = d.Priority |> Option.defaultValue 3
                                       IsExpedited = false }
                                 | _ -> failwith "Unreachable")
@@ -126,8 +126,8 @@ let execute: MrpStepAsync<MrpDemand list, MrpDemand list> =
                                       SkuId = d.SkuId
                                       NodeId = d.NodeId
                                       Quantity = d.Quantity
-                                      PeriodStart = Timestamp.value d.RequiredDate
-                                      PeriodEnd = Timestamp.value d.RequiredDate }
+                                      PeriodStart = d.RequiredDate
+                                      PeriodEnd = d.RequiredDate }
                                 | _ -> failwith "Unreachable")
 
                         let consumed =
@@ -149,7 +149,7 @@ let execute: MrpStepAsync<MrpDemand list, MrpDemand list> =
                                   NodeId = f.NodeId
                                   StockingPointId = spId
                                   Quantity = f.Quantity
-                                  RequiredDate = Timestamp.create f.PeriodStart
+                                  RequiredDate = f.PeriodStart
                                   Source = Forecast f.ForecastId
                                   Priority = None })
 

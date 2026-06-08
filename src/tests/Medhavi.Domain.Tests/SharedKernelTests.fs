@@ -432,6 +432,7 @@ let tests =
                   Version = 1
                   CreatedAt = DateTimeOffset.UtcNow
                   IsActive = true
+                  Overrides = []
               }
 
               // Get

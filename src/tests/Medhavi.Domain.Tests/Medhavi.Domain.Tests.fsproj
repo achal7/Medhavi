@@ -12,6 +12,7 @@
     <Compile Include="RoutingTests.fs" />
     <Compile Include="TransportTests.fs" />
     <Compile Include="PromiseTests.fs" />
+    <Compile Include="AnalyticsTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
@@ -23,6 +24,11 @@
     <ProjectReference Include="..\..\Medhavi.Capacity\Medhavi.Capacity.fsproj" />
     <ProjectReference Include="..\..\Medhavi.Transport\Medhavi.Transport.fsproj" />
     <ProjectReference Include="..\..\Medhavi.Promise\Medhavi.Promise.fsproj" />
+    <ProjectReference Include="..\..\Medhavi.Analytics\Medhavi.Analytics.fsproj" />
+    <ProjectReference Include="..\..\Medhavi.Nexus\Medhavi.Nexus.fsproj" />
+    <ProjectReference Include="..\..\Medhavi.Demand\Medhavi.Demand.fsproj" />
+    <ProjectReference Include="..\..\Medhavi.Supply\Medhavi.Supply.fsproj" />
+    <ProjectReference Include="..\..\Medhavi.Scheduler\Medhavi.Scheduler.fsproj" />
   </ItemGroup>
 
   <ItemGroup>

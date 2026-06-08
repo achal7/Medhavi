@@ -9,5 +9,6 @@
     <Compile Include="Domain.fs" />
     <Compile Include="Integration.fs" />
     <Compile Include="IntegrationPayloads.fs" />
+    <Compile Include="Analytics.fs" />
   </ItemGroup>
 </Project>

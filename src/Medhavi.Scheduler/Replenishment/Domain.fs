@@ -52,7 +52,7 @@ module ReplenishmentDomain =
 
         let recentForecasts =
             forecasts
-            |> List.filter (fun f -> f.PeriodStart >= cutoffDate)
+            |> List.filter (fun f -> Timestamp.value f.PeriodStart >= cutoffDate)
 
         if List.isEmpty recentForecasts then
             0m
@@ -64,12 +64,12 @@ module ReplenishmentDomain =
             let days =
                 let minDate =
                     recentForecasts
-                    |> List.map (fun f -> f.PeriodStart)
+                    |> List.map (fun f -> Timestamp.value f.PeriodStart)
                     |> List.min
 
                 let maxDate =
                     recentForecasts
-                    |> List.map (fun f -> f.PeriodStart)
+                    |> List.map (fun f -> Timestamp.value f.PeriodStart)
                     |> List.max
 
                 max 1.0 ((maxDate - minDate).TotalDays + 1.0)
@@ -182,15 +182,15 @@ module ReplenishmentDomain =
         (forecasts: Forecast list)
         (lookAheadDays: int)
         (asOf: Timestamp)
-        : DateTimeOffset option =
+        : Timestamp option =
         let cutoffDate = Timestamp.value asOf
         let lookAheadDate = cutoffDate.AddDays(float lookAheadDays)
 
         let relevantForecasts =
             forecasts
             |> List.filter (fun f ->
-                f.PeriodStart >= cutoffDate
-                && f.PeriodStart <= lookAheadDate)
+                Timestamp.value f.PeriodStart >= cutoffDate
+                && Timestamp.value f.PeriodStart <= lookAheadDate)
             |> List.sortBy (fun f -> f.PeriodStart)
 
         // Calculate cumulative demand and find stockout point
@@ -274,7 +274,7 @@ module ReplenishmentDomain =
                 let totalForecastDemand =
                     forecasts
                     |> List.filter (fun f ->
-                        f.PeriodStart >= Timestamp.value timestamp
+                        f.PeriodStart >= timestamp
                         && f.PeriodStart <= stockoutDate)
                     |> List.sumBy (fun f -> Quantity.value f.Quantity)
 
@@ -294,7 +294,7 @@ module ReplenishmentDomain =
                           SafetyStock = target.SafetyStock
                           MinStock = target.MinStock
                           ShortfallQuantity = shortfallQty
-                          Timestamp = Timestamp.create stockoutDate }
+                          Timestamp = stockoutDate }
                 else
                     None
             | None ->

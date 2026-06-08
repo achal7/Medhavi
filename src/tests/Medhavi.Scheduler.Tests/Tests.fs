@@ -117,8 +117,8 @@ module NettingTests =
                         SkuId = sku
                         NodeId = node
                         Quantity = Quantity.create 100m |> getOk
-                        PeriodStart = DateTimeOffset.UtcNow
-                        PeriodEnd = DateTimeOffset.UtcNow.AddDays(1.0) }
+                        PeriodStart = Timestamp.create DateTimeOffset.UtcNow
+                        PeriodEnd = Timestamp.create (DateTimeOffset.UtcNow.AddDays(1.0)) }
 
                   let order =
                       { OrderId = OrderId.create "ord-1" |> getOk
@@ -126,7 +126,7 @@ module NettingTests =
                         SkuId = sku
                         NodeId = node
                         Quantity = Quantity.create 40m |> getOk
-                        DueDate = DateTimeOffset.UtcNow.AddHours(2.0)
+                        DueDate = Timestamp.create (DateTimeOffset.UtcNow.AddHours(2.0))
                         Priority = 1
                         IsExpedited = false }
 

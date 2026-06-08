@@ -20,7 +20,8 @@ module ScenarioTests =
                         BaseScenarioId = None
                         Version = 1
                         CreatedAt = DateTimeOffset.UtcNow
-                        IsActive = true }
+                        IsActive = true
+                        Overrides = [] }
 
                   test <@ scenario.IsActive = true @>
                   test <@ scenario.Version = 1 @>) ]

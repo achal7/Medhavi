@@ -10,9 +10,9 @@ open Medhavi.Scheduler.Mrp.Domain.Policies
 let isWithinWindow
     (strategy: ForecastConsumptionStrategy)
     (windowSize: TimeSpan)
-    (orderDate: DateTimeOffset)
-    (forecastStart: DateTimeOffset)
-    (forecastEnd: DateTimeOffset)
+    (orderDate: Timestamp)
+    (forecastStart: Timestamp)
+    (forecastEnd: Timestamp)
     : bool =
     let (wStart, wEnd) =
         match strategy with

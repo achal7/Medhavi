@@ -18,6 +18,7 @@
     <Compile Include="Domain\ResourceGroup.fs" />
     <Compile Include="Domain\StandardResource.fs" />
     <Compile Include="Domain\PhysicalResource.fs" />
+    <Compile Include="Domain\KpiConfiguration.fs" />
 
     <Compile Include="Application\UnitOfMeasure.fs" />
     <Compile Include="Application\UoMConversion.fs" />

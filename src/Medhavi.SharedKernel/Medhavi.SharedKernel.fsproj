@@ -21,6 +21,7 @@
     <Compile Include="Projections.fs" />
     <Compile Include="API.fs" />
     <Compile Include="PromisePolicy.fs" />
+    <Compile Include="ScenarioContracts\Common.fs" />
   </ItemGroup>
 
   <ItemGroup>

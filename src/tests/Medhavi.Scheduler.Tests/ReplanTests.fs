@@ -6,8 +6,8 @@ open Expecto
 open Swensen.Unquote
 open Medhavi.Common.Patterns
 open Medhavi.SharedKernel
-open Medhavi.Scheduler.Mrp.Domain
 open Medhavi.Scheduler.Mrp.Domain.Types
+open Medhavi.Scheduler.Mrp.Domain
 open Medhavi.Scheduler.Mrp.Domain.MrpRunAggregate
 open Medhavi.Scheduler.Mrp.Domain.Policies
 open Medhavi.Scheduler.Mrp.Steps.NettingStep

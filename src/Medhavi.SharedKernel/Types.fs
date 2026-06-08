@@ -163,6 +163,7 @@ type Timestamp =
 
     static member (+)(Timestamp a, b: TimeSpan) = Timestamp((a + b).ToUniversalTime())
     static member (-)(Timestamp t1, Timestamp t2) = t1 - t2
+    static member (-)(Timestamp a, b: TimeSpan) = Timestamp((a - b).ToUniversalTime())
     static member now = Timestamp(DateTimeOffset.UtcNow)
 
 module Timestamp =

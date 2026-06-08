@@ -10,6 +10,7 @@
     <Project Path="src/Medhavi.Integration/Medhavi.Integration.fsproj" />
     <Project Path="src/Medhavi.MasterData/Medhavi.MasterData.fsproj" />
     <Project Path="src/Medhavi.Nexus/Medhavi.Nexus.fsproj" />
+    <Project Path="src/Medhavi.Analytics/Medhavi.Analytics.fsproj" />
     <Project Path="src/Medhavi.Scheduler/Medhavi.Scheduler.fsproj" />
     <Project Path="src/Medhavi.Scenario/Medhavi.Scenario.fsproj" />
     <Project Path="src/Medhavi.SharedKernel/Medhavi.SharedKernel.fsproj" />

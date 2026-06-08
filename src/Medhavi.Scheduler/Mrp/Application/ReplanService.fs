@@ -23,10 +23,11 @@ module ReplanService =
             task {
                 let! dbInbound = originalInboundQuery skuId spId start endT
                 let skuPrefix = $"virt-{SkuId.value skuId}-"
+
                 let filteredVirtual =
                     virtualInbound
-                    |> List.filter (fun (_, _, _, id) ->
-                        id.StartsWith(skuPrefix, StringComparison.OrdinalIgnoreCase))
+                    |> List.filter (fun (_, _, _, id) -> id.StartsWith(skuPrefix, StringComparison.OrdinalIgnoreCase))
+
                 return dbInbound @ filteredVirtual
             }
 
@@ -39,17 +40,18 @@ module ReplanService =
         task {
             // 1. Determine the mode
             let mode = Replan.ReplanDispatcher.determineMode event severityThresholds
-            
+
             match mode with
-            | Ignore ->
-                return Ok baseline
-                
-            | FullReplan ->
+            | Ignore -> return Ok baseline
+
+            | Medhavi.Scheduler.Mrp.Domain.PlanningMode.FullReplan ->
                 // Run full MRP pipeline again
                 // Extract all demands from baseline peggings
                 let demands =
                     baseline.Peggings
-                    |> List.filter (fun p -> p.Status = PegStatus.Active && not (p.Demand.DemandId.StartsWith("comp-")))
+                    |> List.filter (fun p ->
+                        p.Status = PegStatus.Active
+                        && not (p.Demand.DemandId.StartsWith("comp-")))
                     |> List.map (fun p ->
                         { MrpDemand.DemandId = p.Demand.DemandId
                           SkuId = p.Demand.SkuId
@@ -62,10 +64,11 @@ module ReplanService =
                     |> List.distinctBy (fun d -> d.DemandId)
 
                 let pipeline = Orchestrator.createPipeline deps
-                let spId = 
-                    baseline.NetRequirements 
-                    |> List.tryHead 
-                    |> Option.map (fun nr -> nr.StockingPointId) 
+
+                let spId =
+                    baseline.NetRequirements
+                    |> List.tryHead
+                    |> Option.map (fun nr -> nr.StockingPointId)
                     |> Option.defaultValue (
                         match StockingPointId.create "SP-FACTORY" with
                         | Ok sp -> sp
@@ -82,10 +85,10 @@ module ReplanService =
                         MrpPolicy.defaults
                         demands
                         []
-                
+
                 return fullResult
 
-            | ReactiveRepair ->
+            | Medhavi.Scheduler.Mrp.Domain.PlanningMode.ReactiveRepair ->
                 // Heuristic Reactive Repair
                 // Component lookup for BOM cycle traversal
                 let componentLookup (skuId: SkuId) =
@@ -113,14 +116,17 @@ module ReplanService =
 
                 // Adapt inboundQuery dependency
                 let adaptedInbound = adaptInboundQuery deps.InboundQuery virtualInbound
-                let adaptedDeps = { deps with InboundQuery = adaptedInbound }
+
+                let adaptedDeps =
+                    { deps with
+                        InboundQuery = adaptedInbound }
 
                 // Identify affected demands to replan
                 let demandsToReplan =
                     baseline.Peggings
-                    |> List.filter (fun p -> 
-                        List.contains p.Demand.DemandId affectedDemands && 
-                        not (p.Demand.DemandId.StartsWith("comp-")))
+                    |> List.filter (fun p ->
+                        List.contains p.Demand.DemandId affectedDemands
+                        && not (p.Demand.DemandId.StartsWith("comp-")))
                     |> List.map (fun p ->
                         { MrpDemand.DemandId = p.Demand.DemandId
                           SkuId = p.Demand.SkuId
@@ -136,6 +142,7 @@ module ReplanService =
                     return Ok baseline
                 else
                     let pipeline = Orchestrator.createPipeline adaptedDeps
+
                     let! repairResult =
                         Orchestrator.execute
                             pipeline
@@ -169,13 +176,15 @@ module ReplanService =
 
                         // If the new lateness is worse, rollback!
                         if newKpis.LateOrdersCount > baseKpis.LateOrdersCount then
-                            let warnings = "Replan aborted: repair plan caused worse lateness KPIs. Rolling back." :: baseline.Warnings
+                            let warnings =
+                                "Replan aborted: repair plan caused worse lateness KPIs. Rolling back."
+                                :: baseline.Warnings
+
                             return Ok { baseline with Warnings = warnings }
                         else
                             return Ok finalResult
 
-            | IncrementalInsert ->
-                return Ok baseline
+            | Medhavi.Scheduler.Mrp.Domain.PlanningMode.IncrementalInsert -> return Ok baseline
         }
 
     // Specialized Incremental Insert of a new demand
@@ -197,7 +206,10 @@ module ReplanService =
                         (p.DueDate, p.Quantity, true, virtId))
 
                 let adaptedInbound = adaptInboundQuery deps.InboundQuery virtualInbound
-                let adaptedDeps = { deps with InboundQuery = adaptedInbound }
+
+                let adaptedDeps =
+                    { deps with
+                        InboundQuery = adaptedInbound }
 
                 let pipeline = Orchestrator.createPipeline adaptedDeps
 

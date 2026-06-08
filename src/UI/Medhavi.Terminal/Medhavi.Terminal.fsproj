@@ -21,6 +21,9 @@
     <ProjectReference Include="..\..\Medhavi.Capacity\Medhavi.Capacity.fsproj" />
     <ProjectReference Include="..\..\Medhavi.Transport\Medhavi.Transport.fsproj" />
     <ProjectReference Include="..\..\Medhavi.Scheduler\Medhavi.Scheduler.fsproj" />
+    <ProjectReference Include="..\..\Medhavi.Scenario\Medhavi.Scenario.fsproj" />
+    <ProjectReference Include="..\..\Medhavi.Analytics\Medhavi.Analytics.fsproj" />
+    <ProjectReference Include="..\..\Medhavi.Nexus\Medhavi.Nexus.fsproj" />
   </ItemGroup>
 
 </Project>

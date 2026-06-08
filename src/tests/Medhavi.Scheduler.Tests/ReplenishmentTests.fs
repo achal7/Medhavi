@@ -132,14 +132,14 @@ module ReplenishmentTests =
                         SkuId = skuId
                         NodeId = NodeId.create "node-1" |> getOk
                         Quantity = Quantity.clampToZero 20.0m
-                        PeriodStart = now
-                        PeriodEnd = now }
+                        PeriodStart = Timestamp.create now
+                        PeriodEnd = Timestamp.create now }
                       { ForecastId = "f2"
                         SkuId = skuId
                         NodeId = NodeId.create "node-1" |> getOk
                         Quantity = Quantity.clampToZero 20.0m
-                        PeriodStart = now.AddDays(9.0)
-                        PeriodEnd = now.AddDays(9.0) }
+                        PeriodStart = Timestamp.create (now.AddDays(9.0))
+                        PeriodEnd = Timestamp.create (now.AddDays(9.0)) }
                   ]
 
                   let target = 
@@ -208,8 +208,8 @@ module ReplenishmentTests =
                   // Day 2: demand 10 -> net stock drops to 5 (ok)
                   // Day 5: demand 10 -> net stock drops to -5 (stockout!)
                   let forecasts = [
-                      { ForecastId = "f1"; SkuId = skuId; NodeId = NodeId.create "node-1" |> getOk; Quantity = Quantity.clampToZero 10.0m; PeriodStart = now.AddDays(2.0); PeriodEnd = now.AddDays(2.0) }
-                      { ForecastId = "f2"; SkuId = skuId; NodeId = NodeId.create "node-1" |> getOk; Quantity = Quantity.clampToZero 10.0m; PeriodStart = now.AddDays(5.0); PeriodEnd = now.AddDays(5.0) }
+                      { ForecastId = "f1"; SkuId = skuId; NodeId = NodeId.create "node-1" |> getOk; Quantity = Quantity.clampToZero 10.0m; PeriodStart = Timestamp.create (now.AddDays(2.0)); PeriodEnd = Timestamp.create (now.AddDays(2.0)) }
+                      { ForecastId = "f2"; SkuId = skuId; NodeId = NodeId.create "node-1" |> getOk; Quantity = Quantity.clampToZero 10.0m; PeriodStart = Timestamp.create (now.AddDays(5.0)); PeriodEnd = Timestamp.create (now.AddDays(5.0)) }
                   ]
 
                   // Evaluating with ForecastBased(10 days lookahead)

@@ -29,3 +29,4 @@ type TransportLegQueryService = QueryService<TransportLeg, string>
 // Supply bounded context
 type MaterialReservationQueryService = QueryService<MaterialReservation, string>
 type MaterialSnapshotQueryService = QueryService<MaterialSnapshot, string>
+type SupplyProposalQueryService = QueryService<Medhavi.Contracts.Domain.SupplyProposal, string>

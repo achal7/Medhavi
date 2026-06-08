@@ -1,6 +1,7 @@
 namespace Medhavi.Scenario
 
 open System
+open System.Threading.Tasks
 open Medhavi.SharedKernel
 
 /// Pegging Link connecting a demand requirements to supply orders
@@ -21,4 +22,20 @@ type Scenario = {
     Version: int
     CreatedAt: DateTimeOffset
     IsActive: bool
+    Overrides: ScenarioDataOverride list
 }
+
+type ScenarioQueries =
+    { GetById: string -> Task<Scenario option>
+      GetAll: unit -> Task<Scenario list> }
+
+type ScenarioCommands =
+    { Create: Scenario -> Task<Result<unit, DomainError>>
+      AddOverride: string -> ScenarioDataOverride -> Task<Result<unit, DomainError>>
+      RemoveOverride: string -> ScenarioDataOverride -> Task<Result<unit, DomainError>> }
+
+type ScenarioContext =
+    { Commands: ScenarioCommands
+      Queries: ScenarioQueries
+      Initialize: unit -> Task<unit>
+      Dispose: unit -> unit }
