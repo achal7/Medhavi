@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <PreserveCompilationContext>true</PreserveCompilationContext>
+    <RequiresAspNetWebAssets>true</RequiresAspNetWebAssets>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="CssHelpers.fs" />
+    <Compile Include="CommonTypes.fs" />
+    <Compile Include="Components/Components.fs" />
+    <Compile Include="Components/ErrorBoundary.fs" />
+    <Compile Include="Stores/DemandStore.fs" />
+    <Compile Include="Stores/SupplyStore.fs" />
+    <Compile Include="Stores/CapacityStore.fs" />
+    <Compile Include="Stores/ScenarioStore.fs" />
+    <Compile Include="Stores/ActivityStore.fs" />
+    <Compile Include="Services/PlanningService.fs" />
+    <Compile Include="Services/WorkspaceContextService.fs" />
+    <Compile Include="Services/AuthService.fs" />
+    <Compile Include="Services/ServiceRegistration.fs" />
+    <Compile Include="Pages/DemandWorkbench.fs" />
+    <Compile Include="Pages/SupplyWorkbench.fs" />
+    <Compile Include="Pages/CapacityWorkbench.fs" />
+    <Compile Include="Pages/ScenarioWorkbench.fs" />
+    <Compile Include="Routing.fs" />
+    <Compile Include="LoginShell.fs" />
+    <Compile Include="AppShell.fs" />
+    <Compile Include="System.fs" />
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Bolero" />
+    <PackageReference Include="Bolero.Server" />
+    <PackageReference Include="Radzen.Blazor" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Medhavi.Common\Medhavi.Common.fsproj" />
+    <ProjectReference Include="..\..\Medhavi.Contracts\Medhavi.Contracts.fsproj" />
+    <ProjectReference Include="..\..\Medhavi.SharedKernel\Medhavi.SharedKernel.fsproj" />
+    <ProjectReference Include="..\..\Medhavi.Demand\Medhavi.Demand.fsproj" />
+    <ProjectReference Include="..\..\Medhavi.MasterData\Medhavi.MasterData.fsproj" />
+    <ProjectReference Include="..\..\Medhavi.Integration\Medhavi.Integration.fsproj" />
+    <ProjectReference Include="..\..\Medhavi.Infrastructure\Medhavi.Infrastructure.fsproj" />
+    <ProjectReference Include="..\..\Medhavi.Supply\Medhavi.Supply.fsproj" />
+    <ProjectReference Include="..\..\Medhavi.Capacity\Medhavi.Capacity.fsproj" />
+    <ProjectReference Include="..\..\Medhavi.Transport\Medhavi.Transport.fsproj" />
+    <ProjectReference Include="..\..\Medhavi.Scheduler\Medhavi.Scheduler.fsproj" />
+    <ProjectReference Include="..\..\Medhavi.Scenario\Medhavi.Scenario.fsproj" />
+    <ProjectReference Include="..\..\Medhavi.Analytics\Medhavi.Analytics.fsproj" />
+    <ProjectReference Include="..\..\Medhavi.Nexus\Medhavi.Nexus.fsproj" />
+  </ItemGroup>
+
+</Project>

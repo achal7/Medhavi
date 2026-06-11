@@ -68,14 +68,22 @@ type ProjectionAgent<'State, 'Event>(applyFn: 'State -> 'Event -> 'State, initia
 
     member _.Post(ev, msgId, pos) = agent.Post(Apply(ev, msgId, pos))
     member _.SetState(state) = agent.Post(SetState state)
-    member _.GetStateAsync() = task { return agent.PostAndReply(GetState) }
-    member _.GetStatsAsync() = task { return agent.PostAndReply(GetStats) }
+    member _.GetStateAsync() : Task<'State> =
+        agent.PostAndAsyncReply(GetState)
+        |> Async.StartAsTask
+
+    member _.GetStatsAsync() : Task<ProjectionStats> =
+        agent.PostAndAsyncReply(GetStats)
+        |> Async.StartAsTask
+
     member _.Reset() = agent.Post(Reset)
 
     member _.QueryAsync<'Result>(query: 'State -> 'Result) : Task<'Result> =
         task {
             let boxedQuery = fun s -> box (query s)
-            let result = agent.PostAndReply(fun reply -> Query(boxedQuery, reply))
+            let! result =
+                agent.PostAndAsyncReply(fun reply -> Query(boxedQuery, reply))
+                |> Async.StartAsTask
             return unbox<'Result> result
         }
 
