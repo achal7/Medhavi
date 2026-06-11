@@ -30,7 +30,7 @@ type SupplyCommands =
       SupplyOrder: SupplyOrderApi
       MaterialReservation: MaterialReservationApi }
 
-type Supply =
+type SupplyContext =
     { Commands: SupplyCommands
       Queries: SupplyQueries
       Initialize: unit -> Task<unit>
@@ -41,10 +41,21 @@ module BoundedContext =
     let create () =
         // 1. Repositories
         let invRepo = createInMemoryRepository<Inventory, string, InventoryEvent> ()
-        let targetRepo = createInMemoryRepository<InventoryTarget, string, InventoryTargetEvent> ()
-        let offerRepo = createInMemoryRepository<SupplierOffer, string, SupplierOfferEvent> ()
+
+        let targetRepo =
+            createInMemoryRepository<InventoryTarget, string, InventoryTargetEvent> ()
+
+        let offerRepo =
+            createInMemoryRepository<SupplierOffer, string, SupplierOfferEvent> ()
+
         let orderRepo = createInMemoryRepository<SupplyOrder, string, SupplyOrderEvent> ()
-        let reservationRepo = createInMemoryRepository<MaterialReservationAgg.MaterialReservation, string, MaterialReservationAgg.MaterialReservationEvent> ()
+
+        let reservationRepo =
+            createInMemoryRepository<
+                MaterialReservationAgg.MaterialReservation,
+                string,
+                MaterialReservationAgg.MaterialReservationEvent
+             > ()
 
         // 2. Capabilities
         let invCaps = Inventory.createCapabilities invRepo
@@ -65,10 +76,12 @@ module BoundedContext =
         let targetApi = InventoryTarget.createInventoryTargetApi targetCaps targetAgent
         let offerApi = SupplierOffer.createSupplierOfferApi offerCaps offerAgent
         let orderApi = SupplyOrder.createSupplyOrderApi orderCaps orderAgent
-        let reservationApi = MaterialReservation.createMaterialReservationApi reservationCaps reservationAgent
+
+        let reservationApi =
+            MaterialReservation.createMaterialReservationApi reservationCaps reservationAgent
 
         // 5. Subscriptions List
-        let mutable subscriptions : IDisposable list = []
+        let mutable subscriptions: IDisposable list = []
         let mutable sweeperRunning = true
 
         // 6. Initialize (Bootstrap & Subscriptions)
@@ -76,48 +89,74 @@ module BoundedContext =
             task {
                 // A. Seeding from Repositories
                 let! invs = invRepo.GetAll()
+
                 match invs with
                 | Ok list ->
-                    let m = list |> List.map (fun i -> InventoryId.value i.Id, Inventory.ACL.toContract i) |> Map.ofList
+                    let m =
+                        list
+                        |> List.map (fun i -> InventoryId.value i.Id, Inventory.ACL.toContract i)
+                        |> Map.ofList
+
                     invAgent.SetState(m)
                 | Error _ -> ()
 
                 let! targets = targetRepo.GetAll()
+
                 match targets with
                 | Ok list ->
-                    let m = list |> List.map (fun t -> InventoryTargetId.value t.Id, InventoryTarget.ACL.toContract t) |> Map.ofList
+                    let m =
+                        list
+                        |> List.map (fun t -> InventoryTargetId.value t.Id, InventoryTarget.ACL.toContract t)
+                        |> Map.ofList
+
                     targetAgent.SetState(m)
                 | Error _ -> ()
 
                 let! offers = offerRepo.GetAll()
+
                 match offers with
                 | Ok list ->
-                    let m = list |> List.map (fun o -> SupplierOfferId.value o.Id, SupplierOffer.ACL.toContract o) |> Map.ofList
+                    let m =
+                        list
+                        |> List.map (fun o -> SupplierOfferId.value o.Id, SupplierOffer.ACL.toContract o)
+                        |> Map.ofList
+
                     offerAgent.SetState(m)
                 | Error _ -> ()
 
                 let! orders = orderRepo.GetAll()
+
                 match orders with
                 | Ok list ->
-                    let m = list |> List.map (fun o -> SupplyOrderId.value o.Id, SupplyOrder.ACL.toContract o) |> Map.ofList
+                    let m =
+                        list
+                        |> List.map (fun o -> SupplyOrderId.value o.Id, SupplyOrder.ACL.toContract o)
+                        |> Map.ofList
+
                     orderAgent.SetState(m)
                 | Error _ -> ()
 
                 let! reservations = reservationRepo.GetAll()
+
                 match reservations with
                 | Ok list ->
-                    let m = list |> List.map (fun r -> r.Id, MaterialReservation.ACL.toContract r) |> Map.ofList
+                    let m =
+                        list
+                        |> List.map (fun r -> r.Id, MaterialReservation.ACL.toContract r)
+                        |> Map.ofList
+
                     reservationAgent.SetState(m)
                 | Error _ -> ()
 
                 // B. Subscriptions
-                subscriptions <- [
-                    DomainEventBus.Subscribe<InventoryEvent>(fun ev -> invAgent.Post(ev, Guid.NewGuid(), None))
-                    DomainEventBus.Subscribe<InventoryTargetEvent>(fun ev -> targetAgent.Post(ev, Guid.NewGuid(), None))
-                    DomainEventBus.Subscribe<SupplierOfferEvent>(fun ev -> offerAgent.Post(ev, Guid.NewGuid(), None))
-                    DomainEventBus.Subscribe<SupplyOrderEvent>(fun ev -> orderAgent.Post(ev, Guid.NewGuid(), None))
-                    DomainEventBus.Subscribe<MaterialReservationAgg.MaterialReservationEvent>(fun ev -> reservationAgent.Post(ev, Guid.NewGuid(), None))
-                ]
+                subscriptions <-
+                    [ DomainEventBus.Subscribe<InventoryEvent>(fun ev -> invAgent.Post(ev, Guid.NewGuid(), None))
+                      DomainEventBus.Subscribe<InventoryTargetEvent>(fun ev ->
+                          targetAgent.Post(ev, Guid.NewGuid(), None))
+                      DomainEventBus.Subscribe<SupplierOfferEvent>(fun ev -> offerAgent.Post(ev, Guid.NewGuid(), None))
+                      DomainEventBus.Subscribe<SupplyOrderEvent>(fun ev -> orderAgent.Post(ev, Guid.NewGuid(), None))
+                      DomainEventBus.Subscribe<MaterialReservationAgg.MaterialReservationEvent>(fun ev ->
+                          reservationAgent.Post(ev, Guid.NewGuid(), None)) ]
 
                 // C. TTL Sweeper Loop
                 let rec sweeper () =
@@ -125,16 +164,20 @@ module BoundedContext =
                         if sweeperRunning then
                             do! Task.Delay(5000)
                             let! allRes = reservationRepo.GetAll()
+
                             match allRes with
                             | Error _ -> ()
                             | Ok list ->
                                 let now = DateTimeOffset.UtcNow
+
                                 let expired =
                                     list
                                     |> List.filter (fun r -> r.State = "Tentative" && r.ExpiryTime < now)
+
                                 for r in expired do
                                     let! _ = reservationCaps.Expire { Id = r.Id }
                                     ()
+
                             return! sweeper ()
                     }
                 // Run in background without awaiting the loop task
@@ -145,17 +188,20 @@ module BoundedContext =
         // 7. Dispose
         let dispose () =
             sweeperRunning <- false
-            for sub in subscriptions do sub.Dispose()
+
+            for sub in subscriptions do
+                sub.Dispose()
+
             subscriptions <- []
 
-        let queries : SupplyQueries =
+        let queries: SupplyQueries =
             { Inventory = QueryServiceBase.getQueryService invAgent id
               InventoryTarget = QueryServiceBase.getQueryService targetAgent id
               SupplierOffer = QueryServiceBase.getQueryService offerAgent id
               SupplyOrder = QueryServiceBase.getQueryService orderAgent id
               MaterialReservation = QueryServiceBase.getQueryService reservationAgent id }
 
-        let commands : SupplyCommands =
+        let commands: SupplyCommands =
             { Inventory = invApi
               InventoryTarget = targetApi
               SupplierOffer = offerApi
@@ -166,4 +212,3 @@ module BoundedContext =
           Queries = queries
           Initialize = initialize
           Dispose = dispose }
-

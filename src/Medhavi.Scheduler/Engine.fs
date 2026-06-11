@@ -1,6 +1,5 @@
 namespace Medhavi.Planning
 
-open System
 open Medhavi.SharedKernel
 
 /// Core Planning Engine / Solver API

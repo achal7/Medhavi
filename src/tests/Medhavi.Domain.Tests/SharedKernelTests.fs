@@ -422,7 +422,7 @@ let tests =
                 
           testCase "Optics Lens and Optional verification in domain context" (fun () ->
               // Verify Lens
-              let versionLens : Lens<Scenario, int> =
+              let versionLens : Lens<ScenarioReadModel, int> =
                   lens (fun s -> s.Version) (fun v s -> { s with Version = v })
 
               let initialScenario = {
@@ -450,7 +450,7 @@ let tests =
               test <@ mappedScenario.Version = 6 @>
 
               // Verify Optional
-              let baseScenarioIdOptional : Optional<Scenario, string> =
+              let baseScenarioIdOptional : Optional<ScenarioReadModel, string> =
                   optional
                       (fun s -> s.BaseScenarioId)
                       (fun opt s -> { s with BaseScenarioId = opt })

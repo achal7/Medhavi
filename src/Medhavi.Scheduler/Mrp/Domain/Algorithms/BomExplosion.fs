@@ -120,42 +120,15 @@ let explode
                     else
 
                         // Explode each component
-                        bom.Components
-                        |> List.sortBy (fun c -> c.Sequence)
-                        |> List.map (fun comp ->
-                            // Calculate component quantity: parent quantity × quantity per
-                            let componentQty = requiredQty * (Quantity.value comp.QuantityPer)
+                        let explodedComponentsResult =
+                            bom.Components
+                            |> List.sortBy (fun c -> c.Sequence)
+                            |> List.map (fun comp ->
+                                // Calculate component quantity: parent quantity × quantity per
+                                let componentQty = requiredQty * (Quantity.value comp.QuantityPer)
 
-                            if comp.IsPhantom then
-                                // Phantom: explode through to children (don't create a requirement for the phantom itself)
-                                explodeRecursive
-                                    comp.ComponentSkuId
-                                    nodeId
-                                    stockingPointId
-                                    componentQty
-                                    requiredDate
-                                    (level + 1)
-                                    updatedPath
-                            else
-                                // Normal component: create requirement AND check if it has children
-                                let thisComponent =
-                                    { SkuId = comp.ComponentSkuId
-                                      NodeId = nodeId
-                                      StockingPointId = stockingPointId
-                                      RequiredQuantity = componentQty
-                                      RequiredDate = requiredDate
-                                      BomLevel = level + 1
-                                      BomPath = updatedPath @ [ comp.ComponentSkuId ]
-                                      ParentSkuId = Some skuId
-                                      IsPhantom = false }
-
-                                // Try to explode further (sub-assemblies)
-                                match bomLookup comp.ComponentSkuId selectionPolicy with
-                                | None ->
-                                    // Leaf component
-                                    Ok [ thisComponent ]
-                                | Some _childBom ->
-                                    // Has children — explode recursively
+                                if comp.IsPhantom then
+                                    // Phantom: explode through to children (don't create a requirement for the phantom itself)
                                     explodeRecursive
                                         comp.ComponentSkuId
                                         nodeId
@@ -164,9 +137,54 @@ let explode
                                         requiredDate
                                         (level + 1)
                                         updatedPath
-                                    |> Result.map (fun children -> thisComponent :: children))
-                        |> collectResults
-                        |> Result.map List.concat
+                                else
+                                    // Normal component: create requirement AND check if it has children
+                                    let thisComponent =
+                                        { SkuId = comp.ComponentSkuId
+                                          NodeId = nodeId
+                                          StockingPointId = stockingPointId
+                                          RequiredQuantity = componentQty
+                                          RequiredDate = requiredDate
+                                          BomLevel = level + 1
+                                          BomPath = updatedPath @ [ comp.ComponentSkuId ]
+                                          ParentSkuId = Some skuId
+                                          IsPhantom = false }
+
+                                    // Try to explode further (sub-assemblies)
+                                    match bomLookup comp.ComponentSkuId selectionPolicy with
+                                    | None ->
+                                        // Leaf component
+                                        Ok [ thisComponent ]
+                                    | Some _childBom ->
+                                        // Has children — explode recursively
+                                        explodeRecursive
+                                            comp.ComponentSkuId
+                                            nodeId
+                                            stockingPointId
+                                            componentQty
+                                            requiredDate
+                                            (level + 1)
+                                            updatedPath
+                                        |> Result.map (fun children -> thisComponent :: children))
+                            |> collectResults
+                            |> Result.map List.concat
+
+                        if level = 0 then
+                            let parentComponent =
+                                { SkuId = skuId
+                                  NodeId = nodeId
+                                  StockingPointId = stockingPointId
+                                  RequiredQuantity = requiredQty
+                                  RequiredDate = requiredDate
+                                  BomLevel = 0
+                                  BomPath = updatedPath
+                                  ParentSkuId = None
+                                  IsPhantom = false }
+
+                            explodedComponentsResult
+                            |> Result.map (fun children -> parentComponent :: children)
+                        else
+                            explodedComponentsResult
 
     // Start explosion from the demand's root SKU
     explodeRecursive demand.SkuId demand.NodeId demand.StockingPointId demand.Quantity demand.RequiredDate 0 []

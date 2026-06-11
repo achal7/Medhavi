@@ -7,10 +7,19 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Tests.fs" />
+    <Compile Include="TestCommon.fs" />
+    <Compile Include="Mrp\Domain\Algorithms\BomExplosionTests.fs" />
+    <Compile Include="Mrp\Domain\Algorithms\LotSizingTests.fs" />
+    <Compile Include="Mrp\Domain\Algorithms\NettingTests.fs" />
+    <Compile Include="Mrp\Domain\Algorithms\SafetyStockTests.fs" />
+    <Compile Include="Mrp\Domain\Algorithms\TimePhasedBucketsTests.fs" />
+    <Compile Include="Mrp\Domain\Algorithms\PropertyTests.fs" />
+    <Compile Include="Mrp\Domain\PeggingTests.fs" />
+    <Compile Include="Mrp\Domain\ReplanTests.fs" />
+    <Compile Include="Mrp\Domain\MrpRunAggregateTests.fs" />
+    <Compile Include="Mrp\Application\ForecastConsumptionTests.fs" />
+    <Compile Include="Mrp\Application\MrpServiceTests.fs" />
     <Compile Include="ReplenishmentTests.fs" />
-    <Compile Include="PeggingTests.fs" />
-    <Compile Include="ReplanTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
@@ -20,6 +29,8 @@
 
   <ItemGroup>
     <PackageReference Include="Expecto" />
+    <PackageReference Include="Expecto.FsCheck" />
+    <PackageReference Include="FsCheck" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="Unquote" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" />

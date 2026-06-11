@@ -162,3 +162,10 @@ type PeggingId = private PeggingId of string
 module PeggingId =
     let create = IdsFactory.createExplicitId PeggingId "Peggings"
     let value (PeggingId id) = id
+
+[<JsonFSharpConverter>]
+type ScenarioId = private ScenarioId of string
+
+module ScenarioId =
+    let create = IdsFactory.createExplicitId ScenarioId "ScenarioId"
+    let value (ScenarioId id) = id

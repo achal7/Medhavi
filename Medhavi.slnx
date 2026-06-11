@@ -18,6 +18,7 @@
   </Folder>
   <Folder Name="/src/UI/">
     <Project Path="src/UI/Medhavi.Terminal/Medhavi.Terminal.fsproj" />
+    <Project Path="src/UI/Medhavi.Web/Medhavi.Web.fsproj" />
   </Folder>
   <Folder Name="/src/tests/">
     <Project Path="src/tests/Medhavi.Domain.Tests/Medhavi.Domain.Tests.fsproj" />

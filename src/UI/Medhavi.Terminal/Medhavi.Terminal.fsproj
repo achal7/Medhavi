@@ -7,6 +7,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Types.fs" />
+    <Compile Include="MasterData.fs" />
+    <Compile Include="Supply.fs" />
+    <Compile Include="Capacity.fs" />
+    <Compile Include="Demand.fs" />
+    <Compile Include="Transport.fs" />
+    <Compile Include="SchedulerWiring.fs" />
+    <Compile Include="Mrp.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
@@ -14,6 +22,7 @@
     <ProjectReference Include="..\..\Medhavi.Common\Medhavi.Common.fsproj" />
     <ProjectReference Include="..\..\Medhavi.Contracts\Medhavi.Contracts.fsproj" />
     <ProjectReference Include="..\..\Medhavi.SharedKernel\Medhavi.SharedKernel.fsproj" />
+    <ProjectReference Include="..\..\Medhavi.Demand\Medhavi.Demand.fsproj" />
     <ProjectReference Include="..\..\Medhavi.MasterData\Medhavi.MasterData.fsproj" />
     <ProjectReference Include="..\..\Medhavi.Integration\Medhavi.Integration.fsproj" />
     <ProjectReference Include="..\..\Medhavi.Infrastructure\Medhavi.Infrastructure.fsproj" />

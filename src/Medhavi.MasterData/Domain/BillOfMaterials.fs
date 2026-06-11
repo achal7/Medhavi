@@ -68,7 +68,7 @@ let validateAndMakeBoM now (cmd: DefineBillOfMaterialCmd) =
           SkuId = cmd.SkuId
           Version = Version.initial
           Items = lines
-          Status = Inactive
+          Status = Active
           CreatedAt = now
           ModifiedAt = Timestamp.minValue }
 

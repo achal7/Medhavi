@@ -25,16 +25,34 @@
     <!-- Pipeline Infrastructure & Steps -->
     <Compile Include="Mrp\Application\Pipeline.fs" />
     <Compile Include="Mrp\Application\Steps\PreprocessStep.fs" />
-    <Compile Include="Mrp\Application\Steps\BomExplosionStep.fs" />
     <Compile Include="Mrp\Application\Steps\NettingStep.fs" />
     <Compile Include="Mrp\Application\Steps\SupplyGenerationStep.fs" />
-    <Compile Include="Mrp\Application\Steps\CapacityCheckStep.fs" />
     <Compile Include="Mrp\Application\Steps\PeggingStep.fs" />
     <Compile Include="Mrp\Application\Steps\PostprocessStep.fs" />
     <Compile Include="Mrp\Application\MrpDependencies.fs" />
     <Compile Include="Mrp\Application\Orchestrator.fs" />
     <Compile Include="Mrp\Application\MrpService.fs" />
     <Compile Include="Mrp\Application\ReplanService.fs" />
+
+    <!-- Planning Layer Domain -->
+    <Compile Include="Planning\Domain\TimeBucket.fs" />
+    <Compile Include="Planning\Domain\Keys.fs" />
+    <Compile Include="Planning\Domain\InputFingerprint.fs" />
+    <Compile Include="Planning\Domain\PlanResult.fs" />
+    <Compile Include="Planning\Domain\PlanningSnapshot.fs" />
+    <Compile Include="Planning\Domain\PlanningRun.fs" />
+    <Compile Include="Planning\Domain\PlanVersion.fs" />
+
+    <!-- Planning Layer Application -->
+    <Compile Include="Planning\Application\SolverStrategy.fs" />
+    <Compile Include="Planning\Application\PlanningSnapshotBuilder.fs" />
+    <Compile Include="Planning\Application\PlanVersionStore.fs" />
+    <Compile Include="Planning\Application\ScenarioReadinessValidator.fs" />
+    <Compile Include="Planning\Application\ScenarioDiffService.fs" />
+    <Compile Include="Planning\Application\PlanningOrchestrator.fs" />
+
+    <!-- Solver Strategies -->
+    <Compile Include="Mrp\Application\MrpSolverStrategy.fs" />
 
     <!-- Replenishment -->
     <Compile Include="Replenishment\Domain.fs" />

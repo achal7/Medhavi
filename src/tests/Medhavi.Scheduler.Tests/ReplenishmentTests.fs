@@ -7,22 +7,18 @@ open Swensen.Unquote
 open Medhavi.SharedKernel
 open Medhavi.Contracts.Domain
 open Medhavi.Demand
+open Medhavi.Scheduler.Tests.TestCommon
 open Medhavi.Scheduler.Replenishment
 
 module ReplenishmentTests =
-
-    let getOk =
-        function
-        | Ok x -> x
-        | Error e -> failwithf "Expected Ok, got Error: %A" e
 
     [<Tests>]
     let tests =
         testList
             "Replenishment Engine Tests"
             [ testCase "should calculate correct targets for static safety/min/max policies" (fun () ->
-                  let skuId = SkuId.create "SKU-BIKE" |> getOk
-                  let spId = StockingPointId.create "SP-WAREHOUSE" |> getOk
+                  let skuId = skuFG
+                  let spId = spWarehouse
 
                   let targetDef =
                       { Id = "target-1"

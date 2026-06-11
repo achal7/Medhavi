@@ -42,9 +42,9 @@ module ReplanService =
             let mode = Replan.ReplanDispatcher.determineMode event severityThresholds
 
             match mode with
-            | Ignore -> return Ok baseline
+            | ReplanDisposition.Ignore -> return Ok baseline
 
-            | Medhavi.Scheduler.Mrp.Domain.PlanningMode.FullReplan ->
+            | ReplanDisposition.FullReplan ->
                 // Run full MRP pipeline again
                 // Extract all demands from baseline peggings
                 let demands =
@@ -88,7 +88,7 @@ module ReplanService =
 
                 return fullResult
 
-            | Medhavi.Scheduler.Mrp.Domain.PlanningMode.ReactiveRepair ->
+            | ReplanDisposition.ReactiveRepair ->
                 // Heuristic Reactive Repair
                 // Component lookup for BOM cycle traversal
                 let componentLookup (skuId: SkuId) =
@@ -184,7 +184,7 @@ module ReplanService =
                         else
                             return Ok finalResult
 
-            | Medhavi.Scheduler.Mrp.Domain.PlanningMode.IncrementalInsert -> return Ok baseline
+            | ReplanDisposition.IncrementalInsert -> return Ok baseline
         }
 
     // Specialized Incremental Insert of a new demand

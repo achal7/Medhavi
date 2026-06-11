@@ -10,7 +10,7 @@ type DisruptionEvent =
     | MaterialDelay of skuId: SkuId * stockingPointId: StockingPointId * newArrival: Timestamp * affectedSupplyId: string
     | MesScrapVariance of workOrderId: string * skuId: SkuId * scrapQty: Quantity
 
-type PlanningMode =
+type ReplanDisposition =
     | ReactiveRepair
     | IncrementalInsert
     | FullReplan
@@ -124,7 +124,7 @@ module Replan =
         let determineMode
             (event: DisruptionEvent)
             (severityThresholds: Map<string, float>)
-            : PlanningMode =
+            : ReplanDisposition =
             
             match event with
             | ResourceBreakdown(_, start, endT) ->

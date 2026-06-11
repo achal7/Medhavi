@@ -1,7 +1,7 @@
 module Medhavi.Scheduler.Mrp.Domain.Types
 
 open System
-open System.Text.Json.Serialization
+open System.Threading.Tasks
 open Medhavi.SharedKernel
 
 type MrpRunId = private MrpRunId of string
@@ -15,7 +15,6 @@ module MrpRunId =
 // ============================================================================
 
 /// Source reference for demand traceability
-[<JsonFSharpConverter>]
 type DemandSource =
     | CustomerOrder of orderId: string * lineId: string
     | Forecast of forecastId: string
@@ -55,7 +54,7 @@ type ExplodedComponent =
 // NETTING OUTPUT
 // ============================================================================
 
-/// Net Requirement — result of material netting calculation (Phase 9.2)
+/// Net Requirement — result of material netting calculation
 type NetRequirement =
     { SkuId: SkuId
       NodeId: NodeId
@@ -132,9 +131,34 @@ module MrpTelemetry =
           ComponentsProcessed = 0
           ProposalsGenerated = 0 }
 
-[<JsonFSharpConverter>]
-type PlanningMode =
-    | FullReplan
-    | ReactiveRepair of changedDemandIds: string list
-    | IncrementalInsert of demandId: string
-    | WarmStart of baseRunId: Guid
+// ============================================================================
+// CAPACITY PROMISE TYPES (FAST INSERT)
+// ============================================================================
+
+/// A planning bucket (e.g., day index)
+type BucketIndex = int
+
+/// Ephemeral load committed in the current planning session
+type TentativeLoad = Map<ResourceGroupId * BucketIndex, DurationMinutes>
+
+/// Result of a capacity feasibility check
+type CapacityPromiseResult =
+    { EarliestFeasibleBucket: BucketIndex
+      IsFeasible: bool }
+
+/// The query signature – MRP asks Capacity BC "can you fit this?"
+type CapacityPromiseQuery =
+    ResourceGroupId
+        -> BucketIndex // desired latest bucket
+        -> DurationMinutes // needed capacity (from routing)
+        -> TentativeLoad // current session's already committed load
+        -> Task<CapacityPromiseResult>
+
+/// Selected routing details and load duration
+type CapacityRoutingInfo =
+    { RoutingId: RoutingId
+      ResourceGroupId: ResourceGroupId
+      NeededDuration: DurationMinutes }
+
+/// Query to look up routing details and calculate total needed minutes
+type CapacityRoutingQuery = SkuId -> StockingPointId -> RoutingId option -> Quantity -> Task<CapacityRoutingInfo option>

@@ -1,5 +1,6 @@
 namespace Medhavi.Scheduler.Mrp.Application
 
+open Medhavi.SharedKernel
 open Medhavi.Scheduler.Mrp.Domain.Types
 open Medhavi.Scheduler.Mrp.Domain.MrpRunAggregate
 open Medhavi.Scheduler.Mrp.Domain.Algorithms
@@ -43,11 +44,14 @@ type MrpDependencies =
         /// Transfer source lookup
         TransferSourceQuery: SupplyGenerationStep.TransferSourceQuery
 
-        /// Capacity CTP check query
-        CapacityQuery: CapacityCheckStep.CapacityCheckQuery
+        /// Capacity Promise check query
+        CapacityPromiseQuery: CapacityPromiseQuery
+
+        /// Capacity Routing details query (gets ResourceGroupId and calculated Duration)
+        CapacityRoutingQuery: CapacityRoutingQuery
 
         /// Alternate routings lookup
-        AlternateRoutingsQuery: CapacityCheckStep.AlternateRoutingsQuery
+        AlternateRoutingsQuery: SkuId -> StockingPointId -> System.Threading.Tasks.Task<RoutingId list>
 
         /// Pegging link creator (Pegging Bounded Context helper)
         PeggingCreator: PeggingStep.PeggingCreator option

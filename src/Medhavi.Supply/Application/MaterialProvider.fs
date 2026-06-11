@@ -196,6 +196,7 @@ let getSnapshotInternal
                 allOrders
                 |> List.choose (fun o ->
                     let remaining = o.Quantity - o.CompletedQuantity - o.ScrapQuantity
+
                     if remaining > 0.0m then
                         o.RequiredDeliveryDate
                         |> Option.map (fun d -> Timestamp.create d, Quantity.clampToZero remaining)
@@ -404,7 +405,7 @@ let createMaterialProvider
             } }
 
 let getSnapshot
-    (caps: Supply)
+    (caps: SupplyContext)
     (productId: string)
     (stockingPointId: string)
     (asOf: DateTimeOffset)
@@ -442,7 +443,7 @@ let getSnapshot
     }
 
 let getSupplierOptions
-    (caps: Supply)
+    (caps: SupplyContext)
     (productId: string)
     (stockingPointId: string option)
     (quantity: decimal)
@@ -474,7 +475,7 @@ let calculateNetAvailable (snapshot: Medhavi.Contracts.Domain.MaterialSnapshot) 
     - snapshot.Safety
 
 let getTimePhasedAvailability
-    (caps: Supply)
+    (caps: SupplyContext)
     (productId: string)
     (stockingPointId: string)
     (startDate: DateTimeOffset)
@@ -511,7 +512,7 @@ let getTimePhasedAvailability
     }
 
 let getDateWiseAvailability
-    (caps: Supply)
+    (caps: SupplyContext)
     (productId: string)
     (stockingPointId: string)
     (startDate: DateTimeOffset)

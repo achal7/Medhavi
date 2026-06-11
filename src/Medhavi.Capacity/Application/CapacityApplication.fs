@@ -410,7 +410,7 @@ module SchedulerApp =
                                         let runTime = load.RunLoadPerBaseQuantityMinutes * (stepQty / baseQty)
                                         let totalLoadMins = setup + runTime + teardown
                                         
-                                        let eff = Percent.value res.EffectiveEfficiency / 100.0m
+                                        let eff = Percent.value res.EffectiveEfficiency
                                         let totalLoadMinsEff = totalLoadMins / (if eff <= 0.0m then 1.0m else eff)
                                         
                                         Some (s.RoutingStepId, (PhysicalResourceId.value res.Id, totalLoadMinsEff))
@@ -425,7 +425,7 @@ module SchedulerApp =
                                         let runTime = load.RunLoadPerBaseQuantityMinutes * (stepQty / baseQty)
                                         let totalLoadMins = setup + runTime + teardown
                                         
-                                        let eff = Percent.value res.EffectiveEfficiency / 100.0m
+                                        let eff = Percent.value res.EffectiveEfficiency
                                         let totalLoadMinsEff = totalLoadMins / (if eff <= 0.0m then 1.0m else eff)
                                         Some (s.RoutingStepId, (PhysicalResourceId.value res.Id, totalLoadMinsEff))
                                     | _ -> None)

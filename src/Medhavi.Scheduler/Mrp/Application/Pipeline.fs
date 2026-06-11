@@ -13,6 +13,7 @@ open Medhavi.Scheduler.Mrp.Domain.Policies
 type MrpEvent =
     | MrpRunStarted of runId: string * startedAt: Timestamp
     | BomExplosionCompleted of componentCount: int
+    | PlanningCompleted of proposalCount: int
     | NettingCompleted of requirementCount: int
     | SupplyProposalCreated of proposal: SupplyProposal
     | CapacityCheckCompleted of checkedCount: int

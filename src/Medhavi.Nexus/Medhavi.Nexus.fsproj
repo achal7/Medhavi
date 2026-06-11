@@ -6,7 +6,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Types.fs" />
     <Compile Include="ControlTower.fs" />
+    <Compile Include="MasterData.fs" />
+    <Compile Include="Supply.fs" />
+    <Compile Include="Demand.fs" />
+    <Compile Include="SchedulerWiring.fs" />
+    <Compile Include="Mrp.fs" />
+    <Compile Include="Engine.fs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -19,6 +26,7 @@
     <ProjectReference Include="..\Medhavi.Scenario\Medhavi.Scenario.fsproj" />
     <ProjectReference Include="..\Medhavi.Scheduler\Medhavi.Scheduler.fsproj" />
     <ProjectReference Include="..\Medhavi.MasterData\Medhavi.MasterData.fsproj" />
+    <ProjectReference Include="..\Medhavi.Integration\Medhavi.Integration.fsproj" />
   </ItemGroup>
 
 </Project>

@@ -15,6 +15,7 @@
     <Compile Include="RoutingInterpreter.fs" />
     <Compile Include="Application\CapacityResource.fs" />
     <Compile Include="Application\CapacityApplication.fs" />
+    <Compile Include="Application\FiniteCapacityScheduler.fs" />
     <Compile Include="BoundedContext.fs" />
   </ItemGroup>
 

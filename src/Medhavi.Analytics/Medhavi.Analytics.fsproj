@@ -12,7 +12,6 @@
     <Compile Include="PlanningHorizon\CapacityProjection.fs" />
     <Compile Include="PlanningHorizon\TransportProjection.fs" />
     <Compile Include="PlanningHorizon\DataSources.fs" />
-    <Compile Include="PlanningHorizon\ProjectionBuilders.fs" />
     <Compile Include="PlanningHorizon\QueryService.fs" />
     <Compile Include="KPI\Types.fs" />
     <Compile Include="KPI\KpiInvalidation.fs" />

@@ -8,6 +8,8 @@
   <ItemGroup>
     <Compile Include="Domain.fs" />
     <Compile Include="Projections.fs" />
+    <Compile Include="Application.fs" />
+    <Compile Include="BoundedContext.fs" />
   </ItemGroup>
 
   <ItemGroup>

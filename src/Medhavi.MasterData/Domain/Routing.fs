@@ -919,7 +919,7 @@ let private validateAndCreateRouting (routing: DefineRoutingCmd) =
     <*> validateQuantityRule routing.QuantityRule
     <*> validateCostPolicy routing.CostPolicy
     <*> validateRoutingDetails routing.Details
-    <*> Valid RoutingStatus.Inactive
+    <*> Valid RoutingStatus.Active
 
 let decide: DecideRouting =
     fun command stateOpt ->

@@ -16,19 +16,20 @@ type ScenarioOverlay =
       PolicyOverrides   : PolicyOverride list }
 
 module ScenarioAdapter =
+    open Medhavi.SharedKernel.ScenarioContracts
 
-    let toScenarioOverlay (scenarioId: string) (overrides: Medhavi.Scenario.ScenarioDataOverride list) : ScenarioOverlay =
+    let toScenarioOverlay (scenarioId: string) (overrides: ScenarioDataOverride list) : ScenarioOverlay =
         let demand =
             overrides
             |> List.choose (function
-                | Medhavi.Scenario.DemandOverride(demandId, qty, _) ->
+                | DemandOverride(demandId, qty, _) ->
                     Some { DemandLineId = demandId; NewQuantity = Some qty; NewRequestedDate = None }
                 | _ -> None)
 
         let capacity =
             overrides
             |> List.choose (function
-                | Medhavi.Scenario.CapacityOverride(resourceId, date, qty) ->
+                | CapacityOverride(resourceId, date, qty) ->
                     let period = PlanningPeriod.PlanningDay(DateOnly.FromDateTime(date.DateTime))
                     Some { ResourceGroupId = resourceId; Period = period; AvailableHoursOverride = qty }
                 | _ -> None)
@@ -36,7 +37,7 @@ module ScenarioAdapter =
         let inventory =
             overrides
             |> List.choose (function
-                | Medhavi.Scenario.InventoryOverride(skuId, stockingPointId, qty) ->
+                | InventoryOverride(skuId, stockingPointId, qty) ->
                     let today = DateOnly.FromDateTime(DateTime.UtcNow)
                     Some { SkuId = skuId; StockingPointId = stockingPointId; AsOf = today; OnHandOverride = qty }
                 | _ -> None)

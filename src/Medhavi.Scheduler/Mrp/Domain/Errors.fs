@@ -1,17 +1,14 @@
 namespace Medhavi.Scheduler.Mrp.Domain.Errors
 
 open System
-open System.Text.Json.Serialization
 
 /// Errors that can occur during preprocessing
-[<JsonFSharpConverter>]
 type PreprocessError =
     | InvalidDemand of productId: string * reason: string
     | EmptyDemandList
     | ForecastConsumptionError of message: string
 
 /// Errors that can occur during BOM explosion
-[<JsonFSharpConverter>]
 type BomExplosionError =
     | BomNotFound of productId: string
     | BomNotActive of productId: string
@@ -22,7 +19,6 @@ type BomExplosionError =
     | BomNotEffective of productId: string * asOf: DateTimeOffset
 
 /// Errors that can occur during netting
-[<JsonFSharpConverter>]
 type NettingError =
     | MaterialUnavailable of productId: string * required: decimal * available: decimal
     | InventoryQueryFailed of productId: string * reason: string
@@ -30,15 +26,14 @@ type NettingError =
     | InvalidNettingPolicy of reason: string
 
 /// Errors that can occur during supply generation
-[<JsonFSharpConverter>]
 type SupplyGenerationError =
     | NoSupplierFound of productId: string
     | NoRoutingFound of productId: string
+    | CapacityInfeasible of productId: string * reason: string
     | LotSizingError of productId: string * reason: string
     | ProposalCreationFailed of productId: string * reason: string
 
 /// Errors that can occur during capacity checking
-[<JsonFSharpConverter>]
 type CapacityCheckError =
     | RoutingNotFound of routingId: string
     | RoutingExpired of routingId: string * asOf: DateTimeOffset
@@ -49,7 +44,6 @@ type CapacityCheckError =
     | AllocationFailed of reason: string
 
 /// Errors that can occur during pegging
-[<JsonFSharpConverter>]
 type PeggingError =
     | DemandNotFound of demandId: string
     | SupplyNotFound of supplyId: string
@@ -61,7 +55,6 @@ type PeggingError =
 // ============================================================================
 
 /// Unified pipeline step error
-[<JsonFSharpConverter>]
 type MrpStepError =
     | Preprocess of PreprocessError list
     | BomExplosion of BomExplosionError list
@@ -78,7 +71,6 @@ type MrpStepError =
 // ============================================================================
 
 /// Application-level MRP errors
-[<JsonFSharpConverter>]
 type MrpApplicationError =
     | PipelineError of MrpStepError
     | Timeout of duration: TimeSpan
@@ -137,6 +129,7 @@ module MrpStepError =
                 |> List.map (function
                     | NoSupplierFound pid -> $"No supplier found for {pid}"
                     | NoRoutingFound pid -> $"No routing found for {pid}"
+                    | CapacityInfeasible(pid, reason) -> $"Capacity infeasible for {pid}: {reason}"
                     | LotSizingError(pid, reason) -> $"Lot sizing error for {pid}: {reason}"
                     | ProposalCreationFailed(pid, reason) -> $"Proposal creation failed for {pid}: {reason}")
 

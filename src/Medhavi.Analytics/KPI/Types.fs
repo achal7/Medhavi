@@ -3,10 +3,6 @@ namespace Medhavi.Analytics.KPI
 open System
 open Medhavi.Analytics.PlanningHorizon
 
-// =============================================================================
-// KPI Types — read-model types for the KPI dashboard
-// =============================================================================
-
 /// KPI status relative to its target and alert threshold
 type KpiStatus =
     | Good // at or exceeding target

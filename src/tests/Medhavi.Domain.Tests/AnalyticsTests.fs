@@ -4,6 +4,7 @@ open System
 open Expecto
 open Swensen.Unquote
 open Medhavi.SharedKernel
+open Medhavi.SharedKernel.ScenarioContracts
 open Medhavi.Scenario
 open Medhavi.Analytics
 open Medhavi.Analytics.PlanningHorizon

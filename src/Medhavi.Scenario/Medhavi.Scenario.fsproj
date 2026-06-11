@@ -6,8 +6,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="OverrideTypes.fs" />
     <Compile Include="Domain.fs" />
+    <Compile Include="Domain/Types.fs" />
+    <Compile Include="Domain/ScenarioAggregate.fs" />
+    <Compile Include="Domain/ScenarioConfiguration.fs" />
+    <Compile Include="Domain/ScenarioOverlaySet.fs" />
+    <Compile Include="Application/ScenarioService.fs" />
+    <Compile Include="Application/ScenarioEventHandler.fs" />
     <Compile Include="BoundedContext.fs" />
   </ItemGroup>
 

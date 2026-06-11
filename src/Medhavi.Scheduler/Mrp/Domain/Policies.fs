@@ -1,11 +1,9 @@
 module Medhavi.Scheduler.Mrp.Domain.Policies
 
 open System
-open System.Text.Json.Serialization
 open Medhavi.SharedKernel
 
 /// Lot sizing algorithm selection
-[<JsonFSharpConverter>]
 type LotSizingPolicy =
     | LotForLot // Order exactly what's needed
     | FixedLot of lotSize: Quantity // Fixed order quantity
@@ -32,7 +30,6 @@ module NettingPolicy =
           LotSizing = None }
 
 /// BOM selection strategy when multiple BOMs exist for a SKU
-[<JsonFSharpConverter>]
 type BomSelectionPolicy =
     | DefaultBom // Use first active BOM found
     | PrimaryPreferred // Use primary BOM, fallback to alternates
@@ -67,7 +64,6 @@ module CapacityPolicy =
           BottleneckProtection = None }
 
 /// Expedite decision policy
-[<JsonFSharpConverter>]
 type ExpeditePolicy =
     | AlwaysExpedite
     | NeverExpedite
@@ -75,7 +71,6 @@ type ExpeditePolicy =
     | ExpediteIfShortLeadTime of days: int // Expedite if within N days of due date
 
 /// Forecast consumption strategy
-[<JsonFSharpConverter>]
 type ForecastConsumptionStrategy =
     | BackwardConsumption // Consume forecast before order date
     | ForwardConsumption // Consume forecast after order date
@@ -105,7 +100,6 @@ type FrozenHorizonPolicy =
       FreeZone: bool } // Allow changes freely after frozen/slushy period
 
 /// Horizon zone classification
-[<JsonFSharpConverter>]
 type HorizonZone =
     | Frozen // Cannot change
     | Slushy // Can change with approval
@@ -156,7 +150,6 @@ module Firming =
         daysFromNow <= policy.AutoFirmDays
 
 /// Time bucket granularity for netting reports
-[<JsonFSharpConverter>]
 type TimeBucketGranularity =
     | Daily
     | Weekly

@@ -89,25 +89,39 @@ module KpiQueryService =
                   BottleneckReason = None }
 
             let materialPeriodView =
-                let skuId =
-                    request.SkuFilter
-                    |> Option.bind List.tryHead
-                    |> Option.defaultValue ""
-
                 let inv =
-                    match inventories |> Map.tryFind skuId with
-                    | Some snapshot -> snapshot
+                    match request.SkuFilter with
+                    | Some skus ->
+                        let skuId = skus |> List.tryHead |> Option.defaultValue ""
+                        inventories
+                        |> Map.tryFind skuId
+                        |> Option.defaultValue
+                            { SkuId = skuId
+                              StockingPointId = ""
+                              OnHandQty = 0m
+                              AvailableToPromise = 0m
+                              QualityHoldQty = 0m
+                              DamagedQty = 0m
+                              InTransitInboundQty = 0m
+                              InTransitOutboundQty = 0m
+                              SafetyStockQty = 0m
+                              MaxStockQty = None
+                              DaysOfSupply = 0m
+                              SnapshotDate = DateOnly.FromDateTime(DateTime.UtcNow) }
                     | None ->
-                        { SkuId = skuId
+                        let list = inventories |> Map.values |> Seq.toList
+                        { SkuId = "ALL"
                           StockingPointId = ""
-                          OnHandQty = 0m
-                          AvailableToPromise = 0m
-                          QualityHoldQty = 0m
-                          DamagedQty = 0m
-                          InTransitInboundQty = 0m
-                          InTransitOutboundQty = 0m
-                          SafetyStockQty = 0m
-                          MaxStockQty = None
+                          OnHandQty = list |> List.sumBy (fun i -> i.OnHandQty)
+                          AvailableToPromise = list |> List.sumBy (fun i -> i.AvailableToPromise)
+                          QualityHoldQty = list |> List.sumBy (fun i -> i.QualityHoldQty)
+                          DamagedQty = list |> List.sumBy (fun i -> i.DamagedQty)
+                          InTransitInboundQty = list |> List.sumBy (fun i -> i.InTransitInboundQty)
+                          InTransitOutboundQty = list |> List.sumBy (fun i -> i.InTransitOutboundQty)
+                          SafetyStockQty = list |> List.sumBy (fun i -> i.SafetyStockQty)
+                          MaxStockQty =
+                            let maxes = list |> List.choose (fun i -> i.MaxStockQty)
+                            if maxes.IsEmpty then None else Some(List.sum maxes)
                           DaysOfSupply = 0m
                           SnapshotDate = DateOnly.FromDateTime(DateTime.UtcNow) }
 
@@ -163,7 +177,12 @@ module KpiQueryService =
                     let! demands = sources.Demand.GetDemandLines request.PlantId startDate endDate request.Context
                     let! operations = sources.Capacity.GetOperations request.PlantId startDate endDate request.Context
 
-                    let skuList = request.SkuFilter |> Option.defaultValue []
+                    let! skuList =
+                        task {
+                            match request.SkuFilter with
+                            | Some skus -> return skus
+                            | None -> return! sources.Material.GetAllSkus()
+                        }
 
                     let! supplies =
                         task {
@@ -259,7 +278,12 @@ module KpiQueryService =
                     let! demands = sources.Demand.GetDemandLines request.PlantId startDate endDate request.Context
                     let! operations = sources.Capacity.GetOperations request.PlantId startDate endDate request.Context
 
-                    let skuList = request.SkuFilter |> Option.defaultValue []
+                    let! skuList =
+                        task {
+                            match request.SkuFilter with
+                            | Some skus -> return skus
+                            | None -> return! sources.Material.GetAllSkus()
+                        }
 
                     let! supplies =
                         task {
