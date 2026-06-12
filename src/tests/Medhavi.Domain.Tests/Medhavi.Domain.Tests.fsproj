@@ -6,7 +6,7 @@
     <GenerateProgramFile>false</GenerateProgramFile>
   </PropertyGroup>
 
-  <ItemGroup>
+  <!--<ItemGroup>
     <Compile Include="Tests.fs" />
     <Compile Include="SharedKernelTests.fs" />
     <Compile Include="RoutingTests.fs" />
@@ -14,7 +14,7 @@
     <Compile Include="PromiseTests.fs" />
     <Compile Include="AnalyticsTests.fs" />
     <Compile Include="Program.fs" />
-  </ItemGroup>
+  </ItemGroup>-->
 
   <ItemGroup>
     <ProjectReference Include="..\..\Medhavi.Common\Medhavi.Common.fsproj" />

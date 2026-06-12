@@ -9,13 +9,27 @@ open Medhavi.Web.Pages
 open Medhavi.Web.AppShell
 open Medhavi.Scenario
 open Medhavi.SharedKernel.ScenarioContracts
+open Medhavi.Web.DemandWorkbench
 
 module UITests =
 
     module StateHelpers =
         let initModel : Medhavi.Web.AppShell.Model = Medhavi.Web.AppShell.initModel
+        
+        let dummyDemandStore =
+            { GetSnapshot = fun () -> []
+              Refresh = fun () -> System.Threading.Tasks.Task.CompletedTask
+              Subscribe = fun _ -> { new IDisposable with member _.Dispose() = () }
+              SetScope = fun _ -> System.Threading.Tasks.Task.CompletedTask }
+              
+        let dummyStores =
+            { Demand = dummyDemandStore
+              Supply = Unchecked.defaultof<Medhavi.Web.Stores.SupplyStore>
+              Capacity = Unchecked.defaultof<Medhavi.Web.Stores.CapacityStore>
+              Scenario = Unchecked.defaultof<Medhavi.Web.Stores.ScenarioStore>
+              Activity = Unchecked.defaultof<Medhavi.Web.Stores.ActivityStore> }
+
         let update (msg: Medhavi.Web.AppShell.Message) (model: Medhavi.Web.AppShell.Model) : Medhavi.Web.AppShell.Model * Cmd<Medhavi.Web.AppShell.Message> =
-            let dummyStores = Unchecked.defaultof<Medhavi.Web.AppShell.Stores>
             let dummyPlanning = Unchecked.defaultof<Medhavi.Web.Services.PlanningService.PlanningCommandService>
             let dummyWorkspace = Unchecked.defaultof<Medhavi.Web.Services.WorkspaceContextService>
             Medhavi.Web.AppShell.update dummyStores dummyPlanning dummyWorkspace msg model
@@ -111,36 +125,51 @@ module UITests =
             testCase "3. Demand Workbench Grid virtualized loading and debounced search" (fun () ->
                 let model = StateHelpers.initModel
                 
+                let mockRow =
+                    { DemandLineId = "dl-1"
+                      DemandOrderId = "ORD-001"
+                      SkuId = "SKU-A"
+                      StockingPointId = "LOC-1"
+                      Quantity = 100.0m
+                      UnitOfMeasure = "PCS"
+                      OrderDate = DateTimeOffset.Now
+                      RequestedDeliveryDate = DateTimeOffset.Now
+                      Priority = 1
+                      DemandCategory = "Standard"
+                      OpenQuantity = 100.0m
+                      FulfilledQuantity = 0.0m
+                      Status = "Tentative" }
+
                 // Type search text "ORD-001" which schedules a 300ms delayed TriggerSearch message
-                let step1, searchCmd = Pages.DemandWorkbench.update (Pages.DemandWorkbench.SearchTextChanged "ORD-001") model.DemandWorkbench
+                let step1, searchCmd = DemandWorkbench.Update.update StateHelpers.dummyDemandStore (SearchTextChanged "ORD-001") model.DemandWorkbench
                 
                 test <@ step1.PendingSearchText = "ORD-001" @>
                 test <@ step1.SearchText = "" @> // SearchText should not update immediately (debounced)
                 
                 // Trigger the search directly as the debouncer would
-                let step2, _ = Pages.DemandWorkbench.update (Pages.DemandWorkbench.TriggerSearch "ORD-001") step1
+                let step2, _ = DemandWorkbench.Update.update StateHelpers.dummyDemandStore (TriggerSearch "ORD-001") step1
                 test <@ step2.SearchText = "ORD-001" @>
 
                 // If TriggerSearch is sent with outdated text, it should be ignored
-                let step3, _ = Pages.DemandWorkbench.update (Pages.DemandWorkbench.TriggerSearch "ORD-old") step1
+                let step3, _ = DemandWorkbench.Update.update StateHelpers.dummyDemandStore (TriggerSearch "ORD-old") step1
                 test <@ step3.SearchText = "" @> // Ignored because PendingSearchText is ORD-001
 
                 // Select a row for details lazy loading
-                let step4, detailCmd = Pages.DemandWorkbench.update (Pages.DemandWorkbench.SelectDemand (Some "ORD-001")) step2
-                test <@ step4.SelectedDemandId = Some "ORD-001" @>
+                let step4, detailCmd = DemandWorkbench.Update.update StateHelpers.dummyDemandStore (RowSelected mockRow) step2
+                test <@ step4.SelectedDemand = Some mockRow @>
                 test <@ step4.IsLoadingDetails = true @>
-                test <@ step4.Details.IsNone @>
+                test <@ step4.DetailsText.IsNone @>
 
                 // Loaded details should populate
-                let step5, _ = Pages.DemandWorkbench.update (Pages.DemandWorkbench.LoadDetails "Details text populated.") step4
+                let step5, _ = DemandWorkbench.Update.update StateHelpers.dummyDemandStore (DetailsLoaded "Details text populated.") step4
                 test <@ step5.IsLoadingDetails = false @>
-                test <@ step5.Details = Some "Details text populated." @>
+                test <@ step5.DetailsText = Some "Details text populated." @>
 
                 // Dismiss details selection
-                let step6, _ = Pages.DemandWorkbench.update (Pages.DemandWorkbench.SelectDemand None) step5
-                test <@ step6.SelectedDemandId.IsNone @>
+                let step6, _ = DemandWorkbench.Update.update StateHelpers.dummyDemandStore CloseDetails step5
+                test <@ step6.SelectedDemand.IsNone @>
                 test <@ step6.IsLoadingDetails = false @>
-                test <@ step6.Details.IsNone @>
+                test <@ step6.DetailsText.IsNone @>
             )
 
             testCase "4. Background Operations and Activity Feed Monitor" (fun () ->

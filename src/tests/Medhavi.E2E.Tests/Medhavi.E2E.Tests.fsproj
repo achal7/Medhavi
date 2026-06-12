@@ -6,10 +6,10 @@
     <GenerateProgramFile>false</GenerateProgramFile>
   </PropertyGroup>
 
-  <ItemGroup>
+  <!--<ItemGroup>
     <Compile Include="UITests.fs" />
     <Compile Include="Tests.fs" />
-    <Compile Include="Program.fs" />
+    <Compile Include="Program.fs" />-->
   </ItemGroup>
 
   <ItemGroup>

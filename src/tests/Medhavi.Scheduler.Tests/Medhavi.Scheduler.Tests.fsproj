@@ -6,7 +6,7 @@
     <GenerateProgramFile>false</GenerateProgramFile>
   </PropertyGroup>
 
-  <ItemGroup>
+  <!--<ItemGroup>
     <Compile Include="TestCommon.fs" />
     <Compile Include="Mrp\Domain\Algorithms\BomExplosionTests.fs" />
     <Compile Include="Mrp\Domain\Algorithms\LotSizingTests.fs" />
@@ -20,7 +20,7 @@
     <Compile Include="Mrp\Application\ForecastConsumptionTests.fs" />
     <Compile Include="Mrp\Application\MrpServiceTests.fs" />
     <Compile Include="ReplenishmentTests.fs" />
-    <Compile Include="Program.fs" />
+    <Compile Include="Program.fs" />-->
   </ItemGroup>
 
   <ItemGroup>

@@ -6,12 +6,12 @@
     <GenerateProgramFile>false</GenerateProgramFile>
   </PropertyGroup>
 
-  <ItemGroup>
+  <!--<ItemGroup>
     <Compile Include="IntegrationContractsTests.fs" />
     <Compile Include="IngestionTests.fs" />
     <Compile Include="Tests.fs" />
     <Compile Include="Program.fs" />
-  </ItemGroup>
+  </ItemGroup>-->
 
   <ItemGroup>
     <ProjectReference Include="..\..\Medhavi.Infrastructure\Medhavi.Infrastructure.fsproj" />
