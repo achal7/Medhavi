@@ -1,9 +1,8 @@
 namespace Medhavi.Scheduler.Replenishment
 
-open System
 open System.Threading.Tasks
-open Medhavi.Contracts.Domain
-open Medhavi.Demand
+open Medhavi.Contracts.Supply
+open Medhavi.Demand.Domain
 open Medhavi.SharedKernel
 
 type GetMaterialSnapshot = SkuId -> StockingPointId -> Timestamp -> Task<Result<MaterialSnapshot, ApplicationError>>

@@ -2,6 +2,7 @@ namespace Medhavi.Nexus
 
 open System
 open System.Threading.Tasks
+open Medhavi.Common
 open Medhavi.Common.Patterns
 open Medhavi.Scheduler.Mrp.Domain
 open Medhavi.Scheduler.Mrp.Application
@@ -41,8 +42,8 @@ module Mrp =
                 |> List.map (fun d ->
                     let src =
                         match d.DemandCategory with
-                        | DemandCategory.CustomerOrderDemand -> CustomerOrder(d.DemandOrderId, d.DemandLineId)
-                        | DemandCategory.SalesOrderForecast -> Forecast d.DemandLineId
+                        | Domain.DemandCategory.CustomerOrderDemand -> CustomerOrder(d.DemandOrderId, d.DemandLineId)
+                        | Domain.DemandCategory.SalesOrderForecast -> Forecast d.DemandLineId
                         | _ -> Manual d.DemandLineId
 
                     { MrpDemand.DemandId = d.DemandLineId
@@ -62,35 +63,40 @@ module Mrp =
                     (Timestamp.create now)
                     (Timestamp.create (now.AddDays(30.0)))
                     sp
-                    { MrpPolicy.defaults with CapacityPolicy = CapacityPolicy.finiteCapacity }
+                    { MrpPolicy.defaults with
+                        CapacityPolicy = CapacityPolicy.finiteCapacity }
                     mrpDemands
                     []
 
             match runRes with
-            | Error err -> logger.LogError (sprintf "   [ ERR ] Baseline MRP Run failed: %A" err)
+            | Error err -> logger.LogError(sprintf "   [ ERR ] Baseline MRP Run failed: %A" err)
             | Ok result ->
                 latestMrpRun <- Some result
                 Medhavi.Nexus.AnalyticsWiring.latestMrpRunRef <- Some result
                 logger.LogInfo "   [ OK ] Baseline MRP Run executed and cached."
-                logger.LogInfo (sprintf "   Generated Proposals: %d" (List.length result.Proposals))
+                logger.LogInfo(sprintf "   Generated Proposals: %d" (List.length result.Proposals))
 
                 if not (List.isEmpty result.Warnings) then
                     logger.LogWarning "   Warnings:"
+
                     for w in result.Warnings do
-                        logger.LogWarning (sprintf "     - %s" w)
+                        logger.LogWarning(sprintf "     - %s" w)
 
                 if not (List.isEmpty result.Errors) then
                     logger.LogError "   Errors:"
+
                     for e in result.Errors do
-                        logger.LogError (sprintf "     - %s" e)
+                        logger.LogError(sprintf "     - %s" e)
 
                 for p in result.Proposals do
-                    logger.LogInfo (
-                        sprintf "     - PropId: %s | Sku: %s | Qty: %M | Due: %s | Type: %A"
+                    logger.LogInfo(
+                        sprintf
+                            "     - PropId: %s | Sku: %s | Qty: %M | Due: %s | Type: %A"
                             (SupplyProposalId.value p.Id)
                             (SkuId.value p.SkuId)
                             (Quantity.value p.Quantity)
-                            ((Timestamp.value p.DueDate).ToString("yyyy-MM-dd HH:mm"))
+                            ((Timestamp.value p.DueDate)
+                                .ToString("yyyy-MM-dd HH:mm"))
                             p.ProposalType
                     )
         }
@@ -105,8 +111,9 @@ module Mrp =
             match req with
             | ResourceDowntimes resourceDowntimes ->
                 for payload in resourceDowntimes do
-                    logger.LogWarning (
-                        sprintf ">>> [Disruption Ingest] Resource downtime reported: Resource=%s, Start=%s, End=%s, Reason=%s"
+                    logger.LogWarning(
+                        sprintf
+                            ">>> [Disruption Ingest] Resource downtime reported: Resource=%s, Start=%s, End=%s, Reason=%s"
                             payload.ResourceId
                             (payload.StartUtc.ToString("yyyy-MM-dd HH:mm"))
                             (payload.EndUtc.ToString("yyyy-MM-dd HH:mm"))
@@ -131,14 +138,20 @@ module Mrp =
                         let! replanResult = ReplanService.executeReplan mrpDep baseline event severityMap
 
                         match replanResult with
-                        | Error err ->
-                            logger.LogError (sprintf "   [ ERR ] Reactive repair failed: %A" err)
+                        | Error err -> logger.LogError(sprintf "   [ ERR ] Reactive repair failed: %A" err)
                         | Ok newRun ->
                             let delta = Replan.PlanDeltaCalculator.calculate baseline newRun
                             logger.LogInfo "   [ OK ] Reactive repair complete."
-                            logger.LogInfo (sprintf "     - Churn (Rescheduled): %d" (List.length delta.RescheduledProposals))
-                            logger.LogInfo (sprintf "     - Added Proposals: %d" (List.length delta.AddedProposals))
-                            logger.LogInfo (sprintf "     - Cancelled Proposals: %d" (List.length delta.CancelledProposals))
+
+                            logger.LogInfo(
+                                sprintf "     - Churn (Rescheduled): %d" (List.length delta.RescheduledProposals)
+                            )
+
+                            logger.LogInfo(sprintf "     - Added Proposals: %d" (List.length delta.AddedProposals))
+
+                            logger.LogInfo(
+                                sprintf "     - Cancelled Proposals: %d" (List.length delta.CancelledProposals)
+                            )
 
                             // Update cache and persist new proposals
                             latestMrpRun <- Some newRun
@@ -149,15 +162,16 @@ module Mrp =
                                 |> Async.StartAsTask
 
                             match persistRes with
-                            | Ok _ ->
-                                logger.LogInfo "     - Repaired plan successfully persisted to database."
+                            | Ok _ -> logger.LogInfo "     - Repaired plan successfully persisted to database."
                             | Error err ->
-                                logger.LogError (sprintf "     - Failed to persist repaired proposals: %s" err)
+                                logger.LogError(sprintf "     - Failed to persist repaired proposals: %s" err)
+
                 ()
             | TransportDelays transportDelays ->
                 for payload in transportDelays do
-                    logger.LogWarning (
-                        sprintf ">>> [Disruption Ingest] Transport delay reported: Leg=%s, DelayMins=%.1f, NewArrival=%s, Reason=%s"
+                    logger.LogWarning(
+                        sprintf
+                            ">>> [Disruption Ingest] Transport delay reported: Leg=%s, DelayMins=%.1f, NewArrival=%s, Reason=%s"
                             payload.TransportLegId
                             payload.EstimatedDelayMinutes
                             (payload.NewArrivalUtc.ToString("yyyy-MM-dd HH:mm"))
@@ -171,7 +185,9 @@ module Mrp =
 
                         match legOpt with
                         | None ->
-                            logger.LogError (sprintf "   - Transport leg %s not found in database. Skipping." payload.TransportLegId)
+                            logger.LogError(
+                                sprintf "   - Transport leg %s not found in database. Skipping." payload.TransportLegId
+                            )
                         | Some leg ->
                             let matchedPropOpt =
                                 baseline.Proposals
@@ -186,15 +202,17 @@ module Mrp =
 
                             match matchedPropOpt with
                             | None ->
-                                logger.LogWarning (
-                                    sprintf "   - No active transfer order proposal matches leg %s (Origin=%s, Dest=%s). Skipping."
+                                logger.LogWarning(
+                                    sprintf
+                                        "   - No active transfer order proposal matches leg %s (Origin=%s, Dest=%s). Skipping."
                                         payload.TransportLegId
                                         leg.Origin
                                         leg.Destination
                                 )
                             | Some prop ->
-                                logger.LogInfo (
-                                    sprintf "   - Found matching Transfer Order proposal %s. Triggering reactive repair..."
+                                logger.LogInfo(
+                                    sprintf
+                                        "   - Found matching Transfer Order proposal %s. Triggering reactive repair..."
                                         (SupplyProposalId.value prop.Id)
                                 )
 
@@ -211,14 +229,24 @@ module Mrp =
                                 let! replanResult = ReplanService.executeReplan mrpDep baseline event severityMap
 
                                 match replanResult with
-                                | Error err ->
-                                    logger.LogError (sprintf "   [ ERR ] Reactive repair failed: %A" err)
+                                | Error err -> logger.LogError(sprintf "   [ ERR ] Reactive repair failed: %A" err)
                                 | Ok newRun ->
                                     let delta = Replan.PlanDeltaCalculator.calculate baseline newRun
                                     logger.LogInfo "   [ OK ] Reactive repair complete."
-                                    logger.LogInfo (sprintf "     - Churn (Rescheduled): %d" (List.length delta.RescheduledProposals))
-                                    logger.LogInfo (sprintf "     - Added Proposals: %d" (List.length delta.AddedProposals))
-                                    logger.LogInfo (sprintf "     - Cancelled Proposals: %d" (List.length delta.CancelledProposals))
+
+                                    logger.LogInfo(
+                                        sprintf
+                                            "     - Churn (Rescheduled): %d"
+                                            (List.length delta.RescheduledProposals)
+                                    )
+
+                                    logger.LogInfo(
+                                        sprintf "     - Added Proposals: %d" (List.length delta.AddedProposals)
+                                    )
+
+                                    logger.LogInfo(
+                                        sprintf "     - Cancelled Proposals: %d" (List.length delta.CancelledProposals)
+                                    )
 
                                     latestMrpRun <- Some newRun
                                     Medhavi.Nexus.AnalyticsWiring.latestMrpRunRef <- Some newRun
@@ -228,10 +256,10 @@ module Mrp =
                                         |> Async.StartAsTask
 
                                     match persistRes with
-                                    | Ok _ ->
-                                        logger.LogInfo "     - Repaired plan successfully persisted to database."
+                                    | Ok _ -> logger.LogInfo "     - Repaired plan successfully persisted to database."
                                     | Error err ->
-                                        logger.LogError (sprintf "     - Failed to persist repaired proposals: %s" err)
+                                        logger.LogError(sprintf "     - Failed to persist repaired proposals: %s" err)
+
                 ()
-            | _ -> logger.LogError (sprintf "INVALID REQUEST %A for MRP" req)
+            | _ -> logger.LogError(sprintf "INVALID REQUEST %A for MRP" req)
         }

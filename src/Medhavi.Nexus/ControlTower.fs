@@ -4,11 +4,14 @@ open System
 open System.Threading.Tasks
 open Medhavi.SharedKernel
 open Medhavi.SharedKernel.BoundedContexts
-open Medhavi.Analytics.PlanningHorizon
 open Medhavi.Analytics.KPI
 open Medhavi.Analytics
 open Medhavi.MasterData.KpiConfiguration
-
+open Medhavi.Contracts.Demand
+open Medhavi.Contracts.Supply
+open Medhavi.Contracts.Capacity
+open Medhavi.Contracts.Transport
+open Medhavi.Contracts.Analytics
 module DigitalTwin =
 
     /// Evaluates if an anomaly is detected based on raw telemetry values
@@ -62,16 +65,19 @@ module AnalyticsWiring =
                             lines
                             |> List.map (fun line ->
                                 let mapped =
-                                    { DemandLineView.DemandLineId = line.DemandLineId
+                                    { DemandLine.DemandLineId = line.DemandLineId
                                       DemandOrderId = line.DemandOrderId
                                       SkuId = SkuId.value line.SkuId
                                       SkuCode = SkuId.value line.SkuId
                                       SkuName = SkuId.value line.SkuId
+                                      StockingPointId = StockingPointId.value line.StockingPointId
                                       CustomerId = line.CustomerId
                                       CustomerName = line.CustomerId
                                       Priority = line.Priority
                                       DemandCategory = sprintf "%A" line.DemandCategory
+                                      Status = sprintf "%A" line.Status
                                       IsFirm = line.IsFirm
+                                      UnitOfMeasure = line.UnitOfMeasure
                                       EarliestDeliveryDate =
                                         line.EarliestDeliveryDate
                                         |> Option.map (fun d -> DateOnly.FromDateTime(d.DateTime))
@@ -325,7 +331,7 @@ module AnalyticsWiring =
                                 { AvailableHours = (DurationMinutes.value b.AvailableMinutes) / 60.0m
                                   CalendarHours = (DurationMinutes.value b.AvailableMinutes) / 60.0m
                                   MaintenanceHours = 0.0m }
-                                : Medhavi.Analytics.PlanningHorizon.CapacityBucketView)
+                                : CapacityBucketView)
                     }
               GetMaintenanceWindows = fun plantId startDate endDate -> task { return [] } }
 

@@ -3,8 +3,7 @@ module Medhavi.Integration.Adapters.TransportLeg
 open System
 open System.Threading
 open Medhavi.Common.Patterns
-open Medhavi.Contracts
-open Medhavi.Contracts.Integration
+open Medhavi.Contracts.Transport
 open Medhavi.Integration
 open Medhavi.Infrastructure.IO
 open Medhavi.Infrastructure.Stores.EnvelopeStore

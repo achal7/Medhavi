@@ -14,14 +14,14 @@ module ACL =
         | "plant" -> Ok NodeType.Plant
         | "distributioncenter"
         | "distribution_center"
-        | "dc" -> Ok DistributionCenter
+        | "dc" -> Ok NodeType.DistributionCenter
         | "warehouse"
-        | "wh" -> Ok Warehouse
+        | "wh" -> Ok NodeType.Warehouse
         | "stockingpoint"
-        | "sp" -> Ok StockingPoint
+        | "sp" -> Ok NodeType.StockingPoint
         | "supplier"
-        | "vendor" -> Ok Supplier
-        | "customer" -> Ok Customer
+        | "vendor" -> Ok NodeType.Supplier
+        | "customer" -> Ok NodeType.Customer
         | s -> Ok(Other s)
 
     let toAttributes (req: NodeAttributesReq) : Result<NodeAttributes, DomainError> =

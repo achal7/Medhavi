@@ -128,6 +128,7 @@ module Program =
                     | TransportDelays transportDelays ->
                         Mrp.handleRequest mrpDep masterDataContext printer event
                         |> ignore
+                    | DemandsImported req -> failwith "Not Implemented"
             }
 
         let subscribeTask =
@@ -242,10 +243,10 @@ module Program =
 
                     let request: Medhavi.Analytics.KPI.KpiQueryRequest =
                         { PlantId = "PLANT-DEFAULT"
-                          Context = Medhavi.Analytics.PlanningHorizon.Live
+                          Context = Medhavi.Contracts.Analytics.PlanContext.Live
                           Periods =
                             [ for i in -5 .. 25 do
-                                  Medhavi.Analytics.PlanningHorizon.PlanningPeriod.PlanningDay(
+                                  Medhavi.Contracts.Analytics.PlanningPeriod.PlanningDay(
                                       DateOnly.FromDateTime(DateTime.UtcNow.AddDays(float i))
                                   ) ]
                           SkuFilter = None }

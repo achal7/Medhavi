@@ -7,3 +7,12 @@ window.setupConnectionListener = (dotNetHelper) => {
     window.addEventListener("offline", update);
     update();
 };
+
+window.setupKeyboardListener = (dotNetHelper) => {
+    window.addEventListener("keydown", (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+            e.preventDefault();
+            dotNetHelper.invokeMethodAsync("ToggleCommandPalette");
+        }
+    });
+};

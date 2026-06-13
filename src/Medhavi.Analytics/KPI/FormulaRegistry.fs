@@ -1,7 +1,8 @@
 namespace Medhavi.Analytics.KPI
 
-open System
-open Medhavi.Analytics.PlanningHorizon
+open Medhavi.Contracts.Capacity
+open Medhavi.Contracts.Demand
+open Medhavi.Contracts.Supply
 
 type KpiFormula<'T> =
     { KpiId: string

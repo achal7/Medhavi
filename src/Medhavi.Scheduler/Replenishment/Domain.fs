@@ -1,8 +1,7 @@
 namespace Medhavi.Scheduler.Replenishment
 
-open System
-open Medhavi.Contracts.Domain
-open Medhavi.Demand
+open Medhavi.Contracts.Supply
+open Medhavi.Demand.Domain
 open Medhavi.Scheduler.Mrp.Domain.Algorithms
 open Medhavi.SharedKernel
 

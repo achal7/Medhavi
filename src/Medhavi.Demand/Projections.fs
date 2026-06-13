@@ -2,7 +2,7 @@ namespace Medhavi.Demand
 
 open System
 open System.Threading.Tasks
-
+open Medhavi.Demand.Domain
 // =============================================================================
 // Demand Query Service — BC-scoped read model
 // =============================================================================
@@ -22,11 +22,8 @@ type DemandQueryService =
     }
 
 module Projections =
-    open System
-    open System.Threading.Tasks
     open Medhavi.SharedKernel
     open Medhavi.Infrastructure.Projections
-    open Medhavi.SharedKernel.Projections
     open Medhavi.Demand.Domain.DemandLineAgg
 
     let evolveProjection (state: Map<string, DemandLine>) (evt: DemandLineEvent) =
@@ -46,7 +43,7 @@ module Projections =
         (agent: ProjectionAgent<Map<string, DemandLine>, DemandLineEvent>)
         : DemandQueryService =
         { GetDemandLines =
-            fun plantId startDate endDate ->
+            fun _ startDate endDate ->
                 task {
                     let! all = agent.GetStateAsync()
 
@@ -88,7 +85,7 @@ module Projections =
                         |> Seq.toList
                 }
           GetByStatus =
-            fun status plantId ->
+            fun status _ ->
                 task {
                     let! all = agent.GetStateAsync()
 

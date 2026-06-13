@@ -3,12 +3,7 @@ module Medhavi.Promise.PromiseTypes
 open System
 open Medhavi.SharedKernel
 open Medhavi.Transport
-
-/// Promise date range with confidence intervals as specified in PDD
-type PromiseDateRange =
-    { Earliest: DateTimeOffset  // optimistic date (earliest possible arrival)
-      Committed: DateTimeOffset  // p50 date (most likely)
-      Latest: DateTimeOffset }   // conservative date (p95/p85 date)
+open Medhavi.Contracts.Promise
 
 /// Cost breakdown for a promise evaluation
 type CostBreakdown =
@@ -38,53 +33,6 @@ module CostBreakdown =
           HoldingCost = a.HoldingCost + b.HoldingCost
           LatenessPenalty = a.LatenessPenalty + b.LatenessPenalty }
 
-/// Reason codes for promise limiters
-type PromiseReasonCode =
-    | MaterialShortfall
-    | MaterialReservationConflict
-    | SafetyViolation
-    | SupplierMOQ
-    | SupplierLeadtimeExceeded
-    | CapacityShortfall
-    | CapacityLocked
-    | CapacitySafetyBuffer
-    | QtyDurationUnsupported
-    | NoTransportLeg
-    | NoTransportCapacity
-    | CutoffMissed
-    | RegulatoryBlocked
-    | RoutingInvalid
-    | RoutingCapacityFail
-    | AlternateExhausted
-    | FullOrderViolation
-    | FullDeliveryViolation
-    | CostCapExceeded
-    | RiskCapExceeded
-    | SearchTimeout
-    | DataStale
-
-/// Domains that can limit a promise decision
-type PromiseLimiterDomain =
-    | Material
-    | Capacity
-    | Transport
-    | Supplier
-    | Routing
-    | Policy
-    | System
-
-/// Limiter output: domain + reason + suggestions for remediation
-type PromiseLimiter =
-    { Domain: PromiseLimiterDomain
-      Code: PromiseReasonCode
-      Message: string
-      Suggestions: string list }
-
-/// Promise decision status
-type PromiseDecisionStatus =
-    | Accepted
-    | Rejected
-
 /// Order line for promise evaluation
 type OrderLine =
     { LineId: string
@@ -105,7 +53,7 @@ type Order =
       RequestDate: DateTimeOffset }
 
 /// Promise request
-type PromiseRequest =
+type PromiseRequestCmd =
     { Order: Order
       AsOfDate: DateTimeOffset
       CustomerTier: string option
@@ -168,8 +116,6 @@ type ReservationId = string
 /// Promise response
 type PromiseResponse =
     { Decision: PromiseDecisionStatus
-      PromiseDate: PromiseDateRange option
-      Limiter: PromiseLimiter option
       Routing: RoutingChoice option
       Itinerary: Itinerary option
       Material: MaterialSnapshot option
@@ -180,8 +126,7 @@ type PromiseResponse =
 
 /// Promise result (for multi-line handling)
 type PromiseResult =
-    { Responses: PromiseResponse list
-      Limiters: PromiseLimiter list }
+    { Responses: PromiseResponse list }
 
 /// Provider errors used for degradation mapping
 type ProviderError =

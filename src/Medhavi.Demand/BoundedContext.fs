@@ -5,11 +5,11 @@ open System.Threading.Tasks
 open Medhavi.SharedKernel
 open Medhavi.SharedKernel.BoundedContexts
 open Medhavi.Infrastructure.Projections
-open Medhavi.Infrastructure.Stores.InMemRepository
+open Medhavi.Demand.Domain
 open Medhavi.Demand.Domain.DemandLineAgg
 open Medhavi.Demand.Projections
 open Medhavi.Demand.Application
-
+open Medhavi.Infrastructure.Stores
 type DemandQueries = { DemandLine: DemandQueryService }
 
 type DemandCommands = { DemandLine: DemandLineApi }
@@ -25,8 +25,7 @@ module BoundedContext =
 
     let create () =
         // 1. Repositories
-        let demandLineRepo =
-            createInMemoryRepository<DemandLine, string, DemandLineEvent> ()
+        let demandLineRepo = InMemRepository.createInMemoryRepository<DemandLine, string, DemandLineEvent> ()
 
         // 2. Capabilities
         let capabilities = createCapabilities demandLineRepo

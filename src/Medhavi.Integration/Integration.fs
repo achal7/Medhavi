@@ -5,7 +5,9 @@ open Medhavi.Infrastructure
 open Medhavi.Contracts
 open Medhavi.Common.Serialization
 open Medhavi.Contracts.Integration
-
+open Medhavi.Contracts.Supply
+open Medhavi.Contracts.Transport
+open Medhavi.Contracts.Demand
 type IntegrationSuccess =
     { EnvelopeId: EventId
       CorrelationId: CorrelationId option }
@@ -37,6 +39,7 @@ type IntegrationEvent =
     | ResourceDowntimes of ResourceDowntimePayload list
     | TransportDelays of TransportDelayPayload list
     | MaterialReservationsImported of MaterialReservationCreateReq list
+    | DemandsImported of DemandDefineReq list
 
 [<RequireQualifiedAccess>]
 module IntegrationEventEnvelope =
@@ -73,35 +76,35 @@ module CsvHelper =
 
             match idx with
             | Some i when i < this.Values.Length ->
-                let v = this.Values.[i].Trim()
+                let v = this.Values[i].Trim()
                 if String.IsNullOrEmpty(v) then None else Some v
             | _ -> None
 
         member this.GetDecimal(columnName: string) : decimal option =
             this.Get columnName
             |> Option.bind (fun v ->
-                match System.Decimal.TryParse(v) with
+                match Decimal.TryParse(v) with
                 | true, d -> Some d
                 | _ -> None)
 
         member this.GetFloat(columnName: string) : float option =
             this.Get columnName
             |> Option.bind (fun v ->
-                match System.Double.TryParse(v) with
+                match Double.TryParse(v) with
                 | true, f -> Some f
                 | _ -> None)
 
         member this.GetInt(columnName: string) : int option =
             this.Get columnName
             |> Option.bind (fun v ->
-                match System.Int32.TryParse(v) with
+                match Int32.TryParse(v) with
                 | true, i -> Some i
                 | _ -> None)
 
         member this.GetBool(columnName: string) : bool option =
             this.Get columnName
             |> Option.bind (fun v ->
-                match System.Boolean.TryParse(v) with
+                match Boolean.TryParse(v) with
                 | true, b -> Some b
                 | _ ->
                     match v.ToLowerInvariant() with
@@ -116,7 +119,7 @@ module CsvHelper =
         member this.GetDateTimeOffset(columnName: string) : DateTimeOffset option =
             this.Get columnName
             |> Option.bind (fun v ->
-                match System.DateTimeOffset.TryParse(v) with
+                match DateTimeOffset.TryParse(v) with
                 | true, dto -> Some dto
                 | _ -> None)
 
@@ -134,10 +137,10 @@ module CsvHelper =
             [||]
         else
             let headers =
-                rawLines.[0].Split([| ',' |])
+                rawLines[0].Split([| ',' |])
                 |> Array.map (fun s -> s.Trim().Trim('"'))
 
-            rawLines.[1..]
+            rawLines[1..]
             |> Array.filter (fun line -> not (String.IsNullOrWhiteSpace(line)))
             |> Array.map (fun line ->
                 { Headers = headers

@@ -3,8 +3,7 @@ module Medhavi.Supply.Application.MaterialReservation
 open System
 open Medhavi.Common.Patterns
 open Medhavi.Common.Validation
-open Medhavi.Contracts.Integration
-open Medhavi.Contracts.Domain
+open Medhavi.Contracts.Supply
 open Medhavi.Infrastructure.Projections
 open Medhavi.SharedKernel
 open Medhavi.SharedKernel.API
@@ -38,7 +37,7 @@ module ACL =
 
     let toExpireCommand (req: MaterialReservationExpireReq) : Result<ExpireCmd, DomainError> = Ok { Id = req.Id }
 
-    let toContract (res: MaterialReservationAgg.MaterialReservation) : Medhavi.Contracts.Domain.MaterialReservation =
+    let toContract (res: MaterialReservation) : Medhavi.Contracts.Supply.MaterialReservation =
         { Id = res.Id
           IdempotencyKey = res.IdempotencyKey
           SkuId = SkuId.value res.SkuId
@@ -83,7 +82,7 @@ let createCapabilities
         >=> handleCommand (fun cmd -> cmd.Id) repo Expire decide }
 
 let evolveProjection
-    (state: Map<string, Medhavi.Contracts.Domain.MaterialReservation>)
+    (state: Map<string, Medhavi.Contracts.Supply.MaterialReservation>)
     (evt: MaterialReservationEvent)
     =
     match evt with
@@ -131,7 +130,7 @@ let evolveProjection
         | None -> state
 
 let createProjectionAgent () =
-    ProjectionAgent<Map<string, Medhavi.Contracts.Domain.MaterialReservation>, MaterialReservationEvent>(
+    ProjectionAgent<Map<string, Medhavi.Contracts.Supply.MaterialReservation>, MaterialReservationEvent>(
         evolveProjection,
         Map.empty,
         "MaterialReservationReadModel"

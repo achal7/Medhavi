@@ -4,9 +4,10 @@ open System
 open System.Threading.Tasks
 open Medhavi.Web
 open Medhavi.Nexus
+open Medhavi.Contracts.Demand
 
 type DemandStore = {
-    GetSnapshot : unit -> DemandViewItem list
+    GetSnapshot : unit -> DemandLine list
     Refresh     : unit -> Task<unit>
     Subscribe   : (unit -> unit) -> IDisposable
     SetScope    : QueryScope -> Task<unit>
@@ -14,12 +15,13 @@ type DemandStore = {
 
 module DemandStore =
     let create (engine: MedhaviEngine) : DemandStore =
-        let mutable cache : DemandViewItem list = []
+        let mutable cache : DemandLine list = []
         let mutable currentScope : QueryScope = {
             ScenarioId = None
             PlantId = None
-            HorizonStart = DateTime.Today
-            HorizonEnd = DateTime.Today.AddDays(30.0)
+            StockingPointId = None
+            HorizonStart = DateTime.Today.AddDays(-7.0)
+            HorizonEnd = DateTime.Today.AddDays(90.0)
         }
         let listeners = System.Collections.Generic.List<unit -> unit>()
 
@@ -40,19 +42,29 @@ module DemandStore =
                     printfn "[DemandStore] Starting refresh..."
                     let! demands = engine.GetDemands()
                     printfn "[DemandStore] Retrieved %d demands from engine." demands.Length
+                    let! stockingPoints = engine.GetStockingPoints()
+                    let stockingPointToPlantMap = stockingPoints |> List.map (fun sp -> sp.Id, sp.PlantId) |> readOnlyDict
                     let filtered = 
                         demands
                         |> List.filter (fun d ->
                             let plantMatch = 
                                 match currentScope.PlantId with
                                 | None -> true
-                                | Some pid -> d.StockingPointId.Contains(pid, StringComparison.OrdinalIgnoreCase)
+                                | Some pid ->
+                                    match stockingPointToPlantMap.TryGetValue(d.StockingPointId) with
+                                    | true, plantId -> plantId.Equals(pid, StringComparison.OrdinalIgnoreCase)
+                                    | false, _ -> d.StockingPointId.Contains(pid, StringComparison.OrdinalIgnoreCase)
                             
-                            let reqDate = d.RequestedDeliveryDate.Date
+                            let spMatch =
+                                match currentScope.StockingPointId with
+                                | None -> true
+                                | Some spid -> d.StockingPointId.Equals(spid, StringComparison.OrdinalIgnoreCase)
+                            
+                            let reqDate = d.RequestedDeliveryDate
                             let dateMatch = 
-                                reqDate >= currentScope.HorizonStart.Date && reqDate <= currentScope.HorizonEnd.Date
+                                reqDate >= DateOnly.FromDateTime(currentScope.HorizonStart) && reqDate <= DateOnly.FromDateTime(currentScope.HorizonEnd)
 
-                            plantMatch && dateMatch
+                            plantMatch && spMatch && dateMatch
                         )
                     printfn "[DemandStore] Filtered to %d demands." filtered.Length
                     cache <- filtered

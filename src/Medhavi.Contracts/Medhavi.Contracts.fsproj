@@ -10,5 +10,10 @@
     <Compile Include="Integration.fs" />
     <Compile Include="IntegrationPayloads.fs" />
     <Compile Include="Analytics.fs" />
+    <Compile Include="Capacity.fs" />
+    <Compile Include="Demand.fs" />
+    <Compile Include="Transport.fs" />
+    <Compile Include="Supply.fs" />
+    <Compile Include="Promise.fs" />
   </ItemGroup>
 </Project>

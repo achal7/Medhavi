@@ -1,4 +1,4 @@
-namespace Medhavi.Demand
+namespace Medhavi.Demand.Domain
 
 open System
 open Medhavi.SharedKernel
@@ -69,145 +69,121 @@ type DemandLine =
       FulfilledQuantity: Quantity
       Status: DemandStatus }
 
-type DemandLineDefineReq =
-    { DemandLineId: string
-      DemandOrderId: string
-      SkuId: string
-      StockingPointId: string
-      CustomerId: string
-      Quantity: decimal
-      UnitOfMeasure: string
-      OrderDate: DateTimeOffset
-      EarliestDeliveryDate: DateTimeOffset option
-      RequestedDeliveryDate: DateTimeOffset
-      LatestDeliveryDate: DateTimeOffset option
-      ConfirmedDeliveryDate: DateTimeOffset option
-      ActualDeliveryDate: DateTimeOffset option
-      Priority: int
-      DemandCategory: DemandCategory
-      IsFirm: bool
-      IsFrozen: bool }
 
-type FulfillDemandLineReq =
-    { DemandLineId: string
-      Quantity: decimal }
+module DemandLineAgg =
 
-module Domain =
+    open Medhavi.SharedKernel.Aggregate
 
-    module DemandLineAgg =
+    type DefineDemandLineCmd =
+        { DemandLineId: string
+          DemandOrderId: string
+          SkuId: SkuId
+          StockingPointId: StockingPointId
+          CustomerId: string
+          Quantity: Quantity
+          UnitOfMeasure: string
+          OrderDate: DateTimeOffset
+          EarliestDeliveryDate: DateTimeOffset option
+          RequestedDeliveryDate: DateTimeOffset
+          LatestDeliveryDate: DateTimeOffset option
+          ConfirmedDeliveryDate: DateTimeOffset option
+          ActualDeliveryDate: DateTimeOffset option
+          Priority: int
+          DemandCategory: DemandCategory
+          IsFirm: bool
+          IsFrozen: bool }
 
-        open Medhavi.SharedKernel.Aggregate
+    type FulfillDemandLineCmd =
+        { DemandLineId: string
+          Quantity: Quantity }
 
-        type DefineDemandLineCmd =
-            { DemandLineId: string
-              DemandOrderId: string
-              SkuId: SkuId
-              StockingPointId: StockingPointId
-              CustomerId: string
-              Quantity: Quantity
-              UnitOfMeasure: string
-              OrderDate: DateTimeOffset
-              EarliestDeliveryDate: DateTimeOffset option
-              RequestedDeliveryDate: DateTimeOffset
-              LatestDeliveryDate: DateTimeOffset option
-              ConfirmedDeliveryDate: DateTimeOffset option
-              ActualDeliveryDate: DateTimeOffset option
-              Priority: int
-              DemandCategory: DemandCategory
-              IsFirm: bool
-              IsFrozen: bool }
+    type DemandLineCommand =
+        | Create of DefineDemandLineCmd
+        | Fulfill of FulfillDemandLineCmd
 
-        type FulfillDemandLineCmd =
-            { DemandLineId: string
-              Quantity: Quantity }
+    type DemandLineCreatedEvt = DemandLine
 
-        type DemandLineCommand =
-            | Create of DefineDemandLineCmd
-            | Fulfill of FulfillDemandLineCmd
+    type DemandLineFulfilledEvt =
+        { DemandLineId: string
+          Quantity: Quantity }
 
-        type DemandLineCreatedEvt = DemandLine
+    type DemandLineEvent =
+        | DemandLineCreated of DemandLineCreatedEvt
+        | DemandLineFulfilled of DemandLineFulfilledEvt
 
-        type DemandLineFulfilledEvt =
-            { DemandLineId: string
-              Quantity: Quantity }
+    type DecideDemandLine = Decide<DemandLine, DemandLineCommand, DemandLineEvent>
+    type EvolveDemandLine = Evolve<DemandLine, DemandLineEvent>
 
-        type DemandLineEvent =
-            | DemandLineCreated of DemandLineCreatedEvt
-            | DemandLineFulfilled of DemandLineFulfilledEvt
+    let validateAndDefineDemandLine now (cmd: DefineDemandLineCmd) : Validation<DemandLine, DomainError> =
+        let makeDemandLine _ (cmd: DefineDemandLineCmd) =
+            { DemandLineId = cmd.DemandLineId
+              DemandOrderId = cmd.DemandOrderId
+              SkuId = cmd.SkuId
+              StockingPointId = cmd.StockingPointId
+              CustomerId = cmd.CustomerId
+              Quantity = cmd.Quantity
+              UnitOfMeasure = cmd.UnitOfMeasure
+              OrderDate = cmd.OrderDate
+              EarliestDeliveryDate = cmd.EarliestDeliveryDate
+              RequestedDeliveryDate = cmd.RequestedDeliveryDate
+              LatestDeliveryDate = cmd.LatestDeliveryDate
+              ConfirmedDeliveryDate = cmd.ConfirmedDeliveryDate
+              ActualDeliveryDate = cmd.ActualDeliveryDate
+              Priority = cmd.Priority
+              DemandCategory = cmd.DemandCategory
+              IsFirm = cmd.IsFirm
+              IsFrozen = cmd.IsFrozen
+              OpenQuantity = cmd.Quantity
+              FulfilledQuantity = Quantity.Zero
+              Status = DemandStatus.Open }
 
-        type DecideDemandLine = Decide<DemandLine, DemandLineCommand, DemandLineEvent>
-        type EvolveDemandLine = Evolve<DemandLine, DemandLineEvent>
+        Valid(makeDemandLine now cmd)
 
-        let validateAndDefineDemandLine now (cmd: DefineDemandLineCmd) : Validation<DemandLine, DomainError> =
-            let makeDemandLine now (cmd: DefineDemandLineCmd) =
-                { DemandLineId = cmd.DemandLineId
-                  DemandOrderId = cmd.DemandOrderId
-                  SkuId = cmd.SkuId
-                  StockingPointId = cmd.StockingPointId
-                  CustomerId = cmd.CustomerId
-                  Quantity = cmd.Quantity
-                  UnitOfMeasure = cmd.UnitOfMeasure
-                  OrderDate = cmd.OrderDate
-                  EarliestDeliveryDate = cmd.EarliestDeliveryDate
-                  RequestedDeliveryDate = cmd.RequestedDeliveryDate
-                  LatestDeliveryDate = cmd.LatestDeliveryDate
-                  ConfirmedDeliveryDate = cmd.ConfirmedDeliveryDate
-                  ActualDeliveryDate = cmd.ActualDeliveryDate
-                  Priority = cmd.Priority
-                  DemandCategory = cmd.DemandCategory
-                  IsFirm = cmd.IsFirm
-                  IsFrozen = cmd.IsFrozen
-                  OpenQuantity = cmd.Quantity
-                  FulfilledQuantity = Quantity.Zero
-                  Status = DemandStatus.Open }
+    let applyFulfilled (state: DemandLine) (evt: DemandLineFulfilledEvt) : DemandLine =
+        let newFulfilled = state.FulfilledQuantity + evt.Quantity
+        let finalOpen = state.OpenQuantity - evt.Quantity
 
-            Valid(makeDemandLine now cmd)
+        let finalStatus =
+            if finalOpen.IsZero then
+                DemandStatus.Fulfilled
+            else
+                DemandStatus.PartiallyFulfilled
 
-        let applyFulfilled (state: DemandLine) (evt: DemandLineFulfilledEvt) : DemandLine =
-            let newFulfilled = state.FulfilledQuantity + evt.Quantity
-            let finalOpen = state.OpenQuantity - evt.Quantity
+        { state with
+            OpenQuantity = finalOpen
+            FulfilledQuantity = newFulfilled
+            Status = finalStatus }
 
-            let finalStatus =
-                if finalOpen.IsZero then
-                    DemandStatus.Fulfilled
-                else
-                    DemandStatus.PartiallyFulfilled
+    let decide: DecideDemandLine =
+        fun command stateOpt ->
+            match command, stateOpt with
+            | Create cmd, None ->
+                createAggregate (validateAndDefineDemandLine Timestamp.now) (fun dl -> [ DemandLineCreated dl ]) cmd
+            | Fulfill cmd, Some state ->
+                let newFulfilled = state.FulfilledQuantity + cmd.Quantity
+                let finalOpen = state.OpenQuantity - cmd.Quantity
 
-            { state with
-                OpenQuantity = finalOpen
-                FulfilledQuantity = newFulfilled
-                Status = finalStatus }
+                let finalStatus =
+                    if finalOpen.IsZero then
+                        DemandStatus.Fulfilled
+                    else
+                        DemandStatus.PartiallyFulfilled
 
-        let decide: DecideDemandLine =
-            fun command stateOpt ->
-                match command, stateOpt with
-                | Create cmd, None ->
-                    createAggregate (validateAndDefineDemandLine Timestamp.now) (fun dl -> [ DemandLineCreated dl ]) cmd
-                | Fulfill cmd, Some state ->
-                    let newFulfilled = state.FulfilledQuantity + cmd.Quantity
-                    let finalOpen = state.OpenQuantity - cmd.Quantity
+                Ok
+                    { NewState =
+                        { state with
+                            OpenQuantity = finalOpen
+                            FulfilledQuantity = newFulfilled
+                            Status = finalStatus }
+                      Events =
+                        [ DemandLineFulfilled
+                              { DemandLineId = cmd.DemandLineId
+                                Quantity = cmd.Quantity } ] }
+            | _, _ -> Error(DomainError.validation "Not Implemented or state mismatch")
 
-                    let finalStatus =
-                        if finalOpen.IsZero then
-                            DemandStatus.Fulfilled
-                        else
-                            DemandStatus.PartiallyFulfilled
+    let applyCreated (evt: DemandLineCreatedEvt) : DemandLine = evt
 
-                    Ok
-                        { NewState =
-                            { state with
-                                OpenQuantity = finalOpen
-                                FulfilledQuantity = newFulfilled
-                                Status = finalStatus }
-                          Events =
-                            [ DemandLineFulfilled
-                                  { DemandLineId = cmd.DemandLineId
-                                    Quantity = cmd.Quantity } ] }
-                | _, _ -> Error(DomainError.validation "Not Implemented or state mismatch")
-
-        let applyCreated (evt: DemandLineCreatedEvt) : DemandLine = evt
-
-        let evolve (event: DemandLineEvent) (state: DemandLine option) : DemandLine option =
-            match event with
-            | DemandLineCreated e -> Some(applyCreated e)
-            | DemandLineFulfilled e -> state |> Option.map (fun s -> applyFulfilled s e)
+    let evolve (event: DemandLineEvent) (state: DemandLine option) : DemandLine option =
+        match event with
+        | DemandLineCreated e -> Some(applyCreated e)
+        | DemandLineFulfilled e -> state |> Option.map (fun s -> applyFulfilled s e)

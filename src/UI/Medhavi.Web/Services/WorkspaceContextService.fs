@@ -7,7 +7,8 @@ type WorkspaceContextService() =
     let mutable currentScope : QueryScope = {
         ScenarioId = Some "BASELINE"
         PlantId = None
-        HorizonStart = DateTime.Today.Date
+        StockingPointId = None
+        HorizonStart = DateTime.Today.AddDays(-7.0).Date
         HorizonEnd = DateTime.Today.AddDays(90.0).Date
     }
     

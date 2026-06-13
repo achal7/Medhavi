@@ -3,8 +3,7 @@ module Medhavi.Supply.Application.SupplyOrder
 open Medhavi
 open Medhavi.Common.Patterns
 open Medhavi.Common.Validation
-open Medhavi.Contracts.Domain
-open Medhavi.Contracts.Integration
+open Medhavi.Contracts.Supply
 open Medhavi.Infrastructure.Projections
 open Medhavi.SharedKernel
 open Medhavi.SharedKernel.API
@@ -129,7 +128,7 @@ module ACL =
               Locked = req.Locked
               ModifiedDate = Timestamp.create req.ModifiedDate })
 
-    let toContract (o: SupplyOrder) : Contracts.Domain.SupplyOrder =
+    let toContract (o: SupplyOrder) : Contracts.Supply.SupplyOrder =
         let orderTypeStr =
             match o.OrderType with
             | WorkOrder -> "WorkOrder"
@@ -187,7 +186,7 @@ module Service =
     let private createIfMissing
         capabilities
         (item: SupplyOrderUpdateReq)
-        (existingOpt: Contracts.Domain.SupplyOrder option)
+        (existingOpt: Supply.SupplyOrder option)
         =
         taskResult {
             match existingOpt with
@@ -223,7 +222,7 @@ module Service =
                 return ACL.toContract decision.NewState
         }
 
-    let private transitionState capabilities (item: SupplyOrderUpdateReq) (order: Contracts.Domain.SupplyOrder) =
+    let private transitionState capabilities (item: SupplyOrderUpdateReq) (order: Supply.SupplyOrder) =
         taskResult {
             let normalizedStatus = item.Status.Trim().ToLowerInvariant()
             let currentStatus = order.State.Trim().ToLowerInvariant()
@@ -301,32 +300,32 @@ module Service =
 
     let processStatusUpdates
         (capabilities: SupplyOrderCapabilities)
-        (query: QueryService<Contracts.Domain.SupplyOrder, string>)
+        (query: QueryService<Supply.SupplyOrder, string>)
         (statusUpdates: SupplyOrderUpdateReq list)
-        : TaskResult<Contracts.Domain.SupplyOrder list, ApplicationError> =
+        : TaskResult<Supply.SupplyOrder list, ApplicationError> =
         statusUpdates
         |> List.map (processSingleUpdate capabilities query)
         |> TaskResult.sequence
 
     let autoFirmOrders
         (capabilities: SupplyOrderCapabilities)
-        (query: QueryService<Medhavi.Contracts.Domain.SupplyOrder, string>)
+        (query: QueryService<Supply.SupplyOrder, string>)
         (asOf: DateTimeOffset)
         (firmingDays: int)
         : TaskResult<unit, ApplicationError> =
         taskResult {
-            let! (allOrders: Medhavi.Contracts.Domain.SupplyOrder list) = 
+            let! (allOrders: Supply.SupplyOrder list) =
                 task {
                     let! res = query.GetAll()
                     return Ok res
                 }
-            
+
             let plannedOrders =
                 allOrders
-                |> List.filter (fun (o: Medhavi.Contracts.Domain.SupplyOrder) -> 
+                |> List.filter (fun (o: Supply.SupplyOrder) ->
                     String.Equals(o.State, "Planned", StringComparison.OrdinalIgnoreCase) && not o.IsFirm)
-            
-            let firmIfInside (order: Medhavi.Contracts.Domain.SupplyOrder) =
+
+            let firmIfInside (order: Supply.SupplyOrder) =
                 match order.RequiredDeliveryDate with
                 | Some dueDate ->
                     let days = (dueDate - asOf).Days
@@ -338,7 +337,7 @@ module Service =
                 | None ->
                     TaskResult.return_ ()
 
-            let firmTask = 
+            let firmTask =
                 plannedOrders
                 |> List.map firmIfInside
                 |> TaskResult.sequence
@@ -383,7 +382,7 @@ let createCapabilities (repo: Repository<SupplyOrder, string, SupplyOrderEvent>)
         liftCmdResult ACL.toLockCommand
         >=> handleCommand (fun cmd -> SupplyOrderId.value cmd.Id) repo LockSupplyOrder decide }
 
-let evolveProjection (state: Map<string, Contracts.Domain.SupplyOrder>) (evt: SupplyOrderEvent) =
+let evolveProjection (state: Map<string, Medhavi.Contracts.Supply.SupplyOrder>) (evt: SupplyOrderEvent) =
     match evt with
     | SupplyOrderCreated e -> Map.add (SupplyOrderId.value e.Id) (ACL.toContract e) state
     | SupplyOrderPlanned e ->
@@ -490,10 +489,10 @@ let evolveProjection (state: Map<string, Contracts.Domain.SupplyOrder>) (evt: Su
                     ModifiedDate = Timestamp.value e.ModifiedDate }
                 state
         | None -> state
-    | SupplyOrderPriorityUpdated e -> state
+    | SupplyOrderPriorityUpdated _ -> state
 
 let createProjectionAgent () =
-    ProjectionAgent<Map<string, Contracts.Domain.SupplyOrder>, SupplyOrderEvent>(
+    ProjectionAgent<Map<string, Medhavi.Contracts.Supply.SupplyOrder>, SupplyOrderEvent>(
         evolveProjection,
         Map.empty,
         "SupplyOrderReadModel"

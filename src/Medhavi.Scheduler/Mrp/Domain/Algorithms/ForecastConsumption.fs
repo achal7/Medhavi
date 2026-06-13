@@ -3,7 +3,7 @@ module Medhavi.Scheduler.Mrp.Domain.Algorithms.ForecastConsumption
 
 open System
 open Medhavi.SharedKernel
-open Medhavi.Demand
+open Medhavi.Demand.Domain
 open Medhavi.Scheduler.Mrp.Domain.Policies
 
 /// Check if a forecast falls within the consumption window of a customer order
@@ -14,7 +14,7 @@ let isWithinWindow
     (forecastStart: Timestamp)
     (forecastEnd: Timestamp)
     : bool =
-    let (wStart, wEnd) =
+    let wStart, wEnd =
         match strategy with
         | BackwardConsumption -> (orderDate - windowSize, orderDate)
         | ForwardConsumption -> (orderDate, orderDate + windowSize)

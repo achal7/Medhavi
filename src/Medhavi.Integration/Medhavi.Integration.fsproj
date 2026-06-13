@@ -8,6 +8,7 @@
   <ItemGroup>
     <Compile Include="Integration.fs" />
     <Compile Include="Adapters\SkuAdapter.fs" />
+    <Compile Include="Adapters\DemandAdapter.fs" />
     <Compile Include="Adapters\BomAdapter.fs" />
     <Compile Include="Adapters\StockingPointAdapter.fs" />
     <Compile Include="Adapters\ResourceAdapter.fs" />

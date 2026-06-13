@@ -20,7 +20,7 @@ type TransportContext =
 
 module BoundedContext =
 
-    let create (getLegs: TransportAtpApp.GetActiveLegs) =
+    let create (getLegs: GetActiveLegs) =
 
         // 1. Repositories
         let reservationRepo =
@@ -31,7 +31,7 @@ module BoundedContext =
             TransportReservationApp.createCapabilities reservationRepo
 
         let atpCaps =
-            TransportAtpApp.createCapabilities getLegs TransportAtpApp.defaultConfig
+            createCapabilities getLegs defaultConfig
 
         // 3. Projection Agents
         let reservationAgent = TransportReservationApp.createProjectionAgent ()

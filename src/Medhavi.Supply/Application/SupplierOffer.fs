@@ -3,8 +3,7 @@ module Medhavi.Supply.Application.SupplierOffer
 open Medhavi
 open Medhavi.Common.Patterns
 open Medhavi.Common.Validation
-open Medhavi.Contracts.Domain
-open Medhavi.Contracts.Integration
+open Medhavi.Contracts.Supply
 open Medhavi.Infrastructure.Projections
 open Medhavi.SharedKernel
 open Medhavi.SharedKernel.API
@@ -49,7 +48,7 @@ module ACL =
                 |> Option.map (float >> TimeSpan.FromMinutes)
               PriceTiers = req.PriceTiers |> List.map mapPriceTierReq
               Reliability = req.Reliability
-              Incoterm = req.Incoterm |> Option.map (Incoterm.parse)
+              Incoterm = req.Incoterm |> Option.map Incoterm.parse
               CapacityWindows =
                 req.CapacityWindows
                 |> List.map mapCapacityWindowReq
@@ -99,21 +98,21 @@ module ACL =
               IsActive = req.IsActive
               ModifiedDate = Timestamp.create req.ModifiedDate })
 
-    let toContractPriceTier (t: PriceTier) : Contracts.Domain.PriceTier =
+    let toContractPriceTier (t: PriceTier) : Contracts.Supply.PriceTier =
         { TierNumber = t.TierNumber
           MinQuantity = Quantity.value t.MinQuantity
           MaxQuantity = t.MaxQuantity |> Option.map Quantity.value
           PricePerUnit = t.PricePerUnit
           Currency = t.Currency }
 
-    let toContractCapacityWindow (w: SupplierCapacityWindow) : Contracts.Domain.SupplierCapacityWindow =
+    let toContractCapacityWindow (w: SupplierCapacityWindow) : Contracts.Supply.SupplierCapacityWindow =
         { WindowId = w.WindowId
           StartDate = Timestamp.value w.StartDate
           EndDate = Timestamp.value w.EndDate
           MaxQuantity = Quantity.value w.MaxQuantity
           AvailableQuantity = Quantity.value w.AvailableQuantity }
 
-    let toContract (offer: SupplierOffer) : Contracts.Domain.SupplierOffer =
+    let toContract (offer: SupplierOffer) : Contracts.Supply.SupplierOffer =
         let incotermStr =
             offer.Incoterm
             |> Option.map (function
@@ -170,7 +169,7 @@ let createCapabilities (repo: Repository<SupplierOffer, string, SupplierOfferEve
         liftCmdResult ACL.toChangeStatusCommand
         >=> handleCommand (fun cmd -> SupplierOfferId.value cmd.Id) repo ChangeSupplierOfferStatus decide }
 
-let evolveProjection (state: Map<string, Contracts.Domain.SupplierOffer>) (evt: SupplierOfferEvent) =
+let evolveProjection (state: Map<string, Contracts.Supply.SupplierOffer>) (evt: SupplierOfferEvent) =
     match evt with
     | SupplierOfferDefined e -> Map.add (SupplierOfferId.value e.Id) (ACL.toContract (applyDefined e)) state
     | SupplierOfferUpdated e ->
@@ -239,13 +238,13 @@ let evolveProjection (state: Map<string, Contracts.Domain.SupplierOffer>) (evt: 
         | None -> state
 
 let createProjectionAgent () =
-    ProjectionAgent<Map<string, Contracts.Domain.SupplierOffer>, SupplierOfferEvent>(
+    ProjectionAgent<Map<string, Contracts.Supply.SupplierOffer>, SupplierOfferEvent>(
         evolveProjection,
         Map.empty,
         "SupplierOfferReadModel"
     )
 
-let createSupplierOfferApi (capabilities: SupplierOfferCapabilities) agent =
+let createSupplierOfferApi (capabilities: SupplierOfferCapabilities) _ =
     { Define =
         fun req ->
             capabilities.Define req

@@ -4,12 +4,13 @@ open System
 open System.Threading.Tasks
 open Medhavi.Web
 open Medhavi.Nexus
-open Medhavi.Scenario
+open Medhavi.SharedKernel.ScenarioContracts
 
 type ScenarioStore = {
     GetSnapshot : unit -> ScenarioReadModel list
     Refresh     : unit -> Task<unit>
     Subscribe   : (unit -> unit) -> IDisposable
+    CreateScenario : string * ScenarioType * string option -> Task<Result<unit, string>>
 }
 
 module ScenarioStore =
@@ -30,11 +31,20 @@ module ScenarioStore =
 
         let refresh () =
             task {
-                let! scenarios = engine.Scenario.Queries.GetAll()
+                let! scenarios = engine.GetScenarios()
                 cache <- scenarios
                 notifySubscribers ()
             }
 
+        let createScenario (name, scenarioType, parentId) =
+            task {
+                let! res = engine.CreateScenario(name, scenarioType, parentId)
+                if Result.isOk res then
+                    do! refresh()
+                return res
+            }
+
         { GetSnapshot = getSnapshot
           Subscribe = subscribe
-          Refresh = refresh }
+          Refresh = refresh
+          CreateScenario = createScenario }

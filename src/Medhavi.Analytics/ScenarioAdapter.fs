@@ -2,6 +2,9 @@ namespace Medhavi.Analytics
 
 open System
 open Medhavi.Analytics.PlanningHorizon
+open Medhavi.Contracts.Analytics
+open Medhavi.Contracts.Demand
+open Medhavi.Contracts.Supply
 
 type DemandOverride    = { DemandLineId: string; NewQuantity: decimal option; NewRequestedDate: DateOnly option }
 type CapacityOverride  = { ResourceGroupId: string; Period: PlanningPeriod; AvailableHoursOverride: decimal }
@@ -48,7 +51,7 @@ module ScenarioAdapter =
           InventoryOverrides = inventory
           PolicyOverrides = [] }
 
-    let applyDemandOverlay (overlay: ScenarioOverlay) (line: DemandLineView) : DemandLineView =
+    let applyDemandOverlay (overlay: ScenarioOverlay) (line: DemandLine) : DemandLine =
         overlay.DemandOverrides
         |> List.tryFind (fun o -> o.DemandLineId = line.DemandLineId)
         |> Option.map (fun o ->

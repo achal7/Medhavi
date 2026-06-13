@@ -3,7 +3,6 @@ namespace Medhavi.Capacity.Application
 open System
 open System.Threading.Tasks
 open Medhavi.Common.Patterns
-open Medhavi.Infrastructure
 open Medhavi.SharedKernel
 open Medhavi.SharedKernel.Aggregate
 open Medhavi.Infrastructure.Projections
@@ -359,7 +358,7 @@ module SchedulerApp =
         (needDate: DateTimeOffset)
         (planningMode: CapacityPlanningMode)
         (resourcesState: Map<string, CapacityResource>)
-        (calendarState: Map<string, Calendar>)
+        (_: Map<string, Calendar>)
         (bucketsState: Map<string, CapacityBucket>)
         (getRoutingsForProduct: string -> Task<Result<Medhavi.Contracts.Domain.Routing list, ApplicationError>>)
         : Task<Result<CheckCapacityResult, ApplicationError>> =
@@ -370,21 +369,21 @@ module SchedulerApp =
             | Ok [] -> return Error (ApplicationError.Domain (DomainError.validation $"No routing found for product {productId}"))
             | Ok rawRoutings ->
                 let loadProfiles = rawRoutings |> List.map RoutingAcl.translate
-                let preferredOpt = 
-                    loadProfiles 
-                    |> List.filter (fun (r: RoutingLoadProfile) -> 
+                let preferredOpt =
+                    loadProfiles
+                    |> List.filter (fun (r: RoutingLoadProfile) ->
                         let raw = rawRoutings |> List.find (fun (rr: Medhavi.Contracts.Domain.Routing) -> rr.Id = r.RoutingId)
                         raw.Preference.IsPreferred)
                     |> List.tryHead
                     |> Option.orElse (loadProfiles |> List.sortBy (fun (r: RoutingLoadProfile) -> r.PreferencePriority) |> List.tryHead)
-                
+
                 match preferredOpt with
                 | None -> return Error (ApplicationError.Domain (DomainError.validation $"No valid routing load profile found for product {productId}"))
                 | Some (routing: RoutingLoadProfile) ->
                     let stepFlows = RoutingInterpreter.calculateStepFlows routing quantity
                     let steps = routing.StepLoads |> List.sortBy (fun (s: RoutingStepLoadProfile) -> s.SequenceNumber)
-                    
-                    let stepResourceMappings = 
+
+                    let stepResourceMappings =
                         steps
                         |> List.choose (fun (s: RoutingStepLoadProfile) ->
                             let firstLoadOpt = s.Loads |> List.tryHead
@@ -393,26 +392,26 @@ module SchedulerApp =
                             | Some (load: CapacityRoutingLoad) ->
                                 match load.Target with
                                 | LoadTarget.Resource(rgId, _) ->
-                                    let candidateRes = 
-                                        resourcesState 
-                                        |> Map.toList 
+                                    let candidateRes =
+                                        resourcesState
+                                        |> Map.toList
                                         |> List.map snd
                                         |> List.filter (fun (r: CapacityResource) -> ResourceGroupId.value r.ResourceGroupId = rgId && r.IsActive)
                                         |> List.sortByDescending (fun (r: CapacityResource) -> Percent.value r.EffectiveEfficiency)
                                         |> List.tryHead
-                                    
+
                                     match candidateRes with
-                                    | Some res -> 
+                                    | Some res ->
                                         let setup = load.SetupLoadMinutes |> Option.defaultValue 0.0m
                                         let teardown = load.TeardownLoadMinutes |> Option.defaultValue 0.0m
                                         let baseQty = if routing.BaseQuantity <= 0.0m then 1.0m else routing.BaseQuantity
                                         let stepQty = Map.tryFind s.RoutingStepId stepFlows |> Option.defaultValue quantity
                                         let runTime = load.RunLoadPerBaseQuantityMinutes * (stepQty / baseQty)
                                         let totalLoadMins = setup + runTime + teardown
-                                        
+
                                         let eff = Percent.value res.EffectiveEfficiency
                                         let totalLoadMinsEff = totalLoadMins / (if eff <= 0.0m then 1.0m else eff)
-                                        
+
                                         Some (s.RoutingStepId, (PhysicalResourceId.value res.Id, totalLoadMinsEff))
                                     | None -> None
                                 | LoadTarget.WorkCenter(resId, _) ->
@@ -424,22 +423,22 @@ module SchedulerApp =
                                         let stepQty = Map.tryFind s.RoutingStepId stepFlows |> Option.defaultValue quantity
                                         let runTime = load.RunLoadPerBaseQuantityMinutes * (stepQty / baseQty)
                                         let totalLoadMins = setup + runTime + teardown
-                                        
+
                                         let eff = Percent.value res.EffectiveEfficiency
                                         let totalLoadMinsEff = totalLoadMins / (if eff <= 0.0m then 1.0m else eff)
                                         Some (s.RoutingStepId, (PhysicalResourceId.value res.Id, totalLoadMinsEff))
                                     | _ -> None)
                         |> Map.ofList
-                    
+
                     if stepResourceMappings.Count < steps.Length then
                         return Error (ApplicationError.Domain (DomainError.validation "Could not map all steps to active physical resources"))
                     else
-                        let reqLoads = 
-                            stepResourceMappings 
-                            |> Map.toList 
+                        let reqLoads =
+                            stepResourceMappings
+                            |> Map.toList
                             |> List.map snd
                             |> List.groupBy fst
-                            |> List.map (fun (resId, pairs) -> 
+                            |> List.map (fun (resId, pairs) ->
                                 let totalMins = pairs |> List.sumBy snd
                                 resId, DurationMinutes.create totalMins |> Result.defaultValue DurationMinutes.zero)
                             |> Map.ofList
@@ -454,7 +453,7 @@ module SchedulerApp =
                                     let duration = TimeSpan.FromMinutes(float mins)
                                     let start = currentEnd.Subtract(duration)
                                     scheduleInfinite (idx - 1) start ((step.RoutingStepId, start, currentEnd) :: acc)
-                            
+
                             match scheduleInfinite (steps.Length - 1) needDate [] with
                             | Error _ -> return Error (ApplicationError.Domain (DomainError.invariant "Failed to schedule infinite"))
                             | Ok scheduledSteps ->
@@ -474,14 +473,14 @@ module SchedulerApp =
                                                 RequiredLoads = reqLoads
                                                 BottleneckResourceId = None
                                                 LatenessReason = Some ("Scheduling requires starting in the past (" + firstStart.ToString("yyyy-MM-dd HH:mm") + "). Shifted forward.") }
-                        
+
                         | CapacityPlanningMode.Finite ->
                             let rec scheduleFiniteBackward (idx: int) (currentEnd: DateTimeOffset) (acc: (string * DateTimeOffset * DateTimeOffset) list) =
                                 if idx < 0 then Some acc
                                 else
                                     let step: RoutingStepLoadProfile = steps.[idx]
                                     let (resId, mins) = Map.find step.RoutingStepId stepResourceMappings
-                                    
+
                                     let rec findCapacity (targetEnd: DateTimeOffset) (remainingMins: decimal) (accDays: (DateTimeOffset * DateTimeOffset) list) =
                                         let now = DateTimeOffset.UtcNow
                                         if targetEnd < now then None
@@ -492,23 +491,23 @@ module SchedulerApp =
                                         else
                                             let dayStart = DateTimeOffset(targetEnd.Year, targetEnd.Month, targetEnd.Day, 0, 0, 0, targetEnd.Offset)
                                             let bucketKey = resId + ":" + dayStart.ToString("yyyy-MM-dd")
-                                            let freeMins = 
+                                            let freeMins =
                                                 match Map.tryFind bucketKey bucketsState with
                                                 | Some b -> DurationMinutes.value b.FreeMinutes
                                                 | None -> 480.0m
-                                            
+
                                             if freeMins <= 0.0m then
                                                 findCapacity (dayStart.AddDays(-1.0)) remainingMins accDays
                                             else
                                                 let allocated = min remainingMins freeMins
                                                 let dayEnd = dayStart.AddDays(1.0)
                                                 findCapacity (dayStart.AddDays(-1.0)) (remainingMins - allocated) ((dayStart, dayEnd) :: accDays)
-                                    
+
                                     match findCapacity currentEnd mins [] with
                                     | None -> None
                                     | Some (start, endVal) ->
                                         scheduleFiniteBackward (idx - 1) start ((step.RoutingStepId, start, endVal) :: acc)
-                            
+
                             match scheduleFiniteBackward (steps.Length - 1) needDate [] with
                             | Some scheduledSteps ->
                                 return Ok { IsFeasible = true
@@ -522,7 +521,7 @@ module SchedulerApp =
                                     else
                                         let step: RoutingStepLoadProfile = steps.[idx]
                                         let (resId, mins) = Map.find step.RoutingStepId stepResourceMappings
-                                        
+
                                         let rec findCapacityForward (targetStart: DateTimeOffset) (remainingMins: decimal) (accDays: (DateTimeOffset * DateTimeOffset) list) =
                                             if remainingMins <= 0.0m then
                                                 let start = accDays |> List.map fst |> List.min
@@ -531,35 +530,35 @@ module SchedulerApp =
                                             else
                                                 let dayStart = DateTimeOffset(targetStart.Year, targetStart.Month, targetStart.Day, 0, 0, 0, targetStart.Offset)
                                                 let bucketKey = resId + ":" + dayStart.ToString("yyyy-MM-dd")
-                                                let freeMins = 
+                                                let freeMins =
                                                     match Map.tryFind bucketKey bucketsState with
                                                     | Some b -> DurationMinutes.value b.FreeMinutes
                                                     | None -> 480.0m
-                                                
+
                                                 if freeMins <= 0.0m then
                                                     findCapacityForward (dayStart.AddDays(1.0)) remainingMins accDays
                                                 else
                                                     let allocated = min remainingMins freeMins
                                                     let dayEnd = dayStart.AddDays(1.0)
                                                     findCapacityForward (dayStart.AddDays(1.0)) (remainingMins - allocated) ((dayStart, dayEnd) :: accDays)
-                                        
+
                                         match findCapacityForward currentStart mins [] with
                                         | None -> None
                                         | Some (start, endVal) ->
                                             scheduleFiniteForward (idx + 1) endVal ((step.RoutingStepId, start, endVal) :: acc)
-                                
+
                                 let now = DateTimeOffset.UtcNow
                                 match scheduleFiniteForward 0 now [] with
                                 | None ->
                                     return Error (ApplicationError.Domain (DomainError.invariant "Could not find sufficient capacity forward in 30 days window"))
                                 | Some scheduledSteps ->
                                     let suggestedEnd = scheduledSteps |> List.map (fun (_, _, e) -> e) |> List.max
-                                    let bottleneck = 
-                                        stepResourceMappings 
-                                        |> Map.toList 
+                                    let bottleneck =
+                                        stepResourceMappings
+                                        |> Map.toList
                                         |> List.map (fun (_, (resId, _)) -> resId)
                                         |> List.tryHead
-                                    
+
                                     return Ok { IsFeasible = false
                                                 SuggestedDate = suggestedEnd
                                                 RequiredLoads = reqLoads

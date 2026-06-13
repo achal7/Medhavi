@@ -284,3 +284,12 @@ module ScenarioMetadata =
           TemplateId = None
           OwnerId = None
           CustomAttributes = Map.empty }
+
+type ScenarioReadModel =
+    { ScenarioId: string
+      Name: string
+      BaseScenarioId: string option
+      Version: int
+      CreatedAt: DateTimeOffset
+      IsActive: bool
+      Overrides: ScenarioDataOverride list }

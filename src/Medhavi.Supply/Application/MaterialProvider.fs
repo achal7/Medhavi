@@ -6,7 +6,7 @@ open Medhavi.Common.Patterns
 open Medhavi.SharedKernel
 open Medhavi.SharedKernel.Projections
 open Medhavi.SharedKernel.API
-open Medhavi.Contracts.Domain
+open Medhavi.Contracts.Supply
 open Medhavi.Supply
 
 type MaterialSnapshot =
@@ -266,7 +266,7 @@ let createMaterialProvider
     (supplierOfferQuery: SupplierOfferQueryService)
     : MaterialProviderApi =
 
-    let toContractSnap (snap: MaterialSnapshot) : Medhavi.Contracts.Domain.MaterialSnapshot =
+    let toContractSnap (snap: MaterialSnapshot) : Medhavi.Contracts.Supply.MaterialSnapshot =
         { OnHand = Quantity.value snap.OnHand
           Inbound =
             snap.Inbound
@@ -386,7 +386,7 @@ let createMaterialProvider
             }
 
       GetSupplierOptions =
-        fun skuIdStr spIdStr qty asOf ->
+        fun skuIdStr spIdStr _ _ ->
             async {
                 match SkuId.create skuIdStr with
                 | Error e -> return Error(ApplicationError.Domain e)
@@ -409,7 +409,7 @@ let getSnapshot
     (productId: string)
     (stockingPointId: string)
     (asOf: DateTimeOffset)
-    : Async<Result<Medhavi.Contracts.Domain.MaterialSnapshot, ApplicationError>> =
+    : Async<Result<Medhavi.Contracts.Supply.MaterialSnapshot, ApplicationError>> =
     async {
         match SkuId.create productId, StockingPointId.create stockingPointId with
         | Ok skuId, Ok spId ->
@@ -426,7 +426,7 @@ let getSnapshot
 
             match res with
             | Ok snap ->
-                let contractSnap: Medhavi.Contracts.Domain.MaterialSnapshot =
+                let contractSnap: Medhavi.Contracts.Supply.MaterialSnapshot =
                     { OnHand = Quantity.value snap.OnHand
                       Inbound =
                         snap.Inbound
@@ -446,8 +446,8 @@ let getSupplierOptions
     (caps: SupplyContext)
     (productId: string)
     (stockingPointId: string option)
-    (quantity: decimal)
-    (needDate: DateTimeOffset)
+    (_: decimal)
+    (_: DateTimeOffset)
     : Async<Result<SupplierOffer list, ApplicationError>> =
     async {
         match SkuId.create productId with
@@ -466,7 +466,7 @@ let getSupplierOptions
         | Error e -> return Error(ApplicationError.Domain e)
     }
 
-let calculateNetAvailable (snapshot: Medhavi.Contracts.Domain.MaterialSnapshot) : decimal =
+let calculateNetAvailable (snapshot: Medhavi.Contracts.Supply.MaterialSnapshot) : decimal =
     let totalInbound = snapshot.Inbound |> List.sumBy snd
     let totalReservations = snapshot.Reservations |> List.sumBy snd
 

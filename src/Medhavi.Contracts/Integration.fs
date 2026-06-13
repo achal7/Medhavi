@@ -1,7 +1,6 @@
 namespace Medhavi.Contracts.Integration
 
 open System
-open Medhavi.Contracts.Domain
 
 type UomDefineReq =
     { Id: string
@@ -255,198 +254,6 @@ type RoutingActivateReq = { Id: string }
 
 type RoutingDeactivateReq = { Id: string }
 
-type TransportLegDefineReq =
-    { Id: string
-      Origin: string
-      Destination: string
-      Mode: string
-      Schedule: string
-      LeadTimeMinutes: decimal
-      Capacity: decimal option
-      CapacityUnit: string option
-      CutoffMinutes: decimal option
-      Constraints: string list
-      Reliability: decimal option
-      CO2PerUnit: decimal option
-      EffectiveStart: DateTimeOffset
-      EffectiveEnd: DateTimeOffset option
-      Created: DateTimeOffset }
-
-type TransportLegUpdateReq =
-    { Id: string
-      Mode: string option
-      Schedule: string option
-      LeadTimeMinutes: decimal option
-      Capacity: decimal option
-      CapacityUnit: string option
-      CutoffMinutes: decimal option
-      Constraints: string list option
-      Reliability: decimal option
-      CO2PerUnit: decimal option
-      EffectiveEnd: DateTimeOffset option
-      Modified: DateTimeOffset }
-
-type TransportLegDeactivateReq =
-    { Id: string
-      DeactivatedAt: DateTimeOffset }
-
-type InventoryDefineReq =
-    { Id: string
-      SkuId: string
-      StockingPointId: string
-      Quantity: decimal
-      UnitOfMeasure: string }
-
-type InventoryTargetDefineReq =
-    { SkuId: string
-      StockingPointId: string
-      ReplenishmentPolicy: ReplenishmentPolicy option
-      SafetyStockQty: decimal option
-      MinQty: decimal option
-      MaxQty: decimal option
-      TargetServiceLevel: decimal option
-      CoverDays: decimal option
-      SeasonalAdjustments: SeasonalAdjustment list
-      EffectiveStart: DateTimeOffset option
-      EffectiveEnd: DateTimeOffset option
-      IsActive: bool }
-
-type InventoryTargetUpdateReq =
-    { Id: string
-      SkuId: string
-      StockingPointId: string
-      ReplenishmentPolicy: ReplenishmentPolicy option
-      SafetyStockQty: decimal option
-      MinQty: decimal option
-      MaxQty: decimal option
-      TargetServiceLevel: decimal option
-      CoverDays: decimal option
-      SeasonalAdjustments: SeasonalAdjustment list option
-      EffectiveStart: DateTimeOffset option
-      EffectiveEnd: DateTimeOffset option }
-
-type PriceTierReq =
-    { TierNumber: int
-      MinQuantity: decimal
-      MaxQuantity: decimal option
-      PricePerUnit: decimal
-      Currency: string }
-
-type CapacityWindowReq =
-    { WindowId: string
-      StartDate: DateTimeOffset
-      EndDate: DateTimeOffset
-      MaxQuantity: decimal
-      AvailableQuantity: decimal }
-
-type SupplierOfferDefineReq =
-    { Id: string
-      SupplierId: string
-      SkuId: string
-      StockingPointId: string option
-      Moq: decimal option
-      LotSize: decimal option
-      LeadTimeP50Minutes: decimal option
-      LeadTimeP95Minutes: decimal option
-      PriceTiers: PriceTierReq list
-      Reliability: decimal option
-      Incoterm: string option
-      CapacityWindows: CapacityWindowReq list
-      CreatedDate: DateTimeOffset }
-
-type SupplierOfferUpdateReq =
-    { Id: string
-      Moq: decimal option
-      LotSize: decimal option
-      LeadTimeP50Minutes: decimal option
-      LeadTimeP95Minutes: decimal option
-      PriceTiers: PriceTierReq list option
-      Reliability: decimal option
-      Incoterm: string option
-      CapacityWindows: CapacityWindowReq list option
-      ModifiedDate: DateTimeOffset }
-
-type SupplierOfferChangeStatusReq =
-    { Id: string
-      IsActive: bool
-      ModifiedDate: DateTimeOffset }
-
-type SupplyOrderCreateReq =
-    { Id: string
-      OrderType: string
-      SkuId: string
-      StockingPointId: string
-      Quantity: decimal
-      UnitOfMeasure: string
-      RoutingId: string option
-      SupplierId: string option
-      IsFirm: bool
-      IsExpedited: bool
-      IsLocked: bool
-      UsesLeadTimeQuantity: bool
-      RequiredDeliveryDate: DateTimeOffset option
-      CreatedDate: DateTimeOffset }
-
-type SupplyOrderStartReq =
-    { Id: string
-      StartedDate: DateTimeOffset }
-
-type SupplyOrderPartialCompleteReq =
-    { Id: string
-      CompletedQuantity: decimal
-      ScrapQuantity: decimal
-      CompletedDate: DateTimeOffset
-      FeedbackId: string option }
-
-type SupplyOrderCompleteReq =
-    { Id: string
-      ScrapQuantity: decimal
-      CompletedDate: DateTimeOffset
-      FeedbackId: string option }
-
-type SupplyOrderPlanReq =
-    { Id: string
-      PlannedDeliveryDate: DateTimeOffset }
-
-type SupplyOrderConfirmReq =
-    { Id: string
-      ConfirmedDate: DateTimeOffset }
-
-type SupplyOrderReleaseReq =
-    { Id: string
-      ReleasedDate: DateTimeOffset }
-
-type SupplyOrderCancelReq =
-    { Id: string
-      CancelledDate: DateTimeOffset }
-
-type SupplyOrderLockReq =
-    { Id: string
-      Locked: bool
-      ModifiedDate: DateTimeOffset }
-
-type SupplyOrderUpdateReq =
-    { SupplyOrderId: string
-      ProductId: string
-      StockingPointId: string
-      Quantity: decimal
-      ExpectedDeliveryUtc: DateTimeOffset
-      Status: string } 
-
-type MaterialReservationCreateReq =
-    { Id: string
-      IdempotencyKey: string
-      SkuId: string
-      StockingPointId: string
-      Quantity: decimal
-      RequiredDate: DateTimeOffset
-      ExpiryTime: DateTimeOffset }
-
-type MaterialReservationConfirmReq = { Id: string }
-type MaterialReservationReleaseReq = { Id: string }
-type MaterialReservationReduceReq = { Id: string; NewQuantity: decimal }
-type MaterialReservationExpireReq = { Id: string }
-
 type ResourceGroupDefineReq =
     { Id: string
       PlantId: string option
@@ -490,11 +297,11 @@ type PhysicalResourceRenameReq = { Id: string; NewName: string }
 type PhysicalResourceRetireReq = { Id: string }
 
 type KpiInvalidationEvent =
-    | MrpRunCompleted        of plantId: string * stockingPointId: string * runId: string * periodsCovered: DateOnly list
-    | OptimizerRunCompleted  of plantId: string * scenarioId: string option * periodsCovered: DateOnly list
+    | MrpRunCompleted of plantId: string * stockingPointId: string * runId: string * periodsCovered: DateOnly list
+    | OptimizerRunCompleted of plantId: string * scenarioId: string option * periodsCovered: DateOnly list
     | CapacityCalendarChanged of resourceGroupId: string * plantId: string * affectedDates: DateOnly list
-    | InventoryAdjusted      of stockingPointId: string * skuId: string * asOfDate: DateOnly
-    | ShipmentStatusChanged  of legId: string * shipmentId: string * date: DateOnly
+    | InventoryAdjusted of stockingPointId: string * skuId: string * asOfDate: DateOnly
+    | ShipmentStatusChanged of legId: string * shipmentId: string * date: DateOnly
     | SafetyStockPolicyChanged of skuId: string * stockingPointId: string
-    | WorkOrderStatusChanged  of workOrderId: string * plantId: string * date: DateOnly
+    | WorkOrderStatusChanged of workOrderId: string * plantId: string * date: DateOnly
     | DemandFulfilled of demandLineId: string * plantId: string * date: DateOnly

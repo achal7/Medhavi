@@ -2,11 +2,11 @@ namespace Medhavi.SharedKernel.API
 
 open System
 open Medhavi.Common.Patterns
-open Medhavi.Contracts
+open Medhavi.Contracts.Supply
 open Medhavi.Contracts.Domain
+open Medhavi.Contracts.Transport
 open Medhavi.Contracts.Integration
 open Medhavi.SharedKernel
-open Medhavi.SharedKernel.Projections
 
 type UomApi =
     { Define: UomDefineReq -> TaskResult<UnitOfMeasure, ApplicationError>

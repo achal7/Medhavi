@@ -3,7 +3,7 @@ module Medhavi.Integration.Adapters.MaterialReservation
 open System
 open System.Threading
 open Medhavi.Common.Patterns
-open Medhavi.Contracts.Integration
+open Medhavi.Contracts.Supply
 open Medhavi.Integration
 open Medhavi.Infrastructure.IO
 open Medhavi.Infrastructure.Stores.EnvelopeStore

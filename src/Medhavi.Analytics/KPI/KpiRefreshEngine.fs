@@ -3,6 +3,7 @@ namespace Medhavi.Analytics.KPI
 open System
 open System.Collections.Concurrent
 open Medhavi.Analytics.PlanningHorizon
+open Medhavi.Contracts.Analytics
 
 module KpiRefreshEngine =
 

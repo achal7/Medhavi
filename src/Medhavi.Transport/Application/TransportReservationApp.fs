@@ -1,8 +1,6 @@
 module Medhavi.Transport.Application.TransportReservationApp
 
-open System
 open Medhavi.Common.Patterns
-open Medhavi.Infrastructure
 open Medhavi.SharedKernel
 open Medhavi.SharedKernel.Aggregate
 open Medhavi.Transport

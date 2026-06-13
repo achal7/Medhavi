@@ -5,10 +5,8 @@ open Medhavi.Common.Validation
 open Medhavi.Common.Patterns
 open Medhavi.SharedKernel
 open Medhavi.SharedKernel.Aggregate
-open Medhavi.MasterData.Domain.UomAgg
 open Medhavi.MasterData.Domain.TransportAgg
-open Medhavi.Contracts.Integration
-open Medhavi.Infrastructure
+open Medhavi.Contracts.Transport
 open Medhavi.Infrastructure.Projections
 
 module ACL =
@@ -30,13 +28,13 @@ module ACL =
         | _ when s.StartsWith("weekly:") ->
             let value = s.Substring("weekly:".Length)
 
-            match System.Int32.TryParse value with
+            match Int32.TryParse value with
             | true, d when d >= 0 && d <= 6 -> Ok(Weekly d)
             | _ -> Error(DomainError.validation "Weekly schedule requires day-of-week 0-6")
         | _ when s.StartsWith("monthly:") ->
             let value = s.Substring("monthly:".Length)
 
-            match System.Int32.TryParse value with
+            match Int32.TryParse value with
             | true, d when d >= 1 && d <= 31 -> Ok(Monthly d)
             | _ -> Error(DomainError.validation "Monthly schedule requires day-of-month 1-31")
         | _ when s.StartsWith("custom:") -> Ok(TransportSchedule.Custom(s.Substring("custom:".Length)))
@@ -309,7 +307,7 @@ let createQueryService agent = QueryServiceBase.getQueryService agent id
 
 open Medhavi.SharedKernel.API
 
-let createTransportLegApi (capabilities: TransportLegCapabilities) agent =
+let createTransportLegApi (capabilities: TransportLegCapabilities) _ =
     { Define =
         fun req ->
             capabilities.Define req

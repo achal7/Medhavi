@@ -5,6 +5,8 @@ open Medhavi.Nexus
 
 open System.Text.Json.Serialization
 
+type EntityRef = EntityRef of string * string // type and id
+
 [<JsonConverter(typeof<JsonStringEnumConverter>)>]
 type Role =
     | Planner = 0
@@ -45,3 +47,11 @@ type ActiveOperation =
     { Id: Guid
       Name: string
       State: OperationState<unit, string> }
+
+type QueryScope = {
+    ScenarioId: string option
+    PlantId: string option
+    StockingPointId: string option
+    HorizonStart: DateTime
+    HorizonEnd: DateTime
+}

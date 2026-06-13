@@ -2,6 +2,7 @@ namespace Medhavi.Analytics.KPI
 
 open System
 open Medhavi.Analytics.PlanningHorizon
+open Medhavi.Contracts.Analytics
 
 /// KPI status relative to its target and alert threshold
 type KpiStatus =

@@ -11,7 +11,7 @@ let holdingCostPerDayPerUnit = 0.5m // Default holding cost rate - should come f
 
 /// Calculate cost for a promise based on quantity, providers, and policy
 let calculateCost
-    (policy: PromisePolicy)
+    (_: PromisePolicy)
     (qty: decimal)
     (materialSnapshot: MaterialSnapshot option)
     (supplierOption: SupplierOption option)
@@ -60,7 +60,7 @@ let calculateCost
 
     // Holding cost calculation
     let holdingCost =
-        let daysToConsume = 
+        let daysToConsume =
             match promiseDate > dueDate with
             | true -> decimal (promiseDate - dueDate).TotalDays
             | false -> 0m
@@ -71,11 +71,11 @@ let calculateCost
     let lateness = if diff.TotalDays <= 0.0 then 0m else decimal diff.TotalDays * latenessPenaltyPerDay
 
     // Apply FX conversion to all costs
-    CostBreakdown.create 
-        (applyFx materialCost) 
-        (applyFx productionCost) 
-        (applyFx transportCost) 
-        (applyFx holdingCost) 
+    CostBreakdown.create
+        (applyFx materialCost)
+        (applyFx productionCost)
+        (applyFx transportCost)
+        (applyFx holdingCost)
         (applyFx lateness)
 
 /// Calculate supplier cost for shortfall coverage

@@ -1,4 +1,4 @@
-module Medhavi.Analytics.PlanningHorizon
+module Medhavi.Analytics.PlanningPeriod
 
 open System
 open Medhavi.Contracts.Analytics
@@ -37,9 +37,9 @@ let contains (date: DateOnly) (period: PlanningPeriod) = date >= startDate perio
 let label =
     function
     | PlanningDay d -> d.ToString("yyyy-MM-dd")
-    | PlanningWeek(y, w) -> sprintf "%d-W%02d" y w
-    | PlanningMonth(y, m) -> sprintf "%d-%02d" y m
-    | PlanningQuarter(y, q) -> sprintf "%d-Q%d" y q
+    | PlanningWeek(y, w) -> $"%d{y}-W%02d{w}"
+    | PlanningMonth(y, m) -> $"%d{y}-%02d{m}"
+    | PlanningQuarter(y, q) -> $"%d{y}-Q%d{q}"
 
 /// Generate a sequence of PlanningPeriod values covering a date range
 let generate (granularity: PlanningGranularity) (startDate: DateOnly) (endDate: DateOnly) : PlanningPeriod list =

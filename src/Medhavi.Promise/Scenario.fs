@@ -1,9 +1,7 @@
 module Medhavi.Promise.Scenario
 
-open System
 open Medhavi.SharedKernel
-open Medhavi.SharedKernel.Aggregate
-open Medhavi.Promise.PromiseTypes
+open Medhavi.Contracts.Promise
 
 type ScenarioStatus =
     | Active

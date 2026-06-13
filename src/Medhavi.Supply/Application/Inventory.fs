@@ -3,13 +3,11 @@ module Medhavi.Supply.Application.Inventory
 open Medhavi
 open Medhavi.Common.Patterns
 open Medhavi.Common.Validation
-open Medhavi.Contracts.Domain
-open Medhavi.Contracts.Integration
+open Medhavi.Contracts.Supply
 open Medhavi.Infrastructure.Projections
 open Medhavi.SharedKernel
 open Medhavi.SharedKernel.API
 open Medhavi.SharedKernel.Aggregate
-open Medhavi.Supply.Domain
 open Medhavi.Supply.Domain.InventoryAgg
 
 module ACL =
@@ -30,7 +28,7 @@ module ACL =
 
     let toRemoveCommand (inventoryId: string) : Result<InventoryId, DomainError> = InventoryId.create inventoryId
 
-    let toContract (inv: InventoryAgg.Inventory) : Contracts.Domain.Inventory =
+    let toContract (inv: Inventory) : Contracts.Supply.Inventory =
         { Id = InventoryId.value inv.Id
           SkuId = SkuId.value inv.SkuId
           StockingPointId = StockingPointId.value inv.StockingPointId
@@ -59,13 +57,13 @@ let createCapabilities (repo: Repository<Inventory, string, InventoryEvent>) =
         liftCmdResult ACL.toRemoveCommand
         >=> handleCommand InventoryId.value repo Remove decide }
 
-let evolveProjection (state: Map<string, Contracts.Domain.Inventory>) (evt: InventoryEvent) =
+let evolveProjection (state: Map<string, Contracts.Supply.Inventory>) (evt: InventoryEvent) =
     match evt with
     | InventoryCreated inv -> Map.add (InventoryId.value inv.Id) (ACL.toContract inv) state
     | InventoryRemoved e -> Map.remove (InventoryId.value e.Id) state
 
 let createProjectionAgent () =
-    ProjectionAgent<Map<string, Contracts.Domain.Inventory>, InventoryEvent>(
+    ProjectionAgent<Map<string, Contracts.Supply.Inventory>, InventoryEvent>(
         evolveProjection,
         Map.empty,
         "InventoryReadModel"
@@ -73,7 +71,7 @@ let createProjectionAgent () =
 
 let createQueryService agent = QueryServiceBase.getQueryService agent id
 
-let createInventoryApi (capabilities: InventoryCapabilities) agent =
+let createInventoryApi (capabilities: InventoryCapabilities) _ =
     { Define =
         fun req ->
             capabilities.Define req

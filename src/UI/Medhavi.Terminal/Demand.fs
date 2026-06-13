@@ -8,7 +8,7 @@ open Medhavi.Demand
 let seedDemands (context: DemandContext) =
     let now = DateTimeOffset.UtcNow
 
-    let req =
+    let req: Medhavi.Contracts.Integration.DemandDefineReq =
         { DemandLineId = "DEMAND-1"
           DemandOrderId = "ORDER-1"
           SkuId = "SKU-BIKE"
@@ -23,7 +23,7 @@ let seedDemands (context: DemandContext) =
           ConfirmedDeliveryDate = Some(now.AddDays(10.0))
           ActualDeliveryDate = None
           Priority = 1
-          DemandCategory = DemandCategory.CustomerOrderDemand
+          DemandCategory = "CustomerOrderDemand"
           IsFirm = true
           IsFrozen = false }
 

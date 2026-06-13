@@ -3,11 +3,11 @@ module Medhavi.Integration.Adapters.InventoryTarget
 open System
 open System.Threading
 open Medhavi.Common.Patterns
-open Medhavi.Contracts.Integration
-open Medhavi.Integration
+open Medhavi.Contracts.Supply
 open Medhavi.Infrastructure.IO
 open Medhavi.Infrastructure.Stores.EnvelopeStore
 open Medhavi.Infrastructure
+open Medhavi.Integration
 
 module ACL =
     let parseInventoryTargetCsv csv =

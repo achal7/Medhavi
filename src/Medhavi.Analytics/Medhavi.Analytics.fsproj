@@ -6,12 +6,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="PlanningHorizon\Types.fs" />
+    <Compile Include="PlanningHorizon\PlanningPeriod.fs" />
     <Compile Include="PlanningHorizon\DemandProjection.fs" />
     <Compile Include="PlanningHorizon\MaterialProjection.fs" />
     <Compile Include="PlanningHorizon\CapacityProjection.fs" />
-    <Compile Include="PlanningHorizon\TransportProjection.fs" />
-    <Compile Include="PlanningHorizon\DataSources.fs" />
     <Compile Include="PlanningHorizon\QueryService.fs" />
     <Compile Include="KPI\Types.fs" />
     <Compile Include="KPI\KpiInvalidation.fs" />
@@ -29,6 +27,11 @@
     <ProjectReference Include="..\Medhavi.SharedKernel\Medhavi.SharedKernel.fsproj" />
     <ProjectReference Include="..\Medhavi.MasterData\Medhavi.MasterData.fsproj" />
     <ProjectReference Include="..\Medhavi.Scenario\Medhavi.Scenario.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FSharp.SystemTextJson" />
+    <PackageReference Include="Microsoft.Extensions.Logging" />
   </ItemGroup>
 
 </Project>

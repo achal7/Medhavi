@@ -3,9 +3,7 @@ module Medhavi.MasterData.Domain.UnitConversionAgg
 open System.Text.Json.Serialization
 open Medhavi.Common.Validation
 open Medhavi.SharedKernel
-open Medhavi.SharedKernel.Validations
 open Medhavi.SharedKernel.Aggregate
-open Medhavi.MasterData.Domain.UomAgg
 
 [<JsonFSharpConverter>]
 type UnitConversionId = private UnitConversionId of string
@@ -113,7 +111,7 @@ let decide: DecideUnitConversion =
         | UpdateStatus(_, status), Some s ->
             match status with
             | Active when s.Status = Active -> Error(DomainError.invariant "UnitCoversion is already active")
-            | Retired when s.Status = Retired -> Error(DomainError.invariant "UnitCoversion is already retired")
+            | Inactive when s.Status = Inactive -> Error(DomainError.invariant "UnitCoversion is already retired")
             | _ ->
                 let updated =
                     { s with

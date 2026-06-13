@@ -19,13 +19,19 @@ module BoundedContext =
         (overlayRepo: Repository<ScenarioOverlaySet, string, ScenarioOverlayEvent>)
         =
 
-        let createScenario (scenarioId: string, name: string, scenarioType: ScenarioType) =
+        let createScenario (scenarioId: string, name: string, scenarioType: ScenarioType, parentScenarioId: string option) =
             task {
                 match ScenarioId.create scenarioId with
                 | Error e -> return Error e
                 | Ok scenId ->
+                    let parentIdOpt =
+                        parentScenarioId
+                        |> Option.bind (fun pId ->
+                            match ScenarioId.create pId with
+                            | Ok pid -> Some pid
+                            | Error _ -> None)
                     // Create Scenario Aggregate
-                    let scenCmd = ScenarioCommand.Create(scenId, name, scenarioType)
+                    let scenCmd = ScenarioCommand.Create(scenId, name, scenarioType, parentIdOpt)
                     let scenDecRes = ScenarioAgg.handle scenCmd None
 
                     match scenDecRes with
@@ -312,7 +318,7 @@ module BoundedContext =
 
                 match baselineOpt with
                 | None ->
-                    let! _ = createScenario ("BASELINE", "Live Baseline Plan", ScenarioType.Baseline)
+                    let! _ = createScenario ("BASELINE", "Live Baseline Plan", ScenarioType.Baseline, None)
                     ()
                 | Some _ -> ()
             }

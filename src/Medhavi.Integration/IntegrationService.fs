@@ -37,6 +37,7 @@ module IntegrationService =
         collect
             [ fun () -> Uom.ingestAndPublishUoms "uoms.csv" store
               fun () -> Sku.ingestAndPublishSkus "products.csv" store
+              fun () -> Demand.ingestAndPublishDemands "demands.csv" store
               fun () -> UnitConversion.ingestAndPublishUnitConversions "unit_conversions.csv" store
               fun () -> StockingPoint.ingestAndPublishStockingPoints "stocking_points.csv" store
               fun () -> Resource.ingestAndPublishResourceGroups "resource_groups.csv" store

@@ -2,6 +2,7 @@ namespace Medhavi.SharedKernel.Projections
 
 open System.Threading.Tasks
 open Medhavi.Contracts.Domain
+open Medhavi.Contracts.Supply
 
 type QueryService<'Entity, 'Id> =
     { GetAll: unit -> Task<'Entity list>

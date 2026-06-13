@@ -23,7 +23,7 @@ type Scenario =
       LastPlanningMode: PlanningMode option }
 
 type ScenarioCommand =
-    | Create of ScenarioId * string * ScenarioType
+    | Create of ScenarioId * string * ScenarioType * parentId: ScenarioId option
     | Rename of string
     | MarkDirty
     | MarkDirtyWith of DirtyReason
@@ -43,7 +43,7 @@ type ScenarioCommand =
     | Archive
 
 type ScenarioEvent =
-    | ScenarioCreated of ScenarioId * string * ScenarioType
+    | ScenarioCreated of ScenarioId * string * ScenarioType * parentId: ScenarioId option
     | ScenarioRenamed of ScenarioId * string
     | ScenarioMarkedDirty of ScenarioId
     | ScenarioDirtyReasonSet of ScenarioId * DirtyReason
@@ -72,12 +72,12 @@ module ScenarioAgg =
             (DomainError.invariant
                   $"Version mismatch: expected {Version.value expected}, actual {Version.value actual}")
 
-    let private initialScenario id name scenarioType : Scenario =
+    let private initialScenario id name scenarioType parentId : Scenario =
         { Id = id
           Name = name
           Type = scenarioType
           Version = Version.initial
-          ParentScenarioId = None
+          ParentScenarioId = parentId
           ConfigurationId = None
           ActivePlanRef = None
           PreviousPlanRef = None
@@ -92,9 +92,9 @@ module ScenarioAgg =
     let handle: Decide<Scenario, ScenarioCommand, ScenarioEvent> =
         fun command stateOpt ->
             match command, stateOpt with
-            | Create(id, name, scenarioType), None ->
-                let s = initialScenario id name scenarioType
-                Ok { NewState = s; Events = [ ScenarioCreated(id, name, scenarioType) ] }
+            | Create(id, name, scenarioType, parentId), None ->
+                let s = initialScenario id name scenarioType parentId
+                Ok { NewState = s; Events = [ ScenarioCreated(id, name, scenarioType, parentId) ] }
 
             | Create _, Some _ -> errConflict "Scenario already exists"
 
@@ -259,7 +259,7 @@ module ScenarioAgg =
 
     let evolve (event: ScenarioEvent) (state: Scenario option) : Scenario option =
         match event, state with
-        | ScenarioCreated(id, name, scenarioType), None -> Some(initialScenario id name scenarioType)
+        | ScenarioCreated(id, name, scenarioType, parentId), None -> Some(initialScenario id name scenarioType parentId)
 
         | ScenarioRenamed(_, name), Some s ->
             Some { s with Name = name; Version = Version.increment s.Version }

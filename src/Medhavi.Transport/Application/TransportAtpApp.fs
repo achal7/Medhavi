@@ -1,12 +1,8 @@
 module Medhavi.Transport.Application.TransportAtpApp
 
 open System
-open System.Collections.Generic
 open Medhavi.Transport
 open Medhavi.Transport.Domain.TransportGraphAgg
-open Medhavi.Infrastructure.Projections
-
-// ─── Configuration ───────────────────────────────────────────────────────────
 
 type TransportAtpConfig =
     { DefaultMaxHops: int
@@ -79,7 +75,7 @@ let private filterByConstraints
     else
         paths
         |> List.filter (fun path ->
-            path.Legs |> List.forall (fun leg ->
+            path.Legs |> List.forall (fun _ ->
                 // In a real system we'd cross-check the leg's constraint list
                 // For MVP: allow all paths (constraints enforced at leg ingestion)
                 true))
@@ -197,7 +193,7 @@ let createCapabilities
                     // 4. Convert to itineraries
                     let itineraries =
                         paths
-                        |> List.mapi (fun i path ->
+                        |> List.mapi (fun _ path ->
                             let id = ItineraryId.generate ()
                             Path.toItinerary id skuId (Some qty) path)
 

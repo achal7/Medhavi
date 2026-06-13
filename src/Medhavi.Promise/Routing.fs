@@ -1,7 +1,5 @@
 module Medhavi.Promise.Routing
 
-open System
-open Medhavi.SharedKernel
 open Medhavi.SharedKernel.PromisePolicy
 open Medhavi.Promise.PromiseTypes
 

@@ -21,7 +21,7 @@ open Medhavi.Scheduler.Mrp.Domain.Errors
 open Medhavi.Scheduler.Mrp.Domain.MrpRunAggregate
 open Medhavi.Scheduler.Mrp.Steps
 open Medhavi.Scheduler.Mrp.Application
-open Medhavi.Scheduler.Mrp
+open Medhavi.Contracts.Supply
 open Medhavi.Contracts.Integration
 
 module SchedulerWiring =
@@ -420,7 +420,7 @@ module SchedulerWiring =
 
                         match selectedRoutingOpt with
                         | None ->
-                            printfn "  [WARNING] No routing found for planned work order %s (Sku: %s)" 
+                            printfn "  [WARNING] No routing found for planned work order %s (Sku: %s)"
                                 (SupplyProposalId.value p.Id) (SkuId.value p.SkuId)
                         | Some routing ->
                             let req =
@@ -435,7 +435,7 @@ module SchedulerWiring =
                             | Ok (capResult, nextAllocations) ->
                                 allocations <- nextAllocations
                                 scheduledCount <- scheduledCount + 1
-                                
+
                                 let prodOrder = capResult.ProductionOrder
                                 printfn "\n========================================="
                                 printfn "PRODUCTION ORDER FINITE SCHEDULE"
@@ -448,7 +448,7 @@ module SchedulerWiring =
 
                                 for op in prodOrder.Operations do
                                     printfn "  - Step %s (%s) on resource %s" op.StepId op.OperationCode (PhysicalResourceId.value op.ResourceId)
-                                    printfn "    Window  : %s to %s" 
+                                    printfn "    Window  : %s to %s"
                                             ((Timestamp.value op.Window.Start).ToString("yyyy-MM-dd HH:mm"))
                                             ((Timestamp.value op.Window.End).ToString("yyyy-MM-dd HH:mm"))
                                     printfn "    Duration: %.2f mins" op.DurationMinutes
@@ -460,7 +460,7 @@ module SchedulerWiring =
                                         violationCount <- violationCount + 1
                                         match v with
                                         | DueDateMiss(woId, start, now) ->
-                                            printfn "  [VIOLATION] Due Date Miss: start time %s is in the past (now is %s)" 
+                                            printfn "  [VIOLATION] Due Date Miss: start time %s is in the past (now is %s)"
                                                 (start.ToString("yyyy-MM-dd HH:mm")) (now.ToString("yyyy-MM-dd HH:mm"))
                                         | CapacityOverload(resId, bucketIdOpt, date, reqMins, availMins) ->
                                             let bIdStr = bucketIdOpt |> Option.defaultValue "N/A"
@@ -493,7 +493,7 @@ module SchedulerWiring =
                                 for resv in capResult.Reservations do
                                     let startTime = match resv.Start with | Some t -> Timestamp.value t | None -> DateTimeOffset.UtcNow
                                     let targetDate = DateOnly.FromDateTime(startTime.Date)
-                                    
+
                                     let bucketOpt =
                                         bucketsState
                                         |> Map.toList
@@ -539,7 +539,7 @@ module SchedulerWiring =
                             let orderTypeStr =
                                 match p.ProposalType with
                                 | PlannedWorkOrder -> "workorder"
-                                | PlannedPurchaseOrder -> "purchaseorder"
+                                | ProposalType.PlannedPurchaseOrder -> "purchaseorder"
                                 | PlannedTransferOrder -> "transportorder"
 
                             { SupplyOrderCreateReq.Id = SupplyProposalId.value p.Id
@@ -562,8 +562,8 @@ module SchedulerWiring =
                         |> Async.AwaitTask
 
                     match res with
-                    | Ok _ -> 
-                        printfn "Finite scheduler run complete: %d production orders firmed, %d planning violations registered." 
+                    | Ok _ ->
+                        printfn "Finite scheduler run complete: %d production orders firmed, %d planning violations registered."
                             scheduledCount violationCount
                         return Ok()
                     | Error err -> return Error(sprintf "%A" err)

@@ -12,6 +12,9 @@ let configureServices (builder: WebApplicationBuilder) =
     builder.Services.AddScoped<WorkspaceContextService>() |> ignore
     builder.Services.AddScoped<PlanningCommandService>() |> ignore
     builder.Services.AddScoped<AuthService>() |> ignore
+    builder.Services.AddScoped<GlobalSearchService>(fun sp ->
+        let eng = sp.GetRequiredService<MedhaviEngine>()
+        GlobalSearchService.create eng) |> ignore
 
     // Query Stores
     builder.Services.AddScoped<DemandStore>(fun sp ->
@@ -33,3 +36,7 @@ let configureServices (builder: WebApplicationBuilder) =
     builder.Services.AddScoped<ActivityStore>(fun sp ->
         let eng = sp.GetRequiredService<MedhaviEngine>()
         ActivityStore.create eng) |> ignore
+
+    builder.Services.AddScoped<PromiseStore>(fun sp ->
+        let eng = sp.GetRequiredService<MedhaviEngine>()
+        PromiseStore.create eng) |> ignore

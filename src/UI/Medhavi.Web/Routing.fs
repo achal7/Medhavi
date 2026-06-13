@@ -8,3 +8,4 @@ type Page =
     | [<EndPoint "/supply">] Supply
     | [<EndPoint "/capacity">] Capacity
     | [<EndPoint "/scenarios">] Scenarios
+    | [<EndPoint "/promise">] Promise

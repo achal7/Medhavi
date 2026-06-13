@@ -44,7 +44,7 @@ let private normalizeReliability (rel: decimal option) =
 
 /// Score a routing choice based on policy
 let scoreRoutingChoice (policy: PromisePolicy) (choice: RoutingChoice) =
-    let (timeW, costW, riskW) = getPolicyWeights policy
+    let timeW, _, riskW = getPolicyWeights policy
 
     let timeScore =
         match choice.EstimatedDuration with
@@ -57,7 +57,7 @@ let scoreRoutingChoice (policy: PromisePolicy) (choice: RoutingChoice) =
 
 /// Score an itinerary based on policy
 let scoreItinerary (policy: PromisePolicy) (itinerary: Itinerary) =
-    let (timeW, costW, riskW) = getPolicyWeights policy
+    let timeW, costW, riskW = getPolicyWeights policy
 
     let timeScore = (float itinerary.TotalLeadTimeMinutes / 1440.0) ** 2.0
     let costScore = min 1.0 (normalizeCost(Some itinerary.TotalFixedCost))

@@ -1,22 +1,34 @@
 module Medhavi.Demand.Application
 
-open System
-open System.Threading.Tasks
 open Medhavi.Common.Patterns
 open Medhavi.Common.Validation
 open Medhavi.SharedKernel
 open Medhavi.SharedKernel.Aggregate
-open Medhavi.Infrastructure.Projections
-open Medhavi.Demand
+open Medhavi.Demand.Domain
 open Medhavi.Demand.Domain.DemandLineAgg
+open Medhavi.Contracts.Demand
 
 type DemandLineApi =
-    { Define: DemandLineDefineReq -> TaskResult<DemandLine, ApplicationError>
-      DefineBulk: DemandLineDefineReq list -> TaskResult<DemandLine list, ApplicationError>
-      Fulfill: FulfillDemandLineReq -> TaskResult<DemandLine, ApplicationError> }
+    { Define: DemandDefineReq -> TaskResult<Domain.DemandLine, ApplicationError>
+      DefineBulk: DemandDefineReq list -> TaskResult<Domain.DemandLine list, ApplicationError>
+      Fulfill: FulfillDemandLineReq -> TaskResult<Domain.DemandLine, ApplicationError> }
 
 module ACL =
-    let toDefineCommand (req: DemandLineDefineReq) : Validation<DefineDemandLineCmd, DomainError> =
+    let toDefineCommand (req: DemandDefineReq) : Validation<DefineDemandLineCmd, DomainError> =
+        let cat =
+            match req.DemandCategory.ToLower() with
+            | "customerorderdemand"
+            | "customerorder" -> DemandCategory.CustomerOrderDemand
+            | "salesorderforecast"
+            | "forecast" -> DemandCategory.SalesOrderForecast
+            | "interplanttransfer"
+            | "transfer" -> DemandCategory.InterplantTransfer
+            | "servicepart"
+            | "sparepart" -> DemandCategory.ServicePart
+            | "internalconsumption"
+            | "consumption" -> DemandCategory.InternalConsumption
+            | _ -> DemandCategory.CustomerOrderDemand
+
         let make (skuId: SkuId) (spId: StockingPointId) (qty: Quantity) : DefineDemandLineCmd =
             { DemandLineId = req.DemandLineId
               DemandOrderId = req.DemandOrderId
@@ -32,27 +44,30 @@ module ACL =
               ConfirmedDeliveryDate = req.ConfirmedDeliveryDate
               ActualDeliveryDate = req.ActualDeliveryDate
               Priority = req.Priority
-              DemandCategory = req.DemandCategory
+              DemandCategory = cat
               IsFirm = req.IsFirm
               IsFrozen = req.IsFrozen }
 
         make <!> (SkuId.create req.SkuId |> fromResult)
-        <*> (StockingPointId.create req.StockingPointId |> fromResult)
+        <*> (StockingPointId.create req.StockingPointId
+             |> fromResult)
         <*> (Quantity.create req.Quantity |> fromResult)
 
     let toFulfillCommand (req: FulfillDemandLineReq) : Validation<FulfillDemandLineCmd, DomainError> =
         let make qty : FulfillDemandLineCmd =
             { DemandLineId = req.DemandLineId
               Quantity = qty }
-        make <!> (Quantity.create req.Quantity |> fromResult)
 
-type Decision = Decision<DemandLine, DemandLineEvent>
+        make
+        <!> (Quantity.create req.Quantity |> fromResult)
+
+type Decision = Decision<Domain.DemandLine, DemandLineEvent>
 
 type DemandLineCapabilities =
-    { Define: DemandLineDefineReq -> TaskResult<Decision, ApplicationError>
+    { Define: DemandDefineReq -> TaskResult<Decision, ApplicationError>
       Fulfill: FulfillDemandLineReq -> TaskResult<Decision, ApplicationError> }
 
-let createCapabilities (repo: Repository<DemandLine, string, DemandLineEvent>) =
+let createCapabilities (repo: Repository<Domain.DemandLine, string, DemandLineEvent>) =
     { Define =
         liftCmdValidation ACL.toDefineCommand
         >=> handleCommand (fun cmd -> cmd.DemandLineId) repo Create decide
@@ -71,9 +86,7 @@ let createDemandLineApi (capabilities: DemandLineCapabilities) =
             reqs
             |> List.map capabilities.Define
             |> TaskResult.sequence
-            |> TaskResult.map (fun decisions ->
-                decisions
-                |> List.map (fun d -> d.NewState))
+            |> TaskResult.map (fun decisions -> decisions |> List.map (fun d -> d.NewState))
       Fulfill =
         fun req ->
             capabilities.Fulfill req

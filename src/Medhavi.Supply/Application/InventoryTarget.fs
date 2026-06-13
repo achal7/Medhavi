@@ -3,14 +3,11 @@ module Medhavi.Supply.Application.InventoryTarget
 open Medhavi
 open Medhavi.Common.Patterns
 open Medhavi.Common.Validation
-open Medhavi.Contracts.Domain
-open Medhavi.Contracts.Integration
-open Medhavi.Infrastructure
 open Medhavi.Infrastructure.Projections
 open Medhavi.SharedKernel
 open Medhavi.SharedKernel.API
 open Medhavi.SharedKernel.Aggregate
-open Medhavi.Supply.Domain
+open Medhavi.Contracts.Supply
 open Medhavi.Supply.Domain.InventoryTargetAgg
 
 module ACL =
@@ -22,7 +19,7 @@ module ACL =
         | Some(Ok x) -> Ok(Some x)
         | Some(Error e) -> Error e
 
-    let mapPolicy (pOpt: Contracts.Domain.ReplenishmentPolicy option) =
+    let mapPolicy (pOpt: Contracts.Supply.ReplenishmentPolicy option) =
         match pOpt with
         | None -> Valid None
         | Some p ->
@@ -42,7 +39,7 @@ module ACL =
                  |> fromResult)
             |> map Some
 
-    let mapSeasonal (s: Contracts.Domain.SeasonalAdjustment) : SeasonalAdjustment =
+    let mapSeasonal (s: Contracts.Supply.SeasonalAdjustment) : SeasonalAdjustment =
         { PeriodStart = Timestamp.create s.PeriodStart
           PeriodEnd = Timestamp.create s.PeriodEnd
           AdjustmentFactor = s.AdjustmentFactor }
@@ -163,7 +160,7 @@ module ACL =
                     | Error _ -> failwith "invalid"
               ModifiedDate = Timestamp.now })
 
-    let toContractPolicy (p: ReplenishmentPolicy) : Contracts.Domain.ReplenishmentPolicy =
+    let toContractPolicy (p: ReplenishmentPolicy) : Contracts.Supply.ReplenishmentPolicy =
         { Safety = Quantity.value p.Safety
           MinQty = p.MinQty |> Option.map Quantity.value
           MaxQty = p.MaxQty |> Option.map Quantity.value
@@ -171,12 +168,12 @@ module ACL =
           LotSize = p.LotSize |> Option.map Quantity.value
           Expedite = p.Expedite }
 
-    let toContractSeasonal (s: SeasonalAdjustment) : Contracts.Domain.SeasonalAdjustment =
+    let toContractSeasonal (s: SeasonalAdjustment) : Contracts.Supply.SeasonalAdjustment =
         { PeriodStart = Timestamp.value s.PeriodStart
           PeriodEnd = Timestamp.value s.PeriodEnd
           AdjustmentFactor = s.AdjustmentFactor }
 
-    let toContract (t: InventoryTarget) : Contracts.Domain.InventoryTarget =
+    let toContract (t: InventoryTarget) : Contracts.Supply.InventoryTarget =
         { Id = InventoryTargetId.value t.Id
           SkuId = SkuId.value t.SkuId
           StockingPointId = StockingPointId.value t.StockingPointId
@@ -220,7 +217,7 @@ let createCapabilities (repo: Repository<InventoryTarget, string, InventoryTarge
         liftCmdResult ACL.toDeactivateCommand
         >=> handleCommand (fun cmd -> InventoryTargetId.value cmd.Id) repo DeactivateInventoryTarget decide }
 
-let evolveProjection (state: Map<string, Contracts.Domain.InventoryTarget>) (evt: InventoryTargetEvent) =
+let evolveProjection (state: Map<string, Contracts.Supply.InventoryTarget>) (evt: InventoryTargetEvent) =
     match evt with
     | InventoryTargetDefined e -> Map.add (InventoryTargetId.value e.Id) (ACL.toContract (applyDefinedEvent e)) state
     | InventoryTargetUpdated e ->
@@ -287,13 +284,13 @@ let evolveProjection (state: Map<string, Contracts.Domain.InventoryTarget>) (evt
         | None -> state
 
 let createProjectionAgent () =
-    ProjectionAgent<Map<string, Contracts.Domain.InventoryTarget>, InventoryTargetEvent>(
+    ProjectionAgent<Map<string, Contracts.Supply.InventoryTarget>, InventoryTargetEvent>(
         evolveProjection,
         Map.empty,
         "InventoryTargetReadModel"
     )
 
-let createInventoryTargetApi (capabilities: InventoryTargetCapabilities) agent =
+let createInventoryTargetApi (capabilities: InventoryTargetCapabilities) _ =
     { Define =
         fun req ->
             capabilities.Define req

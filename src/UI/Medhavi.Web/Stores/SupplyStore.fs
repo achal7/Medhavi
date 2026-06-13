@@ -4,10 +4,10 @@ open System
 open System.Threading.Tasks
 open Medhavi.Web
 open Medhavi.Nexus
-open Medhavi.Analytics.PlanningHorizon
+open Medhavi.Contracts.Supply
 
 type SupplyStore = {
-    GetSnapshot : unit -> SupplyElementView list
+    GetSnapshot : unit -> SupplyOrder list
     Refresh     : unit -> Task<unit>
     Subscribe   : (unit -> unit) -> IDisposable
     SetScope    : QueryScope -> Task<unit>
@@ -15,12 +15,13 @@ type SupplyStore = {
 
 module SupplyStore =
     let create (engine: MedhaviEngine) : SupplyStore =
-        let mutable cache : SupplyElementView list = []
+        let mutable cache : SupplyOrder list = []
         let mutable currentScope : QueryScope = {
             ScenarioId = None
             PlantId = None
-            HorizonStart = DateTime.Today
-            HorizonEnd = DateTime.Today.AddDays(30.0)
+            StockingPointId = None
+            HorizonStart = DateTime.Today.AddDays(-7.0)
+            HorizonEnd = DateTime.Today.AddDays(90.0)
         }
         let listeners = System.Collections.Generic.List<unit -> unit>()
 
@@ -39,52 +40,33 @@ module SupplyStore =
             task {
                 try
                     printfn "[SupplyStore] Starting refresh..."
-                    let! orders = engine.Supply.Queries.SupplyOrder.GetAll()
-                    printfn "[SupplyStore] engine.Supply.Queries.SupplyOrder.GetAll() returned %d orders" orders.Length
+                    let! orders = engine.GetSupplyOrders()
+                    printfn "[SupplyStore] engine.GetSupplyOrders() returned %d orders" orders.Length
+                    let! stockingPoints = engine.GetStockingPoints()
+                    let stockingPointToPlantMap = stockingPoints |> List.map (fun sp -> sp.Id, sp.PlantId) |> readOnlyDict
                     let filtered = 
                         orders
                         |> List.filter (fun o ->
                             let plantMatch = 
                                 match currentScope.PlantId with
                                 | None -> true
-                                | Some pid -> o.StockingPointId.Contains(pid, StringComparison.OrdinalIgnoreCase)
+                                | Some pid -> 
+                                    match stockingPointToPlantMap.TryGetValue(o.StockingPointId) with
+                                    | true, plantId -> plantId.Equals(pid, StringComparison.OrdinalIgnoreCase)
+                                    | false, _ -> o.StockingPointId.Contains(pid, StringComparison.OrdinalIgnoreCase)
                             
-                            let dateMatch = 
-                                match o.RequiredDeliveryDate with
+                            let spMatch =
+                                match currentScope.StockingPointId with
                                 | None -> true
-                                | Some rdd -> 
-                                    let d = rdd.Date
-                                    d >= currentScope.HorizonStart.Date && d <= currentScope.HorizonEnd.Date
-                            plantMatch && dateMatch
+                                | Some spid -> o.StockingPointId.Equals(spid, StringComparison.OrdinalIgnoreCase)
+                            
+                            let d = o.RequiredDeliveryDate |> Option.map (fun dt -> DateOnly.FromDateTime(dt.DateTime)) |> Option.defaultValue (DateOnly.FromDateTime(DateTime.Today))
+                            let dateMatch = 
+                                d >= DateOnly.FromDateTime(currentScope.HorizonStart) && d <= DateOnly.FromDateTime(currentScope.HorizonEnd)
+                            plantMatch && spMatch && dateMatch
                         )
                     printfn "[SupplyStore] Filtered to %d orders." filtered.Length
-                    let mapped =
-                        filtered
-                        |> List.map (fun o ->
-                            { SupplyElementView.SupplyOrderId = o.Id
-                              SupplyType = 
-                                match o.OrderType.ToLower() with
-                                | "workorder"
-                                | "plannedworkorder" -> PlannedProductionOrder
-                                | "purchaseorder"
-                                | "plannedpurchaseorder" -> PlannedPurchaseOrder
-                                | _ -> PlannedProductionOrder
-                              SkuId = o.SkuId
-                              SkuCode = o.SkuId
-                              StockingPointId = o.StockingPointId
-                              PlannedQty = o.Quantity
-                              ConfirmedQty = o.CompletedQuantity
-                              PlannedDate = 
-                                o.RequiredDeliveryDate
-                                |> Option.map (fun d -> DateOnly.FromDateTime(d.DateTime))
-                                |> Option.defaultValue (DateOnly.FromDateTime(DateTime.Today))
-                              IsFirm = o.IsFirm
-                              IsLocked = o.IsLocked
-                              IsExpedited = o.IsExpedited
-                              RoutingId = o.RoutingId
-                              SupplierId = o.SupplierId
-                              LeadTimeDays = None })
-                    cache <- mapped
+                    cache <- filtered
                     notifySubscribers ()
                     printfn "[SupplyStore] Subscribers notified."
                 with ex ->

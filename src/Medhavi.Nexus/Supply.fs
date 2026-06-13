@@ -2,14 +2,11 @@ namespace Medhavi.Nexus
 
 open Medhavi.Integration
 open Medhavi.Supply
-open Medhavi.Contracts.Integration
+open Medhavi.Contracts.Supply
 open Medhavi.SharedKernel.BoundedContexts
 open System
 open Medhavi.MasterData
-open Medhavi.MasterData.Application
 open Medhavi.Common.Patterns
-open Medhavi.Supply.Application
-open Medhavi.SharedKernel
 
 module Supply =
 
@@ -176,7 +173,7 @@ module Supply =
         (supplyContext: SupplyContext)
         (masterDataContext: MasterData)
         (logger: IngestionLogger)
-        (req: Medhavi.Integration.IntegrationEvent)
+        (req: IntegrationEvent)
         =
         task {
             match req with
@@ -224,7 +221,7 @@ module Supply =
                 | Error err -> logger.LogError(sprintf "    - Reservation Ingestion Error: %A" err)
 
                 ()
-            | ResourceCalendarsImported resourceCalendars ->
+            | ResourceCalendarsImported _ ->
                 ()
             | WorkOrdersCompleted workOrdersCompleted ->
                 handleWorkOrdersCompleted workOrdersCompleted supplyContext masterDataContext logger

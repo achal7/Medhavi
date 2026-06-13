@@ -2,7 +2,7 @@
 module Medhavi.Scheduler.Mrp.Steps.PreprocessStep
 
 open Medhavi.SharedKernel
-open Medhavi.Demand
+open Medhavi.Demand.Domain
 open Medhavi.Scheduler.Mrp.Domain.Types
 open Medhavi.Scheduler.Mrp.Domain.Errors
 open Medhavi.Scheduler.Mrp.Domain.Policies
@@ -86,14 +86,14 @@ let execute: MrpStepAsync<MrpDemand list, MrpDemand list> =
                     match ctx.Policy.ForecastConsumption with
                     | Some policy when policy.Enabled ->
                         // Partition demands
-                        let (coDemands, nonCoDemands) =
+                        let coDemands, nonCoDemands =
                             validDemands
                             |> List.partition (fun d ->
                                 match d.Source with
                                 | CustomerOrder _ -> true
                                 | _ -> false)
 
-                        let (fcDemands, otherDemands) =
+                        let fcDemands, otherDemands =
                             nonCoDemands
                             |> List.partition (fun d ->
                                 match d.Source with
@@ -159,9 +159,9 @@ let execute: MrpStepAsync<MrpDemand list, MrpDemand list> =
                 let grouped = groupDemands consumedDemands
                 let endTime = Timestamp.now
 
-                let duration =
-                    Timestamp.value endTime
-                    - Timestamp.value startTime
+                // let duration =
+                //     Timestamp.value endTime
+                //     - Timestamp.value startTime
 
                 let updatedCtx =
                     ctx
