@@ -21,7 +21,7 @@ type GlobalSearchService =
 
 module GlobalSearchService =
     let create (engine: MedhaviEngine) : GlobalSearchService =
-        let workbenchEntries = 
+        let workbenchEntries =
             [ WorkspaceKind.DemandWorkspace, "Demand Workbench"
               WorkspaceKind.SupplyWorkspace, "Supply Workbench"
               WorkspaceKind.CapacityWorkspace, "Capacity Workbench"
@@ -33,19 +33,19 @@ module GlobalSearchService =
                     return []
                 else
                     let term = query.SearchText.ToLower()
-                    
-                    let workbenchResults = 
+
+                    let workbenchResults =
                         workbenchEntries
                         |> List.filter (fun (_, title) -> title.ToLower().Contains(term))
-                        |> List.map (fun (kind, title) -> WorkbenchResult (kind, title))
-                        
+                        |> List.map WorkbenchResult
+
                     // Query live projections via clean Nexus facade queries
                     let! skus = engine.GetSkus() |> Async.AwaitTask
                     let! plants = engine.GetPlants() |> Async.AwaitTask
                     let! sps = engine.GetStockingPoints() |> Async.AwaitTask
                     let! stdResources = engine.GetResources() |> Async.AwaitTask
-                    let! demands = engine.GetDemands() |> Async.AwaitTask
-                    let! supplyOrders = engine.GetSupplyOrders() |> Async.AwaitTask
+                    let! demands = engine.GetDemands None |> Async.AwaitTask
+                    let! supplyOrders = engine.GetSupplyOrders None |> Async.AwaitTask
 
                     let skuResults =
                         skus
@@ -70,13 +70,13 @@ module GlobalSearchService =
                     let demandResults =
                         demands
                         |> List.filter (fun d -> d.DemandOrderId.ToLower().Contains(term) || d.DemandLineId.ToLower().Contains(term) || d.SkuId.ToLower().Contains(term))
-                        |> List.map (fun d -> 
+                        |> List.map (fun d ->
                             EntityResult (EntityRef ("DemandLine", d.DemandLineId), sprintf "Demand Line: %s / %s (Product: %s, Qty: %M)" d.DemandOrderId d.DemandLineId d.SkuId d.RequestedQty))
 
                     let supplyResults =
                         supplyOrders
                         |> List.filter (fun o -> o.Id.ToLower().Contains(term) || o.SkuId.ToLower().Contains(term))
-                        |> List.map (fun o -> 
+                        |> List.map (fun o ->
                             EntityResult (EntityRef ("SupplyOrder", o.Id), sprintf "Supply Order: %s (Product: %s, Qty: %M)" o.Id o.SkuId o.Quantity))
 
                     let entityResults = skuResults @ plantResults @ spResults @ resourceResults @ demandResults @ supplyResults

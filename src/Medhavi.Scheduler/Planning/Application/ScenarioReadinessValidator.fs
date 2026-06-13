@@ -33,6 +33,8 @@ module ScenarioReadinessValidator =
             [ ReadinessIssue.blocking "SCEN-002" "A planning run is already in progress for this scenario." ]
         | ScenarioStatus.Archived ->
             [ ReadinessIssue.blocking "SCEN-003" "Cannot start planning on an Archived scenario." ]
+        | ScenarioStatus.Published _ ->
+            [ ReadinessIssue.blocking "SCEN-004" "Cannot start planning on a Published scenario." ]
         | _ -> []
 
     let private checkConfiguration (config: PlanRunHorizon) : ReadinessIssue list =

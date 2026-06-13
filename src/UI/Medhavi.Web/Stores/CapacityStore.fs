@@ -38,7 +38,7 @@ module CapacityStore =
 
         let refresh () =
             task {
-                let! ops = engine.GetCapacityOperations()
+                let! ops = engine.GetCapacityOperations(currentScope.ScenarioId)
                 let filtered = 
                     ops
                     |> List.filter (fun o ->

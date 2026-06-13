@@ -229,10 +229,90 @@ module BoundedContext =
                                             return Ok()
             }
 
+        let submitForApproval (scenarioId: string) =
+            task {
+                match ScenarioId.create scenarioId with
+                | Error e -> return Error e
+                | Ok scenId ->
+                    let! scenRes = scenarioRepo.Get(scenarioId)
+                    match scenRes with
+                    | Error e -> return Error(DomainError.notFound (sprintf "%A" e))
+                    | Ok None -> return Error(DomainError.notFound (sprintf "Scenario %s not found" scenarioId))
+                    | Ok(Some scenario) ->
+                        let cmd = ScenarioCommand.SubmitForApproval
+                        let decRes = ScenarioAgg.handle cmd (Some scenario)
+                        match decRes with
+                        | Error e -> return Error e
+                        | Ok dec ->
+                            let! _ = scenarioRepo.Save(scenarioId, dec.NewState, dec.Events)
+                            return Ok()
+            }
+
+        let approve (scenarioId: string) =
+            task {
+                match ScenarioId.create scenarioId with
+                | Error e -> return Error e
+                | Ok scenId ->
+                    let! scenRes = scenarioRepo.Get(scenarioId)
+                    match scenRes with
+                    | Error e -> return Error(DomainError.notFound (sprintf "%A" e))
+                    | Ok None -> return Error(DomainError.notFound (sprintf "Scenario %s not found" scenarioId))
+                    | Ok(Some scenario) ->
+                        let cmd = ScenarioCommand.Approve
+                        let decRes = ScenarioAgg.handle cmd (Some scenario)
+                        match decRes with
+                        | Error e -> return Error e
+                        | Ok dec ->
+                            let! _ = scenarioRepo.Save(scenarioId, dec.NewState, dec.Events)
+                            return Ok()
+            }
+
+        let reject (scenarioId: string, reason: string) =
+            task {
+                match ScenarioId.create scenarioId with
+                | Error e -> return Error e
+                | Ok scenId ->
+                    let! scenRes = scenarioRepo.Get(scenarioId)
+                    match scenRes with
+                    | Error e -> return Error(DomainError.notFound (sprintf "%A" e))
+                    | Ok None -> return Error(DomainError.notFound (sprintf "Scenario %s not found" scenarioId))
+                    | Ok(Some scenario) ->
+                        let cmd = ScenarioCommand.Reject reason
+                        let decRes = ScenarioAgg.handle cmd (Some scenario)
+                        match decRes with
+                        | Error e -> return Error e
+                        | Ok dec ->
+                            let! _ = scenarioRepo.Save(scenarioId, dec.NewState, dec.Events)
+                            return Ok()
+            }
+
+        let archive (scenarioId: string, publishId: string option, rollbackId: string option) =
+            task {
+                match ScenarioId.create scenarioId with
+                | Error e -> return Error e
+                | Ok scenId ->
+                    let! scenRes = scenarioRepo.Get(scenarioId)
+                    match scenRes with
+                    | Error e -> return Error(DomainError.notFound (sprintf "%A" e))
+                    | Ok None -> return Error(DomainError.notFound (sprintf "Scenario %s not found" scenarioId))
+                    | Ok(Some scenario) ->
+                        let cmd = ScenarioCommand.Archive(publishId, rollbackId)
+                        let decRes = ScenarioAgg.handle cmd (Some scenario)
+                        match decRes with
+                        | Error e -> return Error e
+                        | Ok dec ->
+                            let! _ = scenarioRepo.Save(scenarioId, dec.NewState, dec.Events)
+                            return Ok()
+            }
+
         let commands: ScenarioCommands =
             { Create = createScenario
               AddOverride = addOverride
-              RemoveOverride = removeOverride }
+              RemoveOverride = removeOverride
+              SubmitForApproval = submitForApproval
+              Approve = approve
+              Reject = reject
+              Archive = archive }
 
         // 3. Queries Implementation (CQRS read model projection)
         let getById (scenarioId: string) =
@@ -267,7 +347,17 @@ module BoundedContext =
                                 (s.Status = ScenarioStatus.Approved
                                  || s.Status = ScenarioStatus.Ready
                                  || s.Status = ScenarioStatus.PlanningComplete)
-                              Overrides = overrides }
+                              Overrides = overrides
+                              KpiSummary = s.ActivePlanRef |> Option.bind (fun p -> p.KpiSummary)
+                              PublishId =
+                                  match s.Status with
+                                  | ScenarioStatus.Published(_, pId, _) -> Some pId
+                                  | _ -> None
+                              RollbackPackageId =
+                                  match s.Status with
+                                  | ScenarioStatus.Published(_, _, rId) -> Some rId
+                                  | _ -> None
+                              Status = s.Status }
 
                         return Some model
             }
@@ -304,7 +394,17 @@ module BoundedContext =
                                 (s.Status = ScenarioStatus.Approved
                                  || s.Status = ScenarioStatus.Ready
                                  || s.Status = ScenarioStatus.PlanningComplete)
-                              Overrides = ovs })
+                              Overrides = ovs
+                              KpiSummary = s.ActivePlanRef |> Option.bind (fun p -> p.KpiSummary)
+                              PublishId =
+                                  match s.Status with
+                                  | ScenarioStatus.Published(_, pId, _) -> Some pId
+                                  | _ -> None
+                              RollbackPackageId =
+                                  match s.Status with
+                                  | ScenarioStatus.Published(_, _, rId) -> Some rId
+                                  | _ -> None
+                              Status = s.Status })
 
                     return mapped
             }

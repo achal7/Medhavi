@@ -12,4 +12,8 @@ type Model =
       SearchText: string
       SelectedDemand: DemandLine option
       IsLoadingDetails: bool
-      DetailsText: string option }
+      DetailsText: string option
+      OverrideQtyInput: string
+      OverrideReasonInput: string
+      IsSubmittingOverride: bool
+      OverrideError: string option }

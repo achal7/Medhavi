@@ -433,6 +433,10 @@ let tests =
                   CreatedAt = DateTimeOffset.UtcNow
                   IsActive = true
                   Overrides = []
+                  KpiSummary = None
+                  PublishId = None
+                  RollbackPackageId = None
+                  Status = ScenarioStatus.Draft
               }
 
               // Get

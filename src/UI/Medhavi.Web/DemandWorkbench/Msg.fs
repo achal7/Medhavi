@@ -12,3 +12,7 @@ type Msg =
     | RowSelected of DemandLine
     | DetailsLoaded of string
     | CloseDetails
+    | UpdateOverrideQty of string
+    | UpdateOverrideReason of string
+    | SubmitOverride
+    | OverrideApplied of Result<unit, string>

@@ -14,7 +14,11 @@ type ScenarioQueries =
 type ScenarioCommands =
     { Create: string * string * ScenarioType * string option -> Task<Result<unit, DomainError>>
       AddOverride: string * ScenarioDataOverride -> Task<Result<unit, DomainError>>
-      RemoveOverride: string * ScenarioDataOverride -> Task<Result<unit, DomainError>> }
+      RemoveOverride: string * ScenarioDataOverride -> Task<Result<unit, DomainError>>
+      SubmitForApproval: string -> Task<Result<unit, DomainError>>
+      Approve: string -> Task<Result<unit, DomainError>>
+      Reject: string * string -> Task<Result<unit, DomainError>>
+      Archive: string * string option * string option -> Task<Result<unit, DomainError>> }
 
 type ScenarioContext =
     { Commands: ScenarioCommands

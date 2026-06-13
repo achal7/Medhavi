@@ -1666,7 +1666,7 @@ let update
         { model with ActiveOperations = ops }, Cmd.none
     | DemandMsg subMsg ->
         let subModel, subCmd =
-            DemandWorkbench.Update.update stores.Demand subMsg model.DemandWorkbench
+            DemandWorkbench.Update.update stores.Demand stores.Scenario subMsg model.DemandWorkbench
 
         { model with
             DemandWorkbench = subModel },
@@ -1772,6 +1772,134 @@ let update
         { model with
             ScenarioWorkbench = updatedSubModel },
         createCmd
+
+
+    | ScenarioMsg(Pages.ScenarioWorkbench.Msg.RemoveOverride ov) ->
+        match model.ScenarioWorkbench.ActiveScenarioId with
+        | None -> model, Cmd.none
+        | Some scenId ->
+            let removeCmd =
+                Cmd.OfAsync.either
+                    (fun () ->
+                        async {
+                            let! res = stores.Scenario.RemoveOverride(scenId, ov) |> Async.AwaitTask
+                            return res
+                        })
+                    ()
+                    (fun res ->
+                        match res with
+                        | Ok _ -> ReloadAllData
+                        | Error err -> ScenarioMsg(Pages.ScenarioWorkbench.Msg.ShowError err))
+                    (fun ex -> ScenarioMsg(Pages.ScenarioWorkbench.Msg.ShowError ex.Message))
+            model, removeCmd
+
+    | ScenarioMsg(Pages.ScenarioWorkbench.Msg.SubmitForApproval) ->
+        match model.ScenarioWorkbench.ActiveScenarioId with
+        | None -> model, Cmd.none
+        | Some scenId ->
+            let submitCmd =
+                Cmd.OfAsync.either
+                    (fun () ->
+                        async {
+                            let! res = stores.Scenario.SubmitForApproval(scenId) |> Async.AwaitTask
+                            return res
+                        })
+                    ()
+                    (fun res ->
+                        match res with
+                        | Ok _ -> ReloadAllData
+                        | Error err -> ScenarioMsg(Pages.ScenarioWorkbench.Msg.ShowError err))
+                    (fun ex -> ScenarioMsg(Pages.ScenarioWorkbench.Msg.ShowError ex.Message))
+            let updatedSubModel = Pages.ScenarioWorkbench.update (Pages.ScenarioWorkbench.Msg.SetLoading true) model.ScenarioWorkbench
+            { model with ScenarioWorkbench = updatedSubModel }, submitCmd
+
+    | ScenarioMsg(Pages.ScenarioWorkbench.Msg.ApproveScenario) ->
+        match model.ScenarioWorkbench.ActiveScenarioId with
+        | None -> model, Cmd.none
+        | Some scenId ->
+            let approveCmd =
+                Cmd.OfAsync.either
+                    (fun () ->
+                        async {
+                            let! res = stores.Scenario.ApproveScenario(scenId) |> Async.AwaitTask
+                            return res
+                        })
+                    ()
+                    (fun res ->
+                        match res with
+                        | Ok _ -> ReloadAllData
+                        | Error err -> ScenarioMsg(Pages.ScenarioWorkbench.Msg.ShowError err))
+                    (fun ex -> ScenarioMsg(Pages.ScenarioWorkbench.Msg.ShowError ex.Message))
+            let updatedSubModel = Pages.ScenarioWorkbench.update (Pages.ScenarioWorkbench.Msg.SetLoading true) model.ScenarioWorkbench
+            { model with ScenarioWorkbench = updatedSubModel }, approveCmd
+
+    | ScenarioMsg(Pages.ScenarioWorkbench.Msg.SubmitRejectScenario) ->
+        match model.ScenarioWorkbench.RejectingScenarioId with
+        | None -> model, Cmd.none
+        | Some scenId ->
+            let reason = model.ScenarioWorkbench.RejectReason
+            let rejectCmd =
+                Cmd.OfAsync.either
+                    (fun () ->
+                        async {
+                            let! res = stores.Scenario.RejectScenario(scenId, reason) |> Async.AwaitTask
+                            return res
+                        })
+                    ()
+                    (fun res ->
+                        match res with
+                        | Ok _ -> ScenarioMsg(Pages.ScenarioWorkbench.Msg.CloseRejectForm)
+                        | Error err -> ScenarioMsg(Pages.ScenarioWorkbench.Msg.ShowError err))
+                    (fun ex -> ScenarioMsg(Pages.ScenarioWorkbench.Msg.ShowError ex.Message))
+            let updatedSubModel = Pages.ScenarioWorkbench.update (Pages.ScenarioWorkbench.Msg.SetLoading true) model.ScenarioWorkbench
+            { model with ScenarioWorkbench = updatedSubModel }, rejectCmd
+
+    | ScenarioMsg(Pages.ScenarioWorkbench.Msg.SubmitPublishScenario) ->
+        match model.ScenarioWorkbench.ActiveScenarioId with
+        | None -> model, Cmd.none
+        | Some scenId ->
+            let reason = if String.IsNullOrWhiteSpace(model.ScenarioWorkbench.PublishReason) then None else Some model.ScenarioWorkbench.PublishReason
+            let publishCmd =
+                Cmd.OfAsync.either
+                    (fun () ->
+                        async {
+                            let! res = stores.Scenario.PublishScenario(scenId, reason) |> Async.AwaitTask
+                            return res
+                        })
+                    ()
+                    (fun res ->
+                        match res with
+                        | Ok _ -> ScenarioMsg(Pages.ScenarioWorkbench.Msg.ClosePublishForm)
+                        | Error err -> ScenarioMsg(Pages.ScenarioWorkbench.Msg.ShowError err))
+                    (fun ex -> ScenarioMsg(Pages.ScenarioWorkbench.Msg.ShowError ex.Message))
+            let updatedSubModel = Pages.ScenarioWorkbench.update (Pages.ScenarioWorkbench.Msg.SetLoading true) model.ScenarioWorkbench
+            { model with ScenarioWorkbench = updatedSubModel }, publishCmd
+
+    | ScenarioMsg(Pages.ScenarioWorkbench.Msg.RollbackScenario publishId) ->
+        let rollbackCmd =
+            Cmd.OfAsync.either
+                (fun () ->
+                    async {
+                        let! res = stores.Scenario.RollbackScenario(publishId) |> Async.AwaitTask
+                        return res
+                    })
+                ()
+                (fun res ->
+                    match res with
+                    | Ok _ -> ReloadAllData
+                    | Error err -> ScenarioMsg(Pages.ScenarioWorkbench.Msg.ShowError err))
+                (fun ex -> ScenarioMsg(Pages.ScenarioWorkbench.Msg.ShowError ex.Message))
+        let updatedSubModel = Pages.ScenarioWorkbench.update (Pages.ScenarioWorkbench.Msg.SetLoading true) model.ScenarioWorkbench
+        { model with ScenarioWorkbench = updatedSubModel }, rollbackCmd
+
+    | ScenarioMsg(Pages.ScenarioWorkbench.Msg.ClosePublishForm) ->
+        let subModel = Pages.ScenarioWorkbench.update Pages.ScenarioWorkbench.Msg.ClosePublishForm model.ScenarioWorkbench
+        { model with ScenarioWorkbench = subModel }, Cmd.ofMsg ReloadAllData
+
+    | ScenarioMsg(Pages.ScenarioWorkbench.Msg.CloseRejectForm) ->
+        let subModel = Pages.ScenarioWorkbench.update Pages.ScenarioWorkbench.Msg.CloseRejectForm model.ScenarioWorkbench
+        { model with ScenarioWorkbench = subModel }, Cmd.ofMsg ReloadAllData
+
     | ScenarioMsg subMsg ->
         let subModel = Pages.ScenarioWorkbench.update subMsg model.ScenarioWorkbench
 

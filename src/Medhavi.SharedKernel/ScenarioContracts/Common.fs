@@ -18,6 +18,7 @@ type ScenarioStatus =
     | PlanningPaused
     | UnderReview
     | Approved
+    | Published of publishDate: DateTimeOffset * publishId: string * rollbackId: string
     | Archived
 
 // =============================================================================
@@ -158,6 +159,30 @@ type ScenarioDataOverride =
     /// Override the quantity-per relationship between BOM parent and component.
     | BomOverride of parentProduct: string * componentProduct: string * overrideQtyPer: decimal
 
+    // Supplier Deltas
+    | SupplierReactivation of supplierId: string * reason: string
+    | SupplierLeadTimeOverride of supplierId: string * skuId: string option * overrideLeadTimeDays: int * reason: string
+    | SupplierCapacityOverride of supplierId: string * skuId: string option * overrideQty: decimal * reason: string
+    | SupplierPriceOverride of supplierId: string * skuId: string option * overridePrice: decimal * reason: string
+
+    // BOM Deltas
+    | BomAlternateSelection of parentProductId: string * alternateBomId: string * reason: string
+    | BomComponentAddition of parentProductId: string * componentProductId: string * qtyPer: decimal * reason: string
+    | BomComponentRemoval of parentProductId: string * componentProductId: string * reason: string
+
+    // Policy Deltas
+    | KpiWeightOverride of kpiId: string * overrideWeight: decimal
+    | ServiceLevelTargetOverride of targetId: string * overrideValue: decimal
+    | CostRiskTradeoffOverride of policyId: string * overrideValue: decimal
+    | CarbonWeightOverride of policyId: string * overrideWeight: decimal
+    | FreezePolicyOverride of policyId: string * isEnabled: bool
+    | ApprovalThresholdOverride of policyId: string * overrideThreshold: decimal
+
+    // Knowledge Deltas
+    | TagAddedOverride of conceptId: string * tag: string * reason: string
+    | AnnotationAddedOverride of conceptId: string * note: string * reason: string
+    | RelationHintAddedOverride of subjectId: string * relation: string * objectId: string * reason: string
+
 module ScenarioDataOverride =
     open System.Text
     open System.Security.Cryptography
@@ -292,4 +317,38 @@ type ScenarioReadModel =
       Version: int
       CreatedAt: DateTimeOffset
       IsActive: bool
-      Overrides: ScenarioDataOverride list }
+      Overrides: ScenarioDataOverride list
+      KpiSummary: PlanKpiSummary option
+      PublishId: string option
+      RollbackPackageId: string option
+      Status: ScenarioStatus }
+
+type PublishedChange =
+    { EntityId: string
+      EntityType: string
+      FieldPath: string
+      OldValueJson: string
+      NewValueJson: string
+      ValueType: string }
+
+type ScenarioPublishRecord =
+    { PublishId: string
+      ScenarioId: string
+      BaselineVersionBefore: int64
+      BaselineVersionAfter: int64 option
+      PublishedAt: DateTimeOffset
+      PublishedBy: string
+      Changes: PublishedChange list
+      Reason: string option }
+
+type RollbackChange =
+    { EntityId: string
+      EntityType: string
+      FieldPath: string
+      RestoreValueJson: string }
+
+type RollbackPackage =
+    { PublishId: string
+      ScenarioId: string
+      CreatedAt: DateTimeOffset
+      RestoreChanges: RollbackChange list }

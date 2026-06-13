@@ -40,7 +40,7 @@ module DemandStore =
             task {
                 try
                     printfn "[DemandStore] Starting refresh..."
-                    let! demands = engine.GetDemands()
+                    let! demands = engine.GetDemands(currentScope.ScenarioId)
                     printfn "[DemandStore] Retrieved %d demands from engine." demands.Length
                     let! stockingPoints = engine.GetStockingPoints()
                     let stockingPointToPlantMap = stockingPoints |> List.map (fun sp -> sp.Id, sp.PlantId) |> readOnlyDict

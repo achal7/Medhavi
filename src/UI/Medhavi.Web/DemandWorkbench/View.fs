@@ -68,6 +68,64 @@ module View =
                                         text
                                     }
                                 | None -> empty()
+
+                            let activeScenarioIdOpt = model.Context.CurrentScope.ScenarioId
+                            let isSandbox = 
+                                match activeScenarioIdOpt with
+                                | None -> false
+                                | Some id -> not (id.Equals("baseline", StringComparison.OrdinalIgnoreCase))
+                            
+                            if isSandbox then
+                                hr { attr.style "margin: 12px 0; border: none; border-top: 1px solid var(--rz-border-color);" }
+                                div {
+                                    attr.style "padding: 8px 0;"
+                                    h5 { attr.style "font-weight: bold; margin: 0 0 12px 0; color: var(--rz-info-color); font-family: var(--rz-font-family);"; "What-If Demand Override" }
+                                    
+                                    Rz.stack([
+                                        div {
+                                            attr.style "display: flex; gap: 12px; align-items: center; flex-wrap: wrap;"
+                                            div {
+                                                attr.style "display: flex; flex-direction: column; gap: 4px; min-width: 150px;"
+                                                label { attr.style "font-size: 11px; font-weight: bold; color: var(--rz-text-secondary-color); font-family: var(--rz-font-family);"; "Override Quantity" }
+                                                input {
+                                                    attr.``class`` "rz-textbox"
+                                                    attr.``type`` "number"
+                                                    attr.placeholder (sprintf "Original: %M" selected.RequestedQty)
+                                                    attr.value model.OverrideQtyInput
+                                                    on.input (fun (e: ChangeEventArgs) -> dispatch (UpdateOverrideQty (string e.Value)))
+                                                }
+                                            }
+                                            div {
+                                                attr.style "display: flex; flex-direction: column; gap: 4px; min-width: 250px; flex-grow: 1;"
+                                                label { attr.style "font-size: 11px; font-weight: bold; color: var(--rz-text-secondary-color); font-family: var(--rz-font-family);"; "Reason" }
+                                                input {
+                                                    attr.``class`` "rz-textbox"
+                                                    attr.``type`` "text"
+                                                    attr.placeholder "Explain the what-if rationale..."
+                                                    attr.value model.OverrideReasonInput
+                                                    on.input (fun (e: ChangeEventArgs) -> dispatch (UpdateOverrideReason (string e.Value)))
+                                                }
+                                            }
+                                            div {
+                                                attr.style "align-self: flex-end;"
+                                                comp<RadzenButton> {
+                                                    "Text" => "Apply Override"
+                                                    "ButtonStyle" => ButtonStyle.Info
+                                                    "Icon" => "edit"
+                                                    "Size" => ButtonSize.Small
+                                                    "Disabled" => (String.IsNullOrWhiteSpace(model.OverrideQtyInput) || model.IsSubmittingOverride)
+                                                    attr.callback "Click" (fun (e: Web.MouseEventArgs) -> dispatch SubmitOverride)
+                                                }
+                                            }
+                                        }
+                                        
+                                        if model.OverrideError.IsSome then
+                                            div {
+                                                attr.style "color: var(--rz-danger-color); font-size: 12px; font-weight: 500; font-family: var(--rz-font-family);"
+                                                model.OverrideError.Value
+                                            }
+                                    ], gap = "8px")
+                                }
                         ], gap = "12px")
                     }
                 | None -> empty()

@@ -88,7 +88,11 @@ module UITests =
                       Version = 1
                       CreatedAt = DateTimeOffset.Now
                       IsActive = true
-                      Overrides = [] }
+                      Overrides = []
+                      KpiSummary = None
+                      PublishId = None
+                      RollbackPackageId = None
+                      Status = ScenarioStatus.Ready }
                     { ScenarioId = "sc-2"
                       Name = "What-If Capacity Boost"
                       BaseScenarioId = Some "sc-1"
@@ -98,7 +102,11 @@ module UITests =
                       Overrides = [
                           CapacityOverride ("CNC-01", DateTimeOffset.Now, 150.0m)
                           DemandOverride ("ORD-99", 50.0m, "Priority override")
-                      ] }
+                      ]
+                      KpiSummary = None
+                      PublishId = None
+                      RollbackPackageId = None
+                      Status = ScenarioStatus.Ready }
                 ]
 
                 // Load scenarios into ScenarioWorkbench
@@ -140,33 +148,36 @@ module UITests =
                       FulfilledQuantity = 0.0m
                       Status = "Tentative" }
 
+                // Define updateDemand helper
+                let updateDemand = DemandWorkbench.Update.update StateHelpers.dummyDemandStore (Unchecked.defaultof<Medhavi.Web.Stores.ScenarioStore>)
+
                 // Type search text "ORD-001" which schedules a 300ms delayed TriggerSearch message
-                let step1, searchCmd = DemandWorkbench.Update.update StateHelpers.dummyDemandStore (SearchTextChanged "ORD-001") model.DemandWorkbench
+                let step1, searchCmd = updateDemand (SearchTextChanged "ORD-001") model.DemandWorkbench
                 
                 test <@ step1.PendingSearchText = "ORD-001" @>
                 test <@ step1.SearchText = "" @> // SearchText should not update immediately (debounced)
                 
                 // Trigger the search directly as the debouncer would
-                let step2, _ = DemandWorkbench.Update.update StateHelpers.dummyDemandStore (TriggerSearch "ORD-001") step1
+                let step2, _ = updateDemand (TriggerSearch "ORD-001") step1
                 test <@ step2.SearchText = "ORD-001" @>
 
                 // If TriggerSearch is sent with outdated text, it should be ignored
-                let step3, _ = DemandWorkbench.Update.update StateHelpers.dummyDemandStore (TriggerSearch "ORD-old") step1
+                let step3, _ = updateDemand (TriggerSearch "ORD-old") step1
                 test <@ step3.SearchText = "" @> // Ignored because PendingSearchText is ORD-001
 
                 // Select a row for details lazy loading
-                let step4, detailCmd = DemandWorkbench.Update.update StateHelpers.dummyDemandStore (RowSelected mockRow) step2
+                let step4, detailCmd = updateDemand (RowSelected mockRow) step2
                 test <@ step4.SelectedDemand = Some mockRow @>
                 test <@ step4.IsLoadingDetails = true @>
                 test <@ step4.DetailsText.IsNone @>
 
                 // Loaded details should populate
-                let step5, _ = DemandWorkbench.Update.update StateHelpers.dummyDemandStore (DetailsLoaded "Details text populated.") step4
+                let step5, _ = updateDemand (DetailsLoaded "Details text populated.") step4
                 test <@ step5.IsLoadingDetails = false @>
                 test <@ step5.DetailsText = Some "Details text populated." @>
 
                 // Dismiss details selection
-                let step6, _ = DemandWorkbench.Update.update StateHelpers.dummyDemandStore CloseDetails step5
+                let step6, _ = updateDemand CloseDetails step5
                 test <@ step6.SelectedDemand.IsNone @>
                 test <@ step6.IsLoadingDetails = false @>
                 test <@ step6.DetailsText.IsNone @>

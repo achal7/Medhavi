@@ -11,6 +11,7 @@
     <Compile Include="Supply.fs" />
     <Compile Include="SchedulerWiring.fs" />
     <Compile Include="Mrp.fs" />
+    <Compile Include="PublishLedger.fs" />
     <Compile Include="Engine.fs" />
   </ItemGroup>
 

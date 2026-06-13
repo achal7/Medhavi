@@ -20,6 +20,7 @@ open Medhavi.Contracts.Demand
 open Medhavi.Contracts.Capacity
 open Medhavi.Contracts.Supply
 open Medhavi.SharedKernel.ScenarioContracts
+open Medhavi.Analytics
 
 type UIEventLogItem =
     { EventId: string
@@ -51,6 +52,7 @@ type MedhaviEngine() =
     // Real EnvelopeStore instance (Mailbox-agent based)
     let envelopeStore = createEnvelopeStoreMem ()
     let integrationCaps = IntegrationService.createCapabilities envelopeStore
+    let publishLedger = PublishLedger()
 
     let mrpDep =
         SchedulerWiring.buildMrpDependencies masterDataContext supplyContext capacityContext demandContext
@@ -202,13 +204,13 @@ type MedhaviEngine() =
 
     // --- CLEAN FACADE APIs FOR THE UI ---
 
-    member this.GetDemands() : Task<DemandLine list> =
+    member this.GetDemands(scenarioId: string option) : Task<DemandLine list> =
         task {
             let! stateMap = demandContext.DemandAgent.GetStateAsync()
             let! skus = masterDataContext.Queries.Sku.GetAll()
             let skuMap = skus |> Seq.map (fun s -> s.Id, s) |> Map.ofSeq
 
-            return
+            let baselineDemands =
                 stateMap.Values
                 |> Seq.toList
                 |> List.map (fun d ->
@@ -258,6 +260,17 @@ type MedhaviEngine() =
                       UnitOfMeasure = d.UnitOfMeasure
                       PeggedSupply = [] }
                     : DemandLine)
+
+            match scenarioId with
+            | None
+            | Some "BASELINE" -> return baselineDemands
+            | Some id ->
+                let! scOpt = scenarioContext.Queries.GetById id
+                match scOpt with
+                | None -> return baselineDemands
+                | Some sc ->
+                    let overlay = ScenarioAdapter.toScenarioOverlay id sc.Overrides
+                    return baselineDemands |> List.map (ScenarioAdapter.applyDemandOverlay overlay)
         }
 
     member this.RunMrp() : Task<Result<unit, string>> =
@@ -315,9 +328,12 @@ type MedhaviEngine() =
     member this.GetResources() : Task<StandardResource list> =
         task { return! masterDataContext.Queries.StandardResource.GetAll() }
 
-    member this.GetSupplyOrders() : Task<SupplyOrder list> = task { return! supplyContext.Queries.SupplyOrder.GetAll() }
+    member this.GetSupplyOrders(scenarioId: string option) : Task<SupplyOrder list> =
+        task {
+            return! supplyContext.Queries.SupplyOrder.GetAll()
+        }
 
-    member this.GetCapacityOperations() : Task<OperationView list> =
+    member this.GetCapacityOperations(scenarioId: string option) : Task<OperationView list> =
         task {
             let! ops = capacityContext.OperationAgent.GetStateAsync()
 
@@ -365,6 +381,266 @@ type MedhaviEngine() =
             match res with
             | Ok () -> return Ok ()
             | Error err -> return Error (sprintf "%A" err)
+        }
+
+    member this.AddOverride(scenarioId: string, ov: ScenarioDataOverride) : Task<Result<unit, string>> =
+        task {
+            let! res = scenarioContext.Commands.AddOverride(scenarioId, ov)
+            match res with
+            | Ok () -> return Ok ()
+            | Error err -> return Error (sprintf "%A" err)
+        }
+
+    member this.RemoveOverride(scenarioId: string, ov: ScenarioDataOverride) : Task<Result<unit, string>> =
+        task {
+            let! res = scenarioContext.Commands.RemoveOverride(scenarioId, ov)
+            match res with
+            | Ok () -> return Ok ()
+            | Error err -> return Error (sprintf "%A" err)
+        }
+
+    member this.SubmitScenarioForApproval(scenarioId: string) : Task<Result<unit, string>> =
+        task {
+            let! res = scenarioContext.Commands.SubmitForApproval(scenarioId)
+            match res with
+            | Ok () -> return Ok ()
+            | Error err -> return Error (sprintf "%A" err)
+        }
+
+    member this.ApproveScenario(scenarioId: string) : Task<Result<unit, string>> =
+        task {
+            let! res = scenarioContext.Commands.Approve(scenarioId)
+            match res with
+            | Ok () -> return Ok ()
+            | Error err -> return Error (sprintf "%A" err)
+        }
+
+    member this.RejectScenario(scenarioId: string, reason: string) : Task<Result<unit, string>> =
+        task {
+            let! res = scenarioContext.Commands.Reject(scenarioId, reason)
+            match res with
+            | Ok () -> return Ok ()
+            | Error err -> return Error (sprintf "%A" err)
+        }
+
+    member this.PublishScenario(scenarioId: string, reason: string option) : Task<Result<string, string>> =
+        task {
+            let! scOpt = scenarioContext.Queries.GetById scenarioId
+            match scOpt with
+            | None -> return Error $"Scenario %s{scenarioId} not found"
+            | Some sc ->
+                let publishId = $"PUB-{Guid.NewGuid().ToString().Substring(0, 8).ToUpper()}"
+                let rollbackId = $"RLB-{Guid.NewGuid().ToString().Substring(0, 8).ToUpper()}"
+
+                let mutable publishedChanges = []
+                let mutable rollbackChanges = []
+
+                let! baselineDemandsMap = demandContext.DemandAgent.GetStateAsync()
+                let! baselineInventoryMap = supplyContext.Queries.Inventory.GetAll()
+                let baselineInventoryDict = baselineInventoryMap |> Seq.map (fun i -> i.Id, i) |> Map.ofSeq
+
+                for ov in sc.Overrides do
+                    match ov with
+                    | DemandOverride(demandId, qty, overrideReason) ->
+                        match Map.tryFind demandId baselineDemandsMap with
+                        | Some d ->
+                            let oldQty = Quantity.value d.Quantity
+                            let change =
+                                { EntityId = demandId
+                                  EntityType = "DemandLine"
+                                  FieldPath = "Quantity"
+                                  OldValueJson = System.Text.Json.JsonSerializer.Serialize(oldQty)
+                                  NewValueJson = System.Text.Json.JsonSerializer.Serialize(qty)
+                                  ValueType = "Decimal" }
+                            publishedChanges <- change :: publishedChanges
+
+                            let restore =
+                                { EntityId = demandId
+                                  EntityType = "DemandLine"
+                                  FieldPath = "Quantity"
+                                  RestoreValueJson = System.Text.Json.JsonSerializer.Serialize(oldQty) }
+                            rollbackChanges <- restore :: rollbackChanges
+
+                            let req: DemandDefineReq =
+                                { DemandLineId = d.DemandLineId
+                                  DemandOrderId = d.DemandOrderId
+                                  SkuId = SkuId.value d.SkuId
+                                  StockingPointId = StockingPointId.value d.StockingPointId
+                                  CustomerId = d.CustomerId
+                                  Quantity = qty
+                                  UnitOfMeasure = d.UnitOfMeasure
+                                  OrderDate = d.OrderDate
+                                  EarliestDeliveryDate = d.EarliestDeliveryDate
+                                  RequestedDeliveryDate = d.RequestedDeliveryDate
+                                  LatestDeliveryDate = d.LatestDeliveryDate
+                                  ConfirmedDeliveryDate = d.ConfirmedDeliveryDate
+                                  ActualDeliveryDate = d.ActualDeliveryDate
+                                  Priority = d.Priority
+                                  DemandCategory = d.DemandCategory.ToString()
+                                  IsFirm = d.IsFirm
+                                  IsFrozen = d.IsFrozen }
+                            let! _ = demandContext.Commands.DemandLine.Define(req)
+                            ()
+                        | None -> ()
+
+                    | InventoryOverride(skuId, stockingPointId, qty) ->
+                        let invId = $"INV-{skuId}-{stockingPointId}"
+                        match Map.tryFind invId baselineInventoryDict with
+                        | Some i ->
+                            let oldQty = i.Quantity
+                            let change =
+                                { EntityId = invId
+                                  EntityType = "Inventory"
+                                  FieldPath = "Quantity"
+                                  OldValueJson = System.Text.Json.JsonSerializer.Serialize(oldQty)
+                                  NewValueJson = System.Text.Json.JsonSerializer.Serialize(qty)
+                                  ValueType = "Decimal" }
+                            publishedChanges <- change :: publishedChanges
+
+                            let restore =
+                                { EntityId = invId
+                                  EntityType = "Inventory"
+                                  FieldPath = "Quantity"
+                                  RestoreValueJson = System.Text.Json.JsonSerializer.Serialize(oldQty) }
+                            rollbackChanges <- restore :: rollbackChanges
+
+                            let req: InventoryDefineReq =
+                                { Id = invId
+                                  SkuId = skuId
+                                  StockingPointId = stockingPointId
+                                  Quantity = qty
+                                  UnitOfMeasure = i.UnitOfMeasure }
+                            let! _ = supplyContext.Commands.Inventory.Define(req)
+                            ()
+                        | None -> ()
+
+                    | _ -> ()
+
+                let publishRecord =
+                    { PublishId = publishId
+                      ScenarioId = scenarioId
+                      BaselineVersionBefore = int64 sc.Version
+                      BaselineVersionAfter = None
+                      PublishedAt = DateTimeOffset.UtcNow
+                      PublishedBy = "Planner"
+                      Changes = publishedChanges
+                      Reason = reason }
+
+                let rollbackPackage =
+                    { PublishId = publishId
+                      ScenarioId = scenarioId
+                      CreatedAt = DateTimeOffset.UtcNow
+                      RestoreChanges = rollbackChanges }
+
+                publishLedger.SaveRecord(publishRecord)
+                publishLedger.SavePackage(rollbackPackage)
+
+                let! archiveRes = scenarioContext.Commands.Archive(scenarioId, Some publishId, Some rollbackId)
+                match archiveRes with
+                | Error e -> return Error (sprintf "%A" e)
+                | Ok () -> return Ok publishId
+        }
+
+    member this.RollbackScenario(publishId: string) : Task<Result<unit, string>> =
+        task {
+            match publishLedger.GetPackage(publishId) with
+            | None -> return Error $"Rollback package for publish event %s{publishId} not found."
+            | Some pkg ->
+                let! baselineDemandsMap = demandContext.DemandAgent.GetStateAsync()
+                let! baselineInventoryMap = supplyContext.Queries.Inventory.GetAll()
+                let baselineInventoryDict = baselineInventoryMap |> Seq.map (fun i -> i.Id, i) |> Map.ofSeq
+
+                let mutable conflictErrors = []
+
+                for restore in pkg.RestoreChanges do
+                    match restore.EntityType with
+                    | "DemandLine" ->
+                        match Map.tryFind restore.EntityId baselineDemandsMap with
+                        | None ->
+                            conflictErrors <- $"Baseline demand {restore.EntityId} was deleted." :: conflictErrors
+                        | Some d ->
+                            match publishLedger.GetRecord(publishId) with
+                            | None ->
+                                conflictErrors <- "Associated publish record not found." :: conflictErrors
+                            | Some rec' ->
+                                let changeOpt = rec'.Changes |> List.tryFind (fun c -> c.EntityId = restore.EntityId && c.FieldPath = restore.FieldPath)
+                                match changeOpt with
+                                | None -> ()
+                                | Some change ->
+                                    let currentQty = Quantity.value d.Quantity
+                                    let expectedQty = System.Text.Json.JsonSerializer.Deserialize<decimal>(change.NewValueJson)
+                                    if currentQty <> expectedQty then
+                                        conflictErrors <- $"Baseline demand {restore.EntityId} was modified after publish (Current Qty: {currentQty}, Expected Qty: {expectedQty})." :: conflictErrors
+
+                    | "Inventory" ->
+                        match Map.tryFind restore.EntityId baselineInventoryDict with
+                        | None ->
+                            conflictErrors <- $"Baseline inventory {restore.EntityId} was deleted." :: conflictErrors
+                        | Some i ->
+                            match publishLedger.GetRecord(publishId) with
+                            | None ->
+                                conflictErrors <- "Associated publish record not found." :: conflictErrors
+                            | Some rec' ->
+                                let changeOpt = rec'.Changes |> List.tryFind (fun c -> c.EntityId = restore.EntityId && c.FieldPath = restore.FieldPath)
+                                match changeOpt with
+                                | None -> ()
+                                | Some change ->
+                                    let currentQty = i.Quantity
+                                    let expectedQty = System.Text.Json.JsonSerializer.Deserialize<decimal>(change.NewValueJson)
+                                    if currentQty <> expectedQty then
+                                        conflictErrors <- $"Baseline inventory {restore.EntityId} was modified after publish (Current Qty: {currentQty}, Expected Qty: {expectedQty})." :: conflictErrors
+
+                    | _ -> ()
+
+                if not (List.isEmpty conflictErrors) then
+                    let errMsg = "Rollback aborted due to divergence conflicts:\n" + String.concat "\n" conflictErrors
+                    return Error errMsg
+                else
+                    for restore in pkg.RestoreChanges do
+                        match restore.EntityType with
+                        | "DemandLine" ->
+                            match Map.tryFind restore.EntityId baselineDemandsMap with
+                            | Some d ->
+                                let restoreQty = System.Text.Json.JsonSerializer.Deserialize<decimal>(restore.RestoreValueJson)
+                                let req: DemandDefineReq =
+                                    { DemandLineId = d.DemandLineId
+                                      DemandOrderId = d.DemandOrderId
+                                      SkuId = SkuId.value d.SkuId
+                                      StockingPointId = StockingPointId.value d.StockingPointId
+                                      CustomerId = d.CustomerId
+                                      Quantity = restoreQty
+                                      UnitOfMeasure = d.UnitOfMeasure
+                                      OrderDate = d.OrderDate
+                                      EarliestDeliveryDate = d.EarliestDeliveryDate
+                                      RequestedDeliveryDate = d.RequestedDeliveryDate
+                                      LatestDeliveryDate = d.LatestDeliveryDate
+                                      ConfirmedDeliveryDate = d.ConfirmedDeliveryDate
+                                      ActualDeliveryDate = d.ActualDeliveryDate
+                                      Priority = d.Priority
+                                      DemandCategory = d.DemandCategory.ToString()
+                                      IsFirm = d.IsFirm
+                                      IsFrozen = d.IsFrozen }
+                                let! _ = demandContext.Commands.DemandLine.Define(req)
+                                ()
+                            | None -> ()
+
+                        | "Inventory" ->
+                            match Map.tryFind restore.EntityId baselineInventoryDict with
+                            | Some i ->
+                                let restoreQty = System.Text.Json.JsonSerializer.Deserialize<decimal>(restore.RestoreValueJson)
+                                let req: InventoryDefineReq =
+                                    { Id = restore.EntityId
+                                      SkuId = i.SkuId
+                                      StockingPointId = i.StockingPointId
+                                      Quantity = restoreQty
+                                      UnitOfMeasure = i.UnitOfMeasure }
+                                let! _ = supplyContext.Commands.Inventory.Define(req)
+                                ()
+                            | None -> ()
+
+                        | _ -> ()
+
+                    return Ok ()
         }
 
     member this.EvaluatePromise

@@ -21,7 +21,11 @@ module ScenarioTests =
                         Version = 1
                         CreatedAt = DateTimeOffset.UtcNow
                         IsActive = true
-                        Overrides = [] }
+                        Overrides = []
+                        KpiSummary = None
+                        PublishId = None
+                        RollbackPackageId = None
+                        Status = ScenarioStatus.Draft }
 
                   test <@ scenario.IsActive = true @>
                   test <@ scenario.Version = 1 @>) ]

@@ -45,11 +45,18 @@ module ScenarioAdapter =
                     Some { SkuId = skuId; StockingPointId = stockingPointId; AsOf = today; OnHandOverride = qty }
                 | _ -> None)
 
+        let policies =
+            overrides
+            |> List.choose (function
+                | KpiWeightOverride(kpiId, weight) ->
+                    Some { KpiId = kpiId; WeightOverride = weight }
+                | _ -> None)
+
         { ScenarioId = scenarioId
           DemandOverrides = demand
           CapacityOverrides = capacity
           InventoryOverrides = inventory
-          PolicyOverrides = [] }
+          PolicyOverrides = policies }
 
     let applyDemandOverlay (overlay: ScenarioOverlay) (line: DemandLine) : DemandLine =
         overlay.DemandOverrides

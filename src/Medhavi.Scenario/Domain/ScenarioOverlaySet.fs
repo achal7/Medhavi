@@ -29,6 +29,36 @@ module ScenarioOverlaySetAgg =
     let private errNotFound msg = Error (DomainError.notFound msg)
     let private errInvariant msg = Error (DomainError.invariant msg)
 
+    let isMatching newOv existingOv =
+        match newOv, existingOv with
+        | DemandOverride(id1, _, _), DemandOverride(id2, _, _) -> id1 = id2
+        | InventoryOverride(sku1, sp1, _), InventoryOverride(sku2, sp2, _) -> sku1 = sku2 && sp1 = sp2
+        | LeadTimeOverride(sku1, _, _), LeadTimeOverride(sku2, _, _) -> sku1 = sku2
+        | CapacityOverride(res1, buck1, _), CapacityOverride(res2, buck2, _) -> res1 = res2 && buck1 = buck2
+        | SupplierSuspension(sup1, buck1), SupplierSuspension(sup2, buck2) -> sup1 = sup2 && buck1 = buck2
+        
+        | SupplierReactivation(sup1, _), SupplierReactivation(sup2, _) -> sup1 = sup2
+        | SupplierLeadTimeOverride(sup1, sku1, _, _), SupplierLeadTimeOverride(sup2, sku2, _, _) -> sup1 = sup2 && sku1 = sku2
+        | SupplierCapacityOverride(sup1, sku1, _, _), SupplierCapacityOverride(sup2, sku2, _, _) -> sup1 = sup2 && sku1 = sku2
+        | SupplierPriceOverride(sup1, sku1, _, _), SupplierPriceOverride(sup2, sku2, _, _) -> sup1 = sup2 && sku1 = sku2
+        
+        | (BomOverride(p1, c1, _) | BomComponentAddition(p1, c1, _, _) | BomComponentRemoval(p1, c1, _)),
+          (BomOverride(p2, c2, _) | BomComponentAddition(p2, c2, _, _) | BomComponentRemoval(p2, c2, _)) -> p1 = p2 && c1 = c2
+        
+        | BomAlternateSelection(p1, _, _), BomAlternateSelection(p2, _, _) -> p1 = p2
+        
+        | KpiWeightOverride(k1, _), KpiWeightOverride(k2, _) -> k1 = k2
+        | ServiceLevelTargetOverride(t1, _), ServiceLevelTargetOverride(t2, _) -> t1 = t2
+        | CostRiskTradeoffOverride(p1, _), CostRiskTradeoffOverride(p2, _) -> p1 = p2
+        | CarbonWeightOverride(p1, _), CarbonWeightOverride(p2, _) -> p1 = p2
+        | FreezePolicyOverride(p1, _), FreezePolicyOverride(p2, _) -> p1 = p2
+        | ApprovalThresholdOverride(p1, _), ApprovalThresholdOverride(p2, _) -> p1 = p2
+        
+        | TagAddedOverride(c1, t1, _), TagAddedOverride(c2, t2, _) -> c1 = c2 && t1 = t2
+        | AnnotationAddedOverride(c1, _, _), AnnotationAddedOverride(c2, _, _) -> c1 = c2
+        | RelationHintAddedOverride(s1, r1, o1, _), RelationHintAddedOverride(s2, r2, o2, _) -> s1 = s2 && r1 = r2 && o1 = o2
+        | _ -> false
+
     let handle: Decide<ScenarioOverlaySet, ScenarioOverlayCommand, ScenarioOverlayEvent> =
         fun command stateOpt ->
             match command, stateOpt with
@@ -48,9 +78,10 @@ module ScenarioOverlaySetAgg =
                 match state.ScenarioType with
                 | Baseline -> errInvariant "Baseline scenarios cannot have data overlays — only WhatIf and Sandbox are allowed"
                 | WhatIf | Sandbox ->
+                    let filtered = state.Overrides |> List.filter (fun o -> not (isMatching override_ o))
                     let updated =
                         { state with
-                            Overrides = state.Overrides @ [ override_ ]
+                            Overrides = filtered @ [ override_ ]
                             Version = state.Version + 1
                             LastModifiedAt = DateTimeOffset.UtcNow }
                     Ok { NewState = updated; Events = [ OverrideAdded(state.Id, override_) ] }
@@ -89,7 +120,8 @@ module ScenarioOverlaySetAgg =
                   LastModifiedAt = DateTimeOffset.UtcNow }
 
         | OverrideAdded(_, override_), Some s ->
-            Some { s with Overrides = s.Overrides @ [ override_ ]; Version = s.Version + 1 }
+            let filtered = s.Overrides |> List.filter (fun o -> not (isMatching override_ o))
+            Some { s with Overrides = filtered @ [ override_ ]; Version = s.Version + 1 }
 
         | OverrideRemoved(_, hash), Some s ->
             let remaining = s.Overrides |> List.filter (fun o -> ScenarioDataOverride.contentHash o <> hash)
