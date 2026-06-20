@@ -20,8 +20,8 @@
     <Compile Include="Mrp\Application\ForecastConsumptionTests.fs" />
     <Compile Include="Mrp\Application\MrpServiceTests.fs" />
     <Compile Include="ReplenishmentTests.fs" />
-    <Compile Include="Program.fs" />-->
-  </ItemGroup>
+    <Compile Include="Program.fs" />
+  </ItemGroup>-->
 
   <ItemGroup>
     <ProjectReference Include="..\..\Medhavi.Scheduler\Medhavi.Scheduler.fsproj" />

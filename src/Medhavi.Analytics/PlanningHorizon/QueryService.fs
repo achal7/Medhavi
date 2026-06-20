@@ -4,7 +4,6 @@ open System
 open System.Threading.Tasks
 open Medhavi.Contracts.Analytics
 open Medhavi.Contracts.Capacity
-open Medhavi.Contracts.Capacity
 open Medhavi.Contracts.Demand
 open Medhavi.Contracts.Supply
 open Medhavi.Contracts.Transport

@@ -2,8 +2,8 @@ module Medhavi.Capacity.Domain.CalendarAgg
 
 open System
 open System.Text.Json.Serialization
-open Medhavi.SharedKernel
 open Medhavi.Common
+open Medhavi.SharedKernel
 
 [<JsonFSharpConverter>]
 type CalendarType =
@@ -60,8 +60,6 @@ and CalendarEvent =
       Modified: Timestamp }
 
 module EventId =
-    open Medhavi.SharedKernel
-
     let create (value: string) : Result<EventId, DomainError> =
         if String.IsNullOrWhiteSpace value then
             Error(DomainError.validation "Event ID is required")
@@ -158,7 +156,7 @@ type DecideResourceCalendar = Decide<Calendar, CalendarCommand, CalendarsEvent>
 type EvolveCalendar = Evolve<Calendar, CalendarsEvent>
 
 // Validation functions
-let validateCreate (cmd: CreateCalendarCmd) : Result<unit, DomainError> = Ok()
+let validateCreate (_: CreateCalendarCmd) : Result<unit, DomainError> = Ok()
 
 let validateAddEvent (cmd: AddCalendarEventCmd) : Result<unit, DomainError> =
     result {
@@ -171,7 +169,7 @@ let validateAddEvent (cmd: AddCalendarEventCmd) : Result<unit, DomainError> =
         return ()
     }
 
-let validateRemoveEvent (cmd: RemoveCalendarEventCmd) : Result<unit, DomainError> = Ok()
+let validateRemoveEvent (_: RemoveCalendarEventCmd) : Result<unit, DomainError> = Ok()
 let validateClear (_cmd: ClearCalendarCmd) : Result<unit, DomainError> = Ok()
 let validateActivate (_cmd: ActivateCalendarCmd) : Result<unit, DomainError> = Ok()
 let validateDeactivate (_cmd: DeactivateCalendarCmd) : Result<unit, DomainError> = Ok()

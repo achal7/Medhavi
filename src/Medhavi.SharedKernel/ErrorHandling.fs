@@ -3,7 +3,6 @@ namespace Medhavi.SharedKernel
 open System
 open System.Threading.Tasks
 open System.Text.Json.Serialization
-open Medhavi.Common.Validation
 open Medhavi.SharedKernel.Logging
 
 [<JsonFSharpConverter>]
@@ -41,7 +40,6 @@ module ErrorCodes =
     let InvariantViolation = "DOMAIN_INVARIANT_VIOLATION"
     let NotFound = "DOMAIN_NOT_FOUND"
     let Conflict = "DOMAIN_CONFLICT"
-
     let VersionMismatch = "DOMAIN_VERSION_MISMATCH"
 
     // External errors
@@ -89,16 +87,9 @@ type DomainError =
         | [] -> DomainError.validation "Validation failed with no specified details"
         | [ single ] -> single
         | _ ->
-            let messages = errors |> List.map (fun e -> e.Message)
-
-            let combinedMessage =
-                "Command validation failed: "
-                + String.concat "; " messages
-
-            let data =
-                errors
-                |> List.mapi (fun idx e -> $"error_{idx}", box e.Message)
-                |> Map.ofList
+            let messages = errors |> List.map(fun e -> e.Message)
+            let combinedMessage = "Command validation failed: " + String.concat "; " messages
+            let data = errors |> List.mapi(fun idx e -> $"error_{idx}", box e.Message) |> Map.ofList
 
             DomainError.validationWith combinedMessage data
 
@@ -146,7 +137,7 @@ type ApplicationError =
         | Domain(DomainError(code, _, _))
         | Domain(ValidationError(code, _, _))
         | Mismatch(code, _, _) -> code
-        | Unknown(_) -> ""
+        | Unknown _ -> ""
 
     /// Optional contextual data for debugging and logging
     member this.Data =
@@ -156,20 +147,20 @@ type ApplicationError =
         | Infrastructure(Issue(_, _, _, data))
         | Domain(DomainError(_, _, data))
         | Domain(ValidationError(_, _, data)) -> data
-        | Mismatch(_, _, _)
-        | Unknown(_) -> Map.empty
+        | Mismatch _
+        | Unknown _ -> Map.empty
 
     /// Convert to error context with detailed information
     member this.ToContext(?correlationId: Guid) : ErrorContext =
-        let (code, message, data) =
+        let code, message, data =
             match this with
-            | Domain(DomainError(code, msg, data))
-            | Domain(ValidationError(code, msg, data))
-            | External(code, msg, data)
-            | NotFound(code, msg, data) -> (code, this.Message, data)
-            | Infrastructure(Issue(_, code, msg, data)) -> (code, this.Message, data)
+            | Domain(DomainError(code, _, data))
+            | Domain(ValidationError(code, _, data))
+            | External(code, _, data)
+            | NotFound(code, _, data) -> (code, this.Message, data)
+            | Infrastructure(Issue(_, code, _, data)) -> (code, this.Message, data)
             | Mismatch(code, _, _) -> (code, this.Message, Map.empty)
-            | Unknown(msg) -> ("", this.Message, Map.empty)
+            | Unknown _ -> ("", this.Message, Map.empty)
 
         { Code = code
           Message = message
@@ -189,78 +180,69 @@ type ApplicationError =
 
 module ApplicationError =
 
+    let mapToApiError (error: ApplicationError) : Medhavi.Contracts.ApiError =
+        match error with
+        | NotFound(code, msg, _) -> { Code = code; Category = "NotFound"; Message = msg }
+        | Mismatch(code, expected, actual) -> { Code = code; Category = "Mismatch"; Message = $"Expected {expected} Actual {actual}" }
+        | Infrastructure(Issue(_, code, msg, _)) -> { Code = code; Category = "Infrastructure"; Message = msg }
+        | Domain(DomainError(code, msg, _)) -> { Code = code; Category = "Domain"; Message = msg }
+        | Domain(ValidationError(code, msg, _)) -> { Code = code; Category = "Validation"; Message = msg }
+        | External(code, msg, _) -> { Code = code; Category = "External"; Message = msg }
+        | Unknown(msg) -> { Code = ""; Category = "Unknown"; Message = msg }
+
     let mapDomainError =
         function
         | DomainError(code, msg, data) -> ApplicationError.Domain(DomainError(code, msg, data))
         | ValidationError(code, msg, data) -> ApplicationError.Domain(DomainError(code, msg, data))
 
     let mapInfraError (infra: InfraError) = ApplicationError.Infrastructure(infra)
-
-    let liftInfraError result =
-        result
-        |> Result.mapError (fun e -> [ mapInfraError e ])
-
-    let liftDomainErrors result =
-        result
-        |> Result.mapError (List.map mapDomainError)
+    let liftInfraError result = result |> Result.mapError(fun e -> [ mapInfraError e ])
+    let liftDomainErrors result = result |> Result.mapError(List.map mapDomainError)
 
     let rec fromException (ex: exn) : ApplicationError =
         match ex with
-        | :? System.Threading.Tasks.TaskCanceledException as tce ->
+        | :? TaskCanceledException as tce ->
             ApplicationError.Infrastructure(
                 Issue((Timeout tce.Source), ErrorCodes.TaskCanceled, tce.Message, Map.empty)
             )
-        | :? System.OperationCanceledException as oce ->
+        | :? OperationCanceledException as oce ->
             ApplicationError.Infrastructure
             <| Issue((InfrastructureError.Timeout oce.Message), ErrorCodes.OperationCanceled, oce.Message, Map.empty)
-        | :? System.TimeoutException as t ->
+        | :? TimeoutException as t ->
             ApplicationError.Infrastructure
             <| Issue((InfrastructureError.Timeout t.Message), ErrorCodes.Timeout, t.Message, Map.empty)
-        | :? System.AggregateException as ae ->
+        | :? AggregateException as ae ->
             // flatten and return the first inner mapped
             ae.Flatten().InnerExceptions
             |> Seq.tryHead
             |> Option.map fromException
-            |> Option.defaultValue (ApplicationError.Unknown ae.Message)
-        | :? System.Net.Http.HttpRequestException as h ->
+            |> Option.defaultValue(ApplicationError.Unknown ae.Message)
+        | :? Net.Http.HttpRequestException as h ->
             ApplicationError.Infrastructure
             <| Issue((InfrastructureError.Http h.Message), ErrorCodes.HttpError, h.Message, Map.empty)
         | _ -> ApplicationError.Unknown ex.Message
 
     let logIfError (logger: Logger) (message: string) (result: Result<'T, ApplicationError>) =
-        match result with
-        | Ok v -> Ok v
-        | Error e ->
+        result
+        |> Result.mapError(fun e ->
             logger.Error(message)
-            Error e
+            Error e)
 
-    let logIfErrorAsync
-        (logger: Logger)
-        (message: string)
-        (taskRes: Task<Result<'T, ApplicationError>>)
-        (context: LogContext option)
-        =
-        let ctx = logger.getContext context
-
+    let logIfErrorAsync (logger: Logger) (message: string) (taskRes: Task<Result<'T, ApplicationError>>) =
         task {
             let! r = taskRes
-
-            match r with
-            | Ok v -> return Ok v
-            | Error e ->
-                logger.Error(message)
-                return Error e
+            return logIfError logger message r
         }
 
     let protect (fn: unit -> 'T) : Result<'T, ApplicationError> =
         try
-            Ok(fn ())
+            Ok(fn())
         with ex ->
             Error(fromException ex)
 
     let protectAsync (fn: unit -> Task<'T>) : Task<Result<'T, ApplicationError>> =
         try
-            let t = fn ()
+            let t = fn()
 
             t.ContinueWith(fun (antecedent: Task<'T>) ->
                 if antecedent.IsFaulted then
@@ -282,14 +264,14 @@ module ApplicationError =
 
     let toResult (f: unit -> 'T) : Result<'T, ApplicationError> =
         try
-            Ok(f ())
+            Ok(f())
         with ex ->
             Error(fromException ex)
 
     let tryCatchAsync (f: unit -> Task<'T>) : Task<Result<'T, ApplicationError>> =
         task {
             try
-                let! v = f ()
+                let! v = f()
                 return Ok v
             with ex ->
                 return Error(fromException ex)
@@ -324,111 +306,3 @@ module ApplicationError =
         function
         | Domain(DomainError(_, msg, _)) -> Some msg
         | _ -> None
-
-(*
-    Examples of using DomainError:
-
-    // 1. Creating errors using static factory methods
-    let validationError = DomainError.validation "ProductId cannot be empty"
-    let notFoundError = DomainError.notFound "Product not found"
-    let conflictError = DomainError.conflict "Product code already exists"
-    let invariantError = DomainError.invariant "Cannot cancel a completed order"
-
-    // 2. Creating errors with contextual data for debugging
-    let validationWithData =
-        DomainError.validationWith
-            "Quantity must be positive"
-            (Map.ofList [ ("Field", box "Quantity"); ("Value", box -5) ])
-
-    let notFoundWithData =
-        DomainError.notFoundWith
-            "Product not found"
-            (Map.ofList [ ("ProductId", box "PROD-123"); ("StockingPointId", box "SP-456") ])
-
-    // 3. Pattern matching using active patterns
-    let handleError (error: DomainError) =
-        match error with
-        | DomainError.Validation msg -> printfn "Validation error: %s" msg
-        | DomainError.NotFound msg -> printfn "Not found: %s" msg
-        | DomainError.Conflict msg -> printfn "Conflict: %s" msg
-        | DomainError.Invariant msg -> printfn "Invariant violation: %s" msg
-
-    // 4. Pattern matching with error code and data extraction
-    let handleErrorWithDetails (error: DomainError) =
-        match error with
-        | DomainError.Validation msg ->
-            printfn "Validation error [%s]: %s" error.Code msg
-            printfn "Context: %A" error.Data
-        | DomainError.NotFound msg ->
-            printfn "Not found [%s]: %s" error.Code msg
-            printfn "Context: %A" error.Data
-        | DomainError.Conflict msg ->
-            printfn "Conflict [%s]: %s" error.Code msg
-            printfn "Context: %A" error.Data
-        | DomainError.Invariant msg ->
-            printfn "Invariant violation [%s]: %s" error.Code msg
-            printfn "Context: %A" error.Data
-
-    // 5. Using in Result types
-    let validateProductId (productId: string) : Result<string, DomainError> =
-        if System.String.IsNullOrWhiteSpace(productId) then
-            Error(DomainError.validation "ProductId cannot be empty")
-        else
-            Ok productId
-
-    let findProduct (productId: string) : Result<Product, DomainError> =
-        match tryFindProduct productId with
-        | Some product -> Ok product
-        | None ->
-            Error(
-                DomainError.notFoundWith
-                    $"Product {productId} not found"
-                    (Map.ofList [ ("ProductId", box productId) ])
-            )
-
-    // 6. Pattern matching in Result handling
-    let processResult (result: Result<Product, DomainError>) =
-        match result with
-        | Ok product -> printfn "Success: %A" product
-        | Error(DomainError.Validation msg) -> printfn "Validation failed: %s" msg
-        | Error(DomainError.NotFound msg) -> printfn "Not found: %s" msg
-        | Error(DomainError.Conflict msg) -> printfn "Conflict: %s" msg
-        | Error(DomainError.Invariant msg) -> printfn "Invariant violation: %s" msg
-
-    // 7. Error code-based handling (programmatic)
-    let handleByCode (error: DomainError) =
-        match error.Code with
-        | DomainErrorCodes.ValidationFailed -> "Handle validation error"
-        | DomainErrorCodes.NotFound -> "Handle not found error"
-        | DomainErrorCodes.Conflict -> "Handle conflict error"
-        | DomainErrorCodes.InvariantViolation -> "Handle invariant violation"
-        | _ -> "Unknown error"
-
-    // 8. Extracting error information
-    let errorInfo (error: DomainError) =
-        {
-            Code = error.Code
-            Message = error.Message
-            Data = error.Data
-        }
-
-    // 9. Combining multiple validation errors (using Result.mapError)
-    let validateOrder (order: Order) : Result<Order, DomainError> =
-        validateProductId order.ProductId
-        |> Result.bind (fun _ -> validateQuantity order.Quantity)
-        |> Result.mapError (fun err ->
-            match err with
-            | DomainError.Validation msg -> DomainError.validationWith msg (Map.ofList [ ("OrderId", box order.Id) ])
-            | _ -> err
-        )
-
-    // 10. Pattern matching in async/asyncResult workflows
-    let asyncProcessOrder (orderId: string) =
-        async {
-            match! findOrder orderId with
-            | Ok order -> return Ok order
-            | Error(DomainError.NotFound msg) ->
-                return Error(DomainError.notFoundWith $"Order {orderId} not found" (Map.ofList [ ("OrderId", box orderId) ]))
-            | Error err -> return Error err
-        }
-*)

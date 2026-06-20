@@ -3,10 +3,10 @@ module Medhavi.Supply.Application.SupplierOffer
 open Medhavi
 open Medhavi.Common.Patterns
 open Medhavi.Common.Validation
+open Medhavi.Contracts.API
 open Medhavi.Contracts.Supply
 open Medhavi.Infrastructure.Projections
 open Medhavi.SharedKernel
-open Medhavi.SharedKernel.API
 open Medhavi.SharedKernel.Aggregate
 open Medhavi.Supply.Domain.SupplierOfferAgg
 
@@ -250,6 +250,7 @@ let createSupplierOfferApi (capabilities: SupplierOfferCapabilities) _ =
             capabilities.Define req
             |> TaskResult.map (fun d -> d.NewState)
             |> TaskResult.map ACL.toContract
+            |> TaskResult.mapError ApplicationError.mapToApiError
       DefineBulk =
         fun reqs ->
             reqs
@@ -259,19 +260,23 @@ let createSupplierOfferApi (capabilities: SupplierOfferCapabilities) _ =
                 decisions
                 |> List.map (fun d -> d.NewState)
                 |> List.map ACL.toContract)
+            |> TaskResult.mapError ApplicationError.mapToApiError
       Update =
         fun req ->
             capabilities.Update req
             |> TaskResult.map (fun d -> d.NewState)
             |> TaskResult.map ACL.toContract
+            |> TaskResult.mapError ApplicationError.mapToApiError
       Revoke =
         fun reqId ->
             capabilities.Revoke reqId
             |> TaskResult.map (fun d -> d.NewState)
             |> TaskResult.map ACL.toContract
+            |> TaskResult.mapError ApplicationError.mapToApiError
       ChangeStatus =
         fun req ->
             capabilities.ChangeStatus req
             |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map ACL.toContract }
+            |> TaskResult.map ACL.toContract
+            |> TaskResult.mapError ApplicationError.mapToApiError }
     : SupplierOfferApi

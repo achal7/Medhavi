@@ -14,7 +14,7 @@
     <Compile Include="Mrp\Domain\Pegging.fs" />
     <Compile Include="Mrp\Domain\MrpRunAggregate.fs" />
     <Compile Include="Mrp\Domain\Replan.fs" />
-    
+
     <Compile Include="Mrp\Domain\Algorithms\BomExplosion.fs" />
     <Compile Include="Mrp\Domain\Algorithms\LotSizing.fs" />
     <Compile Include="Mrp\Domain\Algorithms\SafetyStock.fs" />
@@ -67,7 +67,6 @@
     <ProjectReference Include="..\Medhavi.Contracts\Medhavi.Contracts.fsproj" />
     <ProjectReference Include="..\Medhavi.SharedKernel\Medhavi.SharedKernel.fsproj" />
     <ProjectReference Include="..\Medhavi.Infrastructure\Medhavi.Infrastructure.fsproj" />
-    <ProjectReference Include="..\Medhavi.Demand\Medhavi.Demand.fsproj" />
   </ItemGroup>
 
 </Project>

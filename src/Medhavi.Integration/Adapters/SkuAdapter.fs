@@ -3,7 +3,6 @@ module Medhavi.Integration.Adapters.Sku
 open System
 open System.Threading
 open Medhavi.Common.Patterns
-open Medhavi.Contracts
 open Medhavi.Contracts.Integration
 open Medhavi.Integration
 open Medhavi.Infrastructure.IO

@@ -1,9 +1,7 @@
 module Medhavi.Analytics.PlanningHorizon.CapacityProjection
 
-open System
 open Medhavi.Contracts.Capacity
 open Medhavi.Contracts.Analytics
-
 
 let buildCell
     (period: PlanningPeriod)

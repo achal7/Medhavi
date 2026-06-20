@@ -1,7 +1,7 @@
 namespace Medhavi.Capacity
 
 open System
-open Medhavi.SharedKernel
+open Medhavi.Contracts
 
 type SelectionPolicy =
     | Fastest
@@ -17,24 +17,24 @@ type RoutingCapacityResult =
 
 module RoutingAcl =
     /// Translates the shared integration contract Routing DTO into the Capacity bounded context's specific RoutingLoadProfile.
-    let translate (dto: Medhavi.Contracts.Domain.Routing) : RoutingLoadProfile =
+    let translate (dto: MasterData.Routing) : RoutingLoadProfile =
         match dto.Details with
-        | Medhavi.Contracts.Domain.RoutingDetails.Work work ->
-            let translateStep (s: Medhavi.Contracts.Domain.RoutingStep) : RoutingStepLoadProfile =
+        | MasterData.RoutingDetails.Work work ->
+            let translateStep (s: MasterData.RoutingStep) : RoutingStepLoadProfile =
                 let loads =
                     s.ResourceRequirements
                     |> List.collect (fun req ->
                         let capacityLoadBasis =
                             match req.LoadBasis with
-                            | Medhavi.Contracts.Domain.ResourceLoadBasis.PerOrder -> CapacityLoadBasis.PerOrder
+                            | MasterData.ResourceLoadBasis.PerOrder -> CapacityLoadBasis.PerOrder
                             | _ -> CapacityLoadBasis.PerUnit
                         req.Options
                         |> List.map (fun ro ->
                             let runMin = ro.TimingProfile.RunTimePerBaseQuantity |> Option.defaultValue 1.0M
                             let eff =
                                 match ro.EfficiencyPolicy with
-                                | Medhavi.Contracts.Domain.ResourceEfficiencyPolicy.StandardEfficiency -> 1.0M
-                                | Medhavi.Contracts.Domain.ResourceEfficiencyPolicy.EfficiencyFactor f -> f
+                                | MasterData.ResourceEfficiencyPolicy.StandardEfficiency -> 1.0M
+                                | MasterData.ResourceEfficiencyPolicy.EfficiencyFactor f -> f
                             let target =
                                 match ro.WorkCenterId with
                                 | Some resId when not (String.IsNullOrWhiteSpace resId) ->
@@ -51,13 +51,13 @@ module RoutingAcl =
 
                 let yieldVal =
                     match s.YieldPolicy with
-                    | Medhavi.Contracts.Domain.StepYieldPolicy.NoYieldLoss -> None
-                    | Medhavi.Contracts.Domain.StepYieldPolicy.ExpectedYield y -> Some y
+                    | MasterData.StepYieldPolicy.NoYieldLoss -> None
+                    | MasterData.StepYieldPolicy.ExpectedYield y -> Some y
 
                 let reworkStep, reworkRate =
                     match s.ReworkPolicy with
-                    | Medhavi.Contracts.Domain.ReworkPolicy.NoRework -> None, None
-                    | Medhavi.Contracts.Domain.ReworkPolicy.ReworkToStep(stepId, rate) -> Some stepId, Some rate
+                    | MasterData.ReworkPolicy.NoRework -> None, None
+                    | MasterData.ReworkPolicy.ReworkToStep(stepId, rate) -> Some stepId, Some rate
 
                 { RoutingStepId = s.StepId
                   OperationCode = s.OperationCode
@@ -73,14 +73,14 @@ module RoutingAcl =
               BaseQuantity = work.BaseOutputQuantity
               StepLoads = work.Steps |> List.map translateStep }
 
-        | Medhavi.Contracts.Domain.RoutingDetails.Transport trans ->
+        | MasterData.RoutingDetails.Transport trans ->
             { RoutingId = dto.Id
               ProductId = trans.SkuId
               PreferencePriority = dto.Preference.Priority
               BaseQuantity = 1.0M
               StepLoads = [] }
 
-        | Medhavi.Contracts.Domain.RoutingDetails.Purchase pur ->
+        | MasterData.RoutingDetails.Purchase pur ->
             { RoutingId = dto.Id
               ProductId = pur.SkuId
               PreferencePriority = dto.Preference.Priority
@@ -123,7 +123,7 @@ module RoutingInterpreter =
                             if idx = 0 then
                                 1.0M
                             else
-                                let prevStep = steps.[idx - 1]
+                                let prevStep = steps[idx - 1]
                                 let prevFlow = Map.find prevStep.RoutingStepId currentFlows
                                 prevFlow * getStepYield prevStep
 
@@ -163,7 +163,7 @@ module RoutingInterpreter =
                         $"[RoutingInterpreter] Iter {iter}: maxDiff={maxDiff}, converged={converged}"
                     )
 
-            let finalStep = steps.[n - 1]
+            let finalStep = steps[n - 1]
             let finalFlow = Map.find finalStep.RoutingStepId currentFlows
             let finalYield = getStepYield finalStep
             let unitOutput = finalFlow * finalYield
@@ -241,8 +241,8 @@ module RoutingInterpreter =
         // Calculate resource-specific loads and costs
         let resourceLoads =
             stepMetrics
-            |> List.collect (fun step -> 
-                step.LoadMetrics 
+            |> List.collect (fun step ->
+                step.LoadMetrics
                 |> List.map (fun load -> load.Target, load.Duration))
             |> List.groupBy fst
             |> List.map (fun (key, pairs) -> key, List.sumBy snd pairs)
@@ -250,8 +250,8 @@ module RoutingInterpreter =
 
         let resourceCosts =
             stepMetrics
-            |> List.collect (fun step -> 
-                step.LoadMetrics 
+            |> List.collect (fun step ->
+                step.LoadMetrics
                 |> List.map (fun load -> load.Target, load.Cost))
             |> List.groupBy fst
             |> List.map (fun (key, pairs) -> key, List.sumBy snd pairs)
@@ -293,7 +293,7 @@ module RoutingInterpreter =
                 |> Option.map fst
             | Balanced ->
                 if scored.Length = 1 then
-                    Some(fst scored.[0])
+                    Some(fst scored[0])
                 else
                     let minDuration =
                         scored

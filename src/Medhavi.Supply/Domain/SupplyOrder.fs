@@ -1,9 +1,7 @@
 module Medhavi.Supply.Domain.SupplyOrderAgg
 
-open System
 open System.Text.Json.Serialization
 open Medhavi.SharedKernel
-open Medhavi.Common
 
 [<JsonFSharpConverter>]
 type SupplyOrderType =
@@ -304,28 +302,28 @@ let validateCreate (cmd: CreateSupplyOrderCmd) = SupplyOrderId.create cmd.Id
 let isValidTransition (fromState: SupplyOrderState) (toState: SupplyOrderState) : bool =
     match fromState, toState with
     | current, target when current = target -> true
-    
+
     | Created, Planned -> true
     | Created, Confirmed -> true
     | Created, Cancelled -> true
-    
+
     | Planned, Confirmed -> true
     | Planned, Cancelled -> true
-    
+
     | Confirmed, Released -> true
     | Confirmed, Planned -> true
     | Confirmed, Cancelled -> true
-    
+
     | Released, InProgress -> true
     | Released, Confirmed -> true
     | Released, Cancelled -> true
-    
+
     | InProgress, Completed -> true
     | InProgress, Cancelled -> true
-    
+
     | Completed, _ -> false
     | Cancelled, _ -> false
-    
+
     | _ -> false
 
 let decide: DecideSupplyOrder =
@@ -333,7 +331,7 @@ let decide: DecideSupplyOrder =
         match cmd, stateOpt with
         | CreateSupplyOrder c, None ->
             match validateCreate c with
-            | Error e -> Error(DomainError.validation $"Failed to create supply order {c.Id}")
+            | Error _ -> Error(DomainError.validation $"Failed to create supply order {c.Id}")
             | Ok sid ->
                 let order =
                     { Id = sid
@@ -488,7 +486,7 @@ let decide: DecideSupplyOrder =
                 | Some s -> Ok { NewState = s; Events = [ evt ] }
                 | None -> Error(DomainError.validation $"Failed to cancel Supply order {cmd.Id}")
 
-        | LockSupplyOrder cmd, Some state ->
+        | LockSupplyOrder cmd, Some _ ->
             let evt =
                 SupplyOrderLocked
                     { Id = cmd.Id
@@ -499,7 +497,7 @@ let decide: DecideSupplyOrder =
             | Some s -> Ok { NewState = s; Events = [ evt ] }
             | None -> Error(DomainError.validation $"Failed to lock Supply order {cmd.Id}")
 
-        | UpdateSupplyOrderPriority cmd, Some state ->
+        | UpdateSupplyOrderPriority cmd, Some _ ->
             let evt =
                 SupplyOrderPriorityUpdated
                     { Id = cmd.Id

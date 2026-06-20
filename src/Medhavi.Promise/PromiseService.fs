@@ -4,7 +4,7 @@ open System
 open Medhavi.SharedKernel
 open Medhavi.SharedKernel.PromisePolicy
 open Medhavi.Promise.PromiseTypes
-open Medhavi.Transport
+open Medhavi.Contracts.Transport
 open Medhavi.Contracts.Promise
 
 // Context representation for a single line evaluation

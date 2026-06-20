@@ -1,13 +1,12 @@
 module Medhavi.Infrastructure.Stores.EnvelopeStoreMem
 
 open System
-open System.Collections.Concurrent
+open System.Collections.Immutable
 open System.Threading
 open System.Threading.Tasks
-open Medhavi.Infrastructure.Stores.EnvelopeStore
-open System.Collections.Immutable
 open Medhavi.Common.Patterns
 open Medhavi.Infrastructure
+open Medhavi.Infrastructure.Stores.EnvelopeStore
 
 [<CLIMutable>]
 type StoredEvent =

@@ -1,6 +1,5 @@
 namespace Medhavi.Capacity.Domain.CapacityReservationAgg
 
-open System
 open Medhavi.SharedKernel
 open Medhavi.Capacity.Domain.CapacityAgg
 

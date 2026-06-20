@@ -1,7 +1,6 @@
-module Medhavi.Infrastructure.Stores.InMemRepository
+module Medhavi.SharedKernel.InMemRepository
 
 open System.Collections.Concurrent
-open Medhavi.SharedKernel
 
 let createInMemoryRepository<'Aggregate, 'Id, 'Event when 'Id: not null> () =
 
@@ -34,17 +33,17 @@ let createInMemoryRepository<'Aggregate, 'Id, 'Event when 'Id: not null> () =
                                 { Aggregate = aggregate
                                   Version = existing.Version + 1 }
 
-                            store.[id] <- newVersioned
+                            store[id] <- newVersioned
                         | false, _ ->
                             let newVersioned = { Aggregate = aggregate; Version = 1 }
-                            store.[id] <- newVersioned
+                            store[id] <- newVersioned
 
                         let existingEvents =
                             match eventStore.TryGetValue id with
                             | true, evts -> evts
                             | false, _ -> []
 
-                        eventStore.[id] <- existingEvents @ events
+                        eventStore[id] <- existingEvents @ events
 
                         Ok())
             }
@@ -56,7 +55,7 @@ let createInMemoryRepository<'Aggregate, 'Id, 'Event when 'Id: not null> () =
 
                 return
                     lock lockObj (fun () ->
-                        let (isSuccess, removed) = store.TryRemove id
+                        let isSuccess, _ = store.TryRemove id
                         eventStore.TryRemove id |> ignore
                         locks.TryRemove id |> ignore
 

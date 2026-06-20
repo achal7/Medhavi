@@ -2,8 +2,8 @@ namespace Medhavi.Scheduler.Planning.Domain
 
 open System
 open System.Text.Json.Serialization
+open Medhavi.Contracts.Scenario
 open Medhavi.SharedKernel
-open Medhavi.SharedKernel.ScenarioContracts
 
 [<JsonFSharpConverter>]
 type SupplyOrigin =
@@ -116,19 +116,19 @@ module PlanningSnapshotAgg =
             | Create _, Some _ -> errConflict "PlanningSnapshot already exists"
 
             | Lock, Some state when not state.IsLocked ->
-                Ok ({ NewState = { state with IsLocked = true }; Events = [ SnapshotLocked state.Id ] })
+                Ok { NewState = { state with IsLocked = true }; Events = [ SnapshotLocked state.Id ] }
 
             | Lock, Some _ -> errInvariant "Snapshot is already locked — another run may be active"
             | Lock, None -> errNotFound "PlanningSnapshot not found"
 
             | Unlock, Some state when state.IsLocked ->
-                Ok ({ NewState = { state with IsLocked = false }; Events = [ SnapshotUnlocked state.Id ] })
+                Ok { NewState = { state with IsLocked = false }; Events = [ SnapshotUnlocked state.Id ] }
 
             | Unlock, Some _ -> errInvariant "Snapshot is not locked"
             | Unlock, None -> errNotFound "PlanningSnapshot not found"
 
             | Expire, Some state ->
-                Ok ({ NewState = state; Events = [ SnapshotExpired state.Id ] })
+                Ok { NewState = state; Events = [ SnapshotExpired state.Id ] }
 
             | Expire, None -> errNotFound "PlanningSnapshot not found"
 

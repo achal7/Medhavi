@@ -1,15 +1,9 @@
 namespace Medhavi.Scenario
 
 open System
-open System.Threading.Tasks
+open Medhavi.Contracts.Scenario
 open Medhavi.SharedKernel
-open Medhavi.SharedKernel.BoundedContexts
-open Medhavi.Infrastructure.Stores.InMemRepository
 open Medhavi.Scenario.Domain
-open Medhavi.Scenario.Domain.ScenarioAgg
-open Medhavi.Scenario.Domain.ScenarioConfigurationAgg
-open Medhavi.Scenario.Domain.ScenarioOverlaySetAgg
-open Medhavi.SharedKernel.ScenarioContracts
 
 module BoundedContext =
 
@@ -233,11 +227,11 @@ module BoundedContext =
             task {
                 match ScenarioId.create scenarioId with
                 | Error e -> return Error e
-                | Ok scenId ->
+                | Ok _ ->
                     let! scenRes = scenarioRepo.Get(scenarioId)
                     match scenRes with
-                    | Error e -> return Error(DomainError.notFound (sprintf "%A" e))
-                    | Ok None -> return Error(DomainError.notFound (sprintf "Scenario %s not found" scenarioId))
+                    | Error e -> return Error(DomainError.notFound $"%A{e}")
+                    | Ok None -> return Error(DomainError.notFound $"Scenario %s{scenarioId} not found")
                     | Ok(Some scenario) ->
                         let cmd = ScenarioCommand.SubmitForApproval
                         let decRes = ScenarioAgg.handle cmd (Some scenario)
@@ -252,11 +246,11 @@ module BoundedContext =
             task {
                 match ScenarioId.create scenarioId with
                 | Error e -> return Error e
-                | Ok scenId ->
+                | Ok _ ->
                     let! scenRes = scenarioRepo.Get(scenarioId)
                     match scenRes with
-                    | Error e -> return Error(DomainError.notFound (sprintf "%A" e))
-                    | Ok None -> return Error(DomainError.notFound (sprintf "Scenario %s not found" scenarioId))
+                    | Error e -> return Error(DomainError.notFound $"%A{e}")
+                    | Ok None -> return Error(DomainError.notFound $"Scenario %s{scenarioId} not found")
                     | Ok(Some scenario) ->
                         let cmd = ScenarioCommand.Approve
                         let decRes = ScenarioAgg.handle cmd (Some scenario)
@@ -271,11 +265,11 @@ module BoundedContext =
             task {
                 match ScenarioId.create scenarioId with
                 | Error e -> return Error e
-                | Ok scenId ->
+                | Ok _ ->
                     let! scenRes = scenarioRepo.Get(scenarioId)
                     match scenRes with
-                    | Error e -> return Error(DomainError.notFound (sprintf "%A" e))
-                    | Ok None -> return Error(DomainError.notFound (sprintf "Scenario %s not found" scenarioId))
+                    | Error e -> return Error(DomainError.notFound $"%A{e}")
+                    | Ok None -> return Error(DomainError.notFound $"Scenario %s{scenarioId} not found")
                     | Ok(Some scenario) ->
                         let cmd = ScenarioCommand.Reject reason
                         let decRes = ScenarioAgg.handle cmd (Some scenario)
@@ -290,11 +284,11 @@ module BoundedContext =
             task {
                 match ScenarioId.create scenarioId with
                 | Error e -> return Error e
-                | Ok scenId ->
+                | Ok _ ->
                     let! scenRes = scenarioRepo.Get(scenarioId)
                     match scenRes with
-                    | Error e -> return Error(DomainError.notFound (sprintf "%A" e))
-                    | Ok None -> return Error(DomainError.notFound (sprintf "Scenario %s not found" scenarioId))
+                    | Error e -> return Error(DomainError.notFound $"%A{e}")
+                    | Ok None -> return Error(DomainError.notFound $"Scenario %s{scenarioId} not found")
                     | Ok(Some scenario) ->
                         let cmd = ScenarioCommand.Archive(publishId, rollbackId)
                         let decRes = ScenarioAgg.handle cmd (Some scenario)

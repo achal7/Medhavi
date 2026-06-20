@@ -25,6 +25,8 @@ type private ProjectionAgentMsg<'State, 'Event> =
 
 type ProjectionAgent<'State, 'Event>(applyFn: 'State -> 'Event -> 'State, initial: 'State, projectionName: string) =
 
+    let eventApplied = Event<'Event>()
+
     let agent =
         MailboxProcessor.Start(fun inbox ->
             let rec loop (state: 'State, stats: ProjectionStats) =
@@ -32,11 +34,12 @@ type ProjectionAgent<'State, 'Event>(applyFn: 'State -> 'Event -> 'State, initia
                     let! msg = inbox.Receive()
 
                     match msg with
-                    | Apply(ev, msgId, pos) ->
+                    | Apply(ev, msgId, _) ->
                         match stats.LastMessageId with
-                        | Some lm when lm = msgId -> return! loop (state, stats)
+                        | Some lm when lm = msgId -> return! loop(state, stats)
                         | _ ->
                             let newState = applyFn state ev
+                            eventApplied.Trigger ev
 
                             let newStats =
                                 { stats with
@@ -44,46 +47,41 @@ type ProjectionAgent<'State, 'Event>(applyFn: 'State -> 'Event -> 'State, initia
                                     LastUpdated = DateTimeOffset.UtcNow
                                     LastMessageId = Some msgId }
 
-                            return! loop (newState, newStats)
+                            return! loop(newState, newStats)
 
-                    | SetState newState -> return! loop (newState, stats)
+                    | SetState newState -> return! loop(newState, stats)
 
                     | GetState reply ->
                         reply.Reply state
-                        return! loop (state, stats)
+                        return! loop(state, stats)
 
                     | GetStats reply ->
                         reply.Reply stats
-                        return! loop (state, stats)
+                        return! loop(state, stats)
 
                     | Query(query, reply) ->
                         let result = query state
                         reply.Reply result
-                        return! loop (state, stats)
+                        return! loop(state, stats)
 
-                    | Reset -> return! loop (initial, ProjectionStats.Default)
+                    | Reset -> return! loop(initial, ProjectionStats.Default)
                 }
 
-            loop (initial, ProjectionStats.Default))
+            loop(initial, ProjectionStats.Default))
 
+    member _.EventApplied = eventApplied.Publish
     member _.Post(ev, msgId, pos) = agent.Post(Apply(ev, msgId, pos))
     member _.SetState(state) = agent.Post(SetState state)
-    member _.GetStateAsync() : Task<'State> =
-        agent.PostAndAsyncReply(GetState)
-        |> Async.StartAsTask
+    member _.GetStateAsync() : Task<'State> = agent.PostAndAsyncReply(GetState) |> Async.StartAsTask
 
-    member _.GetStatsAsync() : Task<ProjectionStats> =
-        agent.PostAndAsyncReply(GetStats)
-        |> Async.StartAsTask
+    member _.GetStatsAsync() : Task<ProjectionStats> = agent.PostAndAsyncReply(GetStats) |> Async.StartAsTask
 
     member _.Reset() = agent.Post(Reset)
 
     member _.QueryAsync<'Result>(query: 'State -> 'Result) : Task<'Result> =
         task {
-            let boxedQuery = fun s -> box (query s)
-            let! result =
-                agent.PostAndAsyncReply(fun reply -> Query(boxedQuery, reply))
-                |> Async.StartAsTask
+            let boxedQuery = fun s -> box(query s)
+            let! result = agent.PostAndAsyncReply(fun reply -> Query(boxedQuery, reply)) |> Async.StartAsTask
             return unbox<'Result> result
         }
 
@@ -94,12 +92,9 @@ type ProjectionAgent<'State, 'Event>(applyFn: 'State -> 'Event -> 'State, initia
     member this.QueryItemsAsync<'a>
         (predicate: 'a -> bool, getItems: 'State -> 'a seq)
         : System.Threading.Tasks.Task<'a list> =
-        this.QueryAsync(fun state ->
-            getItems state
-            |> Seq.filter predicate
-            |> Seq.toList)
+        this.QueryAsync(fun state -> getItems state |> Seq.filter predicate |> Seq.toList)
 
-open Medhavi.SharedKernel.Projections
+open Medhavi.Contracts.Projections
 
 module QueryServiceBase =
     let getById
@@ -125,11 +120,7 @@ module QueryServiceBase =
         (queryAgent: ProjectionAgent<Map<string, 'Entity>, 'Event>)
         (predicate: 'Entity -> bool)
         : Task<'Entity list> =
-        queryAgent.QueryAsync(fun state ->
-            state
-            |> Map.values
-            |> Seq.filter predicate
-            |> Seq.toList)
+        queryAgent.QueryAsync(fun state -> state |> Map.values |> Seq.filter predicate |> Seq.toList)
 
     let tryFind
         (queryAgent: ProjectionAgent<Map<string, 'Entity>, 'Event>)
@@ -144,4 +135,5 @@ module QueryServiceBase =
         { GetAll = fun () -> getAll queryAgent
           GetById = getById queryAgent idToKey
           Exists = exists queryAgent idToKey
-          Filter = filter queryAgent }
+          Filter = filter queryAgent
+          SubscribeApiEvents = fun handler -> queryAgent.EventApplied |> Observable.subscribe handler }

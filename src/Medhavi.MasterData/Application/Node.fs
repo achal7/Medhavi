@@ -6,7 +6,6 @@ open Medhavi.SharedKernel
 open Medhavi.MasterData.Domain.NodeAgg
 open Medhavi.Contracts.Integration
 open Medhavi.SharedKernel.Aggregate
-open Medhavi.Infrastructure
 
 module ACL =
     let parseNodeType (t: string) : Result<NodeType, DomainError> =

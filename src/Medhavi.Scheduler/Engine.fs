@@ -6,6 +6,6 @@ open Medhavi.SharedKernel
 module NettingEngine =
 
     /// Runs a basic heuristic MRP netting run over supply and demand
-    let runNetting (skuId: SkuId) (onHand: Quantity) (demandQty: Quantity) (safetyStock: Quantity) : Quantity =
+    let runNetting (_: SkuId) (onHand: Quantity) (demandQty: Quantity) (safetyStock: Quantity) : Quantity =
         let totalRequirement = demandQty + safetyStock
         totalRequirement - onHand

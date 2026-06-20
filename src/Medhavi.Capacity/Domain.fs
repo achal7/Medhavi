@@ -1,8 +1,5 @@
 namespace Medhavi.Capacity
 
-open System
-open Medhavi.SharedKernel
-
 type CapacityResourceKind =
     | Machine
     | WorkCenter

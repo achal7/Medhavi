@@ -1,6 +1,5 @@
 module Medhavi.Supply.Domain.InventoryAgg
 
-open Medhavi.Common
 open Medhavi.Common.Validation
 open Medhavi.SharedKernel
 open Medhavi.SharedKernel.Aggregate
@@ -77,7 +76,7 @@ let decide: DecideInventory =
 
 let applyCreated (evt: InventoryCreatedEvt) : Inventory = evt
 
-let evolve (state: Inventory option) (event: InventoryEvent) : Inventory option =
+let evolve (_: Inventory option) (event: InventoryEvent) : Inventory option =
     match event with
     | InventoryCreated e -> Some(applyCreated e)
-    | InventoryRemoved(_) -> failwith "Not Implemented"
+    | InventoryRemoved _ -> failwith "Not Implemented"

@@ -1,7 +1,6 @@
 namespace Medhavi.Analytics
 
 open System
-open Medhavi.Analytics.PlanningHorizon
 open Medhavi.Contracts.Analytics
 open Medhavi.Contracts.Demand
 open Medhavi.Contracts.Supply
@@ -19,7 +18,7 @@ type ScenarioOverlay =
       PolicyOverrides   : PolicyOverride list }
 
 module ScenarioAdapter =
-    open Medhavi.SharedKernel.ScenarioContracts
+    open Medhavi.Contracts.Scenario
 
     let toScenarioOverlay (scenarioId: string) (overrides: ScenarioDataOverride list) : ScenarioOverlay =
         let demand =

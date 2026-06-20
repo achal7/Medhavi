@@ -405,11 +405,11 @@ let private planNode
 
             let nettingInbound =
                 adjustedInbound
-                |> List.map (fun (t, q, f, id) -> (t, q, f))
+                |> List.map (fun (t, q, f, _) -> (t, q, f))
 
             let nettingReservations =
                 adjustedReservations
-                |> List.map (fun (t, q, id) -> (t, q))
+                |> List.map (fun (t, q, _) -> (t, q))
 
             let netReqs, _ =
                 Netting.netDemands

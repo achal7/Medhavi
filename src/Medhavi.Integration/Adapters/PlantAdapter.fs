@@ -10,34 +10,19 @@ open Medhavi.Infrastructure.Stores.EnvelopeStore
 open Medhavi.Infrastructure
 
 module ACL =
-    let parse (stockingPointsCsv: string) : Result<PlantDefineReq list, string> =
+    let parse (plantsCsvText: string) : Result<PlantDefineReq list, string> =
         try
-            let rows = CsvHelper.parseCsv stockingPointsCsv
-            let sps =
+            let rows = CsvHelper.parseCsv plantsCsvText
+            let plantsList =
                 rows
                 |> Array.toList
                 |> List.map (fun row ->
-                    let id = row.Get "StockingPointId" |> Option.defaultValue ""
-                    let name = row.Get "Name" |> Option.defaultValue ""
-                    let active = row.GetBool "IsActive" |> Option.defaultValue true
-                    (id, name, active))
-
-            // Stocking points are currently mapped to PLANT-DEFAULT.
-            // We map unique plant IDs from them.
-            let plantIds =
-                sps
-                |> List.map (fun _ -> "PLANT-DEFAULT")
-                |> List.distinct
-
-            let plantsList =
-                plantIds
-                |> List.map (fun plantId ->
-                    { Id = plantId
-                      Code =
-                        plantId
-                            .Replace("PLANT-", "")
-                            .Replace("-DEFAULT", "DEF")
-                      Name = "Plant: " + plantId })
+                    let id = row.Get "PlantId" |> Option.defaultValue ""
+                    let code = row.Get "Code" |> Option.defaultValue id
+                    let name = row.Get "Name" |> Option.defaultValue id
+                    { Id = id
+                      Code = code
+                      Name = name })
 
             Ok plantsList
         with ex ->

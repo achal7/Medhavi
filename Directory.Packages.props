@@ -7,11 +7,12 @@
     <PackageVersion Include="FSharp.Core" Version="10.0.100" />
     <PackageVersion Include="FSharp.SystemTextJson" Version="1.4.36" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components" Version="10.0.9" />
     <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.3" />
     <PackageVersion Include="Marten" Version="7.34.0" />
     <PackageVersion Include="Bolero" Version="0.24.36" />
     <PackageVersion Include="Bolero.Server" Version="0.24.36" />
-    <PackageVersion Include="Radzen.Blazor" Version="5.1.0" />
+    <PackageVersion Include="Radzen.Blazor" Version="10.4.9" />
     <!-- Testing Stack -->
     <PackageVersion Include="Expecto" Version="11.0.0-alpha8" />
     <PackageVersion Include="Expecto.FsCheck" Version="11.0.0-alpha8" />
@@ -20,6 +21,5 @@
     <PackageVersion Include="Unquote" Version="7.0.1" />
     <PackageVersion Include="YoloDev.Expecto.TestSdk" Version="0.15.5" />
     <PackageVersion Include="Testcontainers.PostgreSql" Version="3.8.0" />
-    <PackageVersion Include="coverlet.collector" Version="6.0.0" />
   </ItemGroup>
 </Project>

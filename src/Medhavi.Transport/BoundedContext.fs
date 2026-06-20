@@ -2,13 +2,13 @@ namespace Medhavi.Transport
 
 open System
 open System.Threading.Tasks
-open Medhavi.SharedKernel
 open Medhavi.Infrastructure.Projections
-open Medhavi.Infrastructure.Stores.InMemRepository
+open Medhavi.SharedKernel
 open Medhavi.SharedKernel.BoundedContexts
-open Medhavi.Transport.Domain.TransportReservationAgg
+open Medhavi.SharedKernel.InMemRepository
 open Medhavi.Transport.Application
 open Medhavi.Transport.Application.TransportAtpApp
+open Medhavi.Transport.Domain.TransportReservationAgg
 
 /// The composed Transport Bounded Context
 type TransportContext =

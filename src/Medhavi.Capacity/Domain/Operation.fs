@@ -2,7 +2,6 @@ module Medhavi.Capacity.Domain.OperationAgg
 
 open System
 open Medhavi.SharedKernel
-open Medhavi.Common
 
 type OperationState =
     | Scheduled

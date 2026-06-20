@@ -1,7 +1,7 @@
 namespace Medhavi.Scenario.Domain
 
 open System
-open Medhavi.SharedKernel.ScenarioContracts
+open Medhavi.Contracts.Scenario
 
 type ScenarioConfigurationId = private ScenarioConfigurationId of Guid
 

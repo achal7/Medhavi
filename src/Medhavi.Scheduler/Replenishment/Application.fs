@@ -2,12 +2,12 @@ namespace Medhavi.Scheduler.Replenishment
 
 open System.Threading.Tasks
 open Medhavi.Contracts.Supply
-open Medhavi.Demand.Domain
+open Medhavi.Scheduler.Mrp.Domain.Types
 open Medhavi.SharedKernel
 
 type GetMaterialSnapshot = SkuId -> StockingPointId -> Timestamp -> Task<Result<MaterialSnapshot, ApplicationError>>
 type GetInventoryTargets = unit -> Task<InventoryTarget list>
-type GetForecasts = SkuId -> StockingPointId -> Task<Forecast list>
+type GetForecasts = SkuId -> StockingPointId -> Task<MrpDemand list>
 type TriggerPlanningRun = SkuId -> StockingPointId -> Quantity -> Timestamp -> Task<Result<unit, string>>
 type PublishShortfallAlert = ShortfallAlert -> Task<unit>
 

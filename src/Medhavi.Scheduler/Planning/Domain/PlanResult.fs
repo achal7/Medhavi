@@ -1,8 +1,8 @@
 namespace Medhavi.Scheduler.Planning.Domain
 
 open System
+open Medhavi.Contracts.Scenario
 open Medhavi.SharedKernel
-open Medhavi.SharedKernel.ScenarioContracts
 open Medhavi.Scheduler.Mrp.Domain
 
 type PlannedOrderType =

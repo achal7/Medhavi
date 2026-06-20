@@ -1,8 +1,8 @@
 namespace Medhavi.Scenario.Application
 
 open Medhavi.SharedKernel
+open Medhavi.Contracts.Scenario
 open Medhavi.Scenario.Domain
-open Medhavi.SharedKernel.ScenarioContracts
 
 type BcIntegrationEvent =
     | DemandAggregateVersionChanged of scenarioId: ScenarioId * newVersion: int * changedDemandIds: string list

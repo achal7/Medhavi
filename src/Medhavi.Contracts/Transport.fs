@@ -75,3 +75,30 @@ type TransportLegUpdateReq =
 type TransportLegDeactivateReq =
     { Id: string
       DeactivatedAt: DateTimeOffset }
+
+
+/// A single hop in a multi-hop route
+type ItineraryHop =
+    { LegId: string
+      Origin: string
+      Destination: string
+      Mode: string
+      LeadTimeMinutes: decimal
+      DepartureDateOffset: decimal // minutes from route start
+      ArrivalDateOffset: decimal   // minutes from route start
+      FixedCost: decimal
+      VariableCostPerUnit: decimal option }
+
+/// A complete transport route (may be single-hop or multi-hop)
+type Itinerary =
+    { Id: string
+      SkuId: string option
+      FromNode: string
+      ToNode: string
+      Hops: ItineraryHop list
+      TotalLeadTimeMinutes: decimal
+      TotalFixedCost: decimal
+      TotalVariableCostPerUnit: decimal option
+      TotalCO2: decimal option
+      TotalReliability: decimal  // product of hop reliabilities
+      HopCount: int }

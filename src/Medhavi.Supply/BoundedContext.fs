@@ -2,19 +2,19 @@ namespace Medhavi.Supply
 
 open System
 open System.Threading.Tasks
-open Medhavi.Infrastructure.Stores.InMemRepository
+open Medhavi.Contracts.API
+open Medhavi.Contracts.Projections
 open Medhavi.Infrastructure.Projections
-open Medhavi.SharedKernel.BoundedContexts
-open Medhavi.SharedKernel.API
 open Medhavi.SharedKernel
+open Medhavi.SharedKernel.BoundedContexts
+open Medhavi.SharedKernel.InMemRepository
 open Medhavi.Supply.Application
+open Medhavi.Supply.Domain
 open Medhavi.Supply.Domain.InventoryAgg
 open Medhavi.Supply.Domain.InventoryTargetAgg
 open Medhavi.Supply.Domain.SupplierOfferAgg
 open Medhavi.Supply.Domain.SupplyOrderAgg
-open Medhavi.Supply.Domain
 
-open Medhavi.SharedKernel.Projections
 
 type SupplyQueries =
     { Inventory: InventoryQueryService
@@ -78,7 +78,7 @@ module BoundedContext =
         let orderApi = SupplyOrder.createSupplyOrderApi orderCaps orderAgent
 
         let reservationApi =
-            MaterialReservation.createMaterialReservationApi reservationCaps reservationAgent
+            MaterialReservation.createMaterialReservationApi reservationCaps
 
         // 5. Subscriptions List
         let mutable subscriptions: IDisposable list = []

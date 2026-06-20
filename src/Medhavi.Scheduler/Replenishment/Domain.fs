@@ -1,7 +1,7 @@
 namespace Medhavi.Scheduler.Replenishment
 
 open Medhavi.Contracts.Supply
-open Medhavi.Demand.Domain
+open Medhavi.Scheduler.Mrp.Domain.Types
 open Medhavi.Scheduler.Mrp.Domain.Algorithms
 open Medhavi.SharedKernel
 
@@ -41,7 +41,7 @@ module ReplenishmentDomain =
 
     /// Calculate average daily demand from forecasts
     let calculateAverageDailyDemandFromForecast
-        (forecasts: Forecast list)
+        (forecasts: MrpDemand list)
         (lookbackDays: int)
         (asOf: Timestamp)
         : decimal =
@@ -51,7 +51,7 @@ module ReplenishmentDomain =
 
         let recentForecasts =
             forecasts
-            |> List.filter (fun f -> Timestamp.value f.PeriodStart >= cutoffDate)
+            |> List.filter (fun f -> Timestamp.value f.RequiredDate >= cutoffDate)
 
         if List.isEmpty recentForecasts then
             0m
@@ -63,12 +63,12 @@ module ReplenishmentDomain =
             let days =
                 let minDate =
                     recentForecasts
-                    |> List.map (fun f -> Timestamp.value f.PeriodStart)
+                    |> List.map (fun f -> Timestamp.value f.RequiredDate)
                     |> List.min
 
                 let maxDate =
                     recentForecasts
-                    |> List.map (fun f -> Timestamp.value f.PeriodStart)
+                    |> List.map (fun f -> Timestamp.value f.RequiredDate)
                     |> List.max
 
                 max 1.0 ((maxDate - minDate).TotalDays + 1.0)
@@ -80,7 +80,7 @@ module ReplenishmentDomain =
         (skuId: SkuId)
         (spId: StockingPointId)
         (target: InventoryTarget)
-        (forecasts: Forecast list)
+        (forecasts: MrpDemand list)
         (dailyDemandRateOverride: decimal option)
         (targetAsOf: Timestamp)
         : ReplenishmentTarget =
@@ -178,7 +178,7 @@ module ReplenishmentDomain =
     /// Calculate projected stockout date from forecast
     let calculateProjectedStockoutDate
         (currentStock: decimal)
-        (forecasts: Forecast list)
+        (forecasts: MrpDemand list)
         (lookAheadDays: int)
         (asOf: Timestamp)
         : Timestamp option =
@@ -188,9 +188,9 @@ module ReplenishmentDomain =
         let relevantForecasts =
             forecasts
             |> List.filter (fun f ->
-                Timestamp.value f.PeriodStart >= cutoffDate
-                && Timestamp.value f.PeriodStart <= lookAheadDate)
-            |> List.sortBy (fun f -> f.PeriodStart)
+                Timestamp.value f.RequiredDate >= cutoffDate
+                && Timestamp.value f.RequiredDate <= lookAheadDate)
+            |> List.sortBy (fun f -> f.RequiredDate)
 
         // Calculate cumulative demand and find stockout point
         let stockoutDate, _ =
@@ -204,7 +204,7 @@ module ReplenishmentDomain =
                         let newRemaining = remainingStock - demand
 
                         if newRemaining <= 0m then
-                            (Some forecast.PeriodStart, newRemaining)
+                            (Some forecast.RequiredDate, newRemaining)
                         else
                             (None, newRemaining))
                 (None, currentStock)
@@ -251,7 +251,7 @@ module ReplenishmentDomain =
     let detectShortfallWithForecast
         (snapshot: MaterialSnapshot)
         (target: ReplenishmentTarget)
-        (forecasts: Forecast list)
+        (forecasts: MrpDemand list)
         (trigger: ReplenishmentTrigger)
         (timestamp: Timestamp)
         : ShortfallAlert option =
@@ -273,8 +273,8 @@ module ReplenishmentDomain =
                 let totalForecastDemand =
                     forecasts
                     |> List.filter (fun f ->
-                        f.PeriodStart >= timestamp
-                        && f.PeriodStart <= stockoutDate)
+                        f.RequiredDate >= timestamp
+                        && f.RequiredDate <= stockoutDate)
                     |> List.sumBy (fun f -> Quantity.value f.Quantity)
 
                 // Needed quantity to prevent stockout and maintain safety stock

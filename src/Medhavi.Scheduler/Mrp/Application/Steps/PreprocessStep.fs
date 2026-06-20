@@ -2,7 +2,6 @@
 module Medhavi.Scheduler.Mrp.Steps.PreprocessStep
 
 open Medhavi.SharedKernel
-open Medhavi.Demand.Domain
 open Medhavi.Scheduler.Mrp.Domain.Types
 open Medhavi.Scheduler.Mrp.Domain.Errors
 open Medhavi.Scheduler.Mrp.Domain.Policies
@@ -100,60 +99,10 @@ let execute: MrpStepAsync<MrpDemand list, MrpDemand list> =
                                 | Forecast _ -> true
                                 | _ -> false)
 
-                        let demandOrders =
-                            coDemands
-                            |> List.map (fun d ->
-                                match d.Source with
-                                | CustomerOrder(orderId, lineId) ->
-                                    { OrderId =
-                                        OrderId.create orderId
-                                        |> Result.defaultWith (fun _ -> failwith "Invalid")
-                                      LineId = lineId
-                                      SkuId = d.SkuId
-                                      NodeId = d.NodeId
-                                      Quantity = d.Quantity
-                                      DueDate = d.RequiredDate
-                                      Priority = d.Priority |> Option.defaultValue 3
-                                      IsExpedited = false }
-                                | _ -> failwith "Unreachable")
-
-                        let demandForecasts =
-                            fcDemands
-                            |> List.map (fun d ->
-                                match d.Source with
-                                | Forecast forecastId ->
-                                    { ForecastId = forecastId
-                                      SkuId = d.SkuId
-                                      NodeId = d.NodeId
-                                      Quantity = d.Quantity
-                                      PeriodStart = d.RequiredDate
-                                      PeriodEnd = d.RequiredDate }
-                                | _ -> failwith "Unreachable")
-
                         let consumed =
-                            ForecastConsumption.consumeForecasts policy demandForecasts demandOrders
+                            ForecastConsumption.consumeForecasts policy fcDemands coDemands
 
-                        let remainingFcDemands =
-                            consumed
-                            |> List.map (fun f ->
-                                let spId =
-                                    fcDemands
-                                    |> List.tryFind (fun d -> d.DemandId = f.ForecastId)
-                                    |> Option.map (fun d -> d.StockingPointId)
-                                    |> Option.defaultWith (fun () ->
-                                        StockingPointId.create (NodeId.value f.NodeId)
-                                        |> Result.defaultWith (fun _ -> failwith "Invalid"))
-
-                                { DemandId = f.ForecastId
-                                  SkuId = f.SkuId
-                                  NodeId = f.NodeId
-                                  StockingPointId = spId
-                                  Quantity = f.Quantity
-                                  RequiredDate = f.PeriodStart
-                                  Source = Forecast f.ForecastId
-                                  Priority = None })
-
-                        coDemands @ remainingFcDemands @ otherDemands
+                        coDemands @ consumed @ otherDemands
                     | _ -> validDemands
 
                 let grouped = groupDemands consumedDemands

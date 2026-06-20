@@ -2,10 +2,10 @@ module Medhavi.Infrastructure.Stores.IdempotencyStore
 
 open System
 open System.Threading
-open Medhavi.Infrastructure
-open Medhavi.Common.Patterns
-open Microsoft.Extensions.Logging
 open System.Threading.Tasks
+open Microsoft.Extensions.Logging
+open Medhavi.Common.Patterns
+open Medhavi.Infrastructure
 
 type IdempotencyKey = string
 type ReservationToken = Guid
@@ -157,7 +157,7 @@ let private isWrongExpectedVersion (errObj: obj) : bool =
         with _ ->
             false
 
-let readLast (envStore: EnvelopeStore.EnvelopeStoreOps) (streamName: string) (ct: Threading.CancellationToken) =
+let readLast (envStore: EnvelopeStore.EnvelopeStoreOps) (streamName: string) (ct: CancellationToken) =
     task {
         let! readRes = envStore.ReadLast streamName None ct
 
@@ -267,7 +267,7 @@ let markProcessed
                             |> serializeIdempotencyRecord
 
                         match payloadRes with
-                        | Error e ->
+                        | Error _ ->
                             return
                                 Error(
                                     ParseError(
@@ -301,7 +301,7 @@ let markProcessed
 
 let getResult
     (envStore: EnvelopeStore.EnvelopeStoreOps)
-    (key: IdempotencyKey)
+    (_: IdempotencyKey)
     (streamName: string)
     (ct: CancellationToken)
     : TaskResult<IdempotencyRecord option, IdempotencyStoreError> =
@@ -320,7 +320,7 @@ let getResult
 
 let exists
     (envStore: EnvelopeStore.EnvelopeStoreOps)
-    (key: IdempotencyKey)
+    (_: IdempotencyKey)
     (streamName: string)
     (ct: CancellationToken)
     =
@@ -346,7 +346,7 @@ let remove
     (envStore: EnvelopeStore.EnvelopeStoreOps)
     (logger: ILogger)
     (streamName: string)
-    (key: IdempotencyKey)
+    (_: IdempotencyKey)
     (ct: CancellationToken)
     =
     task {
@@ -474,7 +474,7 @@ let cleanup
 let renewReservation
     (esClient: EnvelopeStore.EnvelopeStoreOps)
     (streamName: string)
-    (key: string)
+    (_: string)
     (token: Guid)
     (newExpiryOpt: DateTimeOffset option)
     (ct: CancellationToken)

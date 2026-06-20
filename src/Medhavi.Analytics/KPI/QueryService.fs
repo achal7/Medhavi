@@ -2,16 +2,14 @@ namespace Medhavi.Analytics.KPI
 
 open System
 open System.Threading.Tasks
-open Medhavi.SharedKernel
-open Medhavi.MasterData.KpiConfiguration
 open Medhavi.Analytics
 open Medhavi.Analytics.PlanningHorizon
 open Medhavi.Contracts.Analytics
 open Medhavi.Contracts.Capacity
+open Medhavi.Contracts.Demand
+open Medhavi.Contracts.MasterData
 open Medhavi.Contracts.Supply
 open Medhavi.Contracts.Transport
-open Medhavi.Contracts.Demand
-
 type KpiQueryRequest =
     { PlantId: string
       Periods: PlanningPeriod list
@@ -193,20 +191,14 @@ module KpiQueryService =
 
                 valueOpt
                 |> Option.map (fun v ->
-                    let targetVal = c.Target |> Option.map PositiveDecimal.value
-
-                    let threshVal =
-                        c.AlertThreshold
-                        |> Option.map PositiveDecimal.value
-
                     { KpiId = c.KpiId
                       Name = c.Name
                       Value = v
                       Unit = c.Unit
-                      Target = targetVal
-                      AlertThreshold = threshVal
+                      Target = c.Target
+                      AlertThreshold = c.AlertThreshold
                       HigherIsBetter = c.HigherIsBetter
-                      Status = evaluateStatus v targetVal threshVal c.HigherIsBetter
+                      Status = evaluateStatus v c.Target c.AlertThreshold c.HigherIsBetter
                       Delta = None
                       EvaluatedAt = DateTimeOffset.UtcNow }))
 

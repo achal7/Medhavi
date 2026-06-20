@@ -3,10 +3,10 @@ module Medhavi.Supply.Application.MaterialReservation
 open System
 open Medhavi.Common.Patterns
 open Medhavi.Common.Validation
+open Medhavi.Contracts.API
 open Medhavi.Contracts.Supply
 open Medhavi.Infrastructure.Projections
 open Medhavi.SharedKernel
-open Medhavi.SharedKernel.API
 open Medhavi.SharedKernel.Aggregate
 open Medhavi.Supply.Domain
 open Medhavi.Supply.Domain.MaterialReservationAgg
@@ -22,9 +22,7 @@ module ACL =
               RequiredDate = req.RequiredDate
               ExpiryTime = req.ExpiryTime }
 
-        make <!> (SkuId.create req.SkuId |> fromResult)
-        <*> (StockingPointId.create req.StockingPointId
-             |> fromResult)
+        make <!> (SkuId.create req.SkuId |> fromResult) <*> (StockingPointId.create req.StockingPointId |> fromResult)
 
     let toConfirmCommand (req: MaterialReservationConfirmReq) : Result<ConfirmCmd, DomainError> = Ok { Id = req.Id }
 
@@ -49,7 +47,7 @@ module ACL =
           Created = Timestamp.value res.Created
           Modified = Timestamp.value res.Modified }
 
-type Decision = Decision<MaterialReservationAgg.MaterialReservation, MaterialReservationEvent>
+type Decision = Decision<MaterialReservation, MaterialReservationEvent>
 
 type MaterialReservationCapabilities =
     { CreateTentative: MaterialReservationCreateReq -> TaskResult<Decision, ApplicationError>
@@ -59,27 +57,18 @@ type MaterialReservationCapabilities =
       Expire: MaterialReservationExpireReq -> TaskResult<Decision, ApplicationError> }
 
 let createCapabilities
-    (repo: Repository<MaterialReservationAgg.MaterialReservation, string, MaterialReservationEvent>)
+    (repo: Repository<MaterialReservation, string, MaterialReservationEvent>)
     =
     { CreateTentative =
-        liftCmdValidation ACL.toCreateTentativeCommand
-        >=> handleCommand (fun cmd -> cmd.Id) repo CreateTentative decide
+        liftCmdValidation ACL.toCreateTentativeCommand >=> handleCommand (fun cmd -> cmd.Id) repo CreateTentative decide
 
-      Confirm =
-        liftCmdResult ACL.toConfirmCommand
-        >=> handleCommand (fun cmd -> cmd.Id) repo Confirm decide
+      Confirm = liftCmdResult ACL.toConfirmCommand >=> handleCommand (fun cmd -> cmd.Id) repo Confirm decide
 
-      Release =
-        liftCmdResult ACL.toReleaseCommand
-        >=> handleCommand (fun cmd -> cmd.Id) repo Release decide
+      Release = liftCmdResult ACL.toReleaseCommand >=> handleCommand (fun cmd -> cmd.Id) repo Release decide
 
-      Reduce =
-        liftCmdResult ACL.toReduceCommand
-        >=> handleCommand (fun cmd -> cmd.Id) repo Reduce decide
+      Reduce = liftCmdResult ACL.toReduceCommand >=> handleCommand (fun cmd -> cmd.Id) repo Reduce decide
 
-      Expire =
-        liftCmdResult ACL.toExpireCommand
-        >=> handleCommand (fun cmd -> cmd.Id) repo Expire decide }
+      Expire = liftCmdResult ACL.toExpireCommand >=> handleCommand (fun cmd -> cmd.Id) repo Expire decide }
 
 let evolveProjection
     (state: Map<string, Medhavi.Contracts.Supply.MaterialReservation>)
@@ -138,30 +127,16 @@ let createProjectionAgent () =
 
 let createQueryService agent = QueryServiceBase.getQueryService agent id
 
-let createMaterialReservationApi (capabilities: MaterialReservationCapabilities) agent =
+let createMaterialReservationApi (capabilities: MaterialReservationCapabilities) =
     { CreateTentative =
         fun req ->
-            capabilities.CreateTentative req
-            |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map ACL.toContract
+            capabilities.CreateTentative req |> TaskResult.map(fun d -> d.NewState) |> TaskResult.map ACL.toContract |> TaskResult.mapError ApplicationError.mapToApiError
       Confirm =
-        fun req ->
-            capabilities.Confirm req
-            |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map ACL.toContract
+        fun req -> capabilities.Confirm req |> TaskResult.map(fun d -> d.NewState) |> TaskResult.map ACL.toContract |> TaskResult.mapError ApplicationError.mapToApiError
       Release =
-        fun req ->
-            capabilities.Release req
-            |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map ACL.toContract
+        fun req -> capabilities.Release req |> TaskResult.map(fun d -> d.NewState) |> TaskResult.map ACL.toContract |> TaskResult.mapError ApplicationError.mapToApiError
       Reduce =
-        fun req ->
-            capabilities.Reduce req
-            |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map ACL.toContract
+        fun req -> capabilities.Reduce req |> TaskResult.map(fun d -> d.NewState) |> TaskResult.map ACL.toContract |> TaskResult.mapError ApplicationError.mapToApiError
       Expire =
-        fun req ->
-            capabilities.Expire req
-            |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map ACL.toContract }
+        fun req -> capabilities.Expire req |> TaskResult.map(fun d -> d.NewState) |> TaskResult.map ACL.toContract |> TaskResult.mapError ApplicationError.mapToApiError }
     : MaterialReservationApi

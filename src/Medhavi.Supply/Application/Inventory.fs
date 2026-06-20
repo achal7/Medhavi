@@ -3,10 +3,10 @@ module Medhavi.Supply.Application.Inventory
 open Medhavi
 open Medhavi.Common.Patterns
 open Medhavi.Common.Validation
+open Medhavi.Contracts.API
 open Medhavi.Contracts.Supply
 open Medhavi.Infrastructure.Projections
 open Medhavi.SharedKernel
-open Medhavi.SharedKernel.API
 open Medhavi.SharedKernel.Aggregate
 open Medhavi.Supply.Domain.InventoryAgg
 
@@ -22,8 +22,7 @@ module ACL =
               LastUpdated = None }
 
         make <!> (SkuId.create req.SkuId |> fromResult)
-        <*> (StockingPointId.create req.StockingPointId
-             |> fromResult)
+        <*> (StockingPointId.create req.StockingPointId |> fromResult)
         <*> (UomId.create req.UnitOfMeasure |> fromResult)
 
     let toRemoveCommand (inventoryId: string) : Result<InventoryId, DomainError> = InventoryId.create inventoryId
@@ -49,13 +48,9 @@ type InventoryCapabilities =
       Remove: string -> TaskResult<Decision, ApplicationError> }
 
 let createCapabilities (repo: Repository<Inventory, string, InventoryEvent>) =
-    { Define =
-        liftCmdValidation ACL.toDefineCommand
-        >=> handleCommand (fun cmd -> cmd.Id) repo Create decide
+    { Define = liftCmdValidation ACL.toDefineCommand >=> handleCommand (fun cmd -> cmd.Id) repo Create decide
 
-      Remove =
-        liftCmdResult ACL.toRemoveCommand
-        >=> handleCommand InventoryId.value repo Remove decide }
+      Remove = liftCmdResult ACL.toRemoveCommand >=> handleCommand InventoryId.value repo Remove decide }
 
 let evolveProjection (state: Map<string, Contracts.Supply.Inventory>) (evt: InventoryEvent) =
     match evt with
@@ -75,20 +70,20 @@ let createInventoryApi (capabilities: InventoryCapabilities) _ =
     { Define =
         fun req ->
             capabilities.Define req
-            |> TaskResult.map (fun d -> d.NewState)
+            |> TaskResult.map(fun d -> d.NewState)
             |> TaskResult.map ACL.toContract
+            |> TaskResult.mapError ApplicationError.mapToApiError
       DefineBulk =
         fun reqs ->
             reqs
             |> List.map capabilities.Define
             |> TaskResult.sequence
-            |> TaskResult.map (fun decisions ->
-                decisions
-                |> List.map (fun d -> d.NewState)
-                |> List.map ACL.toContract)
+            |> TaskResult.map(fun decisions -> decisions |> List.map(fun d -> d.NewState) |> List.map ACL.toContract)
+            |> TaskResult.mapError ApplicationError.mapToApiError
       Remove =
         fun reqId ->
             capabilities.Remove reqId
-            |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map ACL.toContract }
+            |> TaskResult.map(fun d -> d.NewState)
+            |> TaskResult.map ACL.toContract
+            |> TaskResult.mapError ApplicationError.mapToApiError }
     : InventoryApi

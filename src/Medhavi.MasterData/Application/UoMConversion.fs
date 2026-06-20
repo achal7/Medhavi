@@ -21,19 +21,15 @@ module ACL =
               Ratio = req.ConversionFactor
               Created = Timestamp.create req.Created }
 
-        make
-        <!> (UomId.create req.SourceUom |> fromResult)
-        <*> (UomId.create req.TargetUom |> fromResult)
+        make <!> (UomId.create req.SourceUom |> fromResult) <*> (UomId.create req.TargetUom |> fromResult)
         |> toResult
         |> Result.mapError DomainError.combineValidationErrors
 
     let toUpdateRatioCommand (req: UnitConversionUpdateReq) : Result<UpdateUnitConversionCmd, DomainError> =
-        UnitConversionId.create req.Id
-        |> Result.map (fun id -> { Id = id; Ratio = req.Ratio }: UpdateUnitConversionCmd)
+        UnitConversionId.create req.Id |> Result.map(fun id -> { Id = id; Ratio = req.Ratio }: UpdateUnitConversionCmd)
 
     let toRetireCommand (req: UnitConversionRetireReq) : Result<UnitConversionId * Status, DomainError> =
-        UnitConversionId.create req.Id
-        |> Result.map (fun id -> (id, Inactive))
+        UnitConversionId.create req.Id |> Result.map(fun id -> (id, Inactive))
 
 type Decision = Decision<UnitConversion, UnitConversionEvent>
 
@@ -43,9 +39,7 @@ type UnitConversionCapabilities =
       Retire: UnitConversionRetireReq -> TaskResult<Decision, ApplicationError> }
 
 let createCapabilities (repo: Repository<UnitConversion, string, UnitConversionEvent>) =
-    { Define =
-        liftCmdResult ACL.toDefineCommand
-        >=> handleCommand (fun c -> c.Id) repo DefineUnitConversion decide
+    { Define = liftCmdResult ACL.toDefineCommand >=> handleCommand (fun c -> c.Id) repo DefineUnitConversion decide
       UpdateRatio =
         liftCmdResult ACL.toUpdateRatioCommand
         >=> handleCommand (fun c -> UnitConversionId.value c.Id) repo UpdateRatio decide
@@ -53,7 +47,7 @@ let createCapabilities (repo: Repository<UnitConversion, string, UnitConversionE
         liftCmdResult ACL.toRetireCommand
         >=> handleCommand (fun (id, _) -> UnitConversionId.value id) repo UpdateStatus decide }
 
-let mapUnitConversionDto (uc: UnitConversion) : Contracts.Domain.UnitConversion =
+let mapUnitConversionDto (uc: UnitConversion) : Contracts.MasterData.UnitConversion =
     { Id = UnitConversionId.value uc.Id
       ProductId = uc.ProductId |> Option.map SkuId.value
       FromUnitCode = UomId.value uc.FromUom
@@ -61,7 +55,7 @@ let mapUnitConversionDto (uc: UnitConversion) : Contracts.Domain.UnitConversion 
       Ratio = PositiveDecimal.value uc.Ratio
       Status = uc.Status.IsActive }
 
-let evolveProjection (state: Map<string, Contracts.Domain.UnitConversion>) (evt: UnitConversionEvent) =
+let evolveProjection (state: Map<string, Contracts.MasterData.UnitConversion>) (evt: UnitConversionEvent) =
     match evt with
     | UnitConversionDefined uc ->
         let dto = mapUnitConversionDto uc
@@ -97,7 +91,7 @@ let evolveProjection (state: Map<string, Contracts.Domain.UnitConversion>) (evt:
         | None -> state
 
 let createProjectionAgent () =
-    ProjectionAgent<Map<string, Contracts.Domain.UnitConversion>, UnitConversionEvent>(
+    ProjectionAgent<Map<string, Contracts.MasterData.UnitConversion>, UnitConversionEvent>(
         evolveProjection,
         Map.empty,
         "UnitConversionReadModel"
@@ -105,31 +99,33 @@ let createProjectionAgent () =
 
 let createQueryService agent = QueryServiceBase.getQueryService agent id
 
-open Medhavi.SharedKernel.API
+open Medhavi.Contracts.API
 
-let createUnitConversionApi (capabilities: UnitConversionCapabilities) agent =
+let createUnitConversionApi (capabilities: UnitConversionCapabilities) =
     { Define =
         fun req ->
             capabilities.Define req
-            |> TaskResult.map (fun d -> d.NewState)
+            |> TaskResult.map(fun d -> d.NewState)
             |> TaskResult.map mapUnitConversionDto
+            |> TaskResult.mapError ApplicationError.mapToApiError
       DefineBulk =
         fun reqs ->
             reqs
             |> List.map capabilities.Define
             |> TaskResult.sequence
-            |> TaskResult.map (fun decisions ->
-                decisions
-                |> List.map (fun d -> d.NewState)
-                |> List.map mapUnitConversionDto)
+            |> TaskResult.map(fun decisions ->
+                decisions |> List.map(fun d -> d.NewState) |> List.map mapUnitConversionDto)
+            |> TaskResult.mapError ApplicationError.mapToApiError
       UpdateRatio =
         fun req ->
             capabilities.UpdateRatio req
-            |> TaskResult.map (fun d -> d.NewState)
+            |> TaskResult.map(fun d -> d.NewState)
             |> TaskResult.map mapUnitConversionDto
+            |> TaskResult.mapError ApplicationError.mapToApiError
       Retire =
         fun req ->
             capabilities.Retire req
-            |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map mapUnitConversionDto }
+            |> TaskResult.map(fun d -> d.NewState)
+            |> TaskResult.map mapUnitConversionDto
+            |> TaskResult.mapError ApplicationError.mapToApiError }
     : UnitConversionApi

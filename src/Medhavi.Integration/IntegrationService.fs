@@ -1,5 +1,6 @@
 namespace Medhavi.Integration
 
+open System.Threading
 open Medhavi.Common.Patterns
 open Medhavi.Infrastructure
 open Medhavi.Infrastructure.Stores.EnvelopeStore
@@ -17,7 +18,7 @@ module IntegrationService =
 
             for step in steps do
                 match error with
-                | Some e -> ()
+                | Some _ -> ()
                 | None ->
                     let! result = step ()
 
@@ -39,6 +40,7 @@ module IntegrationService =
               fun () -> Sku.ingestAndPublishSkus "products.csv" store
               fun () -> Demand.ingestAndPublishDemands "demands.csv" store
               fun () -> UnitConversion.ingestAndPublishUnitConversions "unit_conversions.csv" store
+              fun () -> Plant.ingestAndPublishPlants "plants.csv" store
               fun () -> StockingPoint.ingestAndPublishStockingPoints "stocking_points.csv" store
               fun () -> Resource.ingestAndPublishResourceGroups "resource_groups.csv" store
               fun () -> Resource.ingestAndPublishStandardResources "standard_resources.csv" store
@@ -52,5 +54,9 @@ module IntegrationService =
               fun () -> SupplierOffer.ingestAndPublishSupplierOffers "supplier_offers.csv" store
               fun () -> MaterialReservation.ingestAndPublishReservations "reservations.csv" store ]
 
-    let createCapabilities (store: EnvelopeStoreOps) : IntegrationCapabilities =
-        { IngestAndPublishMasterData = fun () -> ingestAndPublishMasterData store }
+    let createCapabilities (store: EnvelopeStoreOps) =
+        // store.Subscribe SubscriptionMode.All None handler CancellationToken.None
+        {
+            IngestAndPublishMasterData = fun () -> ingestAndPublishMasterData store
+        }
+

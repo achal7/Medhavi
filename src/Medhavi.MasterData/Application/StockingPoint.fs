@@ -4,7 +4,6 @@ open Medhavi
 open Medhavi.Common.Validation
 open Medhavi.Common.Patterns
 open Medhavi.Contracts.Integration
-open Medhavi.Infrastructure
 open Medhavi.SharedKernel
 open Medhavi.SharedKernel.Aggregate
 open Medhavi.MasterData.Domain.StockingPointAgg
@@ -33,8 +32,7 @@ module ACL =
               PlanningLevel = req.PlanningLevel
               SupplyCanBeSplit = req.SupplyCanBeSplit }
 
-        make
-        <!> (StockingPointId.create req.Id |> fromResult)
+        make <!> (StockingPointId.create req.Id |> fromResult)
         <*> (PlantId.create req.PlantId |> fromResult)
         <*> (parseStockingPointType req.Type |> fromResult)
         |> toResult
@@ -42,7 +40,7 @@ module ACL =
 
     let toRenameCommand (req: StockingPointRenameReq) : Result<RenameStockingPointCmd, DomainError> =
         StockingPointId.create req.Id
-        |> Result.map (fun id -> { Id = id; NewName = req.NewName }: RenameStockingPointCmd)
+        |> Result.map(fun id -> { Id = id; NewName = req.NewName }: RenameStockingPointCmd)
 
     let toRetireCommand (req: StockingPointRetireReq) : Result<StockingPointId, DomainError> =
         StockingPointId.create req.Id
@@ -61,11 +59,9 @@ let createCapabilities (repo: Repository<StockingPoint, string, StockingPointEve
       Rename =
         liftCmdResult ACL.toRenameCommand
         >=> handleCommand (fun c -> StockingPointId.value c.Id) repo RenameStockingPoint decide
-      Retire =
-        liftCmdResult ACL.toRetireCommand
-        >=> handleCommand StockingPointId.value repo RetireStockingPoint decide }
+      Retire = liftCmdResult ACL.toRetireCommand >=> handleCommand StockingPointId.value repo RetireStockingPoint decide }
 
-let mapStockingPointDto (s: StockingPoint) : Contracts.Domain.StockingPoint =
+let mapStockingPointDto (s: StockingPoint) : Contracts.MasterData.StockingPoint =
     let tStr =
         match s.Type with
         | StockingPointType.Plant -> "Plant"
@@ -79,7 +75,7 @@ let mapStockingPointDto (s: StockingPoint) : Contracts.Domain.StockingPoint =
       Type = tStr
       Status = s.Status.ToBool() }
 
-let evolveProjection (state: Map<string, Contracts.Domain.StockingPoint>) (evt: StockingPointEvent) =
+let evolveProjection (state: Map<string, Contracts.MasterData.StockingPoint>) (evt: StockingPointEvent) =
     match evt with
     | StockingPointDefined s -> Map.add (StockingPointId.value s.Id) (mapStockingPointDto s) state
     | StockingPointRenamed e ->
@@ -96,7 +92,7 @@ let evolveProjection (state: Map<string, Contracts.Domain.StockingPoint>) (evt: 
         | None -> state
 
 let createProjectionAgent () =
-    ProjectionAgent<Map<string, Contracts.Domain.StockingPoint>, StockingPointEvent>(
+    ProjectionAgent<Map<string, Contracts.MasterData.StockingPoint>, StockingPointEvent>(
         evolveProjection,
         Map.empty,
         "StockingPointReadModel"
@@ -104,31 +100,33 @@ let createProjectionAgent () =
 
 let createQueryService agent = QueryServiceBase.getQueryService agent id
 
-open Medhavi.SharedKernel.API
+open Medhavi.Contracts.API
 
-let createStockingPointApi (capabilities: StockingPointCapabilities) agent =
+let createStockingPointApi (capabilities: StockingPointCapabilities) =
     { Define =
         fun req ->
             capabilities.Define req
-            |> TaskResult.map (fun d -> d.NewState)
+            |> TaskResult.map(fun d -> d.NewState)
             |> TaskResult.map mapStockingPointDto
+            |> TaskResult.mapError ApplicationError.mapToApiError
       DefineBulk =
         fun reqs ->
             reqs
             |> List.map capabilities.Define
             |> TaskResult.sequence
-            |> TaskResult.map (fun decisions ->
-                decisions
-                |> List.map (fun d -> d.NewState)
-                |> List.map mapStockingPointDto)
+            |> TaskResult.map(fun decisions ->
+                decisions |> List.map(fun d -> d.NewState) |> List.map mapStockingPointDto)
+            |> TaskResult.mapError ApplicationError.mapToApiError
       Rename =
         fun req ->
             capabilities.Rename req
-            |> TaskResult.map (fun d -> d.NewState)
+            |> TaskResult.map(fun d -> d.NewState)
             |> TaskResult.map mapStockingPointDto
+            |> TaskResult.mapError ApplicationError.mapToApiError
       Retire =
         fun req ->
             capabilities.Retire req
-            |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map mapStockingPointDto }
+            |> TaskResult.map(fun d -> d.NewState)
+            |> TaskResult.map mapStockingPointDto
+            |> TaskResult.mapError ApplicationError.mapToApiError }
     : StockingPointApi

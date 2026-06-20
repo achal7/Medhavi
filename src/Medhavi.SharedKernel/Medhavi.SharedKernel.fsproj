@@ -18,10 +18,8 @@
     <Compile Include="Validations.fs" />
     <Compile Include="Repository.fs" />
     <Compile Include="Aggregate.fs" />
-    <Compile Include="Projections.fs" />
-    <Compile Include="API.fs" />
     <Compile Include="PromisePolicy.fs" />
-    <Compile Include="ScenarioContracts\Common.fs" />
+    <Compile Include="InMemRepository.fs" />
   </ItemGroup>
 
   <ItemGroup>

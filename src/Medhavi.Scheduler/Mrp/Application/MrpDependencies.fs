@@ -2,7 +2,6 @@ namespace Medhavi.Scheduler.Mrp.Application
 
 open Medhavi.SharedKernel
 open Medhavi.Scheduler.Mrp.Domain.Types
-open Medhavi.Scheduler.Mrp.Domain.MrpRunAggregate
 open Medhavi.Scheduler.Mrp.Domain.Algorithms
 open Medhavi.Scheduler.Mrp.Steps
 

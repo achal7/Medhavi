@@ -2,6 +2,7 @@ namespace Medhavi.Demand
 
 open System
 open System.Threading.Tasks
+open Medhavi.Contracts
 open Medhavi.SharedKernel
 open Medhavi.SharedKernel.BoundedContexts
 open Medhavi.Infrastructure.Projections
@@ -9,15 +10,12 @@ open Medhavi.Demand.Domain
 open Medhavi.Demand.Domain.DemandLineAgg
 open Medhavi.Demand.Projections
 open Medhavi.Demand.Application
-open Medhavi.Infrastructure.Stores
-type DemandQueries = { DemandLine: DemandQueryService }
-
-type DemandCommands = { DemandLine: DemandLineApi }
+open Medhavi.Contracts
 
 type DemandContext =
-    { Commands: DemandCommands
-      Queries: DemandQueries
-      DemandAgent: ProjectionAgent<Map<string, DemandLine>, DemandLineEvent>
+    { Commands: Demand.DemandLineApi
+      Queries: Demand.DemandLineQueries
+      DemandAgent: ProjectionAgent<Map<string, Demand.DemandLine>, DemandLineEvent>
       Initialize: unit -> Task<unit>
       Dispose: unit -> unit }
 
@@ -44,16 +42,9 @@ module BoundedContext =
             task {
                 // A. Seed projection from repository
                 let! demands = demandLineRepo.GetAll()
-
-                match demands with
-                | Ok list ->
-                    let m =
-                        list
-                        |> List.map (fun d -> d.DemandLineId, d)
-                        |> Map.ofList
-
-                    demandAgent.SetState(m)
-                | Error _ -> ()
+                demands
+                |> Result.map (seedProjections demandAgent)
+                |> ignore
 
                 // B. Subscribe to domain events
                 let localSubs =
@@ -69,12 +60,8 @@ module BoundedContext =
 
             subscriptions <- []
 
-        let queries: DemandQueries = { DemandLine = createDemandQueryService demandAgent }
-
-        let commands: DemandCommands = { DemandLine = demandApi }
-
-        { Commands = commands
-          Queries = queries
+        { Commands = demandApi
+          Queries = createDemandQueryService demandAgent
           DemandAgent = demandAgent
           Initialize = initialize
           Dispose = dispose }

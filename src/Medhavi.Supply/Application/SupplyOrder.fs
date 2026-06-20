@@ -3,10 +3,10 @@ module Medhavi.Supply.Application.SupplyOrder
 open Medhavi
 open Medhavi.Common.Patterns
 open Medhavi.Common.Validation
+open Medhavi.Contracts.API
 open Medhavi.Contracts.Supply
 open Medhavi.Infrastructure.Projections
 open Medhavi.SharedKernel
-open Medhavi.SharedKernel.API
 open Medhavi.SharedKernel.Aggregate
 open Medhavi.Supply.Domain.SupplyOrderAgg
 open System
@@ -47,28 +47,21 @@ module ACL =
               IsExpedited = req.IsExpedited
               IsLocked = req.IsLocked
               UsesLeadTimeQuantity = req.UsesLeadTimeQuantity
-              RequiredDeliveryDate =
-                req.RequiredDeliveryDate
-                |> Option.map Timestamp.create
+              RequiredDeliveryDate = req.RequiredDeliveryDate |> Option.map Timestamp.create
               CreatedDate = Timestamp.create req.CreatedDate }
 
-        make
-        <!> (parseOrderType req.OrderType |> fromResult)
+        make <!> (parseOrderType req.OrderType |> fromResult)
         <*> (SkuId.create req.SkuId |> fromResult)
-        <*> (StockingPointId.create req.StockingPointId
-             |> fromResult)
+        <*> (StockingPointId.create req.StockingPointId |> fromResult)
         <*> (Quantity.create req.Quantity |> fromResult)
         <*> (UomId.create req.UnitOfMeasure |> fromResult)
         <*> (match req.RoutingId with
              | None -> Valid None
-             | Some id ->
-                 RoutingId.create id
-                 |> Result.map Some
-                 |> fromResult)
+             | Some id -> RoutingId.create id |> Result.map Some |> fromResult)
 
     let toStartCommand (req: SupplyOrderStartReq) : Result<StartSupplyOrderCmd, DomainError> =
         SupplyOrderId.create req.Id
-        |> Result.map (fun id ->
+        |> Result.map(fun id ->
             { Id = id
               StartedDate = Timestamp.create req.StartedDate })
 
@@ -82,48 +75,48 @@ module ACL =
               CompletedDate = Timestamp.create req.CompletedDate
               FeedbackId = req.FeedbackId }
 
-        make
-        <!> (SupplyOrderId.create req.Id |> fromResult)
+        make <!> (SupplyOrderId.create req.Id |> fromResult)
         <*> (Quantity.create req.CompletedQuantity |> fromResult)
         <*> (Quantity.create req.ScrapQuantity |> fromResult)
 
     let toCompleteCommand (req: SupplyOrderCompleteReq) : Result<CompleteSupplyOrderCmd, DomainError> =
         match SupplyOrderId.create req.Id, Quantity.create req.ScrapQuantity with
         | Ok id, Ok scrapQty ->
-            Ok { Id = id
-                 ScrapQuantity = scrapQty
-                 CompletedDate = Timestamp.create req.CompletedDate
-                 FeedbackId = req.FeedbackId }
+            Ok
+                { Id = id
+                  ScrapQuantity = scrapQty
+                  CompletedDate = Timestamp.create req.CompletedDate
+                  FeedbackId = req.FeedbackId }
         | Error e, _ -> Error e
         | _, Error e -> Error e
 
     let toPlanCommand (req: SupplyOrderPlanReq) : Result<PlanSupplyOrderCmd, DomainError> =
         SupplyOrderId.create req.Id
-        |> Result.map (fun id ->
+        |> Result.map(fun id ->
             { Id = id
               PlannedDeliveryDate = Timestamp.create req.PlannedDeliveryDate })
 
     let toConfirmCommand (req: SupplyOrderConfirmReq) : Result<ConfirmSupplyOrderCmd, DomainError> =
         SupplyOrderId.create req.Id
-        |> Result.map (fun id ->
+        |> Result.map(fun id ->
             { Id = id
               ConfirmedDate = Timestamp.create req.ConfirmedDate })
 
     let toReleaseCommand (req: SupplyOrderReleaseReq) : Result<ReleaseSupplyOrderCmd, DomainError> =
         SupplyOrderId.create req.Id
-        |> Result.map (fun id ->
+        |> Result.map(fun id ->
             { Id = id
               ReleasedDate = Timestamp.create req.ReleasedDate })
 
     let toCancelCommand (req: SupplyOrderCancelReq) : Result<CancelSupplyOrderCmd, DomainError> =
         SupplyOrderId.create req.Id
-        |> Result.map (fun id ->
+        |> Result.map(fun id ->
             { Id = id
               CancelledDate = Timestamp.create req.CancelledDate })
 
     let toLockCommand (req: SupplyOrderLockReq) : Result<LockSupplyOrderCmd, DomainError> =
         SupplyOrderId.create req.Id
-        |> Result.map (fun id ->
+        |> Result.map(fun id ->
             { Id = id
               Locked = req.Locked
               ModifiedDate = Timestamp.create req.ModifiedDate })
@@ -158,9 +151,7 @@ module ACL =
           IsExpedited = o.IsExpedited
           IsLocked = o.IsLocked
           UsesLeadTimeQuantity = o.UsesLeadTimeQuantity
-          RequiredDeliveryDate =
-            o.RequiredDeliveryDate
-            |> Option.map Timestamp.value
+          RequiredDeliveryDate = o.RequiredDeliveryDate |> Option.map Timestamp.value
           CreatedDate = Timestamp.value o.CreatedDate
           ModifiedDate = Timestamp.value o.ModifiedDate
           CompletedQuantity = Quantity.value o.CompletedQuantity
@@ -180,14 +171,10 @@ type SupplyOrderCapabilities =
       Lock: SupplyOrderLockReq -> TaskResult<Decision, ApplicationError> }
 
 module Service =
-    open Medhavi.SharedKernel.Projections
+    open Medhavi.Contracts.Projections
     open Medhavi.Contracts
 
-    let private createIfMissing
-        capabilities
-        (item: SupplyOrderUpdateReq)
-        (existingOpt: Supply.SupplyOrder option)
-        =
+    let private createIfMissing capabilities (item: SupplyOrderUpdateReq) (existingOpt: Supply.SupplyOrder option) =
         taskResult {
             match existingOpt with
             | Some order -> return order
@@ -223,68 +210,59 @@ module Service =
         }
 
     let private transitionState capabilities (item: SupplyOrderUpdateReq) (order: Supply.SupplyOrder) =
-        taskResult {
-            let normalizedStatus = item.Status.Trim().ToLowerInvariant()
-            let currentStatus = order.State.Trim().ToLowerInvariant()
-
-            if
-                (normalizedStatus = "inprogress"
-                 || normalizedStatus = "intransit")
-                && currentStatus <> "inprogress"
-            then
-                let! res =
-                    capabilities.Start
-                        { Id = item.SupplyOrderId
-                          StartedDate = DateTimeOffset.UtcNow }
-
-                return ACL.toContract res.NewState
-            elif
-                (normalizedStatus = "completed"
-                 || normalizedStatus = "received")
-                && currentStatus <> "completed"
-            then
-                let! res =
-                    capabilities.Complete
-                        { Id = item.SupplyOrderId
-                          ScrapQuantity = 0.0m
-                          CompletedDate = DateTimeOffset.UtcNow
-                          FeedbackId = None }
-
-                return ACL.toContract res.NewState
-            elif
-                normalizedStatus = "cancelled"
-                && currentStatus <> "cancelled"
-            then
-                let! res =
-                    capabilities.Cancel
-                        { Id = item.SupplyOrderId
-                          CancelledDate = DateTimeOffset.UtcNow }
-
-                return ACL.toContract res.NewState
-            elif
-                (normalizedStatus = "firm"
-                 || normalizedStatus = "confirmed")
-                && currentStatus <> "confirmed"
-            then
-                let! res =
-                    capabilities.Confirm
-                        { Id = item.SupplyOrderId
-                          ConfirmedDate = DateTimeOffset.UtcNow }
-
-                return ACL.toContract res.NewState
-            elif
-                normalizedStatus = "planned"
-                && currentStatus <> "planned"
-            then
-                let! res =
-                    capabilities.Plan
-                        { Id = item.SupplyOrderId
-                          PlannedDeliveryDate = DateTimeOffset.UtcNow }
-
-                return ACL.toContract res.NewState
-            else
-                return order
-        }
+        let rec transitionTo (targetState: string) (currentOrder: Supply.SupplyOrder) =
+            taskResult {
+                let currentStatus = currentOrder.State.Trim().ToLowerInvariant()
+                let target = targetState.Trim().ToLowerInvariant()
+                if currentStatus = target then
+                    return currentOrder
+                else
+                    match target with
+                    | "inprogress" | "intransit" ->
+                        match currentStatus with
+                        | "created" | "planned" ->
+                            let! res = capabilities.Confirm { Id = item.SupplyOrderId; ConfirmedDate = DateTimeOffset.UtcNow }
+                            return! transitionTo targetState (ACL.toContract res.NewState)
+                        | "confirmed" ->
+                            let! res = capabilities.Release { Id = item.SupplyOrderId; ReleasedDate = DateTimeOffset.UtcNow }
+                            return! transitionTo targetState (ACL.toContract res.NewState)
+                        | "released" ->
+                            let! res = capabilities.Start { Id = item.SupplyOrderId; StartedDate = DateTimeOffset.UtcNow }
+                            return ACL.toContract res.NewState
+                        | _ -> return currentOrder
+                    | "completed" | "received" ->
+                        if currentStatus <> "inprogress" then
+                            let! inProgressOrder = transitionTo "inprogress" currentOrder
+                            return! transitionTo targetState inProgressOrder
+                        else
+                            let! res =
+                                capabilities.Complete
+                                    { Id = item.SupplyOrderId
+                                      ScrapQuantity = 0.0m
+                                      CompletedDate = DateTimeOffset.UtcNow
+                                      FeedbackId = None }
+                            return ACL.toContract res.NewState
+                    | "cancelled" ->
+                        let! res =
+                            capabilities.Cancel
+                                { Id = item.SupplyOrderId
+                                  CancelledDate = DateTimeOffset.UtcNow }
+                        return ACL.toContract res.NewState
+                    | "confirmed" | "firm" ->
+                        match currentStatus with
+                        | "created" | "planned" ->
+                            let! res = capabilities.Confirm { Id = item.SupplyOrderId; ConfirmedDate = DateTimeOffset.UtcNow }
+                            return ACL.toContract res.NewState
+                        | _ -> return currentOrder
+                    | "planned" ->
+                        match currentStatus with
+                        | "created" ->
+                            let! res = capabilities.Plan { Id = item.SupplyOrderId; PlannedDeliveryDate = DateTimeOffset.UtcNow }
+                            return ACL.toContract res.NewState
+                        | _ -> return currentOrder
+                    | _ -> return currentOrder
+            }
+        transitionTo item.Status order
 
     let processSingleUpdate capabilities query (item: SupplyOrderUpdateReq) =
         taskResult {
@@ -303,9 +281,7 @@ module Service =
         (query: QueryService<Supply.SupplyOrder, string>)
         (statusUpdates: SupplyOrderUpdateReq list)
         : TaskResult<Supply.SupplyOrder list, ApplicationError> =
-        statusUpdates
-        |> List.map (processSingleUpdate capabilities query)
-        |> TaskResult.sequence
+        statusUpdates |> List.map(processSingleUpdate capabilities query) |> TaskResult.sequence
 
     let autoFirmOrders
         (capabilities: SupplyOrderCapabilities)
@@ -322,33 +298,27 @@ module Service =
 
             let plannedOrders =
                 allOrders
-                |> List.filter (fun (o: Supply.SupplyOrder) ->
+                |> List.filter(fun (o: Supply.SupplyOrder) ->
                     String.Equals(o.State, "Planned", StringComparison.OrdinalIgnoreCase) && not o.IsFirm)
 
             let firmIfInside (order: Supply.SupplyOrder) =
                 match order.RequiredDeliveryDate with
                 | Some dueDate ->
                     let days = (dueDate - asOf).Days
+
                     if days <= firmingDays then
-                        capabilities.Confirm { Id = order.Id; ConfirmedDate = asOf }
-                        |> TaskResult.ignore
+                        capabilities.Confirm { Id = order.Id; ConfirmedDate = asOf } |> TaskResult.ignore
                     else
-                        TaskResult.return_ ()
-                | None ->
-                    TaskResult.return_ ()
+                        TaskResult.return_()
+                | None -> TaskResult.return_()
 
-            let firmTask =
-                plannedOrders
-                |> List.map firmIfInside
-                |> TaskResult.sequence
+            let firmTask = plannedOrders |> List.map firmIfInside |> TaskResult.sequence
 
-            return! firmTask |> TaskResult.map (fun _ -> ())
+            return! firmTask |> TaskResult.map(fun _ -> ())
         }
 
 let createCapabilities (repo: Repository<SupplyOrder, string, SupplyOrderEvent>) =
-    { Create =
-        liftCmdValidation ACL.toCreateCommand
-        >=> handleCommand (fun cmd -> cmd.Id) repo CreateSupplyOrder decide
+    { Create = liftCmdValidation ACL.toCreateCommand >=> handleCommand (fun cmd -> cmd.Id) repo CreateSupplyOrder decide
 
       Start =
         liftCmdResult ACL.toStartCommand
@@ -442,6 +412,7 @@ let evolveProjection (state: Map<string, Medhavi.Contracts.Supply.SupplyOrder>) 
             let scrapVal = Quantity.value e.ScrapQuantity
             let newScrap = existing.ScrapQuantity + scrapVal
             let newCompleted = existing.Quantity - newScrap |> max 0m
+
             Map.add
                 key
                 { existing with
@@ -502,59 +473,35 @@ let createSupplyOrderApi (capabilities: SupplyOrderCapabilities) agent =
     let query = QueryServiceBase.getQueryService agent id
 
     { Create =
-        fun req ->
-            capabilities.Create req
-            |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map ACL.toContract
+        fun req -> capabilities.Create req |> TaskResult.map(fun d -> d.NewState) |> TaskResult.map ACL.toContract |> TaskResult.mapError ApplicationError.mapToApiError
       CreateBulk =
         fun reqs ->
             reqs
             |> List.map capabilities.Create
             |> TaskResult.sequence
-            |> TaskResult.map (fun decisions ->
-                decisions
-                |> List.map (fun d -> d.NewState)
+            |> TaskResult.map(fun decisions -> 
+                decisions 
+                |> List.map(fun d -> d.NewState) 
                 |> List.map ACL.toContract)
-      ProcessStatusUpdates = Service.processStatusUpdates capabilities query
-      Start =
-        fun req ->
-            capabilities.Start req
-            |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map ACL.toContract
+            |> TaskResult.mapError ApplicationError.mapToApiError
+      ProcessStatusUpdates = Service.processStatusUpdates capabilities query >> TaskResult.mapError ApplicationError.mapToApiError
+      Start = fun req -> capabilities.Start req |> TaskResult.map(fun d -> d.NewState) |> TaskResult.map ACL.toContract  |> TaskResult.mapError ApplicationError.mapToApiError
       PartialComplete =
         fun req ->
-            capabilities.PartialComplete req
-            |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map ACL.toContract
+            capabilities.PartialComplete req |> TaskResult.map(fun d -> d.NewState) |> TaskResult.map ACL.toContract  |> TaskResult.mapError ApplicationError.mapToApiError
       Complete =
-        fun req ->
-            capabilities.Complete req
-            |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map ACL.toContract
-      Plan =
-        fun req ->
-            capabilities.Plan req
-            |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map ACL.toContract
+        fun req -> capabilities.Complete req |> TaskResult.map(fun d -> d.NewState) |> TaskResult.map ACL.toContract  |> TaskResult.mapError ApplicationError.mapToApiError
+      Plan = fun req -> capabilities.Plan req |> TaskResult.map(fun d -> d.NewState) |> TaskResult.map ACL.toContract  |> TaskResult.mapError ApplicationError.mapToApiError
       Confirm =
-        fun req ->
-            capabilities.Confirm req
-            |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map ACL.toContract
+        fun req -> capabilities.Confirm req |> TaskResult.map(fun d -> d.NewState) |> TaskResult.map ACL.toContract  |> TaskResult.mapError ApplicationError.mapToApiError
       Release =
-        fun req ->
-            capabilities.Release req
-            |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map ACL.toContract
+        fun req -> capabilities.Release req |> TaskResult.map(fun d -> d.NewState) |> TaskResult.map ACL.toContract  |> TaskResult.mapError ApplicationError.mapToApiError
       Cancel =
-        fun req ->
-            capabilities.Cancel req
-            |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map ACL.toContract
-      Lock =
-        fun req ->
-            capabilities.Lock req
-            |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map ACL.toContract
-      AutoFirmOrders = Service.autoFirmOrders capabilities query }
+        fun req -> capabilities.Cancel req |> TaskResult.map(fun d -> d.NewState) |> TaskResult.map ACL.toContract  |> TaskResult.mapError ApplicationError.mapToApiError
+      Lock = fun req -> capabilities.Lock req |> TaskResult.map(fun d -> d.NewState) |> TaskResult.map ACL.toContract  |> TaskResult.mapError ApplicationError.mapToApiError
+      AutoFirmOrders = fun asOf str -> task {
+        let! res = Service.autoFirmOrders capabilities query asOf str
+        return res |> Result.mapError ApplicationError.mapToApiError
+        }
+    }
     : SupplyOrderApi

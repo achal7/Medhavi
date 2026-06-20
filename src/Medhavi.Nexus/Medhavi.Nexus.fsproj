@@ -6,28 +6,36 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="ControlTower.fs" />
-    <Compile Include="MasterData.fs" />
-    <Compile Include="Supply.fs" />
-    <Compile Include="SchedulerWiring.fs" />
-    <Compile Include="Mrp.fs" />
-    <Compile Include="PublishLedger.fs" />
-    <Compile Include="Engine.fs" />
+    <!-- Bounded Contexts -->
+    <Compile Include="IntegrationService.fs" />
+    <Compile Include="MasterDataService.fs" />
+    <Compile Include="SupplyService.fs" />
+    <Compile Include="DemandService.fs" />
+    <Compile Include="ScenarioService.fs" />
+
+<!--    <Compile Include="ControlTower.fs" />-->
+<!--    <Compile Include="SchedulerWiring.fs" />-->
+<!--    <Compile Include="Mrp.fs" />-->
+<!--    <Compile Include="PublishLedger.fs" />-->
+<!--    <Compile Include="Engine.fs" />-->
+    <Compile Include="AnalyticsService.fs" />
+    <Compile Include="TransportService.fs" />
+    <Compile Include="NexusService.fs" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Medhavi.Contracts\Medhavi.Contracts.fsproj" />
     <ProjectReference Include="..\Medhavi.Infrastructure\Medhavi.Infrastructure.fsproj" />
-    <ProjectReference Include="..\Medhavi.Analytics\Medhavi.Analytics.fsproj" />
-    <ProjectReference Include="..\Medhavi.Demand\Medhavi.Demand.fsproj" />
-    <ProjectReference Include="..\Medhavi.Supply\Medhavi.Supply.fsproj" />
+    <ProjectReference Include="..\Medhavi.MasterData\Medhavi.MasterData.fsproj" />
     <ProjectReference Include="..\Medhavi.Capacity\Medhavi.Capacity.fsproj" />
+    <ProjectReference Include="..\Medhavi.Supply\Medhavi.Supply.fsproj" />
+    <ProjectReference Include="..\Medhavi.Demand\Medhavi.Demand.fsproj" />
     <ProjectReference Include="..\Medhavi.Transport\Medhavi.Transport.fsproj" />
     <ProjectReference Include="..\Medhavi.Scenario\Medhavi.Scenario.fsproj" />
     <ProjectReference Include="..\Medhavi.Scheduler\Medhavi.Scheduler.fsproj" />
-    <ProjectReference Include="..\Medhavi.MasterData\Medhavi.MasterData.fsproj" />
+    <ProjectReference Include="..\Medhavi.Analytics\Medhavi.Analytics.fsproj" />
     <ProjectReference Include="..\Medhavi.Integration\Medhavi.Integration.fsproj" />
     <ProjectReference Include="..\Medhavi.Promise\Medhavi.Promise.fsproj" />
-    <ProjectReference Include="..\Medhavi.Contracts\Medhavi.Contracts.fsproj" />
   </ItemGroup>
 
 </Project>

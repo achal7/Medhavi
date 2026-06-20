@@ -1,6 +1,5 @@
 module Medhavi.Analytics.PlanningHorizon.DemandProjection
 
-open System
 open Medhavi.Contracts
 open Medhavi.Contracts.Demand
 open Medhavi.Analytics

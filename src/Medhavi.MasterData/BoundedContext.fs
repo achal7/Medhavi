@@ -2,11 +2,12 @@ namespace Medhavi.MasterData
 
 open System
 open System.Threading.Tasks
-open Medhavi.Infrastructure.Stores.InMemRepository
 open Medhavi.Infrastructure.Projections
-open Medhavi.SharedKernel.BoundedContexts
-open Medhavi.SharedKernel.API
+open Medhavi.Contracts.API
+open Medhavi.Contracts.Projections
 open Medhavi.SharedKernel
+open Medhavi.SharedKernel.BoundedContexts
+open Medhavi.SharedKernel.InMemRepository
 open Medhavi.MasterData.Application
 open Medhavi.MasterData.Domain.UomAgg
 open Medhavi.MasterData.Domain.SkuAgg
@@ -21,7 +22,6 @@ open Medhavi.MasterData.Domain.ResourceGroupAgg
 open Medhavi.MasterData.Domain.StandardResourceAgg
 open Medhavi.MasterData.Domain.PhysicalResourceAgg
 
-open Medhavi.SharedKernel.Projections
 
 type MasterDataQueries =
     { Uom: UomQueryService
@@ -50,7 +50,7 @@ type MasterDataCommands =
       StandardResource: StandardResourceApi
       PhysicalResource: PhysicalResourceApi }
 
-type MasterData =
+type MasterDataContext =
     { Commands: MasterDataCommands
       Queries: MasterDataQueries
       Initialize: unit -> Task<unit>
@@ -66,7 +66,7 @@ module BoundedContext =
         let bomRepo = createInMemoryRepository<BillOfMaterial, string, BomEvent> ()
         let routingRepo = createInMemoryRepository<Routing, string, RoutingEvent> ()
         let legRepo = createInMemoryRepository<TransportLeg, string, TransportLegEvent> ()
-        
+
         let plantRepo = createInMemoryRepository<Plant, string, PlantEvent> ()
         let nodeRepo = createInMemoryRepository<Node, string, NodeEvent> ()
         let conversionRepo = createInMemoryRepository<UnitConversion, string, UnitConversionEvent> ()
@@ -81,7 +81,7 @@ module BoundedContext =
         let bomCaps = BillOfMaterials.createCapabilities bomRepo
         let routingCaps = Routing.createCapabilities routingRepo
         let legCaps = TransportLeg.createCapabilities legRepo
-        
+
         let plantCaps = Plant.createCapabilities plantRepo
         let nodeCaps = Node.createCapabilities nodeRepo
         let conversionCaps = UoMConversion.createCapabilities conversionRepo
@@ -103,17 +103,17 @@ module BoundedContext =
         let physicalAgent = PhysicalResource.createProjectionAgent ()
 
         // 4. APIs
-        let uomApi = Uom.createUomApi uomCaps uomAgent
-        let skuApi = Sku.createSkuApi skuCaps skuAgent
-        let spApi = StockingPoint.createStockingPointApi spCaps spAgent
-        let bomApi = BillOfMaterials.createBomApi bomCaps bomAgent
-        let routingApi = Routing.createRoutingApi routingCaps routingAgent
+        let uomApi = Uom.createUomApi uomCaps
+        let skuApi = Sku.createSkuApi skuCaps
+        let spApi = StockingPoint.createStockingPointApi spCaps
+        let bomApi = BillOfMaterials.createBomApi bomCaps
+        let routingApi = Routing.createRoutingApi routingCaps
         let legApi = TransportLeg.createTransportLegApi legCaps legAgent
-        let plantApi = Plant.createPlantApi plantCaps plantAgent
-        let conversionApi = UoMConversion.createUnitConversionApi conversionCaps conversionAgent
-        let groupApi = ResourceGroup.createResourceGroupApi groupCaps groupAgent
-        let standardApi = StandardResource.createStandardResourceApi standardCaps standardAgent
-        let physicalApi = PhysicalResource.createPhysicalResourceApi physicalCaps physicalAgent
+        let plantApi = Plant.createPlantApi plantCaps
+        let conversionApi = UoMConversion.createUnitConversionApi conversionCaps
+        let groupApi = ResourceGroup.createResourceGroupApi groupCaps
+        let standardApi = StandardResource.createStandardResourceApi standardCaps
+        let physicalApi = PhysicalResource.createPhysicalResourceApi physicalCaps
 
         // 5. Subscriptions List
         let mutable subscriptions : IDisposable list = []

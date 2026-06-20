@@ -2,13 +2,13 @@ module Medhavi.MasterData.Application.StandardResource
 
 open Medhavi
 open Medhavi.Common.Patterns
+open Medhavi.Contracts
+open Medhavi.Contracts.API
 open Medhavi.Contracts.Integration
-open Medhavi.Infrastructure
 open Medhavi.SharedKernel
 open Medhavi.SharedKernel.Aggregate
 open Medhavi.MasterData.Domain.StandardResourceAgg
 open Medhavi.Infrastructure.Projections
-open Medhavi.SharedKernel.API
 
 module ACL =
     let toDefineCommand (req: StandardResourceDefineReq) : Result<DefineStandardResourceCmd, DomainError> =
@@ -23,11 +23,10 @@ module ACL =
 
     let toRenameCommand (req: StandardResourceRenameReq) : Result<RenameStandardResourceCmd, DomainError> =
         StandardResourceId.create req.Id
-        |> Result.map (fun id -> { Id = id; NewName = req.NewName }: RenameStandardResourceCmd)
+        |> Result.map(fun id -> { Id = id; NewName = req.NewName }: RenameStandardResourceCmd)
 
     let toRetireCommand (req: StandardResourceRetireReq) : Result<RetireStandardResourceCmd, DomainError> =
-        StandardResourceId.create req.Id
-        |> Result.map (fun id -> { Id = id }: RetireStandardResourceCmd)
+        StandardResourceId.create req.Id |> Result.map(fun id -> { Id = id }: RetireStandardResourceCmd)
 
 type Decision = Decision<StandardResource, StandardResourceEvent>
 
@@ -37,9 +36,7 @@ type StandardResourceCapabilities =
       Retire: StandardResourceRetireReq -> TaskResult<Decision, ApplicationError> }
 
 let createCapabilities (repo: Repository<StandardResource, string, StandardResourceEvent>) =
-    { Define =
-        liftCmdResult ACL.toDefineCommand
-        >=> handleCommand (fun c -> c.Id) repo DefineStandardResource decide
+    { Define = liftCmdResult ACL.toDefineCommand >=> handleCommand (fun c -> c.Id) repo DefineStandardResource decide
       Rename =
         liftCmdResult ACL.toRenameCommand
         >=> handleCommand (fun c -> StandardResourceId.value c.Id) repo RenameStandardResource decide
@@ -47,37 +44,29 @@ let createCapabilities (repo: Repository<StandardResource, string, StandardResou
         liftCmdResult ACL.toRetireCommand
         >=> handleCommand (fun c -> StandardResourceId.value c.Id) repo RetireStandardResource decide }
 
-let mapStandardResourceDto (sr: StandardResource) : Contracts.Domain.StandardResource =
+let mapStandardResourceDto (sr: StandardResource) : MasterData.StandardResource =
     { Id = StandardResourceId.value sr.Id
       ResourceGroupId = ResourceGroupId.value sr.ResourceGroupId
       Name = sr.Name
       Description = sr.Description
       DefaultEfficiency = Percent.value sr.DefaultEfficiency
-      DefaultCostRateAmount =
-        sr.DefaultCostRate
-        |> Option.map (fun c -> c.Amount)
-      DefaultCostRateCurrency =
-        sr.DefaultCostRate
-        |> Option.map (fun c -> c.Currency)
+      DefaultCostRateAmount = sr.DefaultCostRate |> Option.map(fun c -> c.Amount)
+      DefaultCostRateCurrency = sr.DefaultCostRate |> Option.map(fun c -> c.Currency)
       IsActive = sr.Status.ToBool()
       Created = Timestamp.value sr.Created
       Modified = Timestamp.value sr.Modified }
 
-let evolveProjection (state: Map<string, Contracts.Domain.StandardResource>) (evt: StandardResourceEvent) =
+let evolveProjection (state: Map<string, MasterData.StandardResource>) (evt: StandardResourceEvent) =
     match evt with
     | StandardResourceDefined e ->
-        let dto: Contracts.Domain.StandardResource =
+        let dto: MasterData.StandardResource =
             { Id = StandardResourceId.value e.Id
               ResourceGroupId = ResourceGroupId.value e.ResourceGroupId
               Name = e.Name
               Description = e.Description
               DefaultEfficiency = Percent.value e.DefaultEfficiency
-              DefaultCostRateAmount =
-                e.DefaultCostRate
-                |> Option.map (fun c -> c.Amount)
-              DefaultCostRateCurrency =
-                e.DefaultCostRate
-                |> Option.map (fun c -> c.Currency)
+              DefaultCostRateAmount = e.DefaultCostRate |> Option.map(fun c -> c.Amount)
+              DefaultCostRateCurrency = e.DefaultCostRate |> Option.map(fun c -> c.Currency)
               IsActive = true
               Created = Timestamp.value e.Created
               Modified = Timestamp.value e.Created }
@@ -109,35 +98,37 @@ let evolveProjection (state: Map<string, Contracts.Domain.StandardResource>) (ev
         | None -> state
 
 let createProjectionAgent () =
-    ProjectionAgent<Map<string, Contracts.Domain.StandardResource>, StandardResourceEvent>(
+    ProjectionAgent<Map<string, MasterData.StandardResource>, StandardResourceEvent>(
         evolveProjection,
         Map.empty,
         "StandardResourceReadModel"
     )
 
-let createStandardResourceApi (capabilities: StandardResourceCapabilities) agent =
+let createStandardResourceApi (capabilities: StandardResourceCapabilities) =
     { Define =
         fun req ->
             capabilities.Define req
-            |> TaskResult.map (fun d -> d.NewState)
+            |> TaskResult.map(fun d -> d.NewState)
             |> TaskResult.map mapStandardResourceDto
+            |> TaskResult.mapError ApplicationError.mapToApiError
       DefineBulk =
         fun reqs ->
             reqs
             |> List.map capabilities.Define
             |> TaskResult.sequence
-            |> TaskResult.map (fun decisions ->
-                decisions
-                |> List.map (fun d -> d.NewState)
-                |> List.map mapStandardResourceDto)
+            |> TaskResult.map(fun decisions ->
+                decisions |> List.map(fun d -> d.NewState) |> List.map mapStandardResourceDto)
+            |> TaskResult.mapError ApplicationError.mapToApiError
       Rename =
         fun req ->
             capabilities.Rename req
-            |> TaskResult.map (fun d -> d.NewState)
+            |> TaskResult.map(fun d -> d.NewState)
             |> TaskResult.map mapStandardResourceDto
+            |> TaskResult.mapError ApplicationError.mapToApiError
       Retire =
         fun req ->
             capabilities.Retire req
-            |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map mapStandardResourceDto }
+            |> TaskResult.map(fun d -> d.NewState)
+            |> TaskResult.map mapStandardResourceDto
+            |> TaskResult.mapError ApplicationError.mapToApiError }
     : StandardResourceApi

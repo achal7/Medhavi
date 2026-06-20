@@ -6,7 +6,7 @@ open Expecto
 open Swensen.Unquote
 open Medhavi.SharedKernel
 open Medhavi.Contracts.Domain
-open Medhavi.Demand
+open Medhavi.Scheduler.Mrp.Domain.Types
 open Medhavi.Scheduler.Tests.TestCommon
 open Medhavi.Scheduler.Replenishment
 
@@ -124,18 +124,22 @@ module ReplenishmentTests =
                         IsActive = true }
 
                   let forecasts = [
-                      { ForecastId = "f1"
+                      { DemandId = "f1"
                         SkuId = skuId
                         NodeId = NodeId.create "node-1" |> getOk
+                        StockingPointId = spId
                         Quantity = Quantity.clampToZero 20.0m
-                        PeriodStart = Timestamp.create now
-                        PeriodEnd = Timestamp.create now }
-                      { ForecastId = "f2"
+                        RequiredDate = Timestamp.create now
+                        Source = Forecast "f1"
+                        Priority = None }
+                      { DemandId = "f2"
                         SkuId = skuId
                         NodeId = NodeId.create "node-1" |> getOk
+                        StockingPointId = spId
                         Quantity = Quantity.clampToZero 20.0m
-                        PeriodStart = Timestamp.create (now.AddDays(9.0))
-                        PeriodEnd = Timestamp.create (now.AddDays(9.0)) }
+                        RequiredDate = Timestamp.create (now.AddDays(9.0))
+                        Source = Forecast "f2"
+                        Priority = None }
                   ]
 
                   let target = 
@@ -204,8 +208,8 @@ module ReplenishmentTests =
                   // Day 2: demand 10 -> net stock drops to 5 (ok)
                   // Day 5: demand 10 -> net stock drops to -5 (stockout!)
                   let forecasts = [
-                      { ForecastId = "f1"; SkuId = skuId; NodeId = NodeId.create "node-1" |> getOk; Quantity = Quantity.clampToZero 10.0m; PeriodStart = Timestamp.create (now.AddDays(2.0)); PeriodEnd = Timestamp.create (now.AddDays(2.0)) }
-                      { ForecastId = "f2"; SkuId = skuId; NodeId = NodeId.create "node-1" |> getOk; Quantity = Quantity.clampToZero 10.0m; PeriodStart = Timestamp.create (now.AddDays(5.0)); PeriodEnd = Timestamp.create (now.AddDays(5.0)) }
+                      { DemandId = "f1"; SkuId = skuId; NodeId = NodeId.create "node-1" |> getOk; StockingPointId = spId; Quantity = Quantity.clampToZero 10.0m; RequiredDate = Timestamp.create (now.AddDays(2.0)); Source = Forecast "f1"; Priority = None }
+                      { DemandId = "f2"; SkuId = skuId; NodeId = NodeId.create "node-1" |> getOk; StockingPointId = spId; Quantity = Quantity.clampToZero 10.0m; RequiredDate = Timestamp.create (now.AddDays(5.0)); Source = Forecast "f2"; Priority = None }
                   ]
 
                   // Evaluating with ForecastBased(10 days lookahead)

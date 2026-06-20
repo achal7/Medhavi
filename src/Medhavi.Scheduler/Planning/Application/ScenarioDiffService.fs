@@ -1,8 +1,7 @@
 namespace Medhavi.Scheduler.Planning.Application
 
-open Medhavi.SharedKernel
+open Medhavi.Contracts.Scenario
 open Medhavi.Scheduler.Planning.Domain
-open Medhavi.SharedKernel.ScenarioContracts
 
 type OrderDiff =
     | Added of PlannedOrder

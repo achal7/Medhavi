@@ -3,9 +3,8 @@ module Medhavi.MasterData.Application.Sku
 open Medhavi
 open Medhavi.Common.Patterns
 open Medhavi.Contracts.Integration
-open Medhavi.Infrastructure
 open Medhavi.SharedKernel
-open Medhavi.SharedKernel.API
+open Medhavi.Contracts.API
 open Medhavi.SharedKernel.Aggregate
 open Medhavi.MasterData.Domain.SkuAgg
 open Medhavi.Infrastructure.Projections
@@ -19,9 +18,7 @@ module ACL =
               Group = req.Group
               CreatedAt = Timestamp.create req.Created }
 
-    let toRenameCommand (req: SkuRenameReq) =
-        SkuId.create req.Id
-        |> Result.map (fun id -> (id, req.NewName))
+    let toRenameCommand (req: SkuRenameReq) = SkuId.create req.Id |> Result.map(fun id -> (id, req.NewName))
 
     let toRetireCommand (req: SkuRetireReq) = SkuId.create req.Id
 
@@ -33,24 +30,18 @@ type SkuCapabilities =
       Retire: SkuRetireReq -> TaskResult<Decision, ApplicationError> }
 
 let createCapabilities (repo: Repository<Sku, string, SkuEvent>) =
-    { Define =
-        liftCmdResult ACL.toDefineCommand
-        >=> handleCommand (fun c -> c.Id) repo DefineSku decide
-      Rename =
-        liftCmdResult ACL.toRenameCommand
-        >=> handleCommand (fun (id, _) -> SkuId.value id) repo RenameSku decide
-      Retire =
-        liftCmdResult ACL.toRetireCommand
-        >=> handleCommand SkuId.value repo RetireSku decide }
+    { Define = liftCmdResult ACL.toDefineCommand >=> handleCommand (fun c -> c.Id) repo DefineSku decide
+      Rename = liftCmdResult ACL.toRenameCommand >=> handleCommand (fun (id, _) -> SkuId.value id) repo RenameSku decide
+      Retire = liftCmdResult ACL.toRetireCommand >=> handleCommand SkuId.value repo RetireSku decide }
 
-let mapSkuDto (s: Sku) : Contracts.Domain.Sku =
+let mapSkuDto (s: Sku) : Contracts.MasterData.Sku =
     { Id = SkuId.value s.Id
       Code = s.Code
       Name = s.Name
       Group = s.Group
       Status = s.Status.ToBool() }
 
-let evolveProjection (state: Map<string, Contracts.Domain.Sku>) (evt: SkuEvent) =
+let evolveProjection (state: Map<string, Contracts.MasterData.Sku>) (evt: SkuEvent) =
     match evt with
     | SkuDefined s -> Map.add (SkuId.value s.Id) (mapSkuDto s) state
     | SkuRenamed(id, name, _) ->
@@ -67,33 +58,34 @@ let evolveProjection (state: Map<string, Contracts.Domain.Sku>) (evt: SkuEvent) 
         | None -> state
 
 let createProjection () =
-    ProjectionAgent<Map<string, Contracts.Domain.Sku>, SkuEvent>(evolveProjection, Map.empty, "SkuReadModel")
+    ProjectionAgent<Map<string, Contracts.MasterData.Sku>, SkuEvent>(evolveProjection, Map.empty, "SkuReadModel")
 
 let createQueryService agent = QueryServiceBase.getQueryService agent id
 
-let createSkuApi (capabilities: SkuCapabilities) agent =
+let createSkuApi (capabilities: SkuCapabilities) =
     { Define =
         fun req ->
             capabilities.Define req
-            |> TaskResult.map (fun d -> d.NewState)
+            |> TaskResult.map(fun d -> d.NewState)
             |> TaskResult.map mapSkuDto
+            |> TaskResult.mapError ApplicationError.mapToApiError
       DefineBulk =
         fun reqs ->
             reqs
             |> List.map capabilities.Define
             |> TaskResult.sequence
-            |> TaskResult.map (fun decisions ->
-                decisions
-                |> List.map (fun d -> d.NewState)
-                |> List.map mapSkuDto)
+            |> TaskResult.map(fun decisions -> decisions |> List.map(fun d -> d.NewState) |> List.map mapSkuDto)
+            |> TaskResult.mapError ApplicationError.mapToApiError
       Rename =
         fun req ->
             capabilities.Rename req
-            |> TaskResult.map (fun d -> d.NewState)
+            |> TaskResult.map(fun d -> d.NewState)
             |> TaskResult.map mapSkuDto
+            |> TaskResult.mapError ApplicationError.mapToApiError
       Retire =
         fun req ->
             capabilities.Retire req
-            |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map mapSkuDto }
+            |> TaskResult.map(fun d -> d.NewState)
+            |> TaskResult.map mapSkuDto
+            |> TaskResult.mapError ApplicationError.mapToApiError }
     : SkuApi

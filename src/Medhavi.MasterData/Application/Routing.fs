@@ -3,8 +3,8 @@ module Medhavi.MasterData.Application.Routing
 open System
 open Medhavi.Common.Validation
 open Medhavi.Common.Patterns
+open Medhavi.Contracts
 open Medhavi.Contracts.Integration
-open Medhavi.Infrastructure
 open Medhavi.Infrastructure.Projections
 open Medhavi.SharedKernel
 open Medhavi.SharedKernel.Aggregate
@@ -12,9 +12,7 @@ open Medhavi.MasterData.Domain.RoutingAgg
 open Medhavi.MasterData.Domain.RoutingAgg.Commands
 
 module ACL =
-    let mapErr r =
-        r
-        |> Result.mapError (fun err -> [ DomainError.validation err ])
+    let mapErr r = r |> Result.mapError(fun err -> [ DomainError.validation err ])
 
     let toApplicability (req: RoutingDefineReq) : DefineRoutingApplicability =
         { StockingPointId = req.StockingPointId
@@ -49,28 +47,22 @@ module ACL =
         | StepInputTimingReq.AtStepStart -> Ok StepInputTiming.AtStepStart
         | StepInputTimingReq.AtStepEnd -> Ok StepInputTiming.AtStepEnd
         | StepInputTimingReq.OffsetBeforeStepStart v ->
-            DurationMinutes.create v
-            |> Result.map StepInputTiming.OffsetBeforeStepStart
+            DurationMinutes.create v |> Result.map StepInputTiming.OffsetBeforeStepStart
         | StepInputTimingReq.OffsetAfterStepStart v ->
-            DurationMinutes.create v
-            |> Result.map StepInputTiming.OffsetAfterStepStart
+            DurationMinutes.create v |> Result.map StepInputTiming.OffsetAfterStepStart
         | StepInputTimingReq.OffsetBeforeStepEnd v ->
-            DurationMinutes.create v
-            |> Result.map StepInputTiming.OffsetBeforeStepEnd
+            DurationMinutes.create v |> Result.map StepInputTiming.OffsetBeforeStepEnd
         | StepInputTimingReq.OffsetAfterStepEnd v ->
-            DurationMinutes.create v
-            |> Result.map StepInputTiming.OffsetAfterStepEnd
+            DurationMinutes.create v |> Result.map StepInputTiming.OffsetAfterStepEnd
 
     let toStepOutputTiming (t: StepOutputTimingReq) =
         match t with
         | StepOutputTimingReq.AtStepStart -> Ok StepOutputTiming.AtStepStart
         | StepOutputTimingReq.AtStepEnd -> Ok StepOutputTiming.AtStepEnd
         | StepOutputTimingReq.OffsetAfterStepStart v ->
-            DurationMinutes.create v
-            |> Result.map StepOutputTiming.OffsetAfterStepStart
+            DurationMinutes.create v |> Result.map StepOutputTiming.OffsetAfterStepStart
         | StepOutputTimingReq.OffsetAfterStepEnd v ->
-            DurationMinutes.create v
-            |> Result.map StepOutputTiming.OffsetAfterStepEnd
+            DurationMinutes.create v |> Result.map StepOutputTiming.OffsetAfterStepEnd
 
     let toRoutingOutputRole (r: RoutingOutputRoleReq) : RoutingOutputRole =
         match r with
@@ -82,7 +74,7 @@ module ACL =
 
     let toStepInput (req: RoutingStepInputReq) : Validation<DefineRoutingStepInput, DomainError> =
         toStepInputTiming req.Timing
-        |> Result.map (fun timing ->
+        |> Result.map(fun timing ->
             { SkuId = req.SkuId
               FromNodeId = req.FromNodeId
               QuantityPerBaseOutput = req.QuantityPerBaseOutput
@@ -94,7 +86,7 @@ module ACL =
 
     let toStepOutput (req: RoutingStepOutputReq) : Validation<DefineRoutingStepOutput, DomainError> =
         toStepOutputTiming req.Timing
-        |> Result.map (fun timing ->
+        |> Result.map(fun timing ->
             { SkuId = req.SkuId
               ToNodeId = req.ToNodeId
               QuantityRatioToPrimaryOutput = req.QuantityRatioToPrimaryOutput
@@ -148,21 +140,21 @@ module ACL =
     let toResourceOption (req: RoutingResourceOptionReq) =
         let toSetup (sOpt: decimal option) =
             sOpt
-            |> Option.map (
+            |> Option.map(
                 DurationMinutes.create
-                >> (Result.mapError (fun e -> [ DomainError.validation e ]))
+                >> Result.mapError(fun e -> [ DomainError.validation e ])
                 >> (Result.map SetupPolicy.FixedSetup)
             )
-            |> Option.defaultValue (Ok SetupPolicy.NoSetup)
+            |> Option.defaultValue(Ok SetupPolicy.NoSetup)
 
         let toCooling (cOpt: decimal option) =
             cOpt
-            |> Option.map (
+            |> Option.map(
                 DurationMinutes.create
-                >> (Result.mapError (fun e -> [ DomainError.validation e ]))
+                >> Result.mapError(fun e -> [ DomainError.validation e ])
                 >> (Result.map CoolingPolicy.FixedCooling)
             )
-            |> Option.defaultValue (Ok CoolingPolicy.NoCooling)
+            |> Option.defaultValue(Ok CoolingPolicy.NoCooling)
 
         let make eff setupPolicy coolingPolicy : DefineRoutingResourceOption =
             { OptionId = req.OptionId
@@ -183,8 +175,7 @@ module ACL =
               EffectiveStart = req.EffectiveStart |> Option.map Timestamp.create
               EffectiveEnd = req.EffectiveEnd |> Option.map Timestamp.create }
 
-        make req.EfficiencyFactor
-        <!> (toSetup req.SetupTimeFixed |> fromResult)
+        make req.EfficiencyFactor <!> (toSetup req.SetupTimeFixed |> fromResult)
         <*> (toCooling req.CoolingTimeFixed |> fromResult)
 
     let toResourceRequirement
@@ -199,10 +190,7 @@ module ACL =
               Options = options }
 
         let optionsResult =
-            req.Options
-            |> List.map toResourceOption
-            |> sequence
-            |> mapError DomainError.combineValidationErrors
+            req.Options |> List.map toResourceOption |> sequence |> mapError DomainError.combineValidationErrors
 
         make <!> optionsResult
 
@@ -215,18 +203,15 @@ module ACL =
     let toYieldPolicy (yieldPct: decimal option) : Result<StepYieldPolicy, DomainError> =
         match yieldPct with
         | None -> Ok StepYieldPolicy.NoYieldLoss
-        | Some v ->
-            Percent.create v
-            |> Result.map StepYieldPolicy.ExpectedYield
+        | Some v -> Percent.create v |> Result.map StepYieldPolicy.ExpectedYield
 
     let toReworkPolicy (reworkStepId: string option) (reworkRate: decimal option) =
         match reworkStepId, reworkRate with
         | Some stepId, Some rate ->
             RoutingStepId.create stepId
-            |> Result.bind (fun stepId ->
-                Percent.create rate
-                |> Result.map (fun rate -> ReworkPolicy.ReworkToStep(stepId, rate)))
-            |> Result.mapError (fun err -> DomainError.validation (sprintf "Rework step id: %A" err))
+            |> Result.bind(fun stepId ->
+                Percent.create rate |> Result.map(fun rate -> ReworkPolicy.ReworkToStep(stepId, rate)))
+            |> Result.mapError(fun err -> DomainError.validation(sprintf "Rework step id: %A" err))
         | _ -> Ok ReworkPolicy.NoRework
 
     let toOverlapPolicy (policyType: string) (policyValue: decimal option) =
@@ -234,20 +219,14 @@ module ACL =
         | "nooverlap" -> Ok StepOverlapPolicy.NoOverlap
         | "overlapafterquantity" ->
             policyValue
-            |> Option.map (
-                Quantity.create
-                >> (Result.map StepOverlapPolicy.OverlapAfterQuantity)
-            )
-            |> Option.defaultValue (Ok StepOverlapPolicy.NoOverlap)
-            |> Result.mapError (fun err -> DomainError.validation (sprintf "Overlap after quantity: %A" err))
+            |> Option.map(Quantity.create >> (Result.map StepOverlapPolicy.OverlapAfterQuantity))
+            |> Option.defaultValue(Ok StepOverlapPolicy.NoOverlap)
+            |> Result.mapError(fun err -> DomainError.validation(sprintf "Overlap after quantity: %A" err))
         | "overlapafterduration" ->
             policyValue
-            |> Option.map (
-                DurationMinutes.create
-                >> (Result.map StepOverlapPolicy.OverlapAfterDuration)
-            )
-            |> Option.defaultValue (Ok StepOverlapPolicy.NoOverlap)
-            |> Result.mapError (fun err -> DomainError.validation (sprintf "Overlap after duration: %A" err))
+            |> Option.map(DurationMinutes.create >> (Result.map StepOverlapPolicy.OverlapAfterDuration))
+            |> Option.defaultValue(Ok StepOverlapPolicy.NoOverlap)
+            |> Result.mapError(fun err -> DomainError.validation(sprintf "Overlap after duration: %A" err))
         | _ -> Ok StepOverlapPolicy.NoOverlap
 
     let toStepKind (k: string) : RoutingStepKind =
@@ -280,23 +259,17 @@ module ACL =
         let inputsResult = req.Inputs |> List.map toStepInput |> sequence
         let outputsResult = req.Outputs |> List.map toStepOutput |> sequence
 
-        let reqsResult =
-            req.ResourceRequirements
-            |> List.map toResourceRequirement
-            |> sequence
+        let reqsResult = req.ResourceRequirements |> List.map toResourceRequirement |> sequence
 
         make <!> (Ok req.StepId |> fromResult)
         <*> (Ok(toStepKind req.Kind) |> fromResult)
         <*> inputsResult
         <*> outputsResult
         <*> reqsResult
-        <*> (Ok(toStepTimingProfile req.TimingProfile)
-             |> fromResult)
+        <*> (Ok(toStepTimingProfile req.TimingProfile) |> fromResult)
         <*> (toYieldPolicy req.YieldPercentage |> fromResult)
-        <*> (toReworkPolicy req.ReworkStepId req.ReworkRate
-             |> fromResult)
-        <*> (toOverlapPolicy req.OverlapPolicyType req.OverlapPolicyValue
-             |> fromResult)
+        <*> (toReworkPolicy req.ReworkStepId req.ReworkRate |> fromResult)
+        <*> (toOverlapPolicy req.OverlapPolicyType req.OverlapPolicyValue |> fromResult)
 
     let toTransportMode (m: string) : TransportMode =
         match m.Trim().ToLowerInvariant() with
@@ -333,7 +306,7 @@ module ACL =
         req.TransportResourceOptions
         |> List.map toTransportResourceOption
         |> Medhavi.Common.Result.sequence
-        |> Result.map (fun opts ->
+        |> Result.map(fun opts ->
             { SkuId = req.SkuId
               FromNodeId = req.FromNodeId
               ToNodeId = req.ToNodeId
@@ -397,7 +370,7 @@ module ACL =
                 let stepsResult = w.Steps |> List.map toStep |> sequence
 
                 stepsResult
-                |> map (fun steps ->
+                |> map(fun steps ->
                     DefineRoutingDetails.Work
                         { ProductId = w.ProductId
                           PrimaryOutputSkuId = w.PrimaryOutputSkuId
@@ -408,14 +381,9 @@ module ACL =
                 |> Result.map DefineRoutingDetails.Transport
                 |> Result.mapError DomainError.combineValidationErrors
                 |> fromResult
-            | PurchaseDetails p ->
-                toPurchaseDetails p
-                |> DefineRoutingDetails.Purchase
-                |> Valid
+            | PurchaseDetails p -> toPurchaseDetails p |> DefineRoutingDetails.Purchase |> Valid
 
-        make <!> (RoutingId.create req.Id |> fromResult)
-        <*> (toCostPolicy req)
-        <*> detailsResult
+        make <!> (RoutingId.create req.Id |> fromResult) <*> (toCostPolicy req) <*> detailsResult
 
     let toActivateCommand (req: RoutingActivateReq) : Result<RoutingId, DomainError> = RoutingId.create req.Id
 
@@ -432,150 +400,132 @@ let createCapabilities (repo: Repository<Routing, string, RoutingEvent>) =
     { Define =
         liftCmdValidation ACL.toDefineCommand
         >=> handleCommand (fun c -> RoutingId.value c.Id) repo DefineRouting decide
-      Activate =
-        liftCmdResult ACL.toActivateCommand
-        >=> handleCommand RoutingId.value repo ActivateRouting decide
-      Deactivate =
-        liftCmdResult ACL.toDeactivateCommand
-        >=> handleCommand RoutingId.value repo DeactivateRouting decide }
+      Activate = liftCmdResult ACL.toActivateCommand >=> handleCommand RoutingId.value repo ActivateRouting decide
+      Deactivate = liftCmdResult ACL.toDeactivateCommand >=> handleCommand RoutingId.value repo DeactivateRouting decide }
 
 module Mappers =
-    let mapApplicability (app: RoutingApplicability) : Medhavi.Contracts.Domain.RoutingApplicability =
-        { StockingPointId =
-            app.StockingPointId
-            |> Option.map StockingPointId.value
+    let mapApplicability (app: RoutingApplicability) : MasterData.RoutingApplicability =
+        { StockingPointId = app.StockingPointId |> Option.map StockingPointId.value
           EffectiveStart = Timestamp.value app.EffectivePeriod.Start
-          EffectiveEnd =
-            app.EffectivePeriod.End
-            |> Option.map (fun t -> Timestamp.value t) }
+          EffectiveEnd = app.EffectivePeriod.End |> Option.map(fun t -> Timestamp.value t) }
 
-    let mapPreference (pref: RoutingPreference) : Medhavi.Contracts.Domain.RoutingPreference =
+    let mapPreference (pref: RoutingPreference) : MasterData.RoutingPreference =
         { Priority = pref.Priority
           IsPreferred = pref.IsPreferred }
 
-    let mapQuantityRule (rule: RoutingQuantityRule) : Medhavi.Contracts.Domain.RoutingQuantityRule =
-        { MinQuantity =
-            rule.MinQuantity
-            |> Option.map PositiveDecimal.value
-          MaxQuantity =
-            rule.MaxQuantity
-            |> Option.map PositiveDecimal.value
+    let mapQuantityRule (rule: RoutingQuantityRule) : MasterData.RoutingQuantityRule =
+        { MinQuantity = rule.MinQuantity |> Option.map PositiveDecimal.value
+          MaxQuantity = rule.MaxQuantity |> Option.map PositiveDecimal.value
           LotSize = rule.LotSize |> Option.map PositiveDecimal.value
-          OrderMultiple =
-            rule.OrderMultiple
-            |> Option.map PositiveDecimal.value }
+          OrderMultiple = rule.OrderMultiple |> Option.map PositiveDecimal.value }
 
-    let mapCostPolicy (policy: RoutingCostPolicy) : Medhavi.Contracts.Domain.RoutingCostPolicy =
+    let mapCostPolicy (policy: RoutingCostPolicy) : MasterData.RoutingCostPolicy =
         match policy with
-        | RoutingCostPolicy.NoRoutingCost -> Medhavi.Contracts.Domain.RoutingCostPolicy.NoRoutingCost
-        | RoutingCostPolicy.FixedCost v -> Medhavi.Contracts.Domain.RoutingCostPolicy.FixedCost(PositiveDecimal.value v)
+        | RoutingCostPolicy.NoRoutingCost -> MasterData.RoutingCostPolicy.NoRoutingCost
+        | RoutingCostPolicy.FixedCost v -> MasterData.RoutingCostPolicy.FixedCost(PositiveDecimal.value v)
         | RoutingCostPolicy.CostPerUnit v ->
-            Medhavi.Contracts.Domain.RoutingCostPolicy.CostPerUnit(PositiveDecimal.value v)
+            Medhavi.Contracts.MasterData.RoutingCostPolicy.CostPerUnit(PositiveDecimal.value v)
 
-    let mapStepInputTiming (t: StepInputTiming) : Medhavi.Contracts.Domain.StepInputTiming =
+    let mapStepInputTiming (t: StepInputTiming) : MasterData.StepInputTiming =
         match t with
-        | StepInputTiming.AtStepStart -> Medhavi.Contracts.Domain.StepInputTiming.AtStepStart
-        | StepInputTiming.AtStepEnd -> Medhavi.Contracts.Domain.StepInputTiming.AtStepEnd
+        | StepInputTiming.AtStepStart -> MasterData.StepInputTiming.AtStepStart
+        | StepInputTiming.AtStepEnd -> MasterData.StepInputTiming.AtStepEnd
         | StepInputTiming.OffsetBeforeStepStart v ->
-            Medhavi.Contracts.Domain.StepInputTiming.OffsetBeforeStepStart(DurationMinutes.value v)
+            MasterData.StepInputTiming.OffsetBeforeStepStart(DurationMinutes.value v)
         | StepInputTiming.OffsetAfterStepStart v ->
-            Medhavi.Contracts.Domain.StepInputTiming.OffsetAfterStepStart(DurationMinutes.value v)
+            MasterData.StepInputTiming.OffsetAfterStepStart(DurationMinutes.value v)
         | StepInputTiming.OffsetBeforeStepEnd v ->
-            Medhavi.Contracts.Domain.StepInputTiming.OffsetBeforeStepEnd(DurationMinutes.value v)
+            MasterData.StepInputTiming.OffsetBeforeStepEnd(DurationMinutes.value v)
         | StepInputTiming.OffsetAfterStepEnd v ->
-            Medhavi.Contracts.Domain.StepInputTiming.OffsetAfterStepEnd(DurationMinutes.value v)
+            MasterData.StepInputTiming.OffsetAfterStepEnd(DurationMinutes.value v)
 
-    let mapStepOutputTiming (t: StepOutputTiming) : Medhavi.Contracts.Domain.StepOutputTiming =
+    let mapStepOutputTiming (t: StepOutputTiming) : MasterData.StepOutputTiming =
         match t with
-        | StepOutputTiming.AtStepStart -> Medhavi.Contracts.Domain.StepOutputTiming.AtStepStart
-        | StepOutputTiming.AtStepEnd -> Medhavi.Contracts.Domain.StepOutputTiming.AtStepEnd
+        | StepOutputTiming.AtStepStart -> MasterData.StepOutputTiming.AtStepStart
+        | StepOutputTiming.AtStepEnd -> MasterData.StepOutputTiming.AtStepEnd
         | StepOutputTiming.OffsetAfterStepStart v ->
-            Medhavi.Contracts.Domain.StepOutputTiming.OffsetAfterStepStart(DurationMinutes.value v)
+            MasterData.StepOutputTiming.OffsetAfterStepStart(DurationMinutes.value v)
         | StepOutputTiming.OffsetAfterStepEnd v ->
-            Medhavi.Contracts.Domain.StepOutputTiming.OffsetAfterStepEnd(DurationMinutes.value v)
+            MasterData.StepOutputTiming.OffsetAfterStepEnd(DurationMinutes.value v)
 
-    let mapRoutingOutputRole (r: RoutingOutputRole) : Medhavi.Contracts.Domain.RoutingOutputRole =
+    let mapRoutingOutputRole (r: RoutingOutputRole) : MasterData.RoutingOutputRole =
         match r with
-        | RoutingOutputRole.PrimaryOutput -> Medhavi.Contracts.Domain.RoutingOutputRole.PrimaryOutput
-        | RoutingOutputRole.CoProduct -> Medhavi.Contracts.Domain.RoutingOutputRole.CoProduct
-        | RoutingOutputRole.ByProduct -> Medhavi.Contracts.Domain.RoutingOutputRole.ByProduct
-        | RoutingOutputRole.Scrap -> Medhavi.Contracts.Domain.RoutingOutputRole.Scrap
-        | RoutingOutputRole.Waste -> Medhavi.Contracts.Domain.RoutingOutputRole.Waste
+        | RoutingOutputRole.PrimaryOutput -> MasterData.RoutingOutputRole.PrimaryOutput
+        | RoutingOutputRole.CoProduct -> MasterData.RoutingOutputRole.CoProduct
+        | RoutingOutputRole.ByProduct -> MasterData.RoutingOutputRole.ByProduct
+        | RoutingOutputRole.Scrap -> MasterData.RoutingOutputRole.Scrap
+        | RoutingOutputRole.Waste -> MasterData.RoutingOutputRole.Waste
 
-    let mapStepInput (i: RoutingStepInput) : Medhavi.Contracts.Domain.RoutingStepInput =
+    let mapStepInput (i: RoutingStepInput) : MasterData.RoutingStepInput =
         { SkuId = SkuId.value i.SkuId
           FromNodeId = i.FromNodeId |> Option.map NodeId.value
-          QuantityPerBaseOutput =
-            i.QuantityPerBaseOutput
-            |> Option.map PositiveDecimal.value
+          QuantityPerBaseOutput = i.QuantityPerBaseOutput |> Option.map PositiveDecimal.value
           Timing = mapStepInputTiming i.Timing
           IsConsumed = i.IsConsumed
           IsOptional = i.IsOptional }
 
-    let mapStepOutput (o: RoutingStepOutput) : Medhavi.Contracts.Domain.RoutingStepOutput =
+    let mapStepOutput (o: RoutingStepOutput) : MasterData.RoutingStepOutput =
         { SkuId = SkuId.value o.SkuId
           ToNodeId = o.ToNodeId |> Option.map NodeId.value
-          QuantityRatioToPrimaryOutput =
-            o.QuantityRatioToPrimaryOutput
-            |> Option.map PositiveDecimal.value
+          QuantityRatioToPrimaryOutput = o.QuantityRatioToPrimaryOutput |> Option.map PositiveDecimal.value
           Role = mapRoutingOutputRole o.Role
           Timing = mapStepOutputTiming o.Timing }
 
-    let mapResourceKind (k: RoutingResourceKind) : Medhavi.Contracts.Domain.RoutingResourceKind =
+    let mapResourceKind (k: RoutingResourceKind) : MasterData.RoutingResourceKind =
         match k with
-        | RoutingResourceKind.Machine -> Medhavi.Contracts.Domain.RoutingResourceKind.Machine
-        | RoutingResourceKind.WorkCenter -> Medhavi.Contracts.Domain.RoutingResourceKind.WorkCenter
-        | RoutingResourceKind.LaborPool -> Medhavi.Contracts.Domain.RoutingResourceKind.LaborPool
-        | RoutingResourceKind.Tool -> Medhavi.Contracts.Domain.RoutingResourceKind.Tool
-        | RoutingResourceKind.Utility -> Medhavi.Contracts.Domain.RoutingResourceKind.Utility
-        | RoutingResourceKind.Berth -> Medhavi.Contracts.Domain.RoutingResourceKind.Berth
-        | RoutingResourceKind.Conveyor -> Medhavi.Contracts.Domain.RoutingResourceKind.Conveyor
-        | RoutingResourceKind.RailTrack -> Medhavi.Contracts.Domain.RoutingResourceKind.RailTrack
-        | RoutingResourceKind.TruckFleet -> Medhavi.Contracts.Domain.RoutingResourceKind.TruckFleet
-        | RoutingResourceKind.VesselClass -> Medhavi.Contracts.Domain.RoutingResourceKind.VesselClass
+        | RoutingResourceKind.Machine -> MasterData.RoutingResourceKind.Machine
+        | RoutingResourceKind.WorkCenter -> MasterData.RoutingResourceKind.WorkCenter
+        | RoutingResourceKind.LaborPool -> MasterData.RoutingResourceKind.LaborPool
+        | RoutingResourceKind.Tool -> MasterData.RoutingResourceKind.Tool
+        | RoutingResourceKind.Utility -> MasterData.RoutingResourceKind.Utility
+        | RoutingResourceKind.Berth -> MasterData.RoutingResourceKind.Berth
+        | RoutingResourceKind.Conveyor -> MasterData.RoutingResourceKind.Conveyor
+        | RoutingResourceKind.RailTrack -> MasterData.RoutingResourceKind.RailTrack
+        | RoutingResourceKind.TruckFleet -> MasterData.RoutingResourceKind.TruckFleet
+        | RoutingResourceKind.VesselClass -> MasterData.RoutingResourceKind.VesselClass
 
-    let mapLoadBasis (b: ResourceLoadBasis) : Medhavi.Contracts.Domain.ResourceLoadBasis =
+    let mapLoadBasis (b: ResourceLoadBasis) : MasterData.ResourceLoadBasis =
         match b with
-        | ResourceLoadBasis.PerOrder -> Medhavi.Contracts.Domain.ResourceLoadBasis.PerOrder
-        | ResourceLoadBasis.PerUnit -> Medhavi.Contracts.Domain.ResourceLoadBasis.PerUnit
-        | ResourceLoadBasis.PerBatch -> Medhavi.Contracts.Domain.ResourceLoadBasis.PerBatch
-        | ResourceLoadBasis.PerTonne -> Medhavi.Contracts.Domain.ResourceLoadBasis.PerTonne
-        | ResourceLoadBasis.PerPallet -> Medhavi.Contracts.Domain.ResourceLoadBasis.PerPallet
-        | ResourceLoadBasis.PerContainer -> Medhavi.Contracts.Domain.ResourceLoadBasis.PerContainer
+        | ResourceLoadBasis.PerOrder -> MasterData.ResourceLoadBasis.PerOrder
+        | ResourceLoadBasis.PerUnit -> MasterData.ResourceLoadBasis.PerUnit
+        | ResourceLoadBasis.PerBatch -> MasterData.ResourceLoadBasis.PerBatch
+        | ResourceLoadBasis.PerTonne -> MasterData.ResourceLoadBasis.PerTonne
+        | ResourceLoadBasis.PerPallet -> MasterData.ResourceLoadBasis.PerPallet
+        | ResourceLoadBasis.PerContainer -> MasterData.ResourceLoadBasis.PerContainer
 
-    let mapSelectionRule (r: ResourceSelectionRule) : Medhavi.Contracts.Domain.ResourceSelectionRule =
+    let mapSelectionRule (r: ResourceSelectionRule) : MasterData.ResourceSelectionRule =
         match r with
-        | ResourceSelectionRule.AnyAllowed -> Medhavi.Contracts.Domain.ResourceSelectionRule.AnyAllowed
-        | ResourceSelectionRule.PreferPrimary -> Medhavi.Contracts.Domain.ResourceSelectionRule.PreferPrimary
-        | ResourceSelectionRule.PreferLowestCost -> Medhavi.Contracts.Domain.ResourceSelectionRule.PreferLowestCost
-        | ResourceSelectionRule.PreferFastest -> Medhavi.Contracts.Domain.ResourceSelectionRule.PreferFastest
+        | ResourceSelectionRule.AnyAllowed -> MasterData.ResourceSelectionRule.AnyAllowed
+        | ResourceSelectionRule.PreferPrimary -> MasterData.ResourceSelectionRule.PreferPrimary
+        | ResourceSelectionRule.PreferLowestCost -> MasterData.ResourceSelectionRule.PreferLowestCost
+        | ResourceSelectionRule.PreferFastest -> MasterData.ResourceSelectionRule.PreferFastest
         | ResourceSelectionRule.PreferPriorityOrder ->
-            Medhavi.Contracts.Domain.ResourceSelectionRule.PreferPriorityOrder
+            MasterData.ResourceSelectionRule.PreferPriorityOrder
 
-    let mapResourceUsage (u: ResourceUsage) : Medhavi.Contracts.Domain.ResourceUsage =
+    let mapResourceUsage (u: ResourceUsage) : MasterData.ResourceUsage =
         match u with
-        | ResourceUsage.Primary -> Medhavi.Contracts.Domain.ResourceUsage.Primary
-        | ResourceUsage.Alternate -> Medhavi.Contracts.Domain.ResourceUsage.Alternate
-        | ResourceUsage.Optional -> Medhavi.Contracts.Domain.ResourceUsage.Optional
-        | ResourceUsage.Parallel -> Medhavi.Contracts.Domain.ResourceUsage.Parallel
-        | ResourceUsage.Rework -> Medhavi.Contracts.Domain.ResourceUsage.Rework
+        | ResourceUsage.Primary -> MasterData.ResourceUsage.Primary
+        | ResourceUsage.Alternate -> MasterData.ResourceUsage.Alternate
+        | ResourceUsage.Optional -> MasterData.ResourceUsage.Optional
+        | ResourceUsage.Parallel -> MasterData.ResourceUsage.Parallel
+        | ResourceUsage.Rework -> MasterData.ResourceUsage.Rework
 
-    let mapSetupPolicy (p: SetupPolicy) : Medhavi.Contracts.Domain.SetupPolicy =
+    let mapSetupPolicy (p: SetupPolicy) : MasterData.SetupPolicy =
         match p with
-        | SetupPolicy.NoSetup -> Medhavi.Contracts.Domain.SetupPolicy.NoSetup
-        | SetupPolicy.FixedSetup v -> Medhavi.Contracts.Domain.SetupPolicy.FixedSetup(DurationMinutes.value v)
+        | SetupPolicy.NoSetup -> MasterData.SetupPolicy.NoSetup
+        | SetupPolicy.FixedSetup v -> MasterData.SetupPolicy.FixedSetup(DurationMinutes.value v)
 
-    let mapCoolingPolicy (p: CoolingPolicy) : Medhavi.Contracts.Domain.CoolingPolicy =
+    let mapCoolingPolicy (p: CoolingPolicy) : MasterData.CoolingPolicy =
         match p with
-        | CoolingPolicy.NoCooling -> Medhavi.Contracts.Domain.CoolingPolicy.NoCooling
-        | CoolingPolicy.FixedCooling v -> Medhavi.Contracts.Domain.CoolingPolicy.FixedCooling(DurationMinutes.value v)
+        | CoolingPolicy.NoCooling -> MasterData.CoolingPolicy.NoCooling
+        | CoolingPolicy.FixedCooling v -> MasterData.CoolingPolicy.FixedCooling(DurationMinutes.value v)
 
-    let mapResourceEfficiencyPolicy (p: ResourceEfficiencyPolicy) : Medhavi.Contracts.Domain.ResourceEfficiencyPolicy =
+    let mapResourceEfficiencyPolicy (p: ResourceEfficiencyPolicy) : MasterData.ResourceEfficiencyPolicy =
         match p with
         | ResourceEfficiencyPolicy.StandardEfficiency ->
-            Medhavi.Contracts.Domain.ResourceEfficiencyPolicy.StandardEfficiency
+            MasterData.ResourceEfficiencyPolicy.StandardEfficiency
         | ResourceEfficiencyPolicy.EfficiencyFactor v ->
-            Medhavi.Contracts.Domain.ResourceEfficiencyPolicy.EfficiencyFactor(PositiveDecimal.value v)
+            MasterData.ResourceEfficiencyPolicy.EfficiencyFactor(PositiveDecimal.value v)
 
     let mapResourceTimingProfile
         (setup: DurationMinutes option)
@@ -583,79 +533,49 @@ module Mappers =
         (teardown: DurationMinutes option)
         (cooling: DurationMinutes option)
         (minLead: DurationMinutes option)
-        : Medhavi.Contracts.Domain.ResourceTimingProfile =
+        : MasterData.ResourceTimingProfile =
         { SetupTime = setup |> Option.map DurationMinutes.value
           RunTimePerBaseQuantity = run |> Option.map DurationMinutes.value
           TeardownTime = teardown |> Option.map DurationMinutes.value
           CoolingTime = cooling |> Option.map DurationMinutes.value
           MinLeadTime = minLead |> Option.map DurationMinutes.value }
 
-    let mapResourceOption (opt: TransportResourceOption) : Medhavi.Contracts.Domain.TransportResourceOption =
+    let mapResourceOption (opt: TransportResourceOption) : MasterData.TransportResourceOption =
         { OptionId = RoutingResourceOptionId.value opt.OptionId
-          ResourceGroupId =
-            opt.ResourceGroupId
-            |> Option.map ResourceGroupId.value
+          ResourceGroupId = opt.ResourceGroupId |> Option.map ResourceGroupId.value
           CarrierId = opt.CarrierId |> Option.map CarrierId.value
           Usage = mapResourceUsage opt.Usage
           Priority = opt.Priority
           TransitTime = DurationMinutes.value opt.TransitTime
-          LoadingTime =
-            opt.LoadingTime
-            |> Option.map DurationMinutes.value
-          UnloadingTime =
-            opt.UnloadingTime
-            |> Option.map DurationMinutes.value
-          CostPerUnit =
-            opt.CostPerUnit
-            |> Option.map PositiveDecimal.value
-          CostPerTrip =
-            opt.CostPerTrip
-            |> Option.map PositiveDecimal.value
-          EffectivePeriodStart =
-            opt.EffectivePeriod
-            |> Option.bind (fun p -> Some(Timestamp.value p.Start))
-          EffectivePeriodEnd =
-            opt.EffectivePeriod
-            |> Option.bind (fun p -> p.End |> Option.map Timestamp.value) }
+          LoadingTime = opt.LoadingTime |> Option.map DurationMinutes.value
+          UnloadingTime = opt.UnloadingTime |> Option.map DurationMinutes.value
+          CostPerUnit = opt.CostPerUnit |> Option.map PositiveDecimal.value
+          CostPerTrip = opt.CostPerTrip |> Option.map PositiveDecimal.value
+          EffectivePeriodStart = opt.EffectivePeriod |> Option.bind(fun p -> Some(Timestamp.value p.Start))
+          EffectivePeriodEnd = opt.EffectivePeriod |> Option.bind(fun p -> p.End |> Option.map Timestamp.value) }
 
-    let mapWorkResourceOption (opt: RoutingResourceOption) : Medhavi.Contracts.Domain.RoutingResourceOption =
+    let mapWorkResourceOption (opt: RoutingResourceOption) : MasterData.RoutingResourceOption =
         { OptionId = RoutingResourceOptionId.value opt.OptionId
           ResourceGroupId = ResourceGroupId.value opt.ResourceGroupId
           WorkCenterId = opt.WorkCenterId |> Option.map WorkCenterId.value
           Usage = mapResourceUsage opt.Usage
           Priority = opt.Priority
           TimingProfile =
-            { SetupTime =
-                opt.TimingProfile.SetupTime
-                |> Option.map DurationMinutes.value
-              RunTimePerBaseQuantity =
-                opt.TimingProfile.RunTimePerBaseQuantity
-                |> Option.map DurationMinutes.value
-              TeardownTime =
-                opt.TimingProfile.TeardownTime
-                |> Option.map DurationMinutes.value
-              CoolingTime =
-                opt.TimingProfile.CoolingTime
-                |> Option.map DurationMinutes.value
-              MinLeadTime =
-                opt.TimingProfile.MinLeadTime
-                |> Option.map DurationMinutes.value }
+            { SetupTime = opt.TimingProfile.SetupTime |> Option.map DurationMinutes.value
+              RunTimePerBaseQuantity = opt.TimingProfile.RunTimePerBaseQuantity |> Option.map DurationMinutes.value
+              TeardownTime = opt.TimingProfile.TeardownTime |> Option.map DurationMinutes.value
+              CoolingTime = opt.TimingProfile.CoolingTime |> Option.map DurationMinutes.value
+              MinLeadTime = opt.TimingProfile.MinLeadTime |> Option.map DurationMinutes.value }
           SetupPolicy = mapSetupPolicy opt.SetupPolicy
           CoolingPolicy = mapCoolingPolicy opt.CoolingPolicy
-          CostPerMinute =
-            opt.CostPerMinute
-            |> Option.map PositiveDecimal.value
+          CostPerMinute = opt.CostPerMinute |> Option.map PositiveDecimal.value
           EfficiencyPolicy = mapResourceEfficiencyPolicy opt.EfficiencyPolicy
-          EffectivePeriodStart =
-            opt.EffectivePeriod
-            |> Option.bind (fun p -> Some(Timestamp.value p.Start))
-          EffectivePeriodEnd =
-            opt.EffectivePeriod
-            |> Option.bind (fun p -> p.End |> Option.map Timestamp.value) }
+          EffectivePeriodStart = opt.EffectivePeriod |> Option.bind(fun p -> Some(Timestamp.value p.Start))
+          EffectivePeriodEnd = opt.EffectivePeriod |> Option.bind(fun p -> p.End |> Option.map Timestamp.value) }
 
     let mapResourceRequirement
         (req: RoutingStepResourceRequirement)
-        : Medhavi.Contracts.Domain.RoutingStepResourceRequirement =
+        : MasterData.RoutingStepResourceRequirement =
         { RequirementId = RoutingResourceRequirementId.value req.RequirementId
           ResourceKind = mapResourceKind req.ResourceKind
           LoadBasis = mapLoadBasis req.LoadBasis
@@ -663,42 +583,40 @@ module Mappers =
           SelectionRule = mapSelectionRule req.SelectionRule
           Options = req.Options |> List.map mapWorkResourceOption }
 
-    let mapStepYieldPolicy (p: StepYieldPolicy) : Medhavi.Contracts.Domain.StepYieldPolicy =
+    let mapStepYieldPolicy (p: StepYieldPolicy) : MasterData.StepYieldPolicy =
         match p with
-        | StepYieldPolicy.NoYieldLoss -> Medhavi.Contracts.Domain.StepYieldPolicy.NoYieldLoss
-        | StepYieldPolicy.ExpectedYield v -> Medhavi.Contracts.Domain.StepYieldPolicy.ExpectedYield(Percent.value v)
+        | StepYieldPolicy.NoYieldLoss -> MasterData.StepYieldPolicy.NoYieldLoss
+        | StepYieldPolicy.ExpectedYield v -> MasterData.StepYieldPolicy.ExpectedYield(Percent.value v)
 
-    let mapReworkPolicy (p: ReworkPolicy) : Medhavi.Contracts.Domain.ReworkPolicy =
+    let mapReworkPolicy (p: ReworkPolicy) : MasterData.ReworkPolicy =
         match p with
-        | ReworkPolicy.NoRework -> Medhavi.Contracts.Domain.ReworkPolicy.NoRework
+        | ReworkPolicy.NoRework -> MasterData.ReworkPolicy.NoRework
         | ReworkPolicy.ReworkToStep(stepId, rate) ->
-            Medhavi.Contracts.Domain.ReworkPolicy.ReworkToStep(RoutingStepId.value stepId, Percent.value rate)
+            MasterData.ReworkPolicy.ReworkToStep(RoutingStepId.value stepId, Percent.value rate)
 
-    let mapStepTimingProfile (t: StepTimingProfile) : Medhavi.Contracts.Domain.StepTimingProfile =
-        { FixedLeadTime =
-            t.FixedLeadTime
-            |> Option.map DurationMinutes.value
+    let mapStepTimingProfile (t: StepTimingProfile) : MasterData.StepTimingProfile =
+        { FixedLeadTime = t.FixedLeadTime |> Option.map DurationMinutes.value
           QueueTime = t.QueueTime |> Option.map DurationMinutes.value
           WaitTime = t.WaitTime |> Option.map DurationMinutes.value
           MoveTime = t.MoveTime |> Option.map DurationMinutes.value }
 
-    let mapStepOverlapPolicy (p: StepOverlapPolicy) : Medhavi.Contracts.Domain.StepOverlapPolicy =
+    let mapStepOverlapPolicy (p: StepOverlapPolicy) : MasterData.StepOverlapPolicy =
         match p with
-        | StepOverlapPolicy.NoOverlap -> Medhavi.Contracts.Domain.StepOverlapPolicy.NoOverlap
+        | StepOverlapPolicy.NoOverlap -> MasterData.StepOverlapPolicy.NoOverlap
         | StepOverlapPolicy.OverlapAfterQuantity v ->
-            Medhavi.Contracts.Domain.StepOverlapPolicy.OverlapAfterQuantity(Quantity.value v)
+            MasterData.StepOverlapPolicy.OverlapAfterQuantity(Quantity.value v)
         | StepOverlapPolicy.OverlapAfterDuration v ->
-            Medhavi.Contracts.Domain.StepOverlapPolicy.OverlapAfterDuration(DurationMinutes.value v)
+            MasterData.StepOverlapPolicy.OverlapAfterDuration(DurationMinutes.value v)
 
-    let mapStepKind (k: RoutingStepKind) : Medhavi.Contracts.Domain.RoutingStepKind =
+    let mapStepKind (k: RoutingStepKind) : MasterData.RoutingStepKind =
         match k with
-        | RoutingStepKind.Standard -> Medhavi.Contracts.Domain.RoutingStepKind.Standard
-        | RoutingStepKind.Alternate -> Medhavi.Contracts.Domain.RoutingStepKind.Alternate
-        | RoutingStepKind.Parallel -> Medhavi.Contracts.Domain.RoutingStepKind.Parallel
-        | RoutingStepKind.Rework -> Medhavi.Contracts.Domain.RoutingStepKind.Rework
-        | RoutingStepKind.External -> Medhavi.Contracts.Domain.RoutingStepKind.External
+        | RoutingStepKind.Standard -> MasterData.RoutingStepKind.Standard
+        | RoutingStepKind.Alternate -> MasterData.RoutingStepKind.Alternate
+        | RoutingStepKind.Parallel -> MasterData.RoutingStepKind.Parallel
+        | RoutingStepKind.Rework -> MasterData.RoutingStepKind.Rework
+        | RoutingStepKind.External -> MasterData.RoutingStepKind.External
 
-    let mapStep (s: RoutingStep) : Medhavi.Contracts.Domain.RoutingStep =
+    let mapStep (s: RoutingStep) : MasterData.RoutingStep =
         { StepId = RoutingStepId.value s.StepId
           Sequence = s.Sequence
           OperationCode = s.OperationCode
@@ -707,37 +625,31 @@ module Mappers =
           Kind = mapStepKind s.Kind
           Inputs = s.Inputs |> List.map mapStepInput
           Outputs = s.Outputs |> List.map mapStepOutput
-          ResourceRequirements =
-            s.ResourceRequirements
-            |> List.map mapResourceRequirement
+          ResourceRequirements = s.ResourceRequirements |> List.map mapResourceRequirement
           TimingProfile = mapStepTimingProfile s.TimingProfile
           YieldPolicy = mapStepYieldPolicy s.YieldPolicy
           ReworkPolicy = mapReworkPolicy s.ReworkPolicy
           OverlapPolicy = mapStepOverlapPolicy s.OverlapPolicy
-          EffectivePeriodStart =
-            s.EffectivePeriod
-            |> Option.bind (fun p -> Some(Timestamp.value p.Start))
-          EffectivePeriodEnd =
-            s.EffectivePeriod
-            |> Option.bind (fun p -> p.End |> Option.map Timestamp.value) }
+          EffectivePeriodStart = s.EffectivePeriod |> Option.bind(fun p -> Some(Timestamp.value p.Start))
+          EffectivePeriodEnd = s.EffectivePeriod |> Option.bind(fun p -> p.End |> Option.map Timestamp.value) }
 
-    let mapWorkDetails (work: WorkRoutingDetails) : Medhavi.Contracts.Domain.WorkRoutingDetails =
+    let mapWorkDetails (work: WorkRoutingDetails) : MasterData.WorkRoutingDetails =
         { ProductId = SkuId.value work.ProductId
           PrimaryOutputSkuId = SkuId.value work.PrimaryOutputSkuId
           BaseOutputQuantity = Quantity.value work.BaseOutputQuantity
           Steps = work.Steps |> List.map mapStep }
 
-    let mapTransportMode (m: TransportMode) : Medhavi.Contracts.Domain.TransportMode =
+    let mapTransportMode (m: TransportMode) : MasterData.TransportMode =
         match m with
-        | TransportMode.Road -> Medhavi.Contracts.Domain.TransportMode.Road
-        | TransportMode.Rail -> Medhavi.Contracts.Domain.TransportMode.Rail
-        | TransportMode.Sea -> Medhavi.Contracts.Domain.TransportMode.Sea
-        | TransportMode.Air -> Medhavi.Contracts.Domain.TransportMode.Air
-        | TransportMode.Pipeline -> Medhavi.Contracts.Domain.TransportMode.Pipeline
-        | TransportMode.Conveyor -> Medhavi.Contracts.Domain.TransportMode.Conveyor
-        | TransportMode.InternalTransfer -> Medhavi.Contracts.Domain.TransportMode.InternalTransfer
+        | TransportMode.Road -> MasterData.TransportMode.Road
+        | TransportMode.Rail -> MasterData.TransportMode.Rail
+        | TransportMode.Sea -> MasterData.TransportMode.Sea
+        | TransportMode.Air -> MasterData.TransportMode.Air
+        | TransportMode.Pipeline -> MasterData.TransportMode.Pipeline
+        | TransportMode.Conveyor -> MasterData.TransportMode.Conveyor
+        | TransportMode.InternalTransfer -> MasterData.TransportMode.InternalTransfer
 
-    let mapTransportDetails (t: TransportRoutingDetails) : Medhavi.Contracts.Domain.TransportRoutingDetails =
+    let mapTransportDetails (t: TransportRoutingDetails) : MasterData.TransportRoutingDetails =
         { SkuId = SkuId.value t.SkuId
           FromNodeId = NodeId.value t.FromNodeId
           ToNodeId = NodeId.value t.ToNodeId
@@ -745,47 +657,39 @@ module Mappers =
           TransitLeadTime = DurationMinutes.value t.TransitLeadTime
           LossFactor = t.LossFactor |> Option.map Percent.value
           ResourceSelectionRule = mapSelectionRule t.ResourceSelectionRule
-          TransportResourceOptions =
-            t.TransportResourceOptions
-            |> List.map mapResourceOption }
+          TransportResourceOptions = t.TransportResourceOptions |> List.map mapResourceOption }
 
-    let mapPurchasePricingPolicy (p: PurchasePricingPolicy) : Medhavi.Contracts.Domain.PurchasePricingPolicy =
+    let mapPurchasePricingPolicy (p: PurchasePricingPolicy) : MasterData.PurchasePricingPolicy =
         match p with
-        | PurchasePricingPolicy.NoPurchaseCost -> Medhavi.Contracts.Domain.PurchasePricingPolicy.NoPurchaseCost
+        | PurchasePricingPolicy.NoPurchaseCost -> MasterData.PurchasePricingPolicy.NoPurchaseCost
         | PurchasePricingPolicy.PurchaseCostPerUnit v ->
-            Medhavi.Contracts.Domain.PurchasePricingPolicy.PurchaseCostPerUnit(PositiveDecimal.value v)
+            MasterData.PurchasePricingPolicy.PurchaseCostPerUnit(PositiveDecimal.value v)
         | PurchasePricingPolicy.ContractPriceReference ref ->
-            Medhavi.Contracts.Domain.PurchasePricingPolicy.ContractPriceReference ref
+            MasterData.PurchasePricingPolicy.ContractPriceReference ref
 
-    let mapPurchaseDetails (p: PurchaseRoutingDetails) : Medhavi.Contracts.Domain.PurchaseRoutingDetails =
+    let mapPurchaseDetails (p: PurchaseRoutingDetails) : MasterData.PurchaseRoutingDetails =
         { SkuId = SkuId.value p.SkuId
           SupplierId = SupplierId.value p.SupplierId
           ReceivingNodeId = NodeId.value p.ReceivingNodeId
-          SupplierShipFromNodeId =
-            p.SupplierShipFromNodeId
-            |> Option.map NodeId.value
+          SupplierShipFromNodeId = p.SupplierShipFromNodeId |> Option.map NodeId.value
           SupplierLeadTime = DurationMinutes.value p.SupplierLeadTime
-          InspectionLeadTime =
-            p.InspectionLeadTime
-            |> Option.map DurationMinutes.value
-          PutawayLeadTime =
-            p.PutawayLeadTime
-            |> Option.map DurationMinutes.value
+          InspectionLeadTime = p.InspectionLeadTime |> Option.map DurationMinutes.value
+          PutawayLeadTime = p.PutawayLeadTime |> Option.map DurationMinutes.value
           SupplierSkuCode = p.SupplierSkuCode
           SupplierPreference =
             { Priority = p.SupplierPreference.Priority
               IsPreferred = p.SupplierPreference.IsPreferred }
           PurchasePricingPolicy = mapPurchasePricingPolicy p.PurchasePricingPolicy }
 
-    let mapDetails (d: RoutingDetails) : Medhavi.Contracts.Domain.RoutingDetails =
+    let mapDetails (d: RoutingDetails) : MasterData.RoutingDetails =
         match d with
-        | RoutingDetails.Work w -> Medhavi.Contracts.Domain.RoutingDetails.Work(mapWorkDetails w)
-        | RoutingDetails.Transport t -> Medhavi.Contracts.Domain.RoutingDetails.Transport(mapTransportDetails t)
-        | RoutingDetails.Purchase p -> Medhavi.Contracts.Domain.RoutingDetails.Purchase(mapPurchaseDetails p)
+        | RoutingDetails.Work w -> MasterData.RoutingDetails.Work(mapWorkDetails w)
+        | RoutingDetails.Transport t -> MasterData.RoutingDetails.Transport(mapTransportDetails t)
+        | RoutingDetails.Purchase p -> MasterData.RoutingDetails.Purchase(mapPurchaseDetails p)
 
 open Mappers
 
-let mapRoutingDto (r: Routing) : Medhavi.Contracts.Domain.Routing =
+let mapRoutingDto (r: Routing) : MasterData.Routing =
     { Id = RoutingId.value r.Id
       Name = r.Name
       Description = r.Description
@@ -798,7 +702,7 @@ let mapRoutingDto (r: Routing) : Medhavi.Contracts.Domain.Routing =
       CreatedAt = Timestamp.value r.CreatedAt
       ModifiedAt = Timestamp.value r.ModifiedAt }
 
-let evolveProjection (state: Map<string, Medhavi.Contracts.Domain.Routing>) (evt: RoutingEvent) =
+let evolveProjection (state: Map<string, MasterData.Routing>) (evt: RoutingEvent) =
     match evt with
     | RoutingDefined r -> Map.add (RoutingId.value r.Id) (mapRoutingDto r) state
     | RoutingActivated(id, _) ->
@@ -815,7 +719,7 @@ let evolveProjection (state: Map<string, Medhavi.Contracts.Domain.Routing>) (evt
         | None -> state
 
 let createProjectionAgent () =
-    ProjectionAgent<Map<string, Medhavi.Contracts.Domain.Routing>, RoutingEvent>(
+    ProjectionAgent<Map<string, MasterData.Routing>, RoutingEvent>(
         evolveProjection,
         Map.empty,
         "RoutingReadModel"
@@ -823,31 +727,32 @@ let createProjectionAgent () =
 
 let createQueryService agent = QueryServiceBase.getQueryService agent id
 
-open Medhavi.SharedKernel.API
+open Medhavi.Contracts.API
 
-let createRoutingApi (capabilities: RoutingCapabilities) agent =
+let createRoutingApi (capabilities: RoutingCapabilities) =
     { Define =
         fun req ->
             capabilities.Define req
-            |> TaskResult.map (fun d -> d.NewState)
+            |> TaskResult.map(fun d -> d.NewState)
             |> TaskResult.map mapRoutingDto
+            |> TaskResult.mapError ApplicationError.mapToApiError
       DefineBulk =
         fun reqs ->
             reqs
             |> List.map capabilities.Define
             |> TaskResult.sequence
-            |> TaskResult.map (fun decisions ->
-                decisions
-                |> List.map (fun d -> d.NewState)
-                |> List.map mapRoutingDto)
+            |> TaskResult.map(fun decisions -> decisions |> List.map(fun d -> d.NewState) |> List.map mapRoutingDto)
+            |> TaskResult.mapError ApplicationError.mapToApiError
       Activate =
         fun req ->
             capabilities.Activate req
-            |> TaskResult.map (fun d -> d.NewState)
+            |> TaskResult.map(fun d -> d.NewState)
             |> TaskResult.map mapRoutingDto
+            |> TaskResult.mapError ApplicationError.mapToApiError
       Deactivate =
         fun req ->
             capabilities.Deactivate req
-            |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map mapRoutingDto }
+            |> TaskResult.map(fun d -> d.NewState)
+            |> TaskResult.map mapRoutingDto
+            |> TaskResult.mapError ApplicationError.mapToApiError }
     : RoutingApi

@@ -3,8 +3,8 @@ module Medhavi.Scheduler.Mrp.Domain.Algorithms.ForecastConsumption
 
 open System
 open Medhavi.SharedKernel
-open Medhavi.Demand.Domain
 open Medhavi.Scheduler.Mrp.Domain.Policies
+open Medhavi.Scheduler.Mrp.Domain.Types
 
 /// Check if a forecast falls within the consumption window of a customer order
 let isWithinWindow
@@ -25,9 +25,9 @@ let isWithinWindow
 /// Consume forecasts with customer orders based on policy
 let consumeForecasts
     (policy: ForecastConsumptionPolicy)
-    (forecasts: Forecast list)
-    (orders: CustomerOrder list)
-    : Forecast list =
+    (forecasts: MrpDemand list)
+    (orders: MrpDemand list)
+    : MrpDemand list =
 
     if not policy.Enabled then
         forecasts
@@ -59,12 +59,12 @@ let consumeForecasts
                 |> Option.defaultValue []
 
             // Sort orders chronologically to consume forecast in order
-            let sortedOrders = groupOrders |> List.sortBy (fun o -> o.DueDate)
+            let sortedOrders = groupOrders |> List.sortBy (fun o -> o.RequiredDate)
 
             let finalForecasts =
                 (groupForecasts, sortedOrders)
                 ||> List.fold (fun currentForecasts order ->
-                    let orderDate = order.DueDate
+                    let orderDate = order.RequiredDate
 
                     let candidates =
                         currentForecasts
@@ -73,14 +73,14 @@ let consumeForecasts
                                 policy.Strategy
                                 policy.ConsumptionWindow
                                 orderDate
-                                f.PeriodStart
-                                f.PeriodEnd)
-                        |> List.sortBy (fun f -> abs (f.PeriodStart - orderDate).Ticks)
+                                f.RequiredDate
+                                f.RequiredDate)
+                        |> List.sortBy (fun f -> abs (f.RequiredDate - orderDate).Ticks)
 
                     let rec consume
                         (remainingQty: decimal)
-                        (accForecasts: Forecast list)
-                        (candidatesLeft: Forecast list)
+                        (accForecasts: MrpDemand list)
+                        (candidatesLeft: MrpDemand list)
                         =
                         if remainingQty <= 0m then
                             accForecasts @ candidatesLeft
@@ -107,8 +107,8 @@ let consumeForecasts
                                     policy.Strategy
                                     policy.ConsumptionWindow
                                     orderDate
-                                    f.PeriodStart
-                                    f.PeriodEnd
+                                    f.RequiredDate
+                                    f.RequiredDate
                             ))
 
                     let consumedCandidates = consume (Quantity.value order.Quantity) [] candidates

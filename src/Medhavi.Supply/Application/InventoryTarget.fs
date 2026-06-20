@@ -3,11 +3,11 @@ module Medhavi.Supply.Application.InventoryTarget
 open Medhavi
 open Medhavi.Common.Patterns
 open Medhavi.Common.Validation
-open Medhavi.Infrastructure.Projections
-open Medhavi.SharedKernel
-open Medhavi.SharedKernel.API
-open Medhavi.SharedKernel.Aggregate
 open Medhavi.Contracts.Supply
+open Medhavi.Contracts.API
+open Medhavi.SharedKernel
+open Medhavi.Infrastructure.Projections
+open Medhavi.SharedKernel.Aggregate
 open Medhavi.Supply.Domain.InventoryTargetAgg
 
 module ACL =
@@ -23,20 +23,10 @@ module ACL =
         match pOpt with
         | None -> Valid None
         | Some p ->
-            makePolicy p.CoverDays p.Expedite
-            <!> (Quantity.create p.Safety |> fromResult)
-            <*> (p.MinQty
-                 |> Option.map Quantity.create
-                 |> sequenceOpt
-                 |> fromResult)
-            <*> (p.MaxQty
-                 |> Option.map Quantity.create
-                 |> sequenceOpt
-                 |> fromResult)
-            <*> (p.LotSize
-                 |> Option.map Quantity.create
-                 |> sequenceOpt
-                 |> fromResult)
+            makePolicy p.CoverDays p.Expedite <!> (Quantity.create p.Safety |> fromResult)
+            <*> (p.MinQty |> Option.map Quantity.create |> sequenceOpt |> fromResult)
+            <*> (p.MaxQty |> Option.map Quantity.create |> sequenceOpt |> fromResult)
+            <*> (p.LotSize |> Option.map Quantity.create |> sequenceOpt |> fromResult)
             |> map Some
 
     let mapSeasonal (s: Contracts.Supply.SeasonalAdjustment) : SeasonalAdjustment =
@@ -70,21 +60,20 @@ module ACL =
               IsActive = req.IsActive }
 
         make <!> (SkuId.create req.SkuId |> fromResult)
-        <*> (StockingPointId.create req.StockingPointId
-             |> fromResult)
+        <*> (StockingPointId.create req.StockingPointId |> fromResult)
         <*> mapPolicy req.ReplenishmentPolicy
         <*> (req.SafetyStockQty
-             |> Option.map (nonNegativeDecimal "Safety Stock Quantity")
-             |> Option.map (map Some)
-             |> Option.defaultValue (Valid None))
+             |> Option.map(nonNegativeDecimal "Safety Stock Quantity")
+             |> Option.map(map Some)
+             |> Option.defaultValue(Valid None))
         <*> (req.MinQty
-             |> Option.map (nonNegativeDecimal "Safety Stock Min Quantity")
-             |> Option.map (map Some)
-             |> Option.defaultValue (Valid None))
+             |> Option.map(nonNegativeDecimal "Safety Stock Min Quantity")
+             |> Option.map(map Some)
+             |> Option.defaultValue(Valid None))
         <*> (req.MaxQty
-             |> Option.map (nonNegativeDecimal "Safety Stock Max Quantity")
-             |> Option.map (map Some)
-             |> Option.defaultValue (Valid None))
+             |> Option.map(nonNegativeDecimal "Safety Stock Max Quantity")
+             |> Option.map(map Some)
+             |> Option.defaultValue(Valid None))
 
     let toUpdateCommand (req: InventoryTargetUpdateReq) : Validation<UpdateInventoryTargetCmd, DomainError> =
         let make
@@ -105,32 +94,29 @@ module ACL =
               MaxQty = max
               TargetServiceLevel = req.TargetServiceLevel
               CoverDays = req.CoverDays
-              SeasonalAdjustments =
-                req.SeasonalAdjustments
-                |> Option.map (List.map mapSeasonal)
+              SeasonalAdjustments = req.SeasonalAdjustments |> Option.map(List.map mapSeasonal)
               EffectiveStart = req.EffectiveStart |> Option.map Timestamp.create
               EffectiveEnd = req.EffectiveEnd |> Option.map Timestamp.create }
 
         make <!> (SkuId.create req.SkuId |> fromResult)
-        <*> (StockingPointId.create req.StockingPointId
-             |> fromResult)
+        <*> (StockingPointId.create req.StockingPointId |> fromResult)
         <*> mapPolicy req.ReplenishmentPolicy
         <*> (req.SafetyStockQty
-             |> Option.map (nonNegativeDecimal "Safety Stock Quantity")
-             |> Option.map (map Some)
-             |> Option.defaultValue (Valid None))
+             |> Option.map(nonNegativeDecimal "Safety Stock Quantity")
+             |> Option.map(map Some)
+             |> Option.defaultValue(Valid None))
         <*> (req.MinQty
-             |> Option.map (nonNegativeDecimal "Safety Stock Min Quantity")
-             |> Option.map (map Some)
-             |> Option.defaultValue (Valid None))
+             |> Option.map(nonNegativeDecimal "Safety Stock Min Quantity")
+             |> Option.map(map Some)
+             |> Option.defaultValue(Valid None))
         <*> (req.MaxQty
-             |> Option.map (nonNegativeDecimal "Safety Stock Max Quantity")
-             |> Option.map (map Some)
-             |> Option.defaultValue (Valid None))
+             |> Option.map(nonNegativeDecimal "Safety Stock Max Quantity")
+             |> Option.map(map Some)
+             |> Option.defaultValue(Valid None))
 
     let toActivateCommand (targetIdStr: string) : Result<ActivateInventoryTargetCmd, DomainError> =
         InventoryTargetId.createFromExisting targetIdStr
-        |> Result.map (fun id ->
+        |> Result.map(fun id ->
             { Id = id
               SkuId =
                 SkuId.create "temp"
@@ -146,7 +132,7 @@ module ACL =
 
     let toDeactivateCommand (targetIdStr: string) : Result<DeactivateInventoryTargetCmd, DomainError> =
         InventoryTargetId.createFromExisting targetIdStr
-        |> Result.map (fun id ->
+        |> Result.map(fun id ->
             { Id = id
               SkuId =
                 SkuId.create "temp"
@@ -177,17 +163,13 @@ module ACL =
         { Id = InventoryTargetId.value t.Id
           SkuId = SkuId.value t.SkuId
           StockingPointId = StockingPointId.value t.StockingPointId
-          ReplenishmentPolicy =
-            t.ReplenishmentPolicy
-            |> Option.map toContractPolicy
+          ReplenishmentPolicy = t.ReplenishmentPolicy |> Option.map toContractPolicy
           SafetyStockQty = t.SafetyStockQty |> Option.map Quantity.value
           MinQty = t.MinQty |> Option.map Quantity.value
           MaxQty = t.MaxQty |> Option.map Quantity.value
           TargetServiceLevel = t.TargetServiceLevel
           CoverDays = t.CoverDays
-          SeasonalAdjustments =
-            t.SeasonalAdjustments
-            |> List.map toContractSeasonal
+          SeasonalAdjustments = t.SeasonalAdjustments |> List.map toContractSeasonal
           EffectiveStart = t.EffectiveStart |> Option.map Timestamp.value
           EffectiveEnd = t.EffectiveEnd |> Option.map Timestamp.value
           IsActive = t.IsActive }
@@ -219,7 +201,7 @@ let createCapabilities (repo: Repository<InventoryTarget, string, InventoryTarge
 
 let evolveProjection (state: Map<string, Contracts.Supply.InventoryTarget>) (evt: InventoryTargetEvent) =
     match evt with
-    | InventoryTargetDefined e -> Map.add (InventoryTargetId.value e.Id) (ACL.toContract (applyDefinedEvent e)) state
+    | InventoryTargetDefined e -> Map.add (InventoryTargetId.value e.Id) (ACL.toContract(applyDefinedEvent e)) state
     | InventoryTargetUpdated e ->
         let key = InventoryTargetId.value e.Id
 
@@ -227,46 +209,23 @@ let evolveProjection (state: Map<string, Contracts.Supply.InventoryTarget>) (evt
         | Some existing ->
             // Reconstruct the domain target state to update it
             // Or since we already have mapping, let's update it in the projection map
-            let updatedPolicy =
-                e.ReplenishmentPolicy
-                |> Option.map ACL.toContractPolicy
+            let updatedPolicy = e.ReplenishmentPolicy |> Option.map ACL.toContractPolicy
 
-            let updatedSeasonal =
-                e.SeasonalAdjustments
-                |> Option.map (List.map ACL.toContractSeasonal)
+            let updatedSeasonal = e.SeasonalAdjustments |> Option.map(List.map ACL.toContractSeasonal)
 
             let newTarget =
                 { existing with
-                    ReplenishmentPolicy =
-                        updatedPolicy
-                        |> Option.orElse existing.ReplenishmentPolicy
+                    ReplenishmentPolicy = updatedPolicy |> Option.orElse existing.ReplenishmentPolicy
                     SafetyStockQty =
-                        e.SafetyStockQty
-                        |> Option.map Quantity.value
-                        |> Option.orElse existing.SafetyStockQty
-                    MinQty =
-                        e.MinQty
-                        |> Option.map Quantity.value
-                        |> Option.orElse existing.MinQty
-                    MaxQty =
-                        e.MaxQty
-                        |> Option.map Quantity.value
-                        |> Option.orElse existing.MaxQty
-                    TargetServiceLevel =
-                        e.TargetServiceLevel
-                        |> Option.orElse existing.TargetServiceLevel
+                        e.SafetyStockQty |> Option.map Quantity.value |> Option.orElse existing.SafetyStockQty
+                    MinQty = e.MinQty |> Option.map Quantity.value |> Option.orElse existing.MinQty
+                    MaxQty = e.MaxQty |> Option.map Quantity.value |> Option.orElse existing.MaxQty
+                    TargetServiceLevel = e.TargetServiceLevel |> Option.orElse existing.TargetServiceLevel
                     CoverDays = e.CoverDays |> Option.orElse existing.CoverDays
-                    SeasonalAdjustments =
-                        updatedSeasonal
-                        |> Option.defaultValue existing.SeasonalAdjustments
+                    SeasonalAdjustments = updatedSeasonal |> Option.defaultValue existing.SeasonalAdjustments
                     EffectiveStart =
-                        e.EffectiveStart
-                        |> Option.map Timestamp.value
-                        |> Option.orElse existing.EffectiveStart
-                    EffectiveEnd =
-                        e.EffectiveEnd
-                        |> Option.map Timestamp.value
-                        |> Option.orElse existing.EffectiveEnd }
+                        e.EffectiveStart |> Option.map Timestamp.value |> Option.orElse existing.EffectiveStart
+                    EffectiveEnd = e.EffectiveEnd |> Option.map Timestamp.value |> Option.orElse existing.EffectiveEnd }
 
             Map.add key newTarget state
         | None -> state
@@ -292,32 +251,19 @@ let createProjectionAgent () =
 
 let createInventoryTargetApi (capabilities: InventoryTargetCapabilities) _ =
     { Define =
-        fun req ->
-            capabilities.Define req
-            |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map ACL.toContract
+        fun req -> capabilities.Define req |> TaskResult.map(fun d -> d.NewState) |> TaskResult.map ACL.toContract |> TaskResult.mapError ApplicationError.mapToApiError
       DefineBulk =
         fun reqs ->
             reqs
             |> List.map capabilities.Define
             |> TaskResult.sequence
-            |> TaskResult.map (fun decisions ->
-                decisions
-                |> List.map (fun d -> d.NewState)
-                |> List.map ACL.toContract)
+            |> TaskResult.map(fun decisions -> decisions |> List.map(fun d -> d.NewState) |> List.map ACL.toContract)
+            |> TaskResult.mapError ApplicationError.mapToApiError
       Update =
-        fun req ->
-            capabilities.Update req
-            |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map ACL.toContract
+        fun req -> capabilities.Update req |> TaskResult.map(fun d -> d.NewState) |> TaskResult.map ACL.toContract |> TaskResult.mapError ApplicationError.mapToApiError
       Activate =
-        fun reqId ->
-            capabilities.Activate reqId
-            |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map ACL.toContract
+        fun reqId -> capabilities.Activate reqId |> TaskResult.map(fun d -> d.NewState) |> TaskResult.map ACL.toContract |> TaskResult.mapError ApplicationError.mapToApiError
       Deactivate =
         fun reqId ->
-            capabilities.Deactivate reqId
-            |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map ACL.toContract }
+            capabilities.Deactivate reqId |> TaskResult.map(fun d -> d.NewState) |> TaskResult.map ACL.toContract |> TaskResult.mapError ApplicationError.mapToApiError }
     : InventoryTargetApi

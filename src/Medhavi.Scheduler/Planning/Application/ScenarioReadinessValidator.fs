@@ -1,7 +1,6 @@
 namespace Medhavi.Scheduler.Planning.Application
 
-open Medhavi.SharedKernel
-open Medhavi.SharedKernel.ScenarioContracts
+open Medhavi.Contracts.Scenario
 open Medhavi.Scheduler.Planning.Domain
 
 type ReadinessSeverity =

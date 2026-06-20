@@ -1,6 +1,8 @@
 module Medhavi.Contracts.Demand
 
 open System
+open System.Threading.Tasks
+open Medhavi.Contracts.Projections
 
 /// Risk classification for a demand line's on-time delivery status
 type LatenessRisk =
@@ -63,7 +65,6 @@ type DemandPeriodView =
       AtRiskDemandCount: int
       CriticalDemandCount: int }
 
-
 type DemandDefineReq =
     { DemandLineId: string
       DemandOrderId: string
@@ -86,3 +87,19 @@ type DemandDefineReq =
 type FulfillDemandLineReq =
     { DemandLineId: string
       Quantity: decimal }
+
+/// Notification emitted when a new demand line is created
+type DemandCreatedNotification = { DemandLineId: string }
+
+/// Notification emitted when an existing demand line is updated
+type DemandUpdatedNotification = { DemandLineId: string }
+
+/// Notification emitted when an existing demand line is deleted
+type DemandDeletedNotification = { DemandLineId: string }
+
+type DemandLineQueries = QueryService<DemandLine, string>
+
+type DemandLineApi =
+    { Define: DemandDefineReq -> Task<Result<unit, ApiError>>
+      DefineBulk: DemandDefineReq list -> Task<Result<unit, ApiError>>
+      Fulfill: FulfillDemandLineReq -> Task<Result<unit, ApiError>> }

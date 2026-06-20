@@ -2,7 +2,7 @@ namespace Medhavi.Scenario.Domain
 
 open System
 open Medhavi.SharedKernel
-open Medhavi.SharedKernel.ScenarioContracts
+open Medhavi.Contracts.Scenario
 open Medhavi.Scenario.Domain
 
 type Scenario =
@@ -18,7 +18,7 @@ type Scenario =
       DirtyReason: DirtyReason option
       Status: ScenarioStatus
       StructuralChange: StructuralChange
-      ActiveRunId: System.Guid option
+      ActiveRunId: Guid option
       LastKnownInputVersions: InputVersionVector option
       LastPlanningMode: PlanningMode option }
 
@@ -32,11 +32,11 @@ type ScenarioCommand =
     | SetPlanRef of PlanRef * Version
     | Configure of ScenarioConfigurationId
     | Branch of newId: ScenarioId * newName: string
-    | StartPlanning of runId: System.Guid
+    | StartPlanning of runId: Guid
     | StopPlanning
     | RequestPlanning
-    | CompletePlanning of runId: System.Guid * planRef: PlanRef * inputVersions: InputVersionVector
-    | FailPlanning of runId: System.Guid * reason: string
+    | CompletePlanning of runId: Guid * planRef: PlanRef * inputVersions: InputVersionVector
+    | FailPlanning of runId: Guid * reason: string
     | SubmitForApproval
     | Approve
     | Reject of reason: string
@@ -52,11 +52,11 @@ type ScenarioEvent =
     | ScenarioPlanRefSet of ScenarioId * PlanRef
     | ScenarioConfigured of ScenarioId * ScenarioConfigurationId
     | ScenarioBranched of parentId: ScenarioId * childId: ScenarioId * childName: string
-    | ScenarioPlanningStarted of ScenarioId * runId: System.Guid
+    | ScenarioPlanningStarted of ScenarioId * runId: Guid
     | ScenarioPlanningStopped of ScenarioId
     | ScenarioPlanningRequested of ScenarioId * PlanningMode
-    | ScenarioPlanningCompleted of ScenarioId * runId: System.Guid * PlanRef * InputVersionVector
-    | ScenarioPlanningFailed of ScenarioId * runId: System.Guid * string
+    | ScenarioPlanningCompleted of ScenarioId * runId: Guid * PlanRef * InputVersionVector
+    | ScenarioPlanningFailed of ScenarioId * runId: Guid * string
     | ScenarioSubmittedForApproval of ScenarioId
     | ScenarioApproved of ScenarioId
     | ScenarioRejected of ScenarioId * string
@@ -107,7 +107,7 @@ module ScenarioAgg =
 
             | Create _, Some _ -> errConflict "Scenario already exists"
 
-            | Rename newName, Some state when not (isImmutable state.Status) ->
+            | Rename newName, Some state when not(isImmutable state.Status) ->
                 let updated = { state with Name = newName }
 
                 Ok
@@ -116,7 +116,7 @@ module ScenarioAgg =
 
             | Rename _, Some _ -> errInvariant "Cannot rename an archived or published scenario"
 
-            | MarkDirty, Some state when not (isImmutable state.Status) ->
+            | MarkDirty, Some state when not(isImmutable state.Status) ->
                 let updated =
                     { state with
                         Version = Version.increment state.Version
@@ -126,7 +126,7 @@ module ScenarioAgg =
                     { NewState = updated
                       Events = [ ScenarioMarkedDirty state.Id ] }
 
-            | MarkDirtyWith reason, Some state when not (isImmutable state.Status) ->
+            | MarkDirtyWith reason, Some state when not(isImmutable state.Status) ->
                 let updated =
                     { state with
                         Version = Version.increment state.Version
@@ -137,9 +137,10 @@ module ScenarioAgg =
                     { NewState = updated
                       Events = [ ScenarioDirtyReasonSet(state.Id, reason) ] }
 
-            | (MarkDirty | MarkDirtyWith _), Some _ -> errInvariant "Cannot mark dirty an archived or published scenario"
+            | (MarkDirty | MarkDirtyWith _), Some _ ->
+                errInvariant "Cannot mark dirty an archived or published scenario"
 
-            | MarkStructuralChange, Some state when not (isImmutable state.Status) ->
+            | MarkStructuralChange, Some state when not(isImmutable state.Status) ->
                 let updated =
                     { state with
                         StructuralChange = FullReplanRequired
@@ -150,7 +151,8 @@ module ScenarioAgg =
                     { NewState = updated
                       Events = [ ScenarioStructuralChangeMarked state.Id ] }
 
-            | MarkStructuralChange, Some _ -> errInvariant "Cannot mark structural change on an archived or published scenario"
+            | MarkStructuralChange, Some _ ->
+                errInvariant "Cannot mark structural change on an archived or published scenario"
 
             | ClearStructuralChange, Some state ->
                 let updated =
@@ -161,7 +163,7 @@ module ScenarioAgg =
                     { NewState = updated
                       Events = [ ScenarioStructuralChangeCleared state.Id ] }
 
-            | Configure configId, Some state when not (isImmutable state.Status) ->
+            | Configure configId, Some state when not(isImmutable state.Status) ->
                 let updated =
                     { state with
                         ConfigurationId = Some configId
@@ -174,7 +176,7 @@ module ScenarioAgg =
             | Configure _, Some _ -> errInvariant "Cannot configure an archived scenario"
 
             | SetPlanRef(planRef, expectedVersion), Some state ->
-                if not (Version.equals state.Version expectedVersion) then
+                if not(Version.equals state.Version expectedVersion) then
                     errVersionMismatch expectedVersion state.Version
                 else
                     let updated =
@@ -191,10 +193,10 @@ module ScenarioAgg =
             | StartPlanning runId, Some state ->
                 match state.Status with
                 | PlanningRunning -> errConflict "Planning is already running"
-                | Archived | Published _ -> errInvariant "Cannot start planning on an archived or published scenario"
+                | Archived
+                | Published _ -> errInvariant "Cannot start planning on an archived or published scenario"
                 | _ ->
-                    let mode =
-                        ScenarioPolicy.determinePlanningMode state.StructuralChange state.DirtyReason
+                    let mode = ScenarioPolicy.determinePlanningMode state.StructuralChange state.DirtyReason
 
                     let updated =
                         { state with
@@ -219,10 +221,10 @@ module ScenarioAgg =
             | RequestPlanning, Some state ->
                 match state.Status with
                 | PlanningRunning -> errConflict "Planning is already running; stop it first"
-                | Archived | Published _ -> errInvariant "Cannot request planning on an archived or published scenario"
+                | Archived
+                | Published _ -> errInvariant "Cannot request planning on an archived or published scenario"
                 | _ ->
-                    let mode =
-                        ScenarioPolicy.determinePlanningMode state.StructuralChange state.DirtyReason
+                    let mode = ScenarioPolicy.determinePlanningMode state.StructuralChange state.DirtyReason
 
                     let updated =
                         { state with
@@ -290,7 +292,7 @@ module ScenarioAgg =
                     Ok
                         { NewState = updated
                           Events = [ ScenarioSubmittedForApproval state.Id ] }
-                | _, s, _ -> errInvariant (sprintf "Cannot submit for approval from status %A" s)
+                | _, s, _ -> errInvariant(sprintf "Cannot submit for approval from status %A" s)
 
             | Approve, Some state ->
                 match state.Status with
@@ -300,7 +302,7 @@ module ScenarioAgg =
                     Ok
                         { NewState = updated
                           Events = [ ScenarioApproved state.Id ] }
-                | s -> errInvariant (sprintf "Cannot approve from status %A" s)
+                | s -> errInvariant(sprintf "Cannot approve from status %A" s)
 
             | Reject reason, Some state ->
                 match state.Status with
@@ -310,7 +312,7 @@ module ScenarioAgg =
                     Ok
                         { NewState = updated
                           Events = [ ScenarioRejected(state.Id, reason) ] }
-                | s -> errInvariant (sprintf "Cannot reject from status %A" s)
+                | s -> errInvariant(sprintf "Cannot reject from status %A" s)
 
             | Archive(publishId, rollbackId), Some state ->
                 if isImmutable state.Status then
@@ -322,9 +324,8 @@ module ScenarioAgg =
                         match publishId, rollbackId with
                         | Some pId, Some rId -> Published(DateTimeOffset.UtcNow, pId, rId)
                         | _ -> Archived
-                    let updated =
-                        { state with
-                            Status = newStatus }
+
+                    let updated = { state with Status = newStatus }
 
                     Ok
                         { NewState = updated
@@ -418,7 +419,7 @@ module ScenarioAgg =
                     StructuralChange = Unchanged
                     Version = Version.increment s.Version }
 
-        | ScenarioPlanningFailed(_, _, _), Some s ->
+        | ScenarioPlanningFailed _, Some s ->
             Some
                 { s with
                     Status = PlanningFailed
@@ -448,6 +449,7 @@ module ScenarioAgg =
                 match publishId, rollbackId with
                 | Some pId, Some rId -> Published(DateTimeOffset.UtcNow, pId, rId)
                 | _ -> Archived
+
             Some
                 { s with
                     Status = newStatus

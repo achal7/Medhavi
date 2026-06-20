@@ -1,3 +1,2 @@
-StockingPointId,Name,IsActive
-SP-FACTORY,Assembly Plant,true
-SP-WAREHOUSE,Central Warehouse,true
+PlantId,Code,Name,IsActive
+PLANT-01,PL01,Assembly Plant 01,true

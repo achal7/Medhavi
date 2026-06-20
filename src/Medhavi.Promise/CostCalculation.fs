@@ -3,7 +3,7 @@ module Medhavi.Promise.CostCalculation
 open System
 open Medhavi.Promise.PromiseTypes
 open Medhavi.SharedKernel.PromisePolicy
-open Medhavi.Transport
+open Medhavi.Contracts.Transport
 
 let latenessPenaltyPerDay = 50.0m
 let defaultSkuCost = 10.0m

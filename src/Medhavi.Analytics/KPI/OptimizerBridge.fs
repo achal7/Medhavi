@@ -1,8 +1,5 @@
 namespace Medhavi.Analytics.KPI
 
-open System
-open Medhavi.Contracts.Analytics
-
 type ObjectiveComponents =
     { TotalLatenessDays: decimal
       TotalShortfallUnits: decimal

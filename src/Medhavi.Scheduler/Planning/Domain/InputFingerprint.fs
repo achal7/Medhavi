@@ -4,8 +4,8 @@ open System
 open System.Security.Cryptography
 open System.Text
 open System.Text.Json
+open Medhavi.Contracts.Scenario
 open Medhavi.SharedKernel
-open Medhavi.SharedKernel.ScenarioContracts
 
 /// A deterministic, content-addressed identity for a planning run.
 /// Two runs with identical InputFingerprints will always produce identical output.

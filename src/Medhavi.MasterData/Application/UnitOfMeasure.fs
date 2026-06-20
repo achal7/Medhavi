@@ -3,17 +3,16 @@ module Medhavi.MasterData.Application.Uom
 open Medhavi
 open Medhavi.Common.Patterns
 open Medhavi.Contracts.Integration
-open Medhavi.Infrastructure
 open Medhavi.Infrastructure.Projections
 open Medhavi.MasterData.Domain.UomAgg
 open Medhavi.SharedKernel
 open Medhavi.SharedKernel.Aggregate
-open Medhavi.SharedKernel.API
+open Medhavi.Contracts.API
 
 module ACL =
     let toDefineCommand (req: UomDefineReq) =
-        UomId.create (req.Code)
-        |> Result.map (fun id ->
+        UomId.create(req.Code)
+        |> Result.map(fun _ ->
             { Code = req.Code
               Name = req.Name
               ToBaseFactor = req.ToBaseFactor
@@ -25,8 +24,8 @@ module ACL =
     let toActivateCommand (id: string) = UomId.create id
 
     let toChangeConversionFactorCommand (req: UomChangeConversionFactorReq) =
-        UomId.create (req.Id)
-        |> Result.map (fun id ->
+        UomId.create(req.Id)
+        |> Result.map(fun id ->
             { Id = id
               NewFactor = req.NewFactor
               NewIsBase = req.IsBase })
@@ -40,20 +39,14 @@ type UomCapabilities =
       Activate: string -> TaskResult<Decision, ApplicationError> }
 
 let createCapabilities (repo: Repository<UnitOfMeasure, string, UnitOfMeasureEvent>) =
-    { Define =
-        liftCmdResult ACL.toDefineCommand
-        >=> handleCommand (fun c -> c.Code) repo Define decide
+    { Define = liftCmdResult ACL.toDefineCommand >=> handleCommand (fun c -> c.Code) repo Define decide
       ChangeConversionFactor =
         liftCmdResult ACL.toChangeConversionFactorCommand
         >=> handleCommand (fun c -> UomId.value c.Id) repo ChangeConversionFactor decide
-      Retire =
-        liftCmdResult ACL.toRetireCommand
-        >=> handleCommand UomId.value repo Retire decide
-      Activate =
-        liftCmdResult ACL.toActivateCommand
-        >=> handleCommand UomId.value repo Activate decide }
+      Retire = liftCmdResult ACL.toRetireCommand >=> handleCommand UomId.value repo Retire decide
+      Activate = liftCmdResult ACL.toActivateCommand >=> handleCommand UomId.value repo Activate decide }
 
-let mapToUomDto (uom: UnitOfMeasure) : Contracts.Domain.UnitOfMeasure =
+let mapToUomDto (uom: UnitOfMeasure) : Contracts.MasterData.UnitOfMeasure =
     let isBase, factorVal =
         match uom.ConversionFactor with
         | Base factor -> true, PositiveDecimal.value factor
@@ -66,7 +59,7 @@ let mapToUomDto (uom: UnitOfMeasure) : Contracts.Domain.UnitOfMeasure =
       ConversionFactor = factorVal
       Status = uom.Status.ToBool() }
 
-let evolveProjection (state: Map<string, Contracts.Domain.UnitOfMeasure>) (evt: UnitOfMeasureEvent) =
+let evolveProjection (state: Map<string, Contracts.MasterData.UnitOfMeasure>) (evt: UnitOfMeasureEvent) =
     match evt with
     | UnitOfMeasureDefined uom -> Map.add (UomId.value uom.Id) (mapToUomDto uom) state
     | ConversionFactorChanged e ->
@@ -100,7 +93,7 @@ let evolveProjection (state: Map<string, Contracts.Domain.UnitOfMeasure>) (evt: 
         | None -> state
 
 let createProjectionAgent () =
-    ProjectionAgent<Map<string, Contracts.Domain.UnitOfMeasure>, UnitOfMeasureEvent>(
+    ProjectionAgent<Map<string, Contracts.MasterData.UnitOfMeasure>, UnitOfMeasureEvent>(
         evolveProjection,
         Map.empty,
         "UomReadModel"
@@ -108,35 +101,36 @@ let createProjectionAgent () =
 
 let createUomApi
     (capabilities: UomCapabilities)
-    (agent: ProjectionAgent<Map<string, Contracts.Domain.UnitOfMeasure>, UnitOfMeasureEvent>)
     =
     { Define =
         fun req ->
             capabilities.Define req
-            |> TaskResult.map (fun d -> d.NewState)
+            |> TaskResult.map(fun d -> d.NewState)
             |> TaskResult.map mapToUomDto
+            |> TaskResult.mapError ApplicationError.mapToApiError
       DefineBulk =
         fun reqs ->
             reqs
             |> List.map capabilities.Define
             |> TaskResult.sequence
-            |> TaskResult.map (fun decisions ->
-                decisions
-                |> List.map (fun d -> d.NewState)
-                |> List.map mapToUomDto)
+            |> TaskResult.map(fun decisions -> decisions |> List.map(fun d -> d.NewState) |> List.map mapToUomDto)
+            |> TaskResult.mapError ApplicationError.mapToApiError
       Retire =
         fun req ->
             capabilities.Retire req
-            |> TaskResult.map (fun d -> d.NewState)
+            |> TaskResult.map(fun d -> d.NewState)
             |> TaskResult.map mapToUomDto
+            |> TaskResult.mapError ApplicationError.mapToApiError
       Activate =
         fun req ->
             capabilities.Activate req
-            |> TaskResult.map (fun d -> d.NewState)
+            |> TaskResult.map(fun d -> d.NewState)
             |> TaskResult.map mapToUomDto
+            |> TaskResult.mapError ApplicationError.mapToApiError
       ChangeConversionFactor =
         fun req ->
             capabilities.ChangeConversionFactor req
-            |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map mapToUomDto }
+            |> TaskResult.map(fun d -> d.NewState)
+            |> TaskResult.map mapToUomDto
+            |> TaskResult.mapError ApplicationError.mapToApiError }
     : UomApi

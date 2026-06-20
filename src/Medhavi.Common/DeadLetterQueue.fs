@@ -11,57 +11,47 @@ open Microsoft.Extensions.Logging
 
 /// Dead letter entry for failed events
 type DeadLetterEntry<'T> =
-    {
-        Id: Guid
-        Key: string // unique id for the failure (event id)
-        Event: 'T
-        FailureReason: string
-        FailureTimestamp: DateTimeOffset // when it first failed
-        LastAttempt: DateTimeOffset option
-        RetryCount: int
-        OriginalSource: string
-        ProcessingStage: string
-        Metadata: Map<string, string> // extensible metadata
-    }
+    { Id: Guid
+      Key: string // unique id for the failure (event id)
+      Event: 'T
+      FailureReason: string
+      FailureTimestamp: DateTimeOffset // when it first failed
+      LastAttempt: DateTimeOffset option
+      RetryCount: int
+      OriginalSource: string
+      ProcessingStage: string
+      Metadata: Map<string, string> } // extensible metadata
 
 /// Stats for dead letter queue
 type DeadLetterStats =
-    {
-        TotalEntries: int
-        EntriesByReason: Map<string, int>
-        EntriesByStage: Map<string, int>
-        OldestEntry: DateTimeOffset option
-        NewestEntry: DateTimeOffset option
-    }
+    { TotalEntries: int
+      EntriesByReason: Map<string, int>
+      EntriesByStage: Map<string, int>
+      OldestEntry: DateTimeOffset option
+      NewestEntry: DateTimeOffset option }
 
 type ReplayOptions =
-    {
-        MaxConcurrency: int option
-        MaxRetries: int option
-        RemoveOnSuccess: bool option
-        RemoveOnMaxRetries: bool option
-        CancellationToken: CancellationToken option
-    }
+    { MaxConcurrency: int option
+      MaxRetries: int option
+      RemoveOnSuccess: bool option
+      RemoveOnMaxRetries: bool option
+      CancellationToken: CancellationToken option }
 
     static member DefaultReplayOptions =
-        {
-            MaxConcurrency = None
-            MaxRetries = None
-            RemoveOnSuccess = Some true
-            RemoveOnMaxRetries = Some false
-            CancellationToken = None
-        }
+        { MaxConcurrency = None
+          MaxRetries = None
+          RemoveOnSuccess = Some true
+          RemoveOnMaxRetries = Some false
+          CancellationToken = None }
 
 type DeadLetterStore<'T> =
-    {
-        AddAsync: DeadLetterEntry<'T> -> Task<Result<unit, string>>
-        GetAllAsync: unit -> Task<Result<DeadLetterEntry<'T> list, string>>
-        GetByIdAsync: Guid -> Task<Result<DeadLetterEntry<'T> option, string>>
-        RemoveAsync: Guid -> Task<Result<unit, string>>
-        GetStatsAsync: unit -> Task<Result<DeadLetterStats, string>>
-        // Replay entries using user-provided processor. Returns number of successes.
-        ReplayAsync: (DeadLetterEntry<'T> -> Task<Result<unit, string>>) -> ReplayOptions -> Task<Result<int, string>>
-    }
+    { AddAsync: DeadLetterEntry<'T> -> Task<Result<unit, string>>
+      GetAllAsync: unit -> Task<Result<DeadLetterEntry<'T> list, string>>
+      GetByIdAsync: Guid -> Task<Result<DeadLetterEntry<'T> option, string>>
+      RemoveAsync: Guid -> Task<Result<unit, string>>
+      GetStatsAsync: unit -> Task<Result<DeadLetterStats, string>>
+      // Replay entries using user-provided processor. Returns number of successes.
+      ReplayAsync: (DeadLetterEntry<'T> -> Task<Result<unit, string>>) -> ReplayOptions -> Task<Result<int, string>> }
 
 // -------------------- Implementation --------------------
 
@@ -97,8 +87,7 @@ let createInMemoryDeadLetterQueue<'T> maxEntries (logger: ILogger option) =
                                 LastAttempt = Some DateTimeOffset.UtcNow
                                 FailureReason = entry.FailureReason
                                 ProcessingStage = entry.ProcessingStage
-                                Metadata = entry.Metadata
-                            })
+                                Metadata = entry.Metadata })
                     )
 
                 // Ensure capacity by evicting oldest keys from orderQueue until size <= maxEntries
@@ -116,12 +105,11 @@ let createInMemoryDeadLetterQueue<'T> maxEntries (logger: ILogger option) =
                         loop <- false
 
                 logger
-                |> Option.iter (fun l -> l.LogDebug("InMemoryDeadLetterQueue: added/updated entry {Key}", entry.Key))
+                |> Option.iter(fun l -> l.LogDebug("InMemoryDeadLetterQueue: added/updated entry {Key}", entry.Key))
 
                 return Ok()
             with ex ->
-                logger
-                |> Option.iter (fun l -> l.LogError(ex, "DeadLetter(inmem): add failed"))
+                logger |> Option.iter(fun l -> l.LogError(ex, "DeadLetter(inmem): add failed"))
 
                 return Error ex.Message
         }
@@ -130,15 +118,11 @@ let createInMemoryDeadLetterQueue<'T> maxEntries (logger: ILogger option) =
         task {
             try
                 // snapshot and sort by FailureTimestamp ascending
-                let list =
-                    entries.Values
-                    |> Seq.toList
-                    |> List.sortBy (fun e -> e.FailureTimestamp)
+                let list = entries.Values |> Seq.toList |> List.sortBy(fun e -> e.FailureTimestamp)
 
                 return Ok list
             with ex ->
-                logger
-                |> Option.iter (fun l -> l.LogError(ex, "DeadLetter(inmem): GetAll failed"))
+                logger |> Option.iter(fun l -> l.LogError(ex, "DeadLetter(inmem): GetAll failed"))
 
                 return Error ex.Message
         }
@@ -150,8 +134,7 @@ let createInMemoryDeadLetterQueue<'T> maxEntries (logger: ILogger option) =
                 | true, e -> return Ok(Some e)
                 | false, _ -> return Ok None
             with ex ->
-                logger
-                |> Option.iter (fun l -> l.LogError(ex, "DeadLetter(inmem): GetById failed"))
+                logger |> Option.iter(fun l -> l.LogError(ex, "DeadLetter(inmem): GetById failed"))
 
                 return Error ex.Message
         }
@@ -162,13 +145,11 @@ let createInMemoryDeadLetterQueue<'T> maxEntries (logger: ILogger option) =
                 let removed, _ = entries.TryRemove(eventId)
 
                 if removed then
-                    logger
-                    |> Option.iter (fun l -> l.LogDebug("InMemoryDeadLetterQueue: removed entry {Key}", eventId))
+                    logger |> Option.iter(fun l -> l.LogDebug("InMemoryDeadLetterQueue: removed entry {Key}", eventId))
 
                 return Ok()
             with ex ->
-                logger
-                |> Option.iter (fun l -> l.LogError(ex, "DeadLetter(inmem): Remove failed"))
+                logger |> Option.iter(fun l -> l.LogError(ex, "DeadLetter(inmem): Remove failed"))
 
                 return Error ex.Message
         }
@@ -181,46 +162,39 @@ let createInMemoryDeadLetterQueue<'T> maxEntries (logger: ILogger option) =
 
                 let byReason =
                     snapshot
-                    |> Seq.groupBy (fun e -> e.FailureReason)
-                    |> Seq.map (fun (k, g) -> k, Seq.length g)
+                    |> Seq.groupBy(fun e -> e.FailureReason)
+                    |> Seq.map(fun (k, g) -> k, Seq.length g)
                     |> Map.ofSeq
 
                 let byStage =
                     snapshot
-                    |> Seq.groupBy (fun e -> e.ProcessingStage)
-                    |> Seq.map (fun (k, g) -> k, Seq.length g)
+                    |> Seq.groupBy(fun e -> e.ProcessingStage)
+                    |> Seq.map(fun (k, g) -> k, Seq.length g)
                     |> Map.ofSeq
 
                 let oldest =
                     if snapshot.IsEmpty then
                         None
                     else
-                        snapshot
-                        |> Seq.minBy (fun e -> e.FailureTimestamp)
-                        |> fun e -> Some e.FailureTimestamp
+                        snapshot |> Seq.minBy(fun e -> e.FailureTimestamp) |> (fun e -> Some e.FailureTimestamp)
 
                 let newest =
                     if snapshot.IsEmpty then
                         None
                     else
-                        snapshot
-                        |> Seq.maxBy (fun e -> e.FailureTimestamp)
-                        |> fun e -> Some e.FailureTimestamp
+                        snapshot |> Seq.maxBy(fun e -> e.FailureTimestamp) |> (fun e -> Some e.FailureTimestamp)
 
                 return
                     Ok(
-                        {
-                            TotalEntries = total
-                            EntriesByReason = byReason
-                            EntriesByStage = byStage
-                            OldestEntry = oldest
-                            NewestEntry = newest
-                        }
+                        { TotalEntries = total
+                          EntriesByReason = byReason
+                          EntriesByStage = byStage
+                          OldestEntry = oldest
+                          NewestEntry = newest }
 
                     )
             with ex ->
-                logger
-                |> Option.iter (fun l -> l.LogError(ex, "DeadLetter(inmem): GetStats failed"))
+                logger |> Option.iter(fun l -> l.LogError(ex, "DeadLetter(inmem): GetStats failed"))
 
                 return Error ex.Message
         }
@@ -228,8 +202,7 @@ let createInMemoryDeadLetterQueue<'T> maxEntries (logger: ILogger option) =
     let replayAsync (processFunction, replyOptions) =
         task {
             try
-                let maxConcurrency =
-                    defaultArg replyOptions.MaxConcurrency Environment.ProcessorCount
+                let maxConcurrency = defaultArg replyOptions.MaxConcurrency Environment.ProcessorCount
 
                 let maxRetries = defaultArg replyOptions.MaxRetries Int32.MaxValue
                 let removeOnSuccess = defaultArg replyOptions.RemoveOnSuccess true
@@ -243,7 +216,7 @@ let createInMemoryDeadLetterQueue<'T> maxEntries (logger: ILogger option) =
 
                 let tasks =
                     snapshot
-                    |> Seq.map (fun entry ->
+                    |> Seq.map(fun entry ->
                         task {
                             do! sem.WaitAsync(ct)
 
@@ -251,9 +224,7 @@ let createInMemoryDeadLetterQueue<'T> maxEntries (logger: ILogger option) =
                                 let mutable attempt = 1
                                 let mutable ok = false
 
-                                while not ok
-                                      && attempt <= maxRetries
-                                      && not ct.IsCancellationRequested do
+                                while not ok && attempt <= maxRetries && not ct.IsCancellationRequested do
                                     match! processFunction entry with
                                     | Ok() ->
                                         ok <- true
@@ -273,22 +244,19 @@ let createInMemoryDeadLetterQueue<'T> maxEntries (logger: ILogger option) =
                     |> Seq.toArray
 
                 do! Task.WhenAll(tasks)
-                return Ok(!successes)
+                return Ok(successes.Value)
             with ex ->
-                logger
-                |> Option.iter (fun l -> l.LogError(ex, "DeadLetter(inmem): Replay failed"))
+                logger |> Option.iter(fun l -> l.LogError(ex, "DeadLetter(inmem): Replay failed"))
 
                 return Error ex.Message
         }
 
-    {
-        AddAsync = addAsync
-        GetAllAsync = getAllAsync
-        GetByIdAsync = getByEventIdAsync
-        RemoveAsync = removeAsync
-        GetStatsAsync = getStatsAsync
-        ReplayAsync = fun processFn opts -> replayAsync (processFn, opts)
-    }
+    { AddAsync = addAsync
+      GetAllAsync = getAllAsync
+      GetByIdAsync = getByEventIdAsync
+      RemoveAsync = removeAsync
+      GetStatsAsync = getStatsAsync
+      ReplayAsync = fun processFn opts -> replayAsync(processFn, opts) }
 
 module DeadLetterHelpers =
     /// Create a basic entry (Key must be unique per event)
@@ -301,18 +269,16 @@ module DeadLetterHelpers =
         (retryCount: int)
         (metadata: Map<string, string> option)
         =
-        {
-            Id = Guid.NewGuid()
-            Key = key
-            Event = event
-            FailureReason = failureReason
-            FailureTimestamp = DateTimeOffset.UtcNow
-            LastAttempt = None
-            RetryCount = retryCount
-            OriginalSource = originalSource
-            ProcessingStage = processingStage
-            Metadata = defaultArg metadata Map.empty
-        }
+        { Id = Guid.NewGuid()
+          Key = key
+          Event = event
+          FailureReason = failureReason
+          FailureTimestamp = DateTimeOffset.UtcNow
+          LastAttempt = None
+          RetryCount = retryCount
+          OriginalSource = originalSource
+          ProcessingStage = processingStage
+          Metadata = defaultArg metadata Map.empty }
 
     let createFromException<'T>
         (event: 'T)

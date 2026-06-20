@@ -3,18 +3,15 @@ namespace Medhavi.Capacity
 open System
 open System.Threading.Tasks
 open Medhavi.SharedKernel
-open Medhavi.Infrastructure.Projections
-open Medhavi.Infrastructure.Stores.InMemRepository
 open Medhavi.SharedKernel.BoundedContexts
+open Medhavi.SharedKernel.InMemRepository
 open Medhavi.Capacity.Domain.CalendarAgg
 open Medhavi.Capacity.Domain.CapacityAgg
 open Medhavi.Capacity.Domain.CapacityReservationAgg
 open Medhavi.Capacity.Domain.OperationAgg
 open Medhavi.Capacity.Domain.CapacityResourceAgg
 open Medhavi.Capacity.Application
-open Medhavi.MasterData.Domain.ResourceGroupAgg
-open Medhavi.MasterData.Domain.StandardResourceAgg
-open Medhavi.MasterData.Domain.PhysicalResourceAgg
+open Medhavi.Infrastructure.Projections
 
 type CapacityContext =
     { Calendar: CalendarApp.CalendarCapabilities
@@ -34,36 +31,31 @@ module BoundedContext =
 
     let create () =
         // 1. Repositories
-        let calendarRepo = createInMemoryRepository<Calendar, string, CalendarsEvent> ()
+        let calendarRepo = createInMemoryRepository<Calendar, string, CalendarsEvent>()
 
-        let capacityRepo =
-            createInMemoryRepository<CapacityBucket, string, CapacityEvent> ()
+        let capacityRepo = createInMemoryRepository<CapacityBucket, string, CapacityEvent>()
 
-        let operationRepo = createInMemoryRepository<Operation, string, OperationEvent> ()
+        let operationRepo = createInMemoryRepository<Operation, string, OperationEvent>()
 
-        let capacityResourceRepo =
-            createInMemoryRepository<CapacityResource, string, CapacityResourceEvent> ()
+        let capacityResourceRepo = createInMemoryRepository<CapacityResource, string, CapacityResourceEvent>()
 
-        let capacityReservationRepo =
-            createInMemoryRepository<CapacityReservation, string, CapacityReservationEvent> ()
+        let capacityReservationRepo = createInMemoryRepository<CapacityReservation, string, CapacityReservationEvent>()
 
         // 2. Capabilities
         let calendarCaps = CalendarApp.createCapabilities calendarRepo
         let capacityCaps = CapacityApp.createCapabilities capacityRepo
         let operationCaps = OperationApp.createCapabilities operationRepo
 
-        let capacityResourceCaps =
-            CapacityResourceApp.createCapabilities capacityResourceRepo
+        let capacityResourceCaps = CapacityResourceApp.createCapabilities capacityResourceRepo
 
-        let capacityReservationCaps =
-            CapacityReservationApp.createCapabilities capacityReservationRepo
+        let capacityReservationCaps = CapacityReservationApp.createCapabilities capacityReservationRepo
 
         // 3. Projection Agents
-        let calendarAgent = CalendarApp.createProjectionAgent ()
-        let capacityAgent = CapacityApp.createProjectionAgent ()
-        let operationAgent = OperationApp.createProjectionAgent ()
-        let capacityResourceAgent = CapacityResourceApp.createProjectionAgent ()
-        let capacityReservationAgent = CapacityReservationApp.createProjectionAgent ()
+        let calendarAgent = CalendarApp.createProjectionAgent()
+        let capacityAgent = CapacityApp.createProjectionAgent()
+        let operationAgent = OperationApp.createProjectionAgent()
+        let capacityResourceAgent = CapacityResourceApp.createProjectionAgent()
+        let capacityReservationAgent = CapacityReservationApp.createProjectionAgent()
 
         // 4. Subscriptions List
         let mutable subscriptions: IDisposable list = []
@@ -78,7 +70,7 @@ module BoundedContext =
                 | Ok list ->
                     let m =
                         list
-                        |> List.map (fun c ->
+                        |> List.map(fun c ->
                             match c.Id with
                             | CalendarId cid -> cid, c)
                         |> Map.ofList
@@ -90,10 +82,7 @@ module BoundedContext =
 
                 match buckets with
                 | Ok list ->
-                    let m =
-                        list
-                        |> List.map (fun b -> CapacityBucketId.value b.Id, b)
-                        |> Map.ofList
+                    let m = list |> List.map(fun b -> CapacityBucketId.value b.Id, b) |> Map.ofList
 
                     capacityAgent.SetState(m)
                 | Error _ -> ()
@@ -102,10 +91,7 @@ module BoundedContext =
 
                 match operations with
                 | Ok list ->
-                    let m =
-                        list
-                        |> List.map (fun o -> OperationId.value o.Id, o)
-                        |> Map.ofList
+                    let m = list |> List.map(fun o -> OperationId.value o.Id, o) |> Map.ofList
 
                     operationAgent.SetState(m)
                 | Error _ -> ()
@@ -114,10 +100,7 @@ module BoundedContext =
 
                 match capacityResources with
                 | Ok list ->
-                    let m =
-                        list
-                        |> List.map (fun r -> PhysicalResourceId.value r.Id, r)
-                        |> Map.ofList
+                    let m = list |> List.map(fun r -> PhysicalResourceId.value r.Id, r) |> Map.ofList
 
                     capacityResourceAgent.SetState(m)
                 | Error _ -> ()
@@ -126,10 +109,7 @@ module BoundedContext =
 
                 match reservations with
                 | Ok list ->
-                    let m =
-                        list
-                        |> List.map (fun r -> CapacityReservationId.value r.Id, r)
-                        |> Map.ofList
+                    let m = list |> List.map(fun r -> CapacityReservationId.value r.Id, r) |> Map.ofList
 
                     capacityReservationAgent.SetState(m)
                 | Error _ -> ()
@@ -144,30 +124,6 @@ module BoundedContext =
                       DomainEventBus.Subscribe<CapacityReservationEvent>(fun ev ->
                           capacityReservationAgent.Post(ev, Guid.NewGuid(), None)) ]
 
-                // C. Subscription to MasterData events to build resolved CapacityResources
-                let mutable masterState = CapacityResourceApp.emptyMasterState
-
-                let processMasterEventObj (ev: obj) =
-                    let nextState, cmds = CapacityResourceApp.processMasterEvent masterState ev
-                    masterState <- nextState
-
-                    for cmd in cmds do
-                        task {
-                            match cmd with
-                            | RegisterCapacityResource c ->
-                                let! _ = capacityResourceCaps.Register(c)
-                                ()
-                            | UpdateCapacityResource c ->
-                                let! _ = capacityResourceCaps.Update(c)
-                                ()
-                        }
-                        |> ignore
-
-                let masterSubs =
-                    [ DomainEventBus.Subscribe<ResourceGroupEvent>(fun ev -> processMasterEventObj ev)
-                      DomainEventBus.Subscribe<StandardResourceEvent>(fun ev -> processMasterEventObj ev)
-                      DomainEventBus.Subscribe<PhysicalResourceEvent>(fun ev -> processMasterEventObj ev) ]
-
                 // D. Auto-Generation of Capacity Buckets from CapacityResourceRegistered events
                 let bucketGenSub =
                     DomainEventBus.Subscribe<CapacityResourceEvent>(fun ev ->
@@ -180,8 +136,7 @@ module BoundedContext =
                                 let startDt =
                                     Timestamp.value now
                                     |> fun t ->
-                                        DateTimeOffset(t.Year, t.Month, t.Day, 0, 0, 0, t.Offset)
-                                            .AddDays(float i)
+                                        DateTimeOffset(t.Year, t.Month, t.Day, 0, 0, 0, t.Offset).AddDays(float i)
 
                                 let endDt = startDt.AddDays(1.0)
 
@@ -204,22 +159,33 @@ module BoundedContext =
                         match ev with
                         | CapacityReservationCreated e ->
                             task {
-                                let! _ = capacityCaps.Reserve(e.Id, e.RequirementId, e.Minutes, e.Start, e.End, e.Source, e.BucketId)
+                                let! _ =
+                                    capacityCaps.Reserve(
+                                        e.Id,
+                                        e.RequirementId,
+                                        e.Minutes,
+                                        e.Start,
+                                        e.End,
+                                        e.Source,
+                                        e.BucketId
+                                    )
+
                                 return ()
                             }
                             |> ignore
                         | CapacityReservationReleased e ->
                             task {
                                 let! resOpt = capacityReservationRepo.Get(CapacityReservationId.value e.Id)
+
                                 match resOpt with
-                                | Ok (Some res) ->
+                                | Ok(Some res) ->
                                     let! _ = capacityCaps.Cancel(e.Id, res.BucketId)
                                     ()
                                 | _ -> ()
                             }
                             |> ignore)
 
-                subscriptions <- localSubs @ masterSubs @ [ bucketGenSub; reservationForwardSub ]
+                subscriptions <- localSubs @ [ bucketGenSub; reservationForwardSub ]
             }
 
         // 6. Dispose

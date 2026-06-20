@@ -69,7 +69,6 @@ type DemandLine =
       FulfilledQuantity: Quantity
       Status: DemandStatus }
 
-
 module DemandLineAgg =
 
     open Medhavi.SharedKernel.Aggregate
@@ -139,21 +138,6 @@ module DemandLineAgg =
 
         Valid(makeDemandLine now cmd)
 
-    let applyFulfilled (state: DemandLine) (evt: DemandLineFulfilledEvt) : DemandLine =
-        let newFulfilled = state.FulfilledQuantity + evt.Quantity
-        let finalOpen = state.OpenQuantity - evt.Quantity
-
-        let finalStatus =
-            if finalOpen.IsZero then
-                DemandStatus.Fulfilled
-            else
-                DemandStatus.PartiallyFulfilled
-
-        { state with
-            OpenQuantity = finalOpen
-            FulfilledQuantity = newFulfilled
-            Status = finalStatus }
-
     let decide: DecideDemandLine =
         fun command stateOpt ->
             match command, stateOpt with
@@ -182,8 +166,3 @@ module DemandLineAgg =
             | _, _ -> Error(DomainError.validation "Not Implemented or state mismatch")
 
     let applyCreated (evt: DemandLineCreatedEvt) : DemandLine = evt
-
-    let evolve (event: DemandLineEvent) (state: DemandLine option) : DemandLine option =
-        match event with
-        | DemandLineCreated e -> Some(applyCreated e)
-        | DemandLineFulfilled e -> state |> Option.map (fun s -> applyFulfilled s e)

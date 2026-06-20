@@ -1,15 +1,12 @@
 namespace Medhavi.Scenario
 
-open System
 open System.Threading.Tasks
 open Medhavi.SharedKernel
-open Medhavi.SharedKernel.ScenarioContracts
-
-
+open Medhavi.Contracts.Scenario
 
 type ScenarioQueries =
-    { GetById: string -> Task<ScenarioReadModel option>
-      GetAll: unit -> Task<ScenarioReadModel list> }
+    { GetById: string -> Task<Scenario option>
+      GetAll: unit -> Task<Scenario list> }
 
 type ScenarioCommands =
     { Create: string * string * ScenarioType * string option -> Task<Result<unit, DomainError>>

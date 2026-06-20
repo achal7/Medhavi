@@ -1,7 +1,7 @@
 namespace Medhavi.Scheduler.Planning.Domain
 
 open System
-open Medhavi.SharedKernel.ScenarioContracts
+open Medhavi.Contracts.Scenario
 
 /// An immutable, comparable planning time bucket.
 /// Wraps a DateTimeOffset snapped to the start of the period defined by Granularity.

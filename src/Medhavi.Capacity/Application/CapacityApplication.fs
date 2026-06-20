@@ -343,7 +343,6 @@ module SchedulerApp =
     open Medhavi.Capacity.Domain.CapacityAgg
     open Medhavi.Capacity.Domain.CalendarAgg
     open Medhavi.Capacity.Domain.CapacityResourceAgg
-    open Medhavi.Capacity.RoutingInterpreter
 
     type CheckCapacityResult =
         { IsFeasible: bool
@@ -360,7 +359,7 @@ module SchedulerApp =
         (resourcesState: Map<string, CapacityResource>)
         (_: Map<string, Calendar>)
         (bucketsState: Map<string, CapacityBucket>)
-        (getRoutingsForProduct: string -> Task<Result<Medhavi.Contracts.Domain.Routing list, ApplicationError>>)
+        (getRoutingsForProduct: string -> Task<Result<Medhavi.Contracts.MasterData.Routing list, ApplicationError>>)
         : Task<Result<CheckCapacityResult, ApplicationError>> =
         task {
             let! routingsRes = getRoutingsForProduct productId
@@ -372,7 +371,7 @@ module SchedulerApp =
                 let preferredOpt =
                     loadProfiles
                     |> List.filter (fun (r: RoutingLoadProfile) ->
-                        let raw = rawRoutings |> List.find (fun (rr: Medhavi.Contracts.Domain.Routing) -> rr.Id = r.RoutingId)
+                        let raw = rawRoutings |> List.find (fun (rr: Medhavi.Contracts.MasterData.Routing) -> rr.Id = r.RoutingId)
                         raw.Preference.IsPreferred)
                     |> List.tryHead
                     |> Option.orElse (loadProfiles |> List.sortBy (fun (r: RoutingLoadProfile) -> r.PreferencePriority) |> List.tryHead)
@@ -448,8 +447,8 @@ module SchedulerApp =
                             let rec scheduleInfinite (idx: int) (currentEnd: DateTimeOffset) (acc: (string * DateTimeOffset * DateTimeOffset) list) =
                                 if idx < 0 then Ok acc
                                 else
-                                    let step: RoutingStepLoadProfile = steps.[idx]
-                                    let (resId, mins) = Map.find step.RoutingStepId stepResourceMappings
+                                    let step: RoutingStepLoadProfile = steps[idx]
+                                    let _, mins = Map.find step.RoutingStepId stepResourceMappings
                                     let duration = TimeSpan.FromMinutes(float mins)
                                     let start = currentEnd.Subtract(duration)
                                     scheduleInfinite (idx - 1) start ((step.RoutingStepId, start, currentEnd) :: acc)
@@ -478,8 +477,8 @@ module SchedulerApp =
                             let rec scheduleFiniteBackward (idx: int) (currentEnd: DateTimeOffset) (acc: (string * DateTimeOffset * DateTimeOffset) list) =
                                 if idx < 0 then Some acc
                                 else
-                                    let step: RoutingStepLoadProfile = steps.[idx]
-                                    let (resId, mins) = Map.find step.RoutingStepId stepResourceMappings
+                                    let step: RoutingStepLoadProfile = steps[idx]
+                                    let resId, mins = Map.find step.RoutingStepId stepResourceMappings
 
                                     let rec findCapacity (targetEnd: DateTimeOffset) (remainingMins: decimal) (accDays: (DateTimeOffset * DateTimeOffset) list) =
                                         let now = DateTimeOffset.UtcNow
@@ -509,7 +508,7 @@ module SchedulerApp =
                                         scheduleFiniteBackward (idx - 1) start ((step.RoutingStepId, start, endVal) :: acc)
 
                             match scheduleFiniteBackward (steps.Length - 1) needDate [] with
-                            | Some scheduledSteps ->
+                            | Some _ ->
                                 return Ok { IsFeasible = true
                                             SuggestedDate = needDate
                                             RequiredLoads = reqLoads
@@ -519,8 +518,8 @@ module SchedulerApp =
                                 let rec scheduleFiniteForward (idx: int) (currentStart: DateTimeOffset) (acc: (string * DateTimeOffset * DateTimeOffset) list) =
                                     if idx >= steps.Length then Some acc
                                     else
-                                        let step: RoutingStepLoadProfile = steps.[idx]
-                                        let (resId, mins) = Map.find step.RoutingStepId stepResourceMappings
+                                        let step: RoutingStepLoadProfile = steps[idx]
+                                        let resId, mins = Map.find step.RoutingStepId stepResourceMappings
 
                                         let rec findCapacityForward (targetStart: DateTimeOffset) (remainingMins: decimal) (accDays: (DateTimeOffset * DateTimeOffset) list) =
                                             if remainingMins <= 0.0m then

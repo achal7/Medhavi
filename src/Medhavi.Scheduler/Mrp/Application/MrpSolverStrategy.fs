@@ -2,14 +2,11 @@ namespace Medhavi.Scheduler.Mrp.Application
 
 open System
 open System.Threading.Tasks
-open Medhavi.Common.Patterns
+open Medhavi.Contracts.Scenario
 open Medhavi.SharedKernel
-open Medhavi.SharedKernel.ScenarioContracts
 open Medhavi.Scheduler.Planning.Domain
 open Medhavi.Scheduler.Planning.Application
-open Medhavi.Scheduler.Mrp.Domain
 open Medhavi.Scheduler.Mrp.Domain.Types
-open Medhavi.Scheduler.Mrp.Domain.Errors
 open Medhavi.Scheduler.Mrp.Domain.Policies
 open Medhavi.Scheduler.Mrp.Domain.MrpRunAggregate
 open Medhavi.Scheduler.Mrp.Steps

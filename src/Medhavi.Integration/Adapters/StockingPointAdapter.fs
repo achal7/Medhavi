@@ -3,7 +3,6 @@ module Medhavi.Integration.Adapters.StockingPoint
 open System
 open System.Threading
 open Medhavi.Common.Patterns
-open Medhavi.Contracts
 open Medhavi.Contracts.Integration
 open Medhavi.Integration
 open Medhavi.Infrastructure.IO
@@ -25,8 +24,10 @@ module ACL =
 
                     let name = row.Get "Name" |> Option.defaultValue ""
                     let active = row.GetBool "IsActive" |> Option.defaultValue true
+                    let plantId = row.Get "PlantId" |> Option.defaultValue ""
 
                     {| StockingPointId = id
+                       PlantId = plantId
                        Name = name
                        IsActive = active |})
 
@@ -34,7 +35,7 @@ module ACL =
                 sps
                 |> List.map (fun sp ->
                     { Id = sp.StockingPointId
-                      PlantId = "PLANT-DEFAULT"
+                      PlantId = sp.PlantId
                       Code = sp.StockingPointId
                       Name = sp.Name
                       Type = "Warehouse"

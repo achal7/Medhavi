@@ -5,7 +5,6 @@ open Medhavi.SharedKernel
 open Medhavi.Capacity
 open Medhavi.Capacity.Domain.CapacityAgg
 open Medhavi.Capacity.Domain.CapacityResourceAgg
-open Medhavi.Capacity.RoutingInterpreter
 
 type CapacityOutcome =
     | FullyScheduled
@@ -113,23 +112,23 @@ module FiniteCapacityScheduler =
                         let stepQty = Map.tryFind step.RoutingStepId stepFlows |> Option.defaultValue request.Quantity
                         let runTime = load.RunLoadPerBaseQuantityMinutes * (stepQty / baseQty)
                         let totalLoadMins = setup + runTime + teardown
-                        
+
                         let eff = Percent.value res.EffectiveEfficiency
                         let efficiencyFactor = if eff <= 0.0m then 1.0m else eff
                         let durationMinutes = totalLoadMins / efficiencyFactor
 
                         if durationMinutes < 0.0m then
-                            // If duration is invalid, we return NoEligibleResource or raise error. 
+                            // If duration is invalid, we return NoEligibleResource or raise error.
                             // Let's treat it as NoEligibleResource to satisfy error union
                             Error (NoEligibleResource (step.RoutingStepId, load.Target))
                         else
                             let duration = TimeSpan.FromMinutes (float durationMinutes)
                             let startTime = currentEnd.Subtract(duration)
-                            
+
                             // 1. DueDateMiss violation check
                             let dueViolations =
                                 if startTime < now then
-                                    (DueDateMiss(request.WorkOrderId, startTime, now)) :: violations
+                                    DueDateMiss(request.WorkOrderId, startTime, now) :: violations
                                 else
                                     violations
 
@@ -163,10 +162,10 @@ module FiniteCapacityScheduler =
                                     None, free, Map.add syntheticBucketId nextAlloc allocations
 
                             let capViolations =
-                                let currentAlloc = 
+                                let currentAlloc =
                                     match bucketId with
                                     | Some bid -> Map.tryFind bid allocations |> Option.defaultValue 0.0m
-                                    | None -> 
+                                    | None ->
                                         let dayStart = DateTimeOffset(startTime.Year, startTime.Month, startTime.Day, 0, 0, 0, startTime.Offset)
                                         let dayEnd = dayStart.AddDays(1.0)
                                         let win = Window.createFromTime dayStart dayEnd |> Result.get
@@ -175,7 +174,7 @@ module FiniteCapacityScheduler =
                                 let remainingFree = freeMinutes - currentAlloc
                                 if remainingFree < durationMinutes then
                                     let bidStr = bucketId |> Option.map CapacityBucketId.value
-                                    (CapacityOverload(PhysicalResourceId.value res.Id, bidStr, targetDate, durationMinutes, remainingFree)) :: dueViolations
+                                    CapacityOverload(PhysicalResourceId.value res.Id, bidStr, targetDate, durationMinutes, remainingFree) :: dueViolations
                                 else
                                     dueViolations
 
@@ -202,8 +201,8 @@ module FiniteCapacityScheduler =
                                         CapacityBucketId.create res.Id win
 
                                 let reservation =
-                                    { Id = CapacityReservationId.create ($"RES-{Guid.NewGuid().ToString()}") |> Result.get
-                                      RequirementId = CapacityRequirementId.create ($"REQ-{Guid.NewGuid().ToString()}") |> Result.get
+                                    { Id = CapacityReservationId.create $"RES-{Guid.NewGuid().ToString()}" |> Result.get
+                                      RequirementId = CapacityRequirementId.create $"REQ-{Guid.NewGuid().ToString()}" |> Result.get
                                       ResourceId = res.Id
                                       BucketId = actualBucketId
                                       Minutes = DurationMinutes.create durationMinutes |> Result.defaultValue DurationMinutes.zero

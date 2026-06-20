@@ -10,26 +10,20 @@ open Microsoft.Extensions.Logging
 // --------------------------------------------------------------------------
 
 type RetryConfig =
-    {
-        MaxAttempts: int
-        BaseDelayMs: int
-        MaxDelayMs: int
-        BackoffMultiplier: float
-    }
+    { MaxAttempts: int
+      BaseDelayMs: int
+      MaxDelayMs: int
+      BackoffMultiplier: float }
 
     static member Default =
-        {
-            MaxAttempts = 3
-            MaxDelayMs = 30000
-            BackoffMultiplier = 10
-            BaseDelayMs = 100
-        }
+        { MaxAttempts = 3
+          MaxDelayMs = 30000
+          BackoffMultiplier = 10
+          BaseDelayMs = 100 }
 
 /// Pure function to calculate retry delay with exponential backoff
 let calculateRetryDelay (attemptNumber: int) (config: RetryConfig) : int =
-    let delay =
-        float config.BaseDelayMs
-        * Math.Pow(config.BackoffMultiplier, float (attemptNumber - 1))
+    let delay = float config.BaseDelayMs * Math.Pow(config.BackoffMultiplier, float(attemptNumber - 1))
 
     let clampedDelay = min delay (float config.MaxDelayMs)
     int clampedDelay
@@ -47,59 +41,30 @@ let executeWithRetry
     (logger: ILogger)
     : Task<Result<'T, 'TError>> =
     task {
-        let rec retryAttempt attemptNumber =
-            task {
-                try
-                    let! result = operation attemptNumber
+        let mutable attemptNumber = 1
+        let mutable finalResult = None
 
-                    match result with
-                    | Ok success ->
-                        if attemptNumber > 1 then
-                            logger.LogInformation("✅ Operation succeeded after {AttemptNumber} attempts", attemptNumber)
+        while finalResult.IsNone do
+            let! result = operation attemptNumber
 
-                        return Ok success
+            match result with
+            | Ok _ ->
+                finalResult <- Some result
 
-                    | Error error ->
-                        if shouldRetry attemptNumber config then
-                            let delayMs = calculateRetryDelay attemptNumber config
+                if attemptNumber > 1 then
+                    logger.LogInformation("✅ Operation succeeded after {AttemptNumber} attempts", attemptNumber)
 
-                            logger.LogWarning(
-                                "⚠️ Attempt {AttemptNumber} failed, retrying in {DelayMs}ms",
-                                attemptNumber,
-                                delayMs
-                            )
+            | Error _ when shouldRetry attemptNumber config ->
+                let delay = calculateRetryDelay attemptNumber config
+                logger.LogWarning("⚠️ Attempt {AttemptNumber} failed, retrying in {DelayMs}ms", attemptNumber, delay)
+                do! Task.Delay delay
+                attemptNumber <- attemptNumber + 1
 
-                            do! Task.Delay(delayMs)
-                            return! retryAttempt (attemptNumber + 1)
-                        else
-                            logger.LogError("❌ Operation failed after {MaxAttempts} attempts", config.MaxAttempts)
-                            return Error error
+            | Error _ ->
+                logger.LogError("❌ Operation failed after {MaxAttempts} attempts", config.MaxAttempts)
+                finalResult <- Some result
 
-                with ex ->
-                    if shouldRetry attemptNumber config then
-                        let delayMs = calculateRetryDelay attemptNumber config
-
-                        logger.LogWarning(
-                            ex,
-                            "⚠️ Attempt {AttemptNumber} threw exception, retrying in {DelayMs}ms",
-                            attemptNumber,
-                            delayMs
-                        )
-
-                        do! Task.Delay(delayMs)
-                        return! retryAttempt (attemptNumber + 1)
-                    else
-                        logger.LogError(
-                            ex,
-                            "❌ Operation threw exception after {MaxAttempts} attempts",
-                            config.MaxAttempts
-                        )
-
-                        // Return exception info as Error without raising
-                        return Error(unbox<'TError> ex)
-            }
-
-        return! retryAttempt 1
+        return finalResult.Value
     }
 
 // --------------------------------------------------------------------------
@@ -109,12 +74,9 @@ let executeWithRetry
 type RetryPolicy(maxRetries: int, initialDelayMs: int, backoffMultiplier: float) =
 
     let calculateDelay attempt =
-        let delay =
-            float initialDelayMs
-            * Math.Pow(backoffMultiplier, float attempt)
+        let delay = float initialDelayMs * Math.Pow(backoffMultiplier, float attempt)
 
-        Math.Min(float delay, 30000)
-        |> TimeSpan.FromMilliseconds
+        Math.Min(float delay, 30000) |> TimeSpan.FromMilliseconds
 
     member _.ExecuteWithRetryAsync<'T>
         (
@@ -147,7 +109,7 @@ type RetryPolicy(maxRetries: int, initialDelayMs: int, backoffMultiplier: float)
                         | None -> ()
 
                         do! Task.Delay(delay, cancellationToken)
-                        return! execute (attempt + 1)
+                        return! execute(attempt + 1)
             }
 
         execute 0

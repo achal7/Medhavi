@@ -2,7 +2,7 @@ module Medhavi.Promise.PromiseTypes
 
 open System
 open Medhavi.SharedKernel
-open Medhavi.Transport
+open Medhavi.Contracts.Transport
 open Medhavi.Contracts.Promise
 
 /// Cost breakdown for a promise evaluation

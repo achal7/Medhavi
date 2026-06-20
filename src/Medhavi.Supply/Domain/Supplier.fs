@@ -1,7 +1,6 @@
 module Medhavi.Supply.Domain.SupplierAgg
 
 open System
-open Medhavi.Common
 open Medhavi.SharedKernel
 
 // Supplier classification/type

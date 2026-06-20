@@ -2,8 +2,8 @@ namespace Medhavi.Scheduler.Planning.Domain
 
 open System
 open System.Text.Json.Serialization
+open Medhavi.Contracts.Scenario
 open Medhavi.SharedKernel
-open Medhavi.SharedKernel.ScenarioContracts
 
 [<JsonFSharpConverter>]
 type RunStatus =

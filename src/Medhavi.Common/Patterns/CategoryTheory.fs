@@ -114,17 +114,17 @@ type Coproduct<'A, 'B, 'S, 'C> =
 // Definition: (M, ⊕, e) with associativity and identity
 // ==========================================
 
-/// Monoid type class
-/// -----------------
-/// A monoid is an algebraic structure consisting of:
-/// - A set M
-/// - A binary operation ⊕: M × M → M (associative)
-/// - An identity element e ∈ M
-///
-/// Laws:
-/// - Associativity: (a ⊕ b) ⊕ c = a ⊕ (b ⊕ c)
-/// - Left Identity: e ⊕ a = a
-/// - Right Identity: a ⊕ e = a
+// Monoid type class
+// -----------------
+// A monoid is an algebraic structure consisting of:
+// - A set M
+// - A binary operation ⊕: M × M → M (associative)
+// - An identity element e ∈ M
+//
+// Laws:
+// - Associativity: (a ⊕ b) ⊕ c = a ⊕ (b ⊕ c)
+// - Left Identity: e ⊕ a = a
+// - Right Identity: a ⊕ e = a
 // type Monoid<'T> = { Empty: 'T; Combine: 'T -> 'T -> 'T }
 
 // /// Monoid laws

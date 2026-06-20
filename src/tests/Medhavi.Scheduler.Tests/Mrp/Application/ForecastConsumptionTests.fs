@@ -4,7 +4,6 @@ open System
 open Expecto
 open Swensen.Unquote
 open Medhavi.SharedKernel
-open Medhavi.Demand
 open Medhavi.Scheduler.Mrp.Domain.Types
 open Medhavi.Scheduler.Mrp.Domain.Policies
 open Medhavi.Scheduler.Mrp.Domain.Algorithms
@@ -19,25 +18,28 @@ module ForecastConsumptionTests =
             testCase "Scenario: Forecast Consumption Window - should consume forecast inside window" (fun () ->
                 let sku = skuFG
                 let node = nodeWarehouse
+                let sp = stockingPointWarehouse
                 let fcId = "fc-1"
 
                 let forecast =
-                    { ForecastId = fcId
+                    { DemandId = fcId
                       SkuId = sku
                       NodeId = node
+                      StockingPointId = sp
                       Quantity = createQty 100m
-                      PeriodStart = createTimestamp DateTimeOffset.UtcNow
-                      PeriodEnd = createTimestamp (DateTimeOffset.UtcNow.AddDays(1.0)) }
+                      RequiredDate = createTimestamp DateTimeOffset.UtcNow
+                      Source = Forecast fcId
+                      Priority = None }
 
                 let order =
-                    { OrderId = OrderId.create "ord-1" |> getOk
-                      LineId = "1"
+                    { DemandId = "ord-1"
                       SkuId = sku
                       NodeId = node
+                      StockingPointId = sp
                       Quantity = createQty 40m
-                      DueDate = createTimestamp (DateTimeOffset.UtcNow.AddHours(2.0))
-                      Priority = 1
-                      IsExpedited = false }
+                      RequiredDate = createTimestamp (DateTimeOffset.UtcNow.AddHours(2.0))
+                      Source = CustomerOrder("ord-1", "1")
+                      Priority = Some 1 }
 
                 let policy =
                     { ForecastConsumptionPolicy.Enabled = true

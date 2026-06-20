@@ -21,41 +21,246 @@ open Medhavi.Contracts.Capacity
 open Medhavi.Contracts.Supply
 open Medhavi.SharedKernel.ScenarioContracts
 open Medhavi.Analytics
+open Medhavi.Contracts
 
-type UIEventLogItem =
-    { EventId: string
-      EventType: string
-      Stream: string
-      Timestamp: DateTimeOffset }
+open Medhavi.Capacity.Domain.CapacityResourceAgg
+
+type MasterResourceState =
+    { Groups: Map<ResourceGroupId, Medhavi.MasterData.Domain.ResourceGroupAgg.ResourceGroup>
+      Standards: Map<StandardResourceId, Medhavi.MasterData.Domain.StandardResourceAgg.StandardResource>
+      Physicals: Map<PhysicalResourceId, Medhavi.MasterData.Domain.PhysicalResourceAgg.PhysicalResource> }
+
+let emptyMasterState =
+    { Groups = Map.empty
+      Standards = Map.empty
+      Physicals = Map.empty }
+
+let resolveResource (state: MasterResourceState) (pr: Medhavi.MasterData.Domain.PhysicalResourceAgg.PhysicalResource) : RegisterCapacityResourceCmd =
+    let srOpt = Map.tryFind pr.StandardResourceId state.Standards
+
+    let rgOpt =
+        srOpt
+        |> Option.bind (fun sr -> Map.tryFind sr.ResourceGroupId state.Groups)
+
+    let eff =
+        match pr.EfficiencyOverride with
+        | Some eff -> eff
+        | None ->
+            match srOpt with
+            | Some sr -> sr.DefaultEfficiency
+            | None -> Percent.Hundred
+
+    let cost =
+        match pr.CostRateOverride with
+        | Some cost -> Some cost
+        | None ->
+            srOpt
+            |> Option.bind (fun sr -> sr.DefaultCostRate)
+
+    let cal =
+        match pr.CalendarId with
+        | Some cal -> Some cal
+        | None ->
+            rgOpt
+            |> Option.bind (fun rg -> rg.DefaultCalendarId)
+
+    let groupId =
+        match srOpt with
+        | Some sr -> sr.ResourceGroupId
+        | None ->
+            ResourceGroupId.create "UNKNOWN"
+            |> Result.defaultWith (fun _ -> failwith "Invalid Group ID")
+
+    let isActive =
+        pr.Status = Medhavi.SharedKernel.Status.Active
+        && (match srOpt with
+            | Some sr -> sr.Status = Medhavi.SharedKernel.Status.Active
+            | None -> true)
+        && (match rgOpt with
+            | Some rg -> rg.Status = Medhavi.SharedKernel.Status.Active
+            | None -> true)
+
+    { Id = pr.Id
+      StandardResourceId = pr.StandardResourceId
+      ResourceGroupId = groupId
+      Name = pr.Name
+      IsActive = isActive
+      EffectiveEfficiency = eff
+      EffectiveCostRate = cost
+      EffectiveCalendarId = cal }
+
+let processMasterEvent (state: MasterResourceState) (evt: obj) : MasterResourceState * CapacityResourceCommand list =
+    match evt with
+    | :? Medhavi.MasterData.Domain.ResourceGroupAgg.ResourceGroupEvent as rgEvt ->
+        let evolvedGroups =
+            match rgEvt with
+            | Medhavi.MasterData.Domain.ResourceGroupAgg.ResourceGroupDefined e ->
+                let rg = Medhavi.MasterData.Domain.ResourceGroupAgg.applyDefined e
+                Map.add rg.Id rg state.Groups
+            | Medhavi.MasterData.Domain.ResourceGroupAgg.ResourceGroupRenamed e ->
+                match Map.tryFind e.Id state.Groups with
+                | Some rg -> Map.add rg.Id (Medhavi.MasterData.Domain.ResourceGroupAgg.applyRenamed e rg) state.Groups
+                | None -> state.Groups
+            | Medhavi.MasterData.Domain.ResourceGroupAgg.ResourceGroupRetired e ->
+                match Map.tryFind e.Id state.Groups with
+                | Some rg -> Map.add rg.Id (Medhavi.MasterData.Domain.ResourceGroupAgg.applyRetired e rg) state.Groups
+                | None -> state.Groups
+
+        let nextState = { state with Groups = evolvedGroups }
+
+        let rgId =
+            match rgEvt with
+            | Medhavi.MasterData.Domain.ResourceGroupAgg.ResourceGroupDefined e -> e.Id
+            | Medhavi.MasterData.Domain.ResourceGroupAgg.ResourceGroupRenamed e -> e.Id
+            | Medhavi.MasterData.Domain.ResourceGroupAgg.ResourceGroupRetired e -> e.Id
+
+        let cmds =
+            state.Physicals.Values
+            |> Seq.filter (fun pr ->
+                match Map.tryFind pr.StandardResourceId state.Standards with
+                | Some sr -> sr.ResourceGroupId = rgId
+                | None -> false)
+            |> Seq.map (fun pr ->
+                let resolved = resolveResource nextState pr
+
+                UpdateCapacityResource
+                    { Id = resolved.Id
+                      Name = resolved.Name
+                      IsActive = resolved.IsActive
+                      EffectiveEfficiency = resolved.EffectiveEfficiency
+                      EffectiveCostRate = resolved.EffectiveCostRate
+                      EffectiveCalendarId = resolved.EffectiveCalendarId })
+            |> Seq.toList
+
+        nextState, cmds
+
+    | :? Medhavi.MasterData.Domain.StandardResourceAgg.StandardResourceEvent as srEvt ->
+        let evolvedStandards =
+            match srEvt with
+            | Medhavi.MasterData.Domain.StandardResourceAgg.StandardResourceDefined e ->
+                let sr = Medhavi.MasterData.Domain.StandardResourceAgg.applyDefined e
+                Map.add sr.Id sr state.Standards
+            | Medhavi.MasterData.Domain.StandardResourceAgg.StandardResourceRenamed e ->
+                match Map.tryFind e.Id state.Standards with
+                | Some sr ->
+                    Map.add sr.Id (Medhavi.MasterData.Domain.StandardResourceAgg.applyRenamed e sr) state.Standards
+                | None -> state.Standards
+            | Medhavi.MasterData.Domain.StandardResourceAgg.StandardResourceRetired e ->
+                match Map.tryFind e.Id state.Standards with
+                | Some sr ->
+                    Map.add sr.Id (Medhavi.MasterData.Domain.StandardResourceAgg.applyRetired e sr) state.Standards
+                | None -> state.Standards
+
+        let nextState =
+            { state with
+                Standards = evolvedStandards }
+
+        let srId =
+            match srEvt with
+            | Medhavi.MasterData.Domain.StandardResourceAgg.StandardResourceDefined e -> e.Id
+            | Medhavi.MasterData.Domain.StandardResourceAgg.StandardResourceRenamed e -> e.Id
+            | Medhavi.MasterData.Domain.StandardResourceAgg.StandardResourceRetired e -> e.Id
+
+        let cmds =
+            state.Physicals.Values
+            |> Seq.filter (fun pr -> pr.StandardResourceId = srId)
+            |> Seq.map (fun pr ->
+                let resolved = resolveResource nextState pr
+
+                UpdateCapacityResource
+                    { Id = resolved.Id
+                      Name = resolved.Name
+                      IsActive = resolved.IsActive
+                      EffectiveEfficiency = resolved.EffectiveEfficiency
+                      EffectiveCostRate = resolved.EffectiveCostRate
+                      EffectiveCalendarId = resolved.EffectiveCalendarId })
+            |> Seq.toList
+
+        nextState, cmds
+
+    | :? Medhavi.MasterData.Domain.PhysicalResourceAgg.PhysicalResourceEvent as prEvt ->
+        let evolvedPhysicals =
+            match prEvt with
+            | Medhavi.MasterData.Domain.PhysicalResourceAgg.PhysicalResourceDefined e ->
+                let pr = Medhavi.MasterData.Domain.PhysicalResourceAgg.applyDefined e
+                Map.add pr.Id pr state.Physicals
+            | Medhavi.MasterData.Domain.PhysicalResourceAgg.PhysicalResourceRenamed e ->
+                match Map.tryFind e.Id state.Physicals with
+                | Some pr ->
+                    Map.add pr.Id (Medhavi.MasterData.Domain.PhysicalResourceAgg.applyRenamed e pr) state.Physicals
+                | None -> state.Physicals
+            | Medhavi.MasterData.Domain.PhysicalResourceAgg.PhysicalResourceRetired e ->
+                match Map.tryFind e.Id state.Physicals with
+                | Some pr ->
+                    Map.add pr.Id (Medhavi.MasterData.Domain.PhysicalResourceAgg.applyRetired e pr) state.Physicals
+                | None -> state.Physicals
+
+        let nextState =
+            { state with
+                Physicals = evolvedPhysicals }
+
+        let prId =
+            match prEvt with
+            | Medhavi.MasterData.Domain.PhysicalResourceAgg.PhysicalResourceDefined e -> e.Id
+            | Medhavi.MasterData.Domain.PhysicalResourceAgg.PhysicalResourceRenamed e -> e.Id
+            | Medhavi.MasterData.Domain.PhysicalResourceAgg.PhysicalResourceRetired e -> e.Id
+
+        match Map.tryFind prId evolvedPhysicals with
+        | Some pr ->
+            let resolved = resolveResource nextState pr
+
+            match prEvt with
+            | Medhavi.MasterData.Domain.PhysicalResourceAgg.PhysicalResourceDefined _ ->
+                let cmd =
+                    RegisterCapacityResource
+                        { Id = resolved.Id
+                          StandardResourceId = resolved.StandardResourceId
+                          ResourceGroupId = resolved.ResourceGroupId
+                          Name = resolved.Name
+                          IsActive = resolved.IsActive
+                          EffectiveEfficiency = resolved.EffectiveEfficiency
+                          EffectiveCostRate = resolved.EffectiveCostRate
+                          EffectiveCalendarId = resolved.EffectiveCalendarId }
+
+                nextState, [ cmd ]
+            | _ ->
+                let cmd =
+                    UpdateCapacityResource
+                        { Id = resolved.Id
+                          Name = resolved.Name
+                          IsActive = resolved.IsActive
+                          EffectiveEfficiency = resolved.EffectiveEfficiency
+                          EffectiveCostRate = resolved.EffectiveCostRate
+                          EffectiveCalendarId = resolved.EffectiveCalendarId }
+
+                nextState, [ cmd ]
+        | None -> nextState, []
+
+    | _ -> state, []
 
 type MedhaviEngine() =
     // Initialize Bounded Contexts via modular composition roots
-    let masterDataContext = Medhavi.MasterData.BoundedContext.create ()
-    let supplyContext = Medhavi.Supply.BoundedContext.create ()
-    let capacityContext = Medhavi.Capacity.BoundedContext.create ()
-    let demandContext = Medhavi.Demand.BoundedContext.create ()
+    let masterDataContext = Medhavi.MasterData.BoundedContext.create()
+    let supplyContext = Medhavi.Supply.BoundedContext.create()
+    let capacityContext = Medhavi.Capacity.BoundedContext.create()
+    let demandContext = Medhavi.Demand.BoundedContext.create()
 
-    let scenarioRepo = createInMemoryRepository<Scenario, string, ScenarioEvent> ()
+    let scenarioRepo = createInMemoryRepository<Scenario, string, ScenarioEvent>()
 
-    let configRepo =
-        createInMemoryRepository<ScenarioConfiguration, string, ScenarioConfigurationEvent> ()
+    let configRepo = createInMemoryRepository<ScenarioConfiguration, string, ScenarioConfigurationEvent>()
 
-    let overlayRepo =
-        createInMemoryRepository<ScenarioOverlaySet, string, ScenarioOverlayEvent> ()
+    let overlayRepo = createInMemoryRepository<ScenarioOverlaySet, string, ScenarioOverlayEvent>()
 
-    let scenarioContext =
-        Medhavi.Scenario.BoundedContext.create scenarioRepo configRepo overlayRepo
+    let scenarioContext = Medhavi.Scenario.BoundedContext.create scenarioRepo configRepo overlayRepo
 
-    let transportContext =
-        BoundedContext.create (MasterData.getTransportLegs masterDataContext)
+    let transportContext = BoundedContext.create(MasterData.getTransportLegs masterDataContext)
 
     // Real EnvelopeStore instance (Mailbox-agent based)
-    let envelopeStore = createEnvelopeStoreMem ()
+    let envelopeStore = createEnvelopeStoreMem()
     let integrationCaps = IntegrationService.createCapabilities envelopeStore
     let publishLedger = PublishLedger()
 
-    let mrpDep =
-        SchedulerWiring.buildMrpDependencies masterDataContext supplyContext capacityContext demandContext
+    let mrpDep = SchedulerWiring.buildMrpDependencies masterDataContext supplyContext capacityContext demandContext
 
     let kpiQueryService =
         AnalyticsWiring.bootstrapAnalytics
@@ -66,6 +271,8 @@ type MedhaviEngine() =
             scenarioContext.Queries
 
     let mutable subscriptionHandle: SubscriptionHandle option = None
+    let mutable domainEventSubs: IDisposable list = []
+    let mutable masterResourceState = emptyMasterState
     let mutable initialized = false
 
     member this.MasterData = masterDataContext
@@ -170,8 +377,7 @@ type MedhaviEngine() =
                                       LogSuccess = fun m -> printfn "[Supply OK] %s" m
                                       LogError = fun m -> printfn "[Supply ERR] %s" m }
 
-                                Supply.handleRequest supplyContext masterDataContext dummyLogger event
-                                |> ignore
+                                Supply.handleRequest supplyContext masterDataContext dummyLogger event |> ignore
                             | ResourceDowntimes _
                             | TransportDelays _ ->
                                 let mrpLogger =
@@ -179,8 +385,7 @@ type MedhaviEngine() =
                                       LogWarning = fun m -> printfn "[MRP Ingest WARN] %s" m
                                       LogError = fun m -> printfn "[MRP Ingest ERR] %s" m }
 
-                                Mrp.handleRequest mrpDep masterDataContext mrpLogger event
-                                |> ignore
+                                Mrp.handleRequest mrpDep masterDataContext mrpLogger event |> ignore
                     }
 
                 let! subscribeTask =
@@ -191,6 +396,94 @@ type MedhaviEngine() =
                 | Ok handle ->
                     subscriptionHandle <- Some handle
                     printfn "   [ OK ] Web engine Bounded Context subscriptions established."
+
+                    // Setup internal translation subscriptions from MasterData domain events to Contracts integration events
+                    let processMasterEventObj (ev: obj) =
+                        let nextState, cmds = processMasterEvent masterResourceState ev
+                        masterResourceState <- nextState
+
+                        for cmd in cmds do
+                            task {
+                                match cmd with
+                                | RegisterCapacityResource c ->
+                                    let! _ = capacityContext.CapacityResource.Register(c)
+                                    ()
+                                | UpdateCapacityResource c ->
+                                    let! _ = capacityContext.CapacityResource.Update(c)
+                                    ()
+                            }
+                            |> ignore
+
+                    let subGroup =
+                        DomainEventBus.Subscribe<Medhavi.MasterData.Domain.ResourceGroupAgg.ResourceGroupEvent>(fun ev ->
+                            processMasterEventObj ev
+                            match ev with
+                            | Medhavi.MasterData.Domain.ResourceGroupAgg.ResourceGroupDefined e ->
+                                let dto : Medhavi.Contracts.MasterData.ResourceGroup =
+                                    { Id = ResourceGroupId.value e.Id
+                                      PlantId = e.PlantId |> Option.map PlantId.value
+                                      Name = e.Name
+                                      Description = e.Description
+                                      DefaultCalendarId = e.DefaultCalendarId |> Option.map CalendarId.value
+                                      IsActive = true
+                                      Created = Timestamp.value e.Created
+                                      Modified = Timestamp.value e.Created }
+                                DomainEventBus.Publish(Medhavi.Contracts.MasterData.ResourceGroupEvent.ResourceGroupDefined dto)
+                            | Medhavi.MasterData.Domain.ResourceGroupAgg.ResourceGroupRenamed e ->
+                                DomainEventBus.Publish(Medhavi.Contracts.MasterData.ResourceGroupEvent.ResourceGroupRenamed (ResourceGroupId.value e.Id, e.NewName))
+                            | Medhavi.MasterData.Domain.ResourceGroupAgg.ResourceGroupRetired e ->
+                                DomainEventBus.Publish(Medhavi.Contracts.MasterData.ResourceGroupEvent.ResourceGroupRetired (ResourceGroupId.value e.Id))
+                        )
+
+                    let subStandard =
+                        DomainEventBus.Subscribe<Medhavi.MasterData.Domain.StandardResourceAgg.StandardResourceEvent>(fun ev ->
+                            processMasterEventObj ev
+                            match ev with
+                            | Medhavi.MasterData.Domain.StandardResourceAgg.StandardResourceDefined e ->
+                                let dto : Medhavi.Contracts.MasterData.StandardResource =
+                                    { Id = StandardResourceId.value e.Id
+                                      ResourceGroupId = ResourceGroupId.value e.ResourceGroupId
+                                      Name = e.Name
+                                      Description = e.Description
+                                      DefaultEfficiency = Percent.value e.DefaultEfficiency
+                                      DefaultCostRateAmount = e.DefaultCostRate |> Option.map (fun c -> c.Amount)
+                                      DefaultCostRateCurrency = e.DefaultCostRate |> Option.map (fun c -> c.Currency)
+                                      IsActive = true
+                                      Created = Timestamp.value e.Created
+                                      Modified = Timestamp.value e.Created }
+                                DomainEventBus.Publish(Medhavi.Contracts.MasterData.StandardResourceEvent.StandardResourceDefined dto)
+                            | Medhavi.MasterData.Domain.StandardResourceAgg.StandardResourceRenamed e ->
+                                DomainEventBus.Publish(Medhavi.Contracts.MasterData.StandardResourceEvent.StandardResourceRenamed (StandardResourceId.value e.Id, e.NewName))
+                            | Medhavi.MasterData.Domain.StandardResourceAgg.StandardResourceRetired e ->
+                                DomainEventBus.Publish(Medhavi.Contracts.MasterData.StandardResourceEvent.StandardResourceRetired (StandardResourceId.value e.Id))
+                        )
+
+                    let subPhysical =
+                        DomainEventBus.Subscribe<Medhavi.MasterData.Domain.PhysicalResourceAgg.PhysicalResourceEvent>(fun ev ->
+                            processMasterEventObj ev
+                            match ev with
+                            | Medhavi.MasterData.Domain.PhysicalResourceAgg.PhysicalResourceDefined e ->
+                                let dto : Medhavi.Contracts.MasterData.PhysicalResource =
+                                    { Id = PhysicalResourceId.value e.Id
+                                      StandardResourceId = StandardResourceId.value e.StandardResourceId
+                                      Name = e.Name
+                                      SerialNumber = e.SerialNumber
+                                      Location = e.Location
+                                      EfficiencyOverride = e.EfficiencyOverride |> Option.map Percent.value
+                                      CostRateOverrideAmount = e.CostRateOverride |> Option.map (fun c -> c.Amount)
+                                      CostRateOverrideCurrency = e.CostRateOverride |> Option.map (fun c -> c.Currency)
+                                      CalendarId = e.CalendarId |> Option.map CalendarId.value
+                                      IsActive = true
+                                      Created = Timestamp.value e.Created
+                                      Modified = Timestamp.value e.Created }
+                                DomainEventBus.Publish(Medhavi.Contracts.MasterData.PhysicalResourceEvent.PhysicalResourceDefined dto)
+                            | Medhavi.MasterData.Domain.PhysicalResourceAgg.PhysicalResourceRenamed e ->
+                                DomainEventBus.Publish(Medhavi.Contracts.MasterData.PhysicalResourceEvent.PhysicalResourceRenamed (PhysicalResourceId.value e.Id, e.NewName))
+                            | Medhavi.MasterData.Domain.PhysicalResourceAgg.PhysicalResourceRetired e ->
+                                DomainEventBus.Publish(Medhavi.Contracts.MasterData.PhysicalResourceEvent.PhysicalResourceRetired (PhysicalResourceId.value e.Id))
+                        )
+
+                    domainEventSubs <- [ subGroup; subStandard; subPhysical ]
 
                 // Ingest and publish CSV master data to bootstrap the system with realistic data
                 let! bootstrapRes = integrationCaps.IngestAndPublishMasterData()
@@ -203,75 +496,6 @@ type MedhaviEngine() =
         }
 
     // --- CLEAN FACADE APIs FOR THE UI ---
-
-    member this.GetDemands(scenarioId: string option) : Task<DemandLine list> =
-        task {
-            let! stateMap = demandContext.DemandAgent.GetStateAsync()
-            let! skus = masterDataContext.Queries.Sku.GetAll()
-            let skuMap = skus |> Seq.map (fun s -> s.Id, s) |> Map.ofSeq
-
-            let baselineDemands =
-                stateMap.Values
-                |> Seq.toList
-                |> List.map (fun d ->
-                    let skuIdStr = SkuId.value d.SkuId
-                    let skuOpt = Map.tryFind skuIdStr skuMap
-
-                    let skuCode =
-                        skuOpt
-                        |> Option.map (fun s -> s.Code)
-                        |> Option.defaultValue skuIdStr
-
-                    let skuName =
-                        skuOpt
-                        |> Option.map (fun s -> s.Name)
-                        |> Option.defaultValue skuIdStr
-
-                    { DemandLineId = d.DemandLineId
-                      DemandOrderId = d.DemandOrderId
-                      SkuId = skuIdStr
-                      SkuCode = skuCode
-                      SkuName = skuName
-                      CustomerId = d.CustomerId
-                      CustomerName = d.CustomerId
-                      StockingPointId = StockingPointId.value d.StockingPointId
-                      Priority = d.Priority
-                      DemandCategory = d.DemandCategory.ToString()
-                      IsFirm = d.IsFirm
-                      EarliestDeliveryDate =
-                        d.EarliestDeliveryDate
-                        |> Option.map (fun dt -> DateOnly.FromDateTime(dt.DateTime))
-                      RequestedDeliveryDate = DateOnly.FromDateTime(d.RequestedDeliveryDate.DateTime)
-                      LatestDeliveryDate =
-                        d.LatestDeliveryDate
-                        |> Option.map (fun dt -> DateOnly.FromDateTime(dt.DateTime))
-                      ConfirmedDeliveryDate =
-                        d.ConfirmedDeliveryDate
-                        |> Option.map (fun dt -> DateOnly.FromDateTime(dt.DateTime))
-                      RequestedQty = Quantity.value d.Quantity
-                      OpenQty = Quantity.value d.OpenQuantity
-                      FulfilledQty = Quantity.value d.FulfilledQuantity
-                      ConfirmedQty =
-                        Quantity.value d.Quantity
-                        - Quantity.value d.OpenQuantity
-                      ShortfallQty = Quantity.value d.OpenQuantity
-                      LatenessRisk = LatenessRisk.OnTrack
-                      Status = d.Status.ToString()
-                      UnitOfMeasure = d.UnitOfMeasure
-                      PeggedSupply = [] }
-                    : DemandLine)
-
-            match scenarioId with
-            | None
-            | Some "BASELINE" -> return baselineDemands
-            | Some id ->
-                let! scOpt = scenarioContext.Queries.GetById id
-                match scOpt with
-                | None -> return baselineDemands
-                | Some sc ->
-                    let overlay = ScenarioAdapter.toScenarioOverlay id sc.Overrides
-                    return baselineDemands |> List.map (ScenarioAdapter.applyDemandOverlay overlay)
-        }
 
     member this.RunMrp() : Task<Result<unit, string>> =
         task {
@@ -296,7 +520,7 @@ type MedhaviEngine() =
             | Ok envelopes ->
                 return
                     envelopes
-                    |> Seq.map (fun e ->
+                    |> Seq.map(fun e ->
                         let (Medhavi.Infrastructure.EventId id) = e.Envelope.EventId
 
                         { EventId = id.ToString()
@@ -304,7 +528,7 @@ type MedhaviEngine() =
                           Stream = e.ReadFrom |> Option.defaultValue "Unknown"
                           Timestamp = e.Envelope.CreatedUtc })
                     |> Seq.toList
-                    |> List.sortByDescending (fun e -> e.Timestamp)
+                    |> List.sortByDescending(fun e -> e.Timestamp)
         }
 
     member this.TriggerImport() : Task<Result<unit, string>> =
@@ -329,9 +553,7 @@ type MedhaviEngine() =
         task { return! masterDataContext.Queries.StandardResource.GetAll() }
 
     member this.GetSupplyOrders(scenarioId: string option) : Task<SupplyOrder list> =
-        task {
-            return! supplyContext.Queries.SupplyOrder.GetAll()
-        }
+        task { return! supplyContext.Queries.SupplyOrder.GetAll() }
 
     member this.GetCapacityOperations(scenarioId: string option) : Task<OperationView list> =
         task {
@@ -339,7 +561,7 @@ type MedhaviEngine() =
 
             return
                 ops.Values
-                |> Seq.map (fun o ->
+                |> Seq.map(fun o ->
                     { OperationId = OperationId.value o.Id
                       WorkOrderId = None
                       SkuId = ""
@@ -348,15 +570,12 @@ type MedhaviEngine() =
                       OperationCode = RoutingStepId.value o.RoutingStepId
                       Quantity = 0m
                       SetupMinutes = 0m
-                      RunMinutes =
-                        o.Duration
-                        |> Option.map (fun d -> decimal d.TotalMinutes)
-                        |> Option.defaultValue 0m
+                      RunMinutes = o.Duration |> Option.map(fun d -> decimal d.TotalMinutes) |> Option.defaultValue 0m
                       StartTime = Timestamp.value o.Window.Start
                       EndTime =
                         o.Window.End
                         |> Option.map Timestamp.value
-                        |> Option.defaultValue (Timestamp.value o.Window.Start)
+                        |> Option.defaultValue(Timestamp.value o.Window.Start)
                       Status =
                         match o.State with
                         | Medhavi.Capacity.Domain.OperationAgg.Scheduled -> OperationStatus.Planned
@@ -370,277 +589,6 @@ type MedhaviEngine() =
                       IsExpedited = false }
                     : OperationView)
                 |> Seq.toList
-        }
-
-    member this.GetScenarios() : Task<ScenarioReadModel list> = task { return! scenarioContext.Queries.GetAll() }
-
-    member this.CreateScenario(name: string, scenarioType: ScenarioType, parentId: string option) : Task<Result<unit, string>> =
-        task {
-            let scenarioId = $"SCENARIO-{Guid.NewGuid().ToString().Substring(0, 8).ToUpper()}"
-            let! res = scenarioContext.Commands.Create(scenarioId, name, scenarioType, parentId)
-            match res with
-            | Ok () -> return Ok ()
-            | Error err -> return Error (sprintf "%A" err)
-        }
-
-    member this.AddOverride(scenarioId: string, ov: ScenarioDataOverride) : Task<Result<unit, string>> =
-        task {
-            let! res = scenarioContext.Commands.AddOverride(scenarioId, ov)
-            match res with
-            | Ok () -> return Ok ()
-            | Error err -> return Error (sprintf "%A" err)
-        }
-
-    member this.RemoveOverride(scenarioId: string, ov: ScenarioDataOverride) : Task<Result<unit, string>> =
-        task {
-            let! res = scenarioContext.Commands.RemoveOverride(scenarioId, ov)
-            match res with
-            | Ok () -> return Ok ()
-            | Error err -> return Error (sprintf "%A" err)
-        }
-
-    member this.SubmitScenarioForApproval(scenarioId: string) : Task<Result<unit, string>> =
-        task {
-            let! res = scenarioContext.Commands.SubmitForApproval(scenarioId)
-            match res with
-            | Ok () -> return Ok ()
-            | Error err -> return Error (sprintf "%A" err)
-        }
-
-    member this.ApproveScenario(scenarioId: string) : Task<Result<unit, string>> =
-        task {
-            let! res = scenarioContext.Commands.Approve(scenarioId)
-            match res with
-            | Ok () -> return Ok ()
-            | Error err -> return Error (sprintf "%A" err)
-        }
-
-    member this.RejectScenario(scenarioId: string, reason: string) : Task<Result<unit, string>> =
-        task {
-            let! res = scenarioContext.Commands.Reject(scenarioId, reason)
-            match res with
-            | Ok () -> return Ok ()
-            | Error err -> return Error (sprintf "%A" err)
-        }
-
-    member this.PublishScenario(scenarioId: string, reason: string option) : Task<Result<string, string>> =
-        task {
-            let! scOpt = scenarioContext.Queries.GetById scenarioId
-            match scOpt with
-            | None -> return Error $"Scenario %s{scenarioId} not found"
-            | Some sc ->
-                let publishId = $"PUB-{Guid.NewGuid().ToString().Substring(0, 8).ToUpper()}"
-                let rollbackId = $"RLB-{Guid.NewGuid().ToString().Substring(0, 8).ToUpper()}"
-
-                let mutable publishedChanges = []
-                let mutable rollbackChanges = []
-
-                let! baselineDemandsMap = demandContext.DemandAgent.GetStateAsync()
-                let! baselineInventoryMap = supplyContext.Queries.Inventory.GetAll()
-                let baselineInventoryDict = baselineInventoryMap |> Seq.map (fun i -> i.Id, i) |> Map.ofSeq
-
-                for ov in sc.Overrides do
-                    match ov with
-                    | DemandOverride(demandId, qty, overrideReason) ->
-                        match Map.tryFind demandId baselineDemandsMap with
-                        | Some d ->
-                            let oldQty = Quantity.value d.Quantity
-                            let change =
-                                { EntityId = demandId
-                                  EntityType = "DemandLine"
-                                  FieldPath = "Quantity"
-                                  OldValueJson = System.Text.Json.JsonSerializer.Serialize(oldQty)
-                                  NewValueJson = System.Text.Json.JsonSerializer.Serialize(qty)
-                                  ValueType = "Decimal" }
-                            publishedChanges <- change :: publishedChanges
-
-                            let restore =
-                                { EntityId = demandId
-                                  EntityType = "DemandLine"
-                                  FieldPath = "Quantity"
-                                  RestoreValueJson = System.Text.Json.JsonSerializer.Serialize(oldQty) }
-                            rollbackChanges <- restore :: rollbackChanges
-
-                            let req: DemandDefineReq =
-                                { DemandLineId = d.DemandLineId
-                                  DemandOrderId = d.DemandOrderId
-                                  SkuId = SkuId.value d.SkuId
-                                  StockingPointId = StockingPointId.value d.StockingPointId
-                                  CustomerId = d.CustomerId
-                                  Quantity = qty
-                                  UnitOfMeasure = d.UnitOfMeasure
-                                  OrderDate = d.OrderDate
-                                  EarliestDeliveryDate = d.EarliestDeliveryDate
-                                  RequestedDeliveryDate = d.RequestedDeliveryDate
-                                  LatestDeliveryDate = d.LatestDeliveryDate
-                                  ConfirmedDeliveryDate = d.ConfirmedDeliveryDate
-                                  ActualDeliveryDate = d.ActualDeliveryDate
-                                  Priority = d.Priority
-                                  DemandCategory = d.DemandCategory.ToString()
-                                  IsFirm = d.IsFirm
-                                  IsFrozen = d.IsFrozen }
-                            let! _ = demandContext.Commands.DemandLine.Define(req)
-                            ()
-                        | None -> ()
-
-                    | InventoryOverride(skuId, stockingPointId, qty) ->
-                        let invId = $"INV-{skuId}-{stockingPointId}"
-                        match Map.tryFind invId baselineInventoryDict with
-                        | Some i ->
-                            let oldQty = i.Quantity
-                            let change =
-                                { EntityId = invId
-                                  EntityType = "Inventory"
-                                  FieldPath = "Quantity"
-                                  OldValueJson = System.Text.Json.JsonSerializer.Serialize(oldQty)
-                                  NewValueJson = System.Text.Json.JsonSerializer.Serialize(qty)
-                                  ValueType = "Decimal" }
-                            publishedChanges <- change :: publishedChanges
-
-                            let restore =
-                                { EntityId = invId
-                                  EntityType = "Inventory"
-                                  FieldPath = "Quantity"
-                                  RestoreValueJson = System.Text.Json.JsonSerializer.Serialize(oldQty) }
-                            rollbackChanges <- restore :: rollbackChanges
-
-                            let req: InventoryDefineReq =
-                                { Id = invId
-                                  SkuId = skuId
-                                  StockingPointId = stockingPointId
-                                  Quantity = qty
-                                  UnitOfMeasure = i.UnitOfMeasure }
-                            let! _ = supplyContext.Commands.Inventory.Define(req)
-                            ()
-                        | None -> ()
-
-                    | _ -> ()
-
-                let publishRecord =
-                    { PublishId = publishId
-                      ScenarioId = scenarioId
-                      BaselineVersionBefore = int64 sc.Version
-                      BaselineVersionAfter = None
-                      PublishedAt = DateTimeOffset.UtcNow
-                      PublishedBy = "Planner"
-                      Changes = publishedChanges
-                      Reason = reason }
-
-                let rollbackPackage =
-                    { PublishId = publishId
-                      ScenarioId = scenarioId
-                      CreatedAt = DateTimeOffset.UtcNow
-                      RestoreChanges = rollbackChanges }
-
-                publishLedger.SaveRecord(publishRecord)
-                publishLedger.SavePackage(rollbackPackage)
-
-                let! archiveRes = scenarioContext.Commands.Archive(scenarioId, Some publishId, Some rollbackId)
-                match archiveRes with
-                | Error e -> return Error (sprintf "%A" e)
-                | Ok () -> return Ok publishId
-        }
-
-    member this.RollbackScenario(publishId: string) : Task<Result<unit, string>> =
-        task {
-            match publishLedger.GetPackage(publishId) with
-            | None -> return Error $"Rollback package for publish event %s{publishId} not found."
-            | Some pkg ->
-                let! baselineDemandsMap = demandContext.DemandAgent.GetStateAsync()
-                let! baselineInventoryMap = supplyContext.Queries.Inventory.GetAll()
-                let baselineInventoryDict = baselineInventoryMap |> Seq.map (fun i -> i.Id, i) |> Map.ofSeq
-
-                let mutable conflictErrors = []
-
-                for restore in pkg.RestoreChanges do
-                    match restore.EntityType with
-                    | "DemandLine" ->
-                        match Map.tryFind restore.EntityId baselineDemandsMap with
-                        | None ->
-                            conflictErrors <- $"Baseline demand {restore.EntityId} was deleted." :: conflictErrors
-                        | Some d ->
-                            match publishLedger.GetRecord(publishId) with
-                            | None ->
-                                conflictErrors <- "Associated publish record not found." :: conflictErrors
-                            | Some rec' ->
-                                let changeOpt = rec'.Changes |> List.tryFind (fun c -> c.EntityId = restore.EntityId && c.FieldPath = restore.FieldPath)
-                                match changeOpt with
-                                | None -> ()
-                                | Some change ->
-                                    let currentQty = Quantity.value d.Quantity
-                                    let expectedQty = System.Text.Json.JsonSerializer.Deserialize<decimal>(change.NewValueJson)
-                                    if currentQty <> expectedQty then
-                                        conflictErrors <- $"Baseline demand {restore.EntityId} was modified after publish (Current Qty: {currentQty}, Expected Qty: {expectedQty})." :: conflictErrors
-
-                    | "Inventory" ->
-                        match Map.tryFind restore.EntityId baselineInventoryDict with
-                        | None ->
-                            conflictErrors <- $"Baseline inventory {restore.EntityId} was deleted." :: conflictErrors
-                        | Some i ->
-                            match publishLedger.GetRecord(publishId) with
-                            | None ->
-                                conflictErrors <- "Associated publish record not found." :: conflictErrors
-                            | Some rec' ->
-                                let changeOpt = rec'.Changes |> List.tryFind (fun c -> c.EntityId = restore.EntityId && c.FieldPath = restore.FieldPath)
-                                match changeOpt with
-                                | None -> ()
-                                | Some change ->
-                                    let currentQty = i.Quantity
-                                    let expectedQty = System.Text.Json.JsonSerializer.Deserialize<decimal>(change.NewValueJson)
-                                    if currentQty <> expectedQty then
-                                        conflictErrors <- $"Baseline inventory {restore.EntityId} was modified after publish (Current Qty: {currentQty}, Expected Qty: {expectedQty})." :: conflictErrors
-
-                    | _ -> ()
-
-                if not (List.isEmpty conflictErrors) then
-                    let errMsg = "Rollback aborted due to divergence conflicts:\n" + String.concat "\n" conflictErrors
-                    return Error errMsg
-                else
-                    for restore in pkg.RestoreChanges do
-                        match restore.EntityType with
-                        | "DemandLine" ->
-                            match Map.tryFind restore.EntityId baselineDemandsMap with
-                            | Some d ->
-                                let restoreQty = System.Text.Json.JsonSerializer.Deserialize<decimal>(restore.RestoreValueJson)
-                                let req: DemandDefineReq =
-                                    { DemandLineId = d.DemandLineId
-                                      DemandOrderId = d.DemandOrderId
-                                      SkuId = SkuId.value d.SkuId
-                                      StockingPointId = StockingPointId.value d.StockingPointId
-                                      CustomerId = d.CustomerId
-                                      Quantity = restoreQty
-                                      UnitOfMeasure = d.UnitOfMeasure
-                                      OrderDate = d.OrderDate
-                                      EarliestDeliveryDate = d.EarliestDeliveryDate
-                                      RequestedDeliveryDate = d.RequestedDeliveryDate
-                                      LatestDeliveryDate = d.LatestDeliveryDate
-                                      ConfirmedDeliveryDate = d.ConfirmedDeliveryDate
-                                      ActualDeliveryDate = d.ActualDeliveryDate
-                                      Priority = d.Priority
-                                      DemandCategory = d.DemandCategory.ToString()
-                                      IsFirm = d.IsFirm
-                                      IsFrozen = d.IsFrozen }
-                                let! _ = demandContext.Commands.DemandLine.Define(req)
-                                ()
-                            | None -> ()
-
-                        | "Inventory" ->
-                            match Map.tryFind restore.EntityId baselineInventoryDict with
-                            | Some i ->
-                                let restoreQty = System.Text.Json.JsonSerializer.Deserialize<decimal>(restore.RestoreValueJson)
-                                let req: InventoryDefineReq =
-                                    { Id = restore.EntityId
-                                      SkuId = i.SkuId
-                                      StockingPointId = i.StockingPointId
-                                      Quantity = restoreQty
-                                      UnitOfMeasure = i.UnitOfMeasure }
-                                let! _ = supplyContext.Commands.Inventory.Define(req)
-                                ()
-                            | None -> ()
-
-                        | _ -> ()
-
-                    return Ok ()
         }
 
     member this.EvaluatePromise
@@ -692,7 +640,7 @@ type MedhaviEngine() =
                             | Ok offers ->
                                 let pOffers =
                                     offers
-                                    |> List.map (fun o ->
+                                    |> List.map(fun o ->
                                         let leadTimeP50Min = o.LeadTimeP50Minutes |> Option.defaultValue 0.0
                                         let earliest = asOf.AddMinutes(leadTimeP50Min)
 
@@ -700,18 +648,17 @@ type MedhaviEngine() =
                                             if List.isEmpty o.CapacityWindows then
                                                 qty
                                             else
-                                                o.CapacityWindows
-                                                |> List.sumBy (fun w -> w.AvailableQuantity)
+                                                o.CapacityWindows |> List.sumBy(fun w -> w.AvailableQuantity)
 
                                         let cost =
                                             o.PriceTiers
-                                            |> List.tryFind (fun t ->
+                                            |> List.tryFind(fun t ->
                                                 qty >= t.MinQuantity
                                                 && (match t.MaxQuantity with
                                                     | None -> true
                                                     | Some max -> qty <= max))
-                                            |> Option.map (fun t -> t.PricePerUnit)
-                                            |> Option.defaultValue (
+                                            |> Option.map(fun t -> t.PricePerUnit)
+                                            |> Option.defaultValue(
                                                 if List.isEmpty o.PriceTiers then
                                                     0m
                                                 else
@@ -724,12 +671,8 @@ type MedhaviEngine() =
                                            Cost = cost
                                            Reliability = o.Reliability
                                            Moq = o.Moq
-                                           LeadTimeP50 =
-                                             o.LeadTimeP50Minutes
-                                             |> Option.map TimeSpan.FromMinutes
-                                           LeadTimeP95 =
-                                             o.LeadTimeP95Minutes
-                                             |> Option.map TimeSpan.FromMinutes
+                                           LeadTimeP50 = o.LeadTimeP50Minutes |> Option.map TimeSpan.FromMinutes
+                                           LeadTimeP95 = o.LeadTimeP95Minutes |> Option.map TimeSpan.FromMinutes
                                            Incoterm = o.Incoterm }
                                         : Medhavi.Promise.PromiseTypes.SupplierOption))
 
@@ -741,25 +684,17 @@ type MedhaviEngine() =
                 { CheckCapacity =
                     fun (skuId, qty, asOf) ->
                         async {
-                            let! resources =
-                                capacityContext.CapacityResourceAgent.GetStateAsync()
-                                |> Async.AwaitTask
+                            let! resources = capacityContext.CapacityResourceAgent.GetStateAsync() |> Async.AwaitTask
 
-                            let! calendars =
-                                capacityContext.CalendarAgent.GetStateAsync()
-                                |> Async.AwaitTask
+                            let! calendars = capacityContext.CalendarAgent.GetStateAsync() |> Async.AwaitTask
 
-                            let! buckets =
-                                capacityContext.CapacityAgent.GetStateAsync()
-                                |> Async.AwaitTask
+                            let! buckets = capacityContext.CapacityAgent.GetStateAsync() |> Async.AwaitTask
 
                             let getRoutings (sku: string) =
                                 task {
                                     let! all = masterDataContext.Queries.Routing.GetAll()
 
-                                    let filtered =
-                                        all
-                                        |> List.filter (fun r -> getSkuIdFromRouting r = sku)
+                                    let filtered = all |> List.filter(fun r -> getSkuIdFromRouting r = sku)
 
                                     return Ok filtered
                                 }
@@ -782,8 +717,7 @@ type MedhaviEngine() =
                                     { IsFeasible = checkRes.IsFeasible
                                       SuggestedDate = checkRes.SuggestedDate
                                       RequiredLoads =
-                                        checkRes.RequiredLoads
-                                        |> Map.map (fun _ v -> DurationMinutes.value v)
+                                        checkRes.RequiredLoads |> Map.map(fun _ v -> DurationMinutes.value v)
                                       BottleneckResourceId = checkRes.BottleneckResourceId
                                       LatenessReason = checkRes.LatenessReason
                                       EarliestAvailable = checkRes.SuggestedDate }
@@ -809,7 +743,7 @@ type MedhaviEngine() =
 
                             match res with
                             | Ok options ->
-                                let itineraries = options |> List.map (fun o -> o.Itinerary)
+                                let itineraries = options |> List.map(fun o -> o.Itinerary)
                                 return Ok itineraries
                             | Error e -> return Error Medhavi.Promise.PromiseTypes.ProviderError.Unavailable
                         } }
@@ -818,13 +752,9 @@ type MedhaviEngine() =
                 { Select =
                     fun (skuId, stockingPointId) ->
                         async {
-                            let! all =
-                                masterDataContext.Queries.Routing.GetAll()
-                                |> Async.AwaitTask
+                            let! all = masterDataContext.Queries.Routing.GetAll() |> Async.AwaitTask
 
-                            let filtered =
-                                all
-                                |> List.filter (fun r -> getSkuIdFromRouting r = SkuId.value skuId)
+                            let filtered = all |> List.filter(fun r -> getSkuIdFromRouting r = SkuId.value skuId)
 
                             if List.isEmpty filtered then
                                 return Error Medhavi.Promise.PromiseTypes.ProviderError.Unavailable
@@ -848,9 +778,7 @@ type MedhaviEngine() =
                 { CreateTentative =
                     fun reqs ->
                         async {
-                            let ids =
-                                reqs
-                                |> List.map (fun r -> $"res-{r.Scope.ToString().ToLower()}-{Guid.NewGuid()}")
+                            let ids = reqs |> List.map(fun r -> $"res-{r.Scope.ToString().ToLower()}-{Guid.NewGuid()}")
 
                             return Ok ids
                         }
@@ -863,19 +791,13 @@ type MedhaviEngine() =
             let translateOrderLine (l: PromiseOrderLine) : Medhavi.Promise.PromiseTypes.OrderLine =
                 let skuId = SkuId.create l.SkuId |> Result.get
 
-                let spId =
-                    StockingPointId.create l.StockingPointId
-                    |> Result.get
+                let spId = StockingPointId.create l.StockingPointId |> Result.get
 
                 let qty = Quantity.create l.Quantity |> Result.get
 
-                let origin =
-                    l.Origin
-                    |> Option.map (fun o -> StockingPointId.create o |> Result.get)
+                let origin = l.Origin |> Option.map(fun o -> StockingPointId.create o |> Result.get)
 
-                let dest =
-                    l.Destination
-                    |> Option.map (fun d -> StockingPointId.create d |> Result.get)
+                let dest = l.Destination |> Option.map(fun d -> StockingPointId.create d |> Result.get)
 
                 { LineId = l.LineId
                   SkuId = skuId
@@ -919,7 +841,7 @@ type MedhaviEngine() =
 
                 let mapRouting (r: Medhavi.Promise.PromiseTypes.RoutingChoice option) =
                     r
-                    |> Option.map (fun rc ->
+                    |> Option.map(fun rc ->
                         { RoutingId = string rc.RoutingId
                           AlternateUsed = rc.AlternateUsed
                           EstimatedDuration = rc.EstimatedDuration
@@ -928,7 +850,7 @@ type MedhaviEngine() =
 
                 let mapCost (c: Medhavi.Promise.PromiseTypes.CostBreakdown option) =
                     c
-                    |> Option.map (fun cb ->
+                    |> Option.map(fun cb ->
                         { MaterialCost = cb.MaterialCost
                           ProductionCost = cb.ProductionCost
                           TransportCost = cb.TransportCost
@@ -946,3 +868,11 @@ type MedhaviEngine() =
                 return Ok response
             | Error e -> return Error(sprintf "Order promising failed: %A" e)
         }
+
+    interface IDisposable with
+        member this.Dispose() =
+            for sub in domainEventSubs do
+                sub.Dispose()
+            match subscriptionHandle with
+            | Some h -> h.Dispose()
+            | None -> ()

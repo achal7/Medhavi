@@ -1,8 +1,8 @@
 namespace Medhavi.Scenario.Domain
 
 open System
+open Medhavi.Contracts.Scenario
 open Medhavi.SharedKernel
-open Medhavi.SharedKernel.ScenarioContracts
 
 type ScenarioOverlaySet =
     { Id: ScenarioOverlaySetId
@@ -36,24 +36,24 @@ module ScenarioOverlaySetAgg =
         | LeadTimeOverride(sku1, _, _), LeadTimeOverride(sku2, _, _) -> sku1 = sku2
         | CapacityOverride(res1, buck1, _), CapacityOverride(res2, buck2, _) -> res1 = res2 && buck1 = buck2
         | SupplierSuspension(sup1, buck1), SupplierSuspension(sup2, buck2) -> sup1 = sup2 && buck1 = buck2
-        
+
         | SupplierReactivation(sup1, _), SupplierReactivation(sup2, _) -> sup1 = sup2
         | SupplierLeadTimeOverride(sup1, sku1, _, _), SupplierLeadTimeOverride(sup2, sku2, _, _) -> sup1 = sup2 && sku1 = sku2
         | SupplierCapacityOverride(sup1, sku1, _, _), SupplierCapacityOverride(sup2, sku2, _, _) -> sup1 = sup2 && sku1 = sku2
         | SupplierPriceOverride(sup1, sku1, _, _), SupplierPriceOverride(sup2, sku2, _, _) -> sup1 = sup2 && sku1 = sku2
-        
+
         | (BomOverride(p1, c1, _) | BomComponentAddition(p1, c1, _, _) | BomComponentRemoval(p1, c1, _)),
           (BomOverride(p2, c2, _) | BomComponentAddition(p2, c2, _, _) | BomComponentRemoval(p2, c2, _)) -> p1 = p2 && c1 = c2
-        
+
         | BomAlternateSelection(p1, _, _), BomAlternateSelection(p2, _, _) -> p1 = p2
-        
+
         | KpiWeightOverride(k1, _), KpiWeightOverride(k2, _) -> k1 = k2
         | ServiceLevelTargetOverride(t1, _), ServiceLevelTargetOverride(t2, _) -> t1 = t2
         | CostRiskTradeoffOverride(p1, _), CostRiskTradeoffOverride(p2, _) -> p1 = p2
         | CarbonWeightOverride(p1, _), CarbonWeightOverride(p2, _) -> p1 = p2
         | FreezePolicyOverride(p1, _), FreezePolicyOverride(p2, _) -> p1 = p2
         | ApprovalThresholdOverride(p1, _), ApprovalThresholdOverride(p2, _) -> p1 = p2
-        
+
         | TagAddedOverride(c1, t1, _), TagAddedOverride(c2, t2, _) -> c1 = c2 && t1 = t2
         | AnnotationAddedOverride(c1, _, _), AnnotationAddedOverride(c2, _, _) -> c1 = c2
         | RelationHintAddedOverride(s1, r1, o1, _), RelationHintAddedOverride(s2, r2, o2, _) -> s1 = s2 && r1 = r2 && o1 = o2

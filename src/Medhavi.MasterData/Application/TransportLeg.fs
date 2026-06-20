@@ -3,10 +3,10 @@ module Medhavi.MasterData.Application.TransportLeg
 open System
 open Medhavi.Common.Validation
 open Medhavi.Common.Patterns
+open Medhavi.Contracts
 open Medhavi.SharedKernel
 open Medhavi.SharedKernel.Aggregate
 open Medhavi.MasterData.Domain.TransportAgg
-open Medhavi.Contracts.Transport
 open Medhavi.Infrastructure.Projections
 
 module ACL =
@@ -54,12 +54,12 @@ module ACL =
             | _ -> Error(DomainError.validation $"Unknown transport constraint: {c}")
 
         items
-        |> List.map (parseOne >> fromResult)
+        |> List.map(parseOne >> fromResult)
         |> sequence
         |> toResult
         |> Result.mapError DomainError.combineValidationErrors
 
-    let toDefineCommand (req: TransportLegDefineReq) : Result<DefineTransportLegCmd, DomainError> =
+    let toDefineCommand (req: Transport.TransportLegDefineReq) : Result<DefineTransportLegCmd, DomainError> =
         let constraintsVal = parseConstraints req.Constraints
 
         let capacity =
@@ -75,7 +75,7 @@ module ACL =
         let reliability =
             match req.Reliability with
             | None -> Ok None
-            | Some v -> Percent.create (decimal v) |> Result.map Some
+            | Some v -> Percent.create(decimal v) |> Result.map Some
 
         let co2 =
             match req.CO2PerUnit with
@@ -102,9 +102,7 @@ module ACL =
               LeadTime = TimeSpan.FromMinutes(float req.LeadTimeMinutes)
               Capacity = cap
               CapacityUnit = capUnit
-              Cutoff =
-                req.CutoffMinutes
-                |> Option.map (float >> TimeSpan.FromMinutes)
+              Cutoff = req.CutoffMinutes |> Option.map(float >> TimeSpan.FromMinutes)
               Constraints = constrs
               Reliability = rel
               CO2PerUnit = co2
@@ -112,11 +110,9 @@ module ACL =
               EffectiveEnd = req.EffectiveEnd |> Option.map Timestamp.create
               Created = Timestamp.create req.Created }
 
-        makeCmd
-        <!> (TransportLegId.create req.Id |> fromResult)
+        makeCmd <!> (TransportLegId.create req.Id |> fromResult)
         <*> (StockingPointId.create req.Origin |> fromResult)
-        <*> (StockingPointId.create req.Destination
-             |> fromResult)
+        <*> (StockingPointId.create req.Destination |> fromResult)
         <*> (parseTransportMode req.Mode |> fromResult)
         <*> (parseTransportSchedule req.Schedule |> fromResult)
         <*> (constraintsVal |> fromResult)
@@ -127,7 +123,7 @@ module ACL =
         |> toResult
         |> Result.mapError DomainError.combineValidationErrors
 
-    let toUpdateCommand (req: TransportLegUpdateReq) : Result<UpdateTransportLegCmd, DomainError> =
+    let toUpdateCommand (req: Transport.TransportLegUpdateReq) : Result<UpdateTransportLegCmd, DomainError> =
         let mode =
             match req.Mode with
             | None -> Ok None
@@ -146,7 +142,7 @@ module ACL =
         let reliability =
             match req.Reliability with
             | None -> Ok None
-            | Some r -> Percent.create (decimal r) |> Result.map Some
+            | Some r -> Percent.create(decimal r) |> Result.map Some
 
         let capacityUnitVal =
             match req.CapacityUnit with
@@ -157,25 +153,17 @@ module ACL =
             { Id = legId
               Mode = m
               Schedule = s
-              LeadTime =
-                req.LeadTimeMinutes
-                |> Option.map (float >> TimeSpan.FromMinutes)
+              LeadTime = req.LeadTimeMinutes |> Option.map(float >> TimeSpan.FromMinutes)
               Capacity = req.Capacity
               CapacityUnit = capUnit
-              Cutoff =
-                req.CutoffMinutes
-                |> Option.map (float >> TimeSpan.FromMinutes)
+              Cutoff = req.CutoffMinutes |> Option.map(float >> TimeSpan.FromMinutes)
               Constraints = constrs
-              Reliability =
-                rel
-                |> Option.map Percent.value
-                |> Option.map float
+              Reliability = rel |> Option.map Percent.value |> Option.map float
               CO2PerUnit = req.CO2PerUnit
               EffectiveEnd = req.EffectiveEnd |> Option.map Timestamp.create
               Modified = Timestamp.create req.Modified }
 
-        makeCmd
-        <!> (TransportLegId.create req.Id |> fromResult)
+        makeCmd <!> (TransportLegId.create req.Id |> fromResult)
         <*> (mode |> fromResult)
         <*> (schedule |> fromResult)
         <*> (constraints |> fromResult)
@@ -184,9 +172,9 @@ module ACL =
         |> toResult
         |> Result.mapError DomainError.combineValidationErrors
 
-    let toDeactivateCommand (req: TransportLegDeactivateReq) : Result<DeactivateTransportLegCmd, DomainError> =
+    let toDeactivateCommand (req: Transport.TransportLegDeactivateReq) : Result<DeactivateTransportLegCmd, DomainError> =
         TransportLegId.create req.Id
-        |> Result.map (fun id ->
+        |> Result.map(fun id ->
             { Id = id
               DeactivatedAt = Timestamp.create req.DeactivatedAt }
             : DeactivateTransportLegCmd)
@@ -194,9 +182,9 @@ module ACL =
 type Decision = Decision<TransportLeg, TransportLegEvent>
 
 type TransportLegCapabilities =
-    { Define: TransportLegDefineReq -> TaskResult<Decision, ApplicationError>
-      Update: TransportLegUpdateReq -> TaskResult<Decision, ApplicationError>
-      Deactivate: TransportLegDeactivateReq -> TaskResult<Decision, ApplicationError> }
+    { Define: Transport.TransportLegDefineReq -> TaskResult<Decision, ApplicationError>
+      Update: Transport.TransportLegUpdateReq -> TaskResult<Decision, ApplicationError>
+      Deactivate: Transport.TransportLegDeactivateReq -> TaskResult<Decision, ApplicationError> }
 
 let createCapabilities (repo: Repository<TransportLeg, string, TransportLegEvent>) =
     { Define =
@@ -209,7 +197,7 @@ let createCapabilities (repo: Repository<TransportLeg, string, TransportLegEvent
         liftCmdResult ACL.toDeactivateCommand
         >=> handleCommand (fun c -> TransportLegId.value c.Id) repo DeactivateTransportLeg decide }
 
-let mapTransportLegDto (l: TransportLeg) : Medhavi.Contracts.Domain.TransportLeg =
+let mapTransportLegDto (l: TransportLeg) : MasterData.TransportLeg =
     let modeStr =
         match l.Mode with
         | TransportMode.Air -> "Air"
@@ -224,13 +212,11 @@ let mapTransportLegDto (l: TransportLeg) : Medhavi.Contracts.Domain.TransportLeg
       Destination = StockingPointId.value l.Destination
       Mode = modeStr
       LeadTimeMinutes = decimal l.LeadTime.TotalMinutes
-      Capacity =
-        l.Capacity
-        |> Option.map (fun c -> PositiveDecimal.value c)
+      Capacity = l.Capacity |> Option.map(fun c -> PositiveDecimal.value c)
       CapacityUnit = l.CapacityUnit |> Option.map UomId.value
       Status = l.Status.ToBool() }
 
-let evolveProjection (state: Map<string, Medhavi.Contracts.Domain.TransportLeg>) (evt: TransportLegEvent) =
+let evolveProjection (state: Map<string, MasterData.TransportLeg>) (evt: TransportLegEvent) =
     match evt with
     | TransportLegDefined e ->
         let modeStr =
@@ -242,15 +228,13 @@ let evolveProjection (state: Map<string, Medhavi.Contracts.Domain.TransportLeg>)
             | TransportMode.Pipeline -> "Pipeline"
             | TransportMode.Other s -> s
 
-        let dto: Medhavi.Contracts.Domain.TransportLeg =
+        let dto: MasterData.TransportLeg =
             { Id = TransportLegId.value e.Id
               Origin = StockingPointId.value e.Origin
               Destination = StockingPointId.value e.Destination
               Mode = modeStr
               LeadTimeMinutes = decimal e.LeadTime.TotalMinutes
-              Capacity =
-                e.Capacity
-                |> Option.map (fun c -> PositiveDecimal.value c)
+              Capacity = e.Capacity |> Option.map(fun c -> PositiveDecimal.value c)
               CapacityUnit = e.CapacityUnit |> Option.map UomId.value
               Status = true }
 
@@ -262,7 +246,7 @@ let evolveProjection (state: Map<string, Medhavi.Contracts.Domain.TransportLeg>)
         | Some existing ->
             let modeStrOpt =
                 e.Mode
-                |> Option.map (fun m ->
+                |> Option.map(fun m ->
                     match m with
                     | TransportMode.Air -> "Air"
                     | TransportMode.Road -> "Road"
@@ -297,7 +281,7 @@ let evolveProjection (state: Map<string, Medhavi.Contracts.Domain.TransportLeg>)
         | None -> state
 
 let createProjectionAgent () =
-    ProjectionAgent<Map<string, Medhavi.Contracts.Domain.TransportLeg>, TransportLegEvent>(
+    ProjectionAgent<Map<string, MasterData.TransportLeg>, TransportLegEvent>(
         evolveProjection,
         Map.empty,
         "TransportLegReadModel"
@@ -305,31 +289,33 @@ let createProjectionAgent () =
 
 let createQueryService agent = QueryServiceBase.getQueryService agent id
 
-open Medhavi.SharedKernel.API
+open Medhavi.Contracts.API
 
 let createTransportLegApi (capabilities: TransportLegCapabilities) _ =
     { Define =
         fun req ->
             capabilities.Define req
-            |> TaskResult.map (fun d -> d.NewState)
+            |> TaskResult.map(fun d -> d.NewState)
             |> TaskResult.map mapTransportLegDto
+            |> TaskResult.mapError ApplicationError.mapToApiError
       DefineBulk =
         fun reqs ->
             reqs
             |> List.map capabilities.Define
             |> TaskResult.sequence
-            |> TaskResult.map (fun decisions ->
-                decisions
-                |> List.map (fun d -> d.NewState)
-                |> List.map mapTransportLegDto)
+            |> TaskResult.map(fun decisions ->
+                decisions |> List.map(fun d -> d.NewState) |> List.map mapTransportLegDto)
+            |> TaskResult.mapError ApplicationError.mapToApiError
       Update =
         fun req ->
             capabilities.Update req
-            |> TaskResult.map (fun d -> d.NewState)
+            |> TaskResult.map(fun d -> d.NewState)
             |> TaskResult.map mapTransportLegDto
+            |> TaskResult.mapError ApplicationError.mapToApiError
       Deactivate =
         fun req ->
             capabilities.Deactivate req
-            |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map mapTransportLegDto }
+            |> TaskResult.map(fun d -> d.NewState)
+            |> TaskResult.map mapTransportLegDto
+            |> TaskResult.mapError ApplicationError.mapToApiError }
     : TransportLegApi

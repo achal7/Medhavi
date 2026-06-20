@@ -8,11 +8,6 @@ open Medhavi.Demand.Domain
 open Medhavi.Demand.Domain.DemandLineAgg
 open Medhavi.Contracts.Demand
 
-type DemandLineApi =
-    { Define: DemandDefineReq -> TaskResult<Domain.DemandLine, ApplicationError>
-      DefineBulk: DemandDefineReq list -> TaskResult<Domain.DemandLine list, ApplicationError>
-      Fulfill: FulfillDemandLineReq -> TaskResult<Domain.DemandLine, ApplicationError> }
-
 module ACL =
     let toDefineCommand (req: DemandDefineReq) : Validation<DefineDemandLineCmd, DomainError> =
         let cat =
@@ -80,15 +75,18 @@ let createDemandLineApi (capabilities: DemandLineCapabilities) =
     { Define =
         fun req ->
             capabilities.Define req
-            |> TaskResult.map (fun d -> d.NewState)
+            |> TaskResult.map (fun _ -> ())
+            |> TaskResult.mapError ApplicationError.mapToApiError
       DefineBulk =
         fun reqs ->
             reqs
             |> List.map capabilities.Define
             |> TaskResult.sequence
-            |> TaskResult.map (fun decisions -> decisions |> List.map (fun d -> d.NewState))
+            |> TaskResult.map (fun _ -> ())//(fun decisions -> decisions |> List.map (fun d -> d.NewState))
+            |> TaskResult.mapError ApplicationError.mapToApiError
       Fulfill =
         fun req ->
             capabilities.Fulfill req
-            |> TaskResult.map (fun d -> d.NewState) }
+            |> TaskResult.map (fun _ -> ())
+            |> TaskResult.mapError ApplicationError.mapToApiError }
     : DemandLineApi

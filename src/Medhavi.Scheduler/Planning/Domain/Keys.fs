@@ -1,7 +1,6 @@
 namespace Medhavi.Scheduler.Planning.Domain
 
 open Medhavi.SharedKernel
-open Medhavi.SharedKernel.ScenarioContracts
 
 type SnapshotId = System.Guid
 

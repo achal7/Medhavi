@@ -1,29 +1,20 @@
 <Solution>
   <Folder Name="/src/">
+    <!-- <Project Path="src/Medhavi.Common/Medhavi.Common.fsproj" /> -->
+    <Project Path="src/Medhavi.Contracts/Medhavi.Contracts.fsproj" />
+    <Project Path="src/Medhavi.SharedKernel/Medhavi.SharedKernel.fsproj" />
+    <Project Path="src/Medhavi.Infrastructure/Medhavi.Infrastructure.fsproj" />
+    <Project Path="src/Medhavi.MasterData/Medhavi.MasterData.fsproj" />
     <Project Path="src/Medhavi.Capacity/Medhavi.Capacity.fsproj" />
+    <Project Path="src/Medhavi.Supply/Medhavi.Supply.fsproj" />
+    <Project Path="src/Medhavi.Demand/Medhavi.Demand.fsproj" />
     <Project Path="src/Medhavi.Transport/Medhavi.Transport.fsproj" />
     <Project Path="src/Medhavi.Promise/Medhavi.Promise.fsproj" />
-    <Project Path="src/Medhavi.Common/Medhavi.Common.fsproj" />
-    <Project Path="src/Medhavi.Contracts/Medhavi.Contracts.fsproj" />
-    <Project Path="src/Medhavi.Demand/Medhavi.Demand.fsproj" />
-    <Project Path="src/Medhavi.Infrastructure/Medhavi.Infrastructure.fsproj" />
-    <Project Path="src/Medhavi.Integration/Medhavi.Integration.fsproj" />
-    <Project Path="src/Medhavi.MasterData/Medhavi.MasterData.fsproj" />
-    <Project Path="src/Medhavi.Nexus/Medhavi.Nexus.fsproj" />
-    <Project Path="src/Medhavi.Analytics/Medhavi.Analytics.fsproj" />
-    <Project Path="src/Medhavi.Scheduler/Medhavi.Scheduler.fsproj" />
     <Project Path="src/Medhavi.Scenario/Medhavi.Scenario.fsproj" />
-    <Project Path="src/Medhavi.SharedKernel/Medhavi.SharedKernel.fsproj" />
-    <Project Path="src/Medhavi.Supply/Medhavi.Supply.fsproj" />
-  </Folder>
-  <Folder Name="/src/UI/">
-    <Project Path="src/UI/Medhavi.Terminal/Medhavi.Terminal.fsproj" />
-    <Project Path="src/UI/Medhavi.Web/Medhavi.Web.fsproj" />
-  </Folder>
-  <Folder Name="/src/tests/">
-    <Project Path="src/tests/Medhavi.Domain.Tests/Medhavi.Domain.Tests.fsproj" />
-    <Project Path="src/tests/Medhavi.E2E.Tests/Medhavi.E2E.Tests.fsproj" />
-    <Project Path="src/tests/Medhavi.Integration.Tests/Medhavi.Integration.Tests.fsproj" />
-    <Project Path="src/tests/Medhavi.Scheduler.Tests/Medhavi.Scheduler.Tests.fsproj" />
+    <Project Path="src/Medhavi.Scheduler/Medhavi.Scheduler.fsproj" />
+    <Project Path="src/Medhavi.Analytics/Medhavi.Analytics.fsproj" />
+    <Project Path="src/Medhavi.Integration/Medhavi.Integration.fsproj" />
+    <Project Path="src/Medhavi.Nexus/Medhavi.Nexus.fsproj" />
+    <Project Path="src/Medhavi.Web/Medhavi.Web.fsproj" />
   </Folder>
 </Solution>

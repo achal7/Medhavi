@@ -1,8 +1,8 @@
 namespace Medhavi.Scheduler.Planning.Application
 
 open System
+open Medhavi.Contracts.Scenario
 open Medhavi.SharedKernel
-open Medhavi.SharedKernel.ScenarioContracts
 open Medhavi.Scheduler.Planning.Domain
 
 type StartRunCommand =
@@ -93,7 +93,7 @@ module PlanningOrchestrator =
                 // 2. Pre-flight Validation
                 // Load base input data
                 let! rawInput = deps.LoadInputData cmd.ScenarioId now
-                
+
                 // Apply overlays before checking readiness (so overrides to zero demands, etc. are validated)
                 let overlaidInput = applyOverlays cmd.Overrides rawInput
 

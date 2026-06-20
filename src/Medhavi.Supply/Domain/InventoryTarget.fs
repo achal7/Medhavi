@@ -1,7 +1,6 @@
 module Medhavi.Supply.Domain.InventoryTargetAgg
 
 open System.Text.Json.Serialization
-open Medhavi.Common
 open Medhavi.SharedKernel
 
 type ReplenishmentPolicy =

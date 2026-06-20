@@ -2,7 +2,6 @@ module Medhavi.Supply.Domain.SupplierOfferAgg
 
 open System
 open System.Text.Json.Serialization
-open Medhavi.Common
 open Medhavi.SharedKernel
 
 /// Price tier for supplier offers

@@ -1,7 +1,6 @@
 module Medhavi.Supply.Domain.MaterialReservationAgg
 
 open System
-open Medhavi.Common
 open Medhavi.Common.Validation
 open Medhavi.SharedKernel
 open Medhavi.SharedKernel.Aggregate
@@ -77,7 +76,7 @@ let decide: DecideMaterialReservation =
         match command, stateOpt with
         | CreateTentative cmd, None ->
             createAggregate (validateAndCreateTentative Timestamp.now) (fun res -> [ ReservationCreated res ]) cmd
-            
+
         | CreateTentative cmd, Some _ ->
             Error(DomainError.validation $"Material reservation with Id '{cmd.Id}' already exists.")
 
@@ -125,8 +124,8 @@ let evolve: EvolveMaterialReservation =
     fun event stateOpt ->
         match event, stateOpt with
         | ReservationCreated r, None -> Some r
-        | ReservationConfirmed e, Some s -> Some { s with State = "Confirmed"; Modified = Timestamp.now }
-        | ReservationReleased e, Some s -> Some { s with State = "Released"; Modified = Timestamp.now }
+        | ReservationConfirmed _, Some s -> Some { s with State = "Confirmed"; Modified = Timestamp.now }
+        | ReservationReleased _, Some s -> Some { s with State = "Released"; Modified = Timestamp.now }
         | ReservationReduced e, Some s -> Some { s with Quantity = Quantity.clampToZero e.NewQuantity; State = "Reduced"; Modified = Timestamp.now }
-        | ReservationExpired e, Some s -> Some { s with State = "Expired"; Modified = Timestamp.now }
+        | ReservationExpired _, Some s -> Some { s with State = "Expired"; Modified = Timestamp.now }
         | _, _ -> stateOpt

@@ -23,11 +23,11 @@
     <Compile Include="Patterns\TaskResult.fs" />
     <Compile Include="Patterns\AsyncValidator.fs" />
     <Compile Include="ExceptionHandling.fs" />
-    <Compile Include="Enrichment\Enrichment.fs" />
+    <!--<Compile Include="Enrichment\Enrichment.fs" />
     <Compile Include="Enrichment\EnrichmentFramework.fs" />
     <Compile Include="Enrichment\EnrichmentPipeline.fs" />
     <Compile Include="Enrichment\EnrichmentValidation.fs" />
-    <Compile Include="Enrichment\EnrichmentRuleEngine.fs" />
+    <Compile Include="Enrichment\EnrichmentRuleEngine.fs" />-->
     <Compile Include="Serialization.fs" />
     <Compile Include="CircuitBreaker.fs" />
     <Compile Include="DeadLetterQueue.fs" />

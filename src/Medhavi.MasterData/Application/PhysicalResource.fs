@@ -2,12 +2,13 @@ module Medhavi.MasterData.Application.PhysicalResource
 
 open Medhavi
 open Medhavi.Common.Patterns
+open Medhavi.Contracts
+open Medhavi.Contracts.API
 open Medhavi.Contracts.Integration
 open Medhavi.Infrastructure.Projections
 open Medhavi.MasterData.Domain.PhysicalResourceAgg
 open Medhavi.SharedKernel
 open Medhavi.SharedKernel.Aggregate
-open Medhavi.SharedKernel.API
 
 module ACL =
     let toDefineCommand (req: PhysicalResourceDefineReq) : Result<DefinePhysicalResourceCmd, DomainError> =
@@ -24,11 +25,10 @@ module ACL =
 
     let toRenameCommand (req: PhysicalResourceRenameReq) : Result<RenamePhysicalResourceCmd, DomainError> =
         PhysicalResourceId.create req.Id
-        |> Result.map (fun id -> { Id = id; NewName = req.NewName }: RenamePhysicalResourceCmd)
+        |> Result.map(fun id -> { Id = id; NewName = req.NewName }: RenamePhysicalResourceCmd)
 
     let toRetireCommand (req: PhysicalResourceRetireReq) : Result<RetirePhysicalResourceCmd, DomainError> =
-        PhysicalResourceId.create req.Id
-        |> Result.map (fun id -> { Id = id }: RetirePhysicalResourceCmd)
+        PhysicalResourceId.create req.Id |> Result.map(fun id -> { Id = id }: RetirePhysicalResourceCmd)
 
 type Decision = Decision<PhysicalResource, PhysicalResourceEvent>
 
@@ -38,9 +38,7 @@ type PhysicalResourceCapabilities =
       Retire: PhysicalResourceRetireReq -> TaskResult<Decision, ApplicationError> }
 
 let createCapabilities (repo: Repository<PhysicalResource, string, PhysicalResourceEvent>) =
-    { Define =
-        liftCmdResult ACL.toDefineCommand
-        >=> handleCommand (fun c -> c.Id) repo DefinePhysicalResource decide
+    { Define = liftCmdResult ACL.toDefineCommand >=> handleCommand (fun c -> c.Id) repo DefinePhysicalResource decide
       Rename =
         liftCmdResult ACL.toRenameCommand
         >=> handleCommand (fun c -> PhysicalResourceId.value c.Id) repo RenamePhysicalResource decide
@@ -48,19 +46,15 @@ let createCapabilities (repo: Repository<PhysicalResource, string, PhysicalResou
         liftCmdResult ACL.toRetireCommand
         >=> handleCommand (fun c -> PhysicalResourceId.value c.Id) repo RetirePhysicalResource decide }
 
-let mapPhysicalResourceDto (pr: PhysicalResource) : Contracts.Domain.PhysicalResource =
+let mapPhysicalResourceDto (pr: PhysicalResource) : MasterData.PhysicalResource =
     { Id = PhysicalResourceId.value pr.Id
       StandardResourceId = StandardResourceId.value pr.StandardResourceId
       Name = pr.Name
       SerialNumber = pr.SerialNumber
       Location = pr.Location
       EfficiencyOverride = pr.EfficiencyOverride |> Option.map Percent.value
-      CostRateOverrideAmount =
-        pr.CostRateOverride
-        |> Option.map (fun c -> c.Amount)
-      CostRateOverrideCurrency =
-        pr.CostRateOverride
-        |> Option.map (fun c -> c.Currency)
+      CostRateOverrideAmount = pr.CostRateOverride |> Option.map(fun c -> c.Amount)
+      CostRateOverrideCurrency = pr.CostRateOverride |> Option.map(fun c -> c.Currency)
       CalendarId = pr.CalendarId |> Option.map CalendarId.value
       IsActive =
         match pr.Status with
@@ -69,22 +63,18 @@ let mapPhysicalResourceDto (pr: PhysicalResource) : Contracts.Domain.PhysicalRes
       Created = Timestamp.value pr.Created
       Modified = Timestamp.value pr.Modified }
 
-let evolveProjection (state: Map<string, Contracts.Domain.PhysicalResource>) (evt: PhysicalResourceEvent) =
+let evolveProjection (state: Map<string, MasterData.PhysicalResource>) (evt: PhysicalResourceEvent) =
     match evt with
     | PhysicalResourceDefined e ->
-        let dto: Contracts.Domain.PhysicalResource =
+        let dto: MasterData.PhysicalResource =
             { Id = PhysicalResourceId.value e.Id
               StandardResourceId = StandardResourceId.value e.StandardResourceId
               Name = e.Name
               SerialNumber = e.SerialNumber
               Location = e.Location
               EfficiencyOverride = e.EfficiencyOverride |> Option.map Percent.value
-              CostRateOverrideAmount =
-                e.CostRateOverride
-                |> Option.map (fun c -> c.Amount)
-              CostRateOverrideCurrency =
-                e.CostRateOverride
-                |> Option.map (fun c -> c.Currency)
+              CostRateOverrideAmount = e.CostRateOverride |> Option.map(fun c -> c.Amount)
+              CostRateOverrideCurrency = e.CostRateOverride |> Option.map(fun c -> c.Currency)
               CalendarId = e.CalendarId |> Option.map CalendarId.value
               IsActive = true
               Created = Timestamp.value e.Created
@@ -117,35 +107,37 @@ let evolveProjection (state: Map<string, Contracts.Domain.PhysicalResource>) (ev
         | None -> state
 
 let createProjectionAgent () =
-    ProjectionAgent<Map<string, Contracts.Domain.PhysicalResource>, PhysicalResourceEvent>(
+    ProjectionAgent<Map<string, MasterData.PhysicalResource>, PhysicalResourceEvent>(
         evolveProjection,
         Map.empty,
         "PhysicalResourceReadModel"
     )
 
-let createPhysicalResourceApi (capabilities: PhysicalResourceCapabilities) agent =
+let createPhysicalResourceApi (capabilities: PhysicalResourceCapabilities) =
     { Define =
         fun req ->
             capabilities.Define req
-            |> TaskResult.map (fun d -> d.NewState)
+            |> TaskResult.map(fun d -> d.NewState)
             |> TaskResult.map mapPhysicalResourceDto
+            |> TaskResult.mapError ApplicationError.mapToApiError
       DefineBulk =
         fun reqs ->
             reqs
             |> List.map capabilities.Define
             |> TaskResult.sequence
-            |> TaskResult.map (fun decisions ->
-                decisions
-                |> List.map (fun d -> d.NewState)
-                |> List.map mapPhysicalResourceDto)
+            |> TaskResult.map(fun decisions ->
+                decisions |> List.map(fun d -> d.NewState) |> List.map mapPhysicalResourceDto)
+            |> TaskResult.mapError ApplicationError.mapToApiError
       Rename =
         fun req ->
             capabilities.Rename req
-            |> TaskResult.map (fun d -> d.NewState)
+            |> TaskResult.map(fun d -> d.NewState)
             |> TaskResult.map mapPhysicalResourceDto
+            |> TaskResult.mapError ApplicationError.mapToApiError
       Retire =
         fun req ->
             capabilities.Retire req
-            |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map mapPhysicalResourceDto }
+            |> TaskResult.map(fun d -> d.NewState)
+            |> TaskResult.map mapPhysicalResourceDto
+            |> TaskResult.mapError ApplicationError.mapToApiError }
     : PhysicalResourceApi

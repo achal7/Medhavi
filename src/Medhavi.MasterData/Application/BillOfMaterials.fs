@@ -16,8 +16,7 @@ module ACL =
               UnitOfMeasureId = uomId
               Sequence = req.Sequence }
 
-        make
-        <!> (SkuId.create req.ComponentSkuId |> fromResult)
+        make <!> (SkuId.create req.ComponentSkuId |> fromResult)
         <*> (UomId.create req.UnitOfMeasureId |> fromResult)
         <*> (Quantity.create req.Quantity |> fromResult)
 
@@ -29,10 +28,7 @@ module ACL =
 
         let itemsVal = req.Items |> List.map toBomItem |> sequence
 
-        make
-        <!> (BillOfMaterialId.create req.Id |> fromResult)
-        <*> (SkuId.create req.SkuId |> fromResult)
-        <*> itemsVal
+        make <!> (BillOfMaterialId.create req.Id |> fromResult) <*> (SkuId.create req.SkuId |> fromResult) <*> itemsVal
         |> toResult
         |> Result.mapError DomainError.combineValidationErrors
 
@@ -50,20 +46,16 @@ type BomCapabilities =
 
 let createCapabilities (repo: Repository<BillOfMaterial, string, BomEvent>) =
     { Define =
-        liftCmdResult ACL.toDefineCommand
-        >=> handleCommand (fun c -> BillOfMaterialId.value c.Id) repo DefineBom decide
-      Activate =
-        liftCmdResult ACL.toActivateCommand
-        >=> handleCommand BillOfMaterialId.value repo ActivateBom decide
+        liftCmdResult ACL.toDefineCommand >=> handleCommand (fun c -> BillOfMaterialId.value c.Id) repo DefineBom decide
+      Activate = liftCmdResult ACL.toActivateCommand >=> handleCommand BillOfMaterialId.value repo ActivateBom decide
       Deactivate =
-        liftCmdResult ACL.toDeactivateCommand
-        >=> handleCommand BillOfMaterialId.value repo DeactivateBom decide }
+        liftCmdResult ACL.toDeactivateCommand >=> handleCommand BillOfMaterialId.value repo DeactivateBom decide }
 
-let mapBomDto (b: BillOfMaterial) : Medhavi.Contracts.Domain.Bom =
+let mapBomDto (b: BillOfMaterial) : Medhavi.Contracts.MasterData.Bom =
     let lines =
         b.Items
-        |> List.map (fun i ->
-            let item: Medhavi.Contracts.Domain.BomItem =
+        |> List.map(fun i ->
+            let item: Medhavi.Contracts.MasterData.BomItem =
                 { ComponentSkuId = SkuId.value i.ComponentSkuId
                   Quantity = (Quantity.value i.Quantity)
                   Sequence = i.Sequence }
@@ -75,7 +67,7 @@ let mapBomDto (b: BillOfMaterial) : Medhavi.Contracts.Domain.Bom =
       Items = lines
       Status = b.Status.ToBool() }
 
-let evolveProjection (state: Map<string, Medhavi.Contracts.Domain.Bom>) (evt: BomEvent) =
+let evolveProjection (state: Map<string, Medhavi.Contracts.MasterData.Bom>) (evt: BomEvent) =
     match evt with
     | BomDefined b -> Map.add (BillOfMaterialId.value b.Id) (mapBomDto b) state
     | BomActivated(id, _) ->
@@ -92,35 +84,36 @@ let evolveProjection (state: Map<string, Medhavi.Contracts.Domain.Bom>) (evt: Bo
         | None -> state
 
 let createProjectionAgent () =
-    ProjectionAgent<Map<string, Medhavi.Contracts.Domain.Bom>, BomEvent>(evolveProjection, Map.empty, "BomReadModel")
+    ProjectionAgent<Map<string, Medhavi.Contracts.MasterData.Bom>, BomEvent>(evolveProjection, Map.empty, "BomReadModel")
 
 let createQueryService agent = QueryServiceBase.getQueryService agent id
 
-open Medhavi.SharedKernel.API
+open Medhavi.Contracts.API
 
-let createBomApi (capabilities: BomCapabilities) agent =
+let createBomApi (capabilities: BomCapabilities) =
     { Define =
         fun req ->
             capabilities.Define req
-            |> TaskResult.map (fun d -> d.NewState)
+            |> TaskResult.map(fun d -> d.NewState)
             |> TaskResult.map mapBomDto
+            |> TaskResult.mapError ApplicationError.mapToApiError
       DefineBulk =
         fun reqs ->
             reqs
             |> List.map capabilities.Define
             |> TaskResult.sequence
-            |> TaskResult.map (fun decisions ->
-                decisions
-                |> List.map (fun d -> d.NewState)
-                |> List.map mapBomDto)
+            |> TaskResult.map(fun decisions -> decisions |> List.map(fun d -> d.NewState) |> List.map mapBomDto)
+            |> TaskResult.mapError ApplicationError.mapToApiError
       Activate =
         fun req ->
             capabilities.Activate req
-            |> TaskResult.map (fun d -> d.NewState)
+            |> TaskResult.map(fun d -> d.NewState)
             |> TaskResult.map mapBomDto
+            |> TaskResult.mapError ApplicationError.mapToApiError
       Deactivate =
         fun req ->
             capabilities.Deactivate req
-            |> TaskResult.map (fun d -> d.NewState)
-            |> TaskResult.map mapBomDto }
+            |> TaskResult.map(fun d -> d.NewState)
+            |> TaskResult.map mapBomDto
+            |> TaskResult.mapError ApplicationError.mapToApiError }
     : BomApi

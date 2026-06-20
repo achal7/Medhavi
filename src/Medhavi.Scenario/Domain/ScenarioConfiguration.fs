@@ -4,7 +4,7 @@ open System
 open System.Security.Cryptography
 open System.Text
 open Medhavi.SharedKernel
-open Medhavi.SharedKernel.ScenarioContracts
+open Medhavi.Contracts.Scenario
 
 type ScenarioObjective =
     | Lexicographic of priority: (ObjectiveTerm * decimal) list
