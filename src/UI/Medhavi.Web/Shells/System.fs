@@ -1,10 +1,11 @@
-namespace Medhavi.Web
+namespace Medhavi.Web.System
 
 open System
 open Elmish
 open Bolero
 open Bolero.Html
 open Bolero.Server.Html
+open Medhavi.Web.Services
 open Microsoft.AspNetCore.Components
 
 module SystemOrchestrator =
@@ -24,7 +25,7 @@ module SystemOrchestrator =
             LoginState = LoginShell.init()
         }, Cmd.none
 
-    let update (authService: Services.AuthService) msg model =
+    let update (service: IApplicationService) msg (model: Model) =
         match msg with
         | LoginMsg loginMsg ->
             match loginMsg with
@@ -32,11 +33,11 @@ module SystemOrchestrator =
                 { model with CurrentUser = Some user }, Cmd.none
             | LoginShell.SubmitLogin (username, password) ->
                 let loginModel, loginCmd = LoginShell.update loginMsg model.LoginState
-                let authCmd = 
+                let authCmd =
                     Cmd.OfAsync.either
-                        (fun () -> authService.Authenticate(username, password) |> Async.AwaitTask)
-                        ()
-                        (function 
+                        service.login
+                        (username, password)
+                        (function
                             | Ok user -> LoginMsg (LoginShell.LoginSuccess user)
                             | Error err -> LoginMsg (LoginShell.LoginFailed err))
                         (fun ex -> LoginMsg (LoginShell.LoginFailed ex.Message))
@@ -49,18 +50,18 @@ module SystemOrchestrator =
 
 type App() =
     inherit ProgramComponent<SystemOrchestrator.Model, SystemOrchestrator.Message>()
-    
+
     [<Inject>]
-    member val AuthService = Unchecked.defaultof<Services.AuthService> with get, set
-    
+    member val ApplicationService = Unchecked.defaultof<IApplicationService> with get, set
+
     override this.Program =
         let init () = SystemOrchestrator.init()
-        let update msg model = SystemOrchestrator.update this.AuthService msg model
-        
+        let update msg model = SystemOrchestrator.update this.ApplicationService msg model
+
         let view (model: SystemOrchestrator.Model) dispatch =
             match model.CurrentUser with
             | None ->
-                LoginShell.view model.LoginState (fun msg -> dispatch (SystemOrchestrator.LoginMsg msg))
+                LoginShellView.view model.LoginState (fun msg -> dispatch (SystemOrchestrator.LoginMsg msg))
             | Some user ->
                 comp<AppShell.AppShellComponent> {
                     "CurrentUser" => user
@@ -72,14 +73,14 @@ type App() =
 [<Route "/{*path}">]
 type SystemPage() =
     inherit Component()
-    
-    override this.Render() =
+
+    override this.Render() : Node =
         doctypeHtml {
             head {
                 meta { attr.charset "UTF-8" }
                 meta { attr.name "viewport"; attr.content "width=device-width, initial-scale=1.0" }
                 title { "Medhavi APS Workbench" }
-                Bolero.Html.``base`` { attr.href "/" }
+                Html.``base`` { attr.href "/" }
                 link { attr.rel "stylesheet"; attr.href "_content/Radzen.Blazor/css/standard.css" }
                 link { attr.rel "stylesheet"; attr.href "css/index.css" }
             }
