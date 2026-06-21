@@ -14,6 +14,7 @@ type Workspace =
     | MaterialReservation
     | ResourceScheduling
     | ScenarioManagement
+    | MasterData
 
 type WorkspaceAction =
     | NavigateTo of Workspace
@@ -88,3 +89,14 @@ type WorkspaceStore<'TState> =
         /// Clear the store (reset to default)
         Clear: unit -> unit
     }
+
+open Medhavi.Contracts.MasterData
+
+type MasterDataService =
+    { UomQueryService: Uom.UomQueryService
+      PlantQueryService: Network.PlantQueryService
+      StockingPointQueryService: Network.StockingPointQueryService
+      SkuQueryService: Sku.SkuQueryService
+      BomQueryService: Bom.BomQueryService
+      RoutingQueryService: Routing.RoutingQueryService
+      TransportLegQueryService: Transport.TransportLegQueryService }

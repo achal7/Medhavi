@@ -9,7 +9,8 @@ open Medhavi.Web.Stores
 type AppShellEnv =
     { DemandLineQueries: DemandLineQueries
       StoreRegistry: WorkspaceStoreRegistry
-      TooltipService: TooltipService }
+      TooltipService: TooltipService
+      MasterDataService: MasterDataService }
 
 type AppShellModel =
     { Session: Session.Model
@@ -23,7 +24,8 @@ type AppShellModel =
       CommandPaletteSearchText: string
       AppbarState: Appbar.Model
       NavigationState: Navigation.Model
-      MaterialReservationState: MaterialReservation.Model option }
+      MaterialReservationState: MaterialReservation.Model option
+      MasterDataState: MasterData.Model option }
 
 type Message =
     // AI & Workspace Messages
@@ -31,6 +33,7 @@ type Message =
     | SetCommandPaletteOpen of bool
     | ExecuteWorkspaceAction of WorkspaceAction
     | ReservationWorkspaceMsg of MaterialReservation.Msg
+    | MasterDataMsg of MasterData.Msg
 
     // Component messages
     | ToggleSidebar

@@ -7,6 +7,7 @@ type Workspace =
     | MaterialReservation
     | ResourceScheduling
     | ScenarioManagement
+    | MasterData
 
 type WorkspaceAction =
     | NavigateTo of Workspace

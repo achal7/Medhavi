@@ -357,7 +357,7 @@ type Rz =
 
     static member private propName<'T, 'P>(getter: 'T -> 'P) : string = ""
 
-    static member dataGridColumn<'T when 'T: not null>(property: string, title: string, ?width: string, ?formatString: string, ?sortable: bool, ?filterable: bool) : Node =
+    static member dataGridColumn<'T when 'T: not null>(property: string, title: string, ?template: 'T -> Node, ?width: string, ?formatString: string, ?sortable: bool, ?filterable: bool, ?filterMode: Radzen.FilterMode, ?footer: Node, ?isFrozen: bool, ?frozenPosition: FrozenColumnPosition) : Node =
         comp<RadzenDataGridColumn<'T>> {
             "Property" => property
             "Title" => title
@@ -365,31 +365,61 @@ type Rz =
             if formatString.IsSome then "FormatString" => formatString.Value else attr.empty()
             if sortable.IsSome then "Sortable" => sortable.Value else attr.empty()
             if filterable.IsSome then "Filterable" => filterable.Value else attr.empty()
+            if filterMode.IsSome then "FilterMode" => filterMode.Value else attr.empty()
+            if footer.IsSome then attr.fragment "FooterTemplate" footer.Value else attr.empty()
+            if isFrozen.IsSome then "Frozen" => isFrozen.Value else attr.empty()
+            if frozenPosition.IsSome then "FrozenPosition" => frozenPosition.Value else attr.empty()
+            match template with
+            | Some t -> attr.fragmentWith "Template" t 
+            | None -> attr.empty()
         }
 
     static member dataGrid<'T when 'T: not null>
         (
             data: seq<'T>,
             columns: Node list,
+            ?headerTemplate: Node,
             ?allowFiltering: bool,
             ?allowSorting: bool,
+            ?allowResize: bool,
+            ?showFooter:bool,
             ?allowPaging: bool,
             ?pageSize: int,
             ?allowVirtualization: bool,
             ?height: string,
             ?rowClick: 'T -> unit,
+            ?allowGrouping: bool,
+            ?allowColumnPicking: bool,
             ?class': string
         ) : Node =
         comp<RadzenDataGrid<'T>> {
             "Data" => data
+            if showFooter.IsSome then "ShowFooter" => showFooter.Value else attr.empty()
+            if allowResize.IsSome then "AllowColumnResize" => allowResize.Value else attr.empty()
             if allowFiltering.IsSome then "AllowFiltering" => allowFiltering.Value else attr.empty()
-            if allowSorting.IsSome then "AllowSorting" => allowSorting.Value else attr.empty()
+            if allowSorting.IsSome then 
+                "AllowSorting" => allowSorting.Value
+                "AllowMultiColumnSorting" => allowSorting.Value
+                "ShowMultiColumnSortingIndex" => allowSorting.Value
+            else 
+                attr.empty()
             if allowPaging.IsSome then "AllowPaging" => allowPaging.Value else attr.empty()
             if pageSize.IsSome then "PageSize" => pageSize.Value else attr.empty()
             if allowVirtualization.IsSome then "AllowVirtualization" => allowVirtualization.Value else attr.empty()
             if height.IsSome then "Height" => height.Value else attr.empty()
             if rowClick.IsSome then attr.callback "RowClick" rowClick.Value else attr.empty()
             if class'.IsSome then attr.``class`` class'.Value else attr.empty()
+            if allowGrouping.IsSome then "AllowGrouping" => allowGrouping.Value else attr.empty()
+            "HideGroupedColumn" => true
+            if allowColumnPicking.IsSome then
+                "ColumnsPickerAllowFiltering" => allowColumnPicking.Value
+                //"QueryOnlyVisibleColumns" => allowColumnPicking.Value
+                "AllowColumnPicking" => allowColumnPicking.Value
+            else
+                attr.empty()
+            match headerTemplate with
+            | Some t -> attr.fragment "HeaderTemplate" t 
+            | None -> attr.empty()
             Rz.namedFragment "Columns" columns
         }
 
@@ -443,21 +473,27 @@ type Rz =
             if selectedIndex.IsSome then "SelectedIndex" => selectedIndex.Value else attr.empty()
             if selectedIndexChanged.IsSome then attr.callback "SelectedIndexChanged" selectedIndexChanged.Value else attr.empty()
             if class'.IsSome then attr.``class`` class'.Value else attr.empty()
-            for (header, content) in tabs do
-                comp<RadzenTabsItem> {
-                    "Text" => header
-                    for child in content do child
-                }
+            attr.fragment "Tabs" (
+                forEach tabs (fun (header, content) ->
+                    comp<RadzenTabsItem> {
+                        "Text" => header
+                        for child in content do child
+                    }
+                )
+            )
         }
 
     static member accordion(items: (string * Node list) list, ?class': string) : Node =
         comp<RadzenAccordion> {
             if class'.IsSome then attr.``class`` class'.Value else attr.empty()
-            for (title, content) in items do
-                comp<RadzenAccordionItem> {
-                    "Text" => title
-                    for child in content do child
-                }
+            attr.fragment "Items" (
+                forEach items (fun (title, content) ->
+                    comp<RadzenAccordionItem> {
+                        "Text" => title
+                        for child in content do child
+                    }
+                )
+            )
         }
 
     // ========================================

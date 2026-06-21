@@ -15,6 +15,7 @@ type WorkspaceNavigation =
     | [<EndPoint "/capacity">] Capacity
     | [<EndPoint "/scenarios">] Scenarios
     | [<EndPoint "/promise">] Promise
+    | [<EndPoint "/masterdata">] MasterData
 
 type Model =
     { Menus: WorkspaceNavigation list
@@ -92,6 +93,11 @@ let view (model: Model) dispatch =
                   "Scenario Workbench",
                   icon = "schema",
                   onClick = fun _ -> dispatch(SelectMenu WorkspaceNavigation.Scenarios)
+              )
+              Rz.panelMenuItem(
+                  "Master Data",
+                  icon = "schema",
+                  onClick = fun _ -> dispatch(SelectMenu WorkspaceNavigation.MasterData)
               )
               Rz.panelMenuItem("Command History", icon = "history") ],
             style = "flex: 1;"

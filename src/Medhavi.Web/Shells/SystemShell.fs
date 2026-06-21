@@ -13,6 +13,7 @@ open Medhavi.Web.Stores
 open Medhavi.SharedKernel.BoundedContexts
 open Radzen.Blazor
 open Radzen
+open System
 
 type IAuthApplicationService =
     abstract Authenticate: string -> string -> Async<Result<User, string>>
@@ -22,7 +23,8 @@ type Env =
       DemandLineApi: DemandLineApi
       DemandLineQueries: DemandLineQueries
       StoreRegistry: WorkspaceStoreRegistry
-      TooltipService: TooltipService }
+      TooltipService: TooltipService
+      MasterDataService: MasterDataService }
 
 type Model =
     { User: User option
@@ -49,17 +51,47 @@ let init () =
     let eventSubDispatch dispatch =
         DomainEventBus.Subscribe<DemandCreatedNotification>(fun n ->
             printfn $"[SystemShell] DemandCreatedNotification received: %s{n.DemandLineId}. Refreshing workspace."
-            dispatch(AppShellMsg(ExecuteWorkspaceAction WorkspaceAction.RefreshActiveWorkspace)))
+            dispatch(AppShellMsg(ExecuteWorkspaceAction WorkspaceAction.RefreshActiveWorkspace))
+
+            let notif: Medhavi.Web.Notification =
+                { Id = Guid.NewGuid()
+                  Category = "Demand"
+                  Title = "Demand Created"
+                  Message = sprintf "Demand line %s was created." n.DemandLineId
+                  Timestamp = DateTime.Now
+                  IsRead = false }
+
+            dispatch(AppShellMsg(SessionMsg(Medhavi.Web.Session.Msg.ReceiveNotification notif))))
         |> ignore
 
         DomainEventBus.Subscribe<DemandUpdatedNotification>(fun n ->
             printfn $"[SystemShell] DemandUpdatedNotification received: %s{n.DemandLineId}. Refreshing workspace."
-            dispatch(AppShellMsg(ExecuteWorkspaceAction WorkspaceAction.RefreshActiveWorkspace)))
+            dispatch(AppShellMsg(ExecuteWorkspaceAction WorkspaceAction.RefreshActiveWorkspace))
+
+            let notif: Medhavi.Web.Notification =
+                { Id = Guid.NewGuid()
+                  Category = "Demand"
+                  Title = "Demand Updated"
+                  Message = sprintf "Demand line %s was updated." n.DemandLineId
+                  Timestamp = DateTime.Now
+                  IsRead = false }
+
+            dispatch(AppShellMsg(SessionMsg(Medhavi.Web.Session.Msg.ReceiveNotification notif))))
         |> ignore
 
         DomainEventBus.Subscribe<DemandDeletedNotification>(fun n ->
             printfn $"[SystemShell] DemandDeletedNotification received: %s{n.DemandLineId}. Refreshing workspace."
-            dispatch(AppShellMsg(ExecuteWorkspaceAction WorkspaceAction.RefreshActiveWorkspace)))
+            dispatch(AppShellMsg(ExecuteWorkspaceAction WorkspaceAction.RefreshActiveWorkspace))
+
+            let notif: Medhavi.Web.Notification =
+                { Id = Guid.NewGuid()
+                  Category = "Demand"
+                  Title = "Demand Deleted"
+                  Message = sprintf "Demand line %s was deleted." n.DemandLineId
+                  Timestamp = DateTime.Now
+                  IsRead = false }
+
+            dispatch(AppShellMsg(SessionMsg(Medhavi.Web.Session.Msg.ReceiveNotification notif))))
         |> ignore
 
     let subCmd = [ eventSubDispatch ]
@@ -103,7 +135,8 @@ let update (env: Env) msg (model: Model) =
         let appShellEnv: AppShell.AppShellEnv =
             { DemandLineQueries = env.DemandLineQueries
               StoreRegistry = env.StoreRegistry
-              TooltipService = env.TooltipService }
+              TooltipService = env.TooltipService
+              MasterDataService = env.MasterDataService }
 
         updateChild
             (fun m -> m.AppState)
@@ -121,7 +154,8 @@ let view (env: Env) (model: Model) dispatch : Node =
         let appShellEnv: AppShell.AppShellEnv =
             { DemandLineQueries = env.DemandLineQueries
               StoreRegistry = env.StoreRegistry
-              TooltipService = env.TooltipService }
+              TooltipService = env.TooltipService
+              MasterDataService = env.MasterDataService }
 
         div {
             comp<RadzenTooltip> { attr.empty() }
@@ -146,6 +180,9 @@ type App() =
     member val DemandLineQueries: DemandLineQueries = Unchecked.defaultof<_> with get, set
 
     [<Inject>]
+    member val MasterDataService: MasterDataService = Unchecked.defaultof<_> with get, set
+
+    [<Inject>]
     member val TooltipService: TooltipService = null with get, set
 
     override this.Program =
@@ -157,7 +194,8 @@ type App() =
               DemandLineApi = this.DemandLineApi
               DemandLineQueries = this.DemandLineQueries
               StoreRegistry = storeRegistry
-              TooltipService = this.TooltipService }
+              TooltipService = this.TooltipService
+              MasterDataService = this.MasterDataService }
 
         Program.mkProgram (fun _ -> init()) (update env) (view env)
 

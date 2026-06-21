@@ -78,6 +78,10 @@ let pageContent (model: AppShellModel) (dispatch: Message -> unit) : Node =
         match model.MaterialReservationState with
         | Some rSubModel -> MaterialReservation.view rSubModel (ReservationWorkspaceMsg >> dispatch)
         | None -> div { "Reservation workspace loading..." }
+    | Some Workspace.MasterData ->
+        match model.MasterDataState with
+        | Some rSubModel -> MasterData.view rSubModel (MasterDataMsg >> dispatch)
+        | None -> div { "MasterData workspace loading..." }
     | _ -> div { text "SCENARIOS" }
 
 let view (env: AppShellEnv) (model: AppShellModel) dispatch =

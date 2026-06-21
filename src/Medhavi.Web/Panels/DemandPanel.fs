@@ -1,15 +1,16 @@
 namespace Medhavi.Web.Panels
 
 open System
-open Microsoft.AspNetCore.Components
 open Bolero
 open Bolero.Html
 open Elmish
 open Medhavi.Contracts.Demand
-open Medhavi.Web.Components
 open Medhavi.Web.Controls
 
 module DemandPanel =
+
+    let inline callback f = Some(fun arg -> f arg) // for one-arg functions
+    let inline callback0 f = Some(fun () -> f()) // for zero-arg
 
     type Model =
         { Demands: RemoteData<DemandLine list>
@@ -47,16 +48,48 @@ module DemandPanel =
 
         let renderGrid (items: DemandLine list) =
             let filtered = filterDemands items
+            let totalQty = filtered |> List.sumBy(fun d -> d.RequestedQty)
+            let rowCount = filtered |> List.length
 
             let gridConfig =
                 { Columns =
-                    [ Rz.dataGridColumn<DemandLine>("DemandLineId", "Line ID", width = "110px")
+                    [ Rz.dataGridColumn<DemandLine>(
+                          "DemandLineId",
+                          "Line ID",
+                          width = "110px",
+                          footer = text(sprintf "Rows: %d" rowCount),
+                          frozenPosition = Radzen.FrozenColumnPosition.Left,
+                          isFrozen = true
+                      )
+                      Rz.dataGridColumn<DemandLine>(
+                          "Type",
+                          "Type",
+                          width = "40px",
+                          sortable = false,
+                          filterable = false,
+                          template =
+                              fun d ->
+                                  let icon = if d.DemandCategory = "CustomerOrder" then "person" else "trending_up"
+                                  comp<Radzen.Blazor.RadzenIcon> { "Icon" => icon }
+                      )
                       Rz.dataGridColumn<DemandLine>("SkuCode", "SKU Code", width = "120px")
                       Rz.dataGridColumn<DemandLine>("SkuName", "Product", width = "180px")
                       Rz.dataGridColumn<DemandLine>("CustomerName", "Customer", width = "180px")
-                      Rz.dataGridColumn<DemandLine>("RequestedQty", "Qty", width = "80px")
+                      Rz.dataGridColumn<DemandLine>(
+                          "RequestedQty",
+                          "Qty",
+                          width = "80px",
+                          footer = text(sprintf "Total: %M" totalQty)
+                      )
                       Rz.dataGridColumn<DemandLine>("RequestedDeliveryDate", "Due Date", width = "110px")
-                      Rz.dataGridColumn<DemandLine>("Status", "Status", width = "110px") ]
+                      Rz.dataGridColumn<DemandLine>(
+                          "Status",
+                          "Status",
+                          width = "110px",
+                          filterMode = Radzen.FilterMode.CheckBoxList,
+                          sortable = true,
+                          filterable = true
+                      ) ]
                   Data = filtered
                   IsLoading = false
                   OnRowSelected = fun item -> SelectDemand(Some item) }
@@ -64,28 +97,17 @@ module DemandPanel =
             comp<GridPanel<DemandLine, Msg>> {
                 "Config" => gridConfig
                 "Dispatch" => dispatch
+                "SearchText" => model.SearchText
+                "SearchPlaceholder" => "Search by SKU, Customer, or Line ID.."
+                "OnSearchChanged" => callback(fun s -> dispatch(SearchTextChanged s))
+                "OnRefresh" => callback0(fun () -> dispatch RefreshRequested)
+                "ShowGroupingToggle" => true
             }
 
         div {
-            attr.``class`` "rz-p-4"
-            attr.style "display: flex; flex-direction: column; gap: 16px; height: 100%;"
 
             div {
-                attr.style "display: flex; align-items: center; gap: 12px;"
-
-                Rz.textBox(
-                    value = model.SearchText,
-                    placeholder = "Search by SKU, Customer, or Line ID...",
-                    style = "flex: 1;",
-                    valueChanged = (SearchTextChanged >> dispatch)
-                )
-
-                Rz.button("Refresh", (fun _ -> dispatch RefreshRequested), Radzen.ButtonStyle.Secondary)
-
-            }
-
-            div {
-                attr.style "display: flex; gap: 16px; flex: 1;"
+                attr.style "display: flex; flex: 1;"
 
                 div {
                     attr.style "flex: 2; min-width: 0;"
@@ -115,7 +137,11 @@ module DemandPanel =
                                   "Status", demand.Status ]
                               OnClose = fun () -> dispatch(SelectDemand None) }
 
-                        comp<DetailPanel> { "Config" => detailConfig }
+                        comp<DetailPanel> {
+                            "Config" => detailConfig
+                            "OnRefresh" => (fun () -> dispatch RefreshRequested)
+                            "ShowGroupingToggle" => true
+                        }
                     }
                 | None -> empty()
             }

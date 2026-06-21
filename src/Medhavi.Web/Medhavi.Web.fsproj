@@ -28,6 +28,7 @@
     <Compile Include="Panels\SidebarPanel.fs" />
     <Compile Include="Panels\DemandPanel.fs" />
     <Compile Include="Workspaces\MaterialReservation.fs" />
+    <Compile Include="Workspaces\MasterData.fs" />
     <Compile Include="Shells\Session.fs" />
     <Compile Include="Shells\LoginShell.fs" />
     <Compile Include="Shells\Appbar.fs" />

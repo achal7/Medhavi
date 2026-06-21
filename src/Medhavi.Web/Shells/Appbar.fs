@@ -126,8 +126,10 @@ let connectionBadge (tooltipService: TooltipService) status =
     comp<RadzenButton> {
         "Icon" => icon
         "ButtonStyle" => style
+        "Variant" => Radzen.Variant.Text
         "Size" => ButtonSize.Small
         attr.callback "MouseEnter" (fun (elRef: ElementReference) -> tooltipService.Open(elRef, titleText))
+        attr.``class`` "filled-icon"
     }
 
 let scenarioSelection (tooltipService: TooltipService) (model: Model) dispatch =
@@ -203,6 +205,7 @@ let view (tooltipService: TooltipService) (model: Model) dispatch =
                 scenarioSelection tooltipService model dispatch
                 comp<RadzenButton> {
                     "Icon" => "search"
+                    "Variant" => Radzen.Variant.Text
                     "ButtonStyle" => ButtonStyle.Light
                     "Size" => ButtonSize.Small
                     attr.callback "Click" (fun (args: MouseEventArgs) -> dispatch(ToggleCommandPalette))
@@ -212,26 +215,37 @@ let view (tooltipService: TooltipService) (model: Model) dispatch =
                 }
 
                 let unreadCount = model.Notifications |> List.filter(fun n -> not n.IsRead) |> List.length
+                let hasUnreadCount = unreadCount > 0
 
                 comp<RadzenButton> {
-                    "Icon" => "Notifications"
+                    "Variant" => Radzen.Variant.Text
                     "Size" => ButtonSize.Small
-                    "ButtonStyle" => ButtonStyle.Info
-                    attr.callback "Click" (fun (args: MouseEventArgs) -> dispatch(ToggleNotifications))
+                    "ButtonStyle" => if hasUnreadCount then ButtonStyle.Info else ButtonStyle.Light
+                    attr.callback "Click" (fun (_: MouseEventArgs) -> dispatch(ToggleNotifications))
 
                     attr.callback "MouseEnter" (fun (elRef: ElementReference) ->
                         tooltipService.Open(elRef, "Notifications History"))
 
-                    comp<RadzenBadge> {
-                        "BadgeStyle" => BadgeStyle.Secondary
-                        "IsPill" => true
-                        "Text" => string unreadCount
-                        "class" => "rz-ms-2"
-                    }
+                    attr.fragment
+                        "ChildContent"
+                        (concat {
+                            comp<RadzenIcon> {
+                                "Icon" => if hasUnreadCount then "notifications" else "notifications_none"
+                                attr.``class`` "filled-icon"
+                            }
+
+                            comp<RadzenBadge> {
+                                "BadgeStyle" => if hasUnreadCount then BadgeStyle.Secondary else BadgeStyle.Light
+                                "IsPill" => true
+                                "Text" => string unreadCount
+                                "class" => "rz-ms-2"
+                            }
+                        })
                 }
 
                 comp<RadzenButton> {
                     "Icon" => "history"
+                    "Variant" => Radzen.Variant.Text
                     attr.callback "Click" (fun (args: MouseEventArgs) -> dispatch(ToggleActivityFeeds))
                     "Size" => ButtonSize.Small
                     "ButtonStyle" => ButtonStyle.Light
@@ -242,6 +256,7 @@ let view (tooltipService: TooltipService) (model: Model) dispatch =
 
                 comp<RadzenButton> {
                     "Icon" => "settings"
+                    "Variant" => Radzen.Variant.Text
                     attr.callback "Click" (fun (args: MouseEventArgs) -> dispatch(ToggleSettingsDialog))
                     "Size" => ButtonSize.Small
                     "ButtonStyle" => ButtonStyle.Light

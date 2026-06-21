@@ -16,6 +16,7 @@ type ConnectionStatus =
 
 type Notification =
     { Id: Guid
+      Category: string
       Title: string
       Message: string
       Timestamp: DateTime
@@ -34,7 +35,7 @@ type Operation =
       State: OperationState<unit, string> }
 
 type CommandOrigin =
-    | Human
+    | Human of string
     | Ai
     | System
 

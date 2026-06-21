@@ -14,12 +14,14 @@ let mapWorkspace (w: Workspace) : Navigation.WorkspaceNavigation =
     | Workspace.ResourceScheduling -> Navigation.WorkspaceNavigation.Capacity
     | Workspace.MaterialReservation -> Navigation.WorkspaceNavigation.MaterialReservation
     | Workspace.ScenarioManagement -> Navigation.WorkspaceNavigation.Scenarios
+    | Workspace.MasterData -> Navigation.WorkspaceNavigation.MasterData
 
 let mapWorkspaceNavigationToWorkspace (nav: Navigation.WorkspaceNavigation) : Workspace option =
     match nav with
     | Navigation.WorkspaceNavigation.MaterialReservation -> Some Workspace.MaterialReservation
     | Navigation.WorkspaceNavigation.Capacity -> Some Workspace.ResourceScheduling
     | Navigation.WorkspaceNavigation.Scenarios -> Some Workspace.ScenarioManagement
+    | Navigation.WorkspaceNavigation.MasterData -> Some Workspace.MasterData
     | _ -> None
 
 let syncAppbarState (model: AppShellModel) : AppShellModel =
@@ -44,7 +46,9 @@ let init (session: Session.Model) =
             [ Navigation.WorkspaceNavigation.Dashboard
               Navigation.WorkspaceNavigation.MaterialReservation
               Navigation.WorkspaceNavigation.Supply
-              Navigation.WorkspaceNavigation.Capacity ]
+              Navigation.WorkspaceNavigation.Capacity
+              Navigation.WorkspaceNavigation.MasterData
+              Navigation.WorkspaceNavigation.Scenarios ]
 
     { ActiveWorkspace = None
       NavigationbarExpanded = true
@@ -57,7 +61,8 @@ let init (session: Session.Model) =
       ProfilePopoverOpen = false
       AppbarState = appbar
       NavigationState = nav
-      MaterialReservationState = None }
+      MaterialReservationState = None
+      MasterDataState = None }
     |> syncAppbarState,
     Cmd.batch [ Cmd.map AppbarMsg appbarCmd; Cmd.map NavigationMsg navCmd ]
 
@@ -91,9 +96,16 @@ let handleNavigationOutput
             let action = WorkspaceAction.NavigateTo workspace
 
             let sessionModel, sessionCmd =
-                logSessionTrace CommandOrigin.Human action CommandStatus.Succeeded None model.Session
+                logSessionTrace
+                    (CommandOrigin.Human model.Session.User.Name)
+                    action
+                    CommandStatus.Succeeded
+                    None
+                    model.Session
 
-            model, Cmd.batch [ Cmd.map SessionMsg sessionCmd; Cmd.ofMsg(ExecuteWorkspaceAction action) ], None
+            { model with Session = sessionModel },
+            Cmd.batch [ Cmd.map SessionMsg sessionCmd; Cmd.ofMsg(ExecuteWorkspaceAction action) ],
+            None
         | None -> model, Cmd.none, None
     | Navigation.Output.ToggleSidebar ->
         { model with
@@ -272,6 +284,23 @@ let rec update (env: AppShellEnv) (msg: Message) (model: AppShellModel) : AppShe
                     ReservationWorkspaceMsg
                     (MaterialReservation.update mrenv)
                     handleMaterialReservationOutput
+                    msg
+                    model
+
+        | MasterDataMsg msg ->
+            match model.MasterDataState with
+            | None -> model, Cmd.none, None
+            | Some state ->
+                let mdenv = WorkspaceEngine.makeMasterDataEnv env
+
+                updateChildWithOutput
+                    (fun m -> state)
+                    (fun child m ->
+                        { model with
+                            MasterDataState = Some child })
+                    MasterDataMsg
+                    (MasterData.update mdenv)
+                    (fun _ _ -> model, Cmd.none, None)
                     msg
                     model
 

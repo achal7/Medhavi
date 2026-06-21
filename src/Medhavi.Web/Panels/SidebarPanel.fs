@@ -40,7 +40,7 @@ type SidebarPanel =
                                   Rz.stack(
                                       [ let iconName, iconColor =
                                             match trace.Origin with
-                                            | CommandOrigin.Human -> "person", "var(--rz-primary-color)"
+                                            | CommandOrigin.Human _ -> "person", "var(--rz-primary-color)"
                                             | CommandOrigin.Ai -> "smart_toy", "var(--rz-success-color)"
                                             | CommandOrigin.System -> "settings", "var(--rz-text-secondary-color)"
 
@@ -49,7 +49,11 @@ type SidebarPanel =
                                         span {
                                             attr.``class`` "rz-text-caption rz-font-weight-bold rz-text-secondary"
                                             attr.style "text-transform: uppercase;"
-                                            string trace.Origin
+
+                                            match trace.Origin with
+                                            | CommandOrigin.Human name -> name
+                                            | CommandOrigin.Ai -> "AI"
+                                            | CommandOrigin.System -> "SYSTEM"
                                         } ],
                                       orientation = Orientation.Horizontal,
                                       alignItems = AlignItems.Center,
@@ -151,12 +155,23 @@ type SidebarPanel =
                                   )
 
                                   div {
-                                      attr.``class`` "rz-display-flex rz-justify-content-between rz-mb-1"
+                                      attr.``class``
+                                          "rz-display-flex rz-justify-content-between rz-align-items-center rz-mb-1"
 
-                                      span {
-                                          attr.``class`` "rz-text-subtitle2 rz-font-weight-bold"
-                                          n.Title
-                                      }
+                                      Rz.stack(
+                                          [ comp<RadzenBadge> {
+                                                "Text" => n.Category
+                                                "BadgeStyle" => BadgeStyle.Info
+                                                "IsPill" => true
+                                            }
+                                            span {
+                                                attr.``class`` "rz-text-subtitle2 rz-font-weight-bold"
+                                                n.Title
+                                            } ],
+                                          orientation = Orientation.Horizontal,
+                                          alignItems = AlignItems.Center,
+                                          gap = "6px"
+                                      )
 
                                       span {
                                           attr.``class`` "rz-text-caption rz-text-secondary"
