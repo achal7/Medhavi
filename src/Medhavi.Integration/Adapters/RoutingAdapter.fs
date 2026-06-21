@@ -3,7 +3,7 @@ module Medhavi.Integration.Adapters.Routing
 open System
 open System.Threading
 open Medhavi.Common.Patterns
-open Medhavi.Contracts.Integration
+open Medhavi.Contracts.MasterData.Routing
 open Medhavi.Integration
 open Medhavi.Infrastructure.IO
 open Medhavi.Infrastructure.Stores.EnvelopeStore

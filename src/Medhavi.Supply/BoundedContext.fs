@@ -2,8 +2,7 @@ namespace Medhavi.Supply
 
 open System
 open System.Threading.Tasks
-open Medhavi.Contracts.API
-open Medhavi.Contracts.Projections
+open Medhavi.Contracts.Supply
 open Medhavi.Infrastructure.Projections
 open Medhavi.SharedKernel
 open Medhavi.SharedKernel.BoundedContexts

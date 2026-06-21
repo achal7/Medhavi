@@ -4,7 +4,7 @@ open System
 open Medhavi.SharedKernel
 open Medhavi.SharedKernel.PromisePolicy
 open Medhavi.Promise.PromiseTypes
-open Medhavi.Contracts.Transport
+open Medhavi.Contracts.MasterData.Transport
 open Medhavi.Contracts.Promise
 
 // Context representation for a single line evaluation
@@ -64,7 +64,7 @@ let createRejection domain code message =
       Confidence = None
       Reservations = []
       Meta = Map.empty }
-    : PromiseResponse
+    : PromiseTypes.PromiseResponse
 
 // Earliest material calculation logic
 let earliestMaterialReady
@@ -498,7 +498,7 @@ let tryPromise
     (_: TenantProvider)
     (line: OrderLine)
     (req: PromiseRequestCmd)
-    : Async<PromiseResponse> =
+    : Async<PromiseTypes.PromiseResponse> =
     async {
         let! result = processLine mat cap trans routing resv req line
 
@@ -534,7 +534,7 @@ let tryPromiseOrder
     (resv: ReservationProvider)
     (_: TenantProvider)
     (req: PromiseRequestCmd)
-    : Async<Result<PromiseResponse, ProviderError>> =
+    : Async<Result<PromiseTypes.PromiseResponse, ProviderError>> =
     async {
         if List.isEmpty req.Order.Lines then
             let resp =

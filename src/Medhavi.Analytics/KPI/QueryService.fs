@@ -7,9 +7,9 @@ open Medhavi.Analytics.PlanningHorizon
 open Medhavi.Contracts.Analytics
 open Medhavi.Contracts.Capacity
 open Medhavi.Contracts.Demand
-open Medhavi.Contracts.MasterData
+open Medhavi.Contracts.MasterData.Config
+open Medhavi.Contracts.MasterData.Transport
 open Medhavi.Contracts.Supply
-open Medhavi.Contracts.Transport
 type KpiQueryRequest =
     { PlantId: string
       Periods: PlanningPeriod list

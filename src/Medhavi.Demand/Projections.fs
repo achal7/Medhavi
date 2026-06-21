@@ -56,7 +56,7 @@ let createProjectionAgent () =
 
 let createDemandQueryService (agent: DemandAgent) =
 
-    let apiEvents = Event<obj>()
+    let _ = Event<obj>()
     let queryService = QueryServiceBase.getQueryService agent id
 
     // Subscribe to agent's EventApplied and trigger corresponding API event notifications

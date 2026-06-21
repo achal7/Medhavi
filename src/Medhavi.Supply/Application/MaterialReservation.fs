@@ -3,12 +3,10 @@ module Medhavi.Supply.Application.MaterialReservation
 open System
 open Medhavi.Common.Patterns
 open Medhavi.Common.Validation
-open Medhavi.Contracts.API
 open Medhavi.Contracts.Supply
 open Medhavi.Infrastructure.Projections
 open Medhavi.SharedKernel
 open Medhavi.SharedKernel.Aggregate
-open Medhavi.Supply.Domain
 open Medhavi.Supply.Domain.MaterialReservationAgg
 
 module ACL =

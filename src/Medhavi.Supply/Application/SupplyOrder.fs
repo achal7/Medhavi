@@ -3,7 +3,6 @@ module Medhavi.Supply.Application.SupplyOrder
 open Medhavi
 open Medhavi.Common.Patterns
 open Medhavi.Common.Validation
-open Medhavi.Contracts.API
 open Medhavi.Contracts.Supply
 open Medhavi.Infrastructure.Projections
 open Medhavi.SharedKernel
@@ -171,7 +170,6 @@ type SupplyOrderCapabilities =
       Lock: SupplyOrderLockReq -> TaskResult<Decision, ApplicationError> }
 
 module Service =
-    open Medhavi.Contracts.Projections
     open Medhavi.Contracts
 
     let private createIfMissing capabilities (item: SupplyOrderUpdateReq) (existingOpt: Supply.SupplyOrder option) =
@@ -479,9 +477,9 @@ let createSupplyOrderApi (capabilities: SupplyOrderCapabilities) agent =
             reqs
             |> List.map capabilities.Create
             |> TaskResult.sequence
-            |> TaskResult.map(fun decisions -> 
-                decisions 
-                |> List.map(fun d -> d.NewState) 
+            |> TaskResult.map(fun decisions ->
+                decisions
+                |> List.map(fun d -> d.NewState)
                 |> List.map ACL.toContract)
             |> TaskResult.mapError ApplicationError.mapToApiError
       ProcessStatusUpdates = Service.processStatusUpdates capabilities query >> TaskResult.mapError ApplicationError.mapToApiError

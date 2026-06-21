@@ -2,12 +2,11 @@ module Medhavi.MasterData.Application.Uom
 
 open Medhavi
 open Medhavi.Common.Patterns
-open Medhavi.Contracts.Integration
+open Medhavi.Contracts.MasterData.Uom
 open Medhavi.Infrastructure.Projections
 open Medhavi.MasterData.Domain.UomAgg
 open Medhavi.SharedKernel
 open Medhavi.SharedKernel.Aggregate
-open Medhavi.Contracts.API
 
 module ACL =
     let toDefineCommand (req: UomDefineReq) =
@@ -46,7 +45,7 @@ let createCapabilities (repo: Repository<UnitOfMeasure, string, UnitOfMeasureEve
       Retire = liftCmdResult ACL.toRetireCommand >=> handleCommand UomId.value repo Retire decide
       Activate = liftCmdResult ACL.toActivateCommand >=> handleCommand UomId.value repo Activate decide }
 
-let mapToUomDto (uom: UnitOfMeasure) : Contracts.MasterData.UnitOfMeasure =
+let mapToUomDto (uom: UnitOfMeasure) : Contracts.MasterData.Uom.UnitOfMeasure =
     let isBase, factorVal =
         match uom.ConversionFactor with
         | Base factor -> true, PositiveDecimal.value factor
@@ -59,7 +58,7 @@ let mapToUomDto (uom: UnitOfMeasure) : Contracts.MasterData.UnitOfMeasure =
       ConversionFactor = factorVal
       Status = uom.Status.ToBool() }
 
-let evolveProjection (state: Map<string, Contracts.MasterData.UnitOfMeasure>) (evt: UnitOfMeasureEvent) =
+let evolveProjection (state: Map<string, Contracts.MasterData.Uom.UnitOfMeasure>) (evt: UnitOfMeasureEvent) =
     match evt with
     | UnitOfMeasureDefined uom -> Map.add (UomId.value uom.Id) (mapToUomDto uom) state
     | ConversionFactorChanged e ->
@@ -93,7 +92,7 @@ let evolveProjection (state: Map<string, Contracts.MasterData.UnitOfMeasure>) (e
         | None -> state
 
 let createProjectionAgent () =
-    ProjectionAgent<Map<string, Contracts.MasterData.UnitOfMeasure>, UnitOfMeasureEvent>(
+    ProjectionAgent<Map<string, Contracts.MasterData.Uom.UnitOfMeasure>, UnitOfMeasureEvent>(
         evolveProjection,
         Map.empty,
         "UomReadModel"

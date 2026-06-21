@@ -3,7 +3,7 @@ module Medhavi.Integration.Adapters.StockingPoint
 open System
 open System.Threading
 open Medhavi.Common.Patterns
-open Medhavi.Contracts.Integration
+open Medhavi.Contracts.MasterData.Network
 open Medhavi.Integration
 open Medhavi.Infrastructure.IO
 open Medhavi.Infrastructure.Stores.EnvelopeStore
@@ -100,6 +100,6 @@ let publishStockingPoints
 
 let ingestAndPublishStockingPoints (file: string) (store: EnvelopeStoreOps) : TaskResult<Envelope, IntegrationError> =
     taskResult {
-        let! (sps, nodes) = ingestStockingPoints file
+        let! sps, nodes = ingestStockingPoints file
         return! publishStockingPoints store (sps, nodes)
     }

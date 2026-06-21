@@ -2,6 +2,7 @@ namespace Medhavi.Infrastructure.Projections
 
 open System
 open System.Threading.Tasks
+open Medhavi.Contracts
 
 type ProjectionStats =
     { EventsProcessed: int64
@@ -93,8 +94,6 @@ type ProjectionAgent<'State, 'Event>(applyFn: 'State -> 'Event -> 'State, initia
         (predicate: 'a -> bool, getItems: 'State -> 'a seq)
         : System.Threading.Tasks.Task<'a list> =
         this.QueryAsync(fun state -> getItems state |> Seq.filter predicate |> Seq.toList)
-
-open Medhavi.Contracts.Projections
 
 module QueryServiceBase =
     let getById

@@ -2,9 +2,7 @@ module Medhavi.MasterData.Application.PhysicalResource
 
 open Medhavi
 open Medhavi.Common.Patterns
-open Medhavi.Contracts
-open Medhavi.Contracts.API
-open Medhavi.Contracts.Integration
+open Medhavi.Contracts.MasterData.Resource
 open Medhavi.Infrastructure.Projections
 open Medhavi.MasterData.Domain.PhysicalResourceAgg
 open Medhavi.SharedKernel
@@ -46,7 +44,7 @@ let createCapabilities (repo: Repository<PhysicalResource, string, PhysicalResou
         liftCmdResult ACL.toRetireCommand
         >=> handleCommand (fun c -> PhysicalResourceId.value c.Id) repo RetirePhysicalResource decide }
 
-let mapPhysicalResourceDto (pr: PhysicalResource) : MasterData.PhysicalResource =
+let mapPhysicalResourceDto (pr: PhysicalResource) : Medhavi.Contracts.MasterData.Resource.PhysicalResource =
     { Id = PhysicalResourceId.value pr.Id
       StandardResourceId = StandardResourceId.value pr.StandardResourceId
       Name = pr.Name
@@ -63,10 +61,10 @@ let mapPhysicalResourceDto (pr: PhysicalResource) : MasterData.PhysicalResource 
       Created = Timestamp.value pr.Created
       Modified = Timestamp.value pr.Modified }
 
-let evolveProjection (state: Map<string, MasterData.PhysicalResource>) (evt: PhysicalResourceEvent) =
+let evolveProjection (state: Map<string, Medhavi.Contracts.MasterData.Resource.PhysicalResource>) (evt: PhysicalResourceEvent) =
     match evt with
     | PhysicalResourceDefined e ->
-        let dto: MasterData.PhysicalResource =
+        let dto: Medhavi.Contracts.MasterData.Resource.PhysicalResource =
             { Id = PhysicalResourceId.value e.Id
               StandardResourceId = StandardResourceId.value e.StandardResourceId
               Name = e.Name
@@ -107,7 +105,7 @@ let evolveProjection (state: Map<string, MasterData.PhysicalResource>) (evt: Phy
         | None -> state
 
 let createProjectionAgent () =
-    ProjectionAgent<Map<string, MasterData.PhysicalResource>, PhysicalResourceEvent>(
+    ProjectionAgent<Map<string, Medhavi.Contracts.MasterData.Resource.PhysicalResource>, PhysicalResourceEvent>(
         evolveProjection,
         Map.empty,
         "PhysicalResourceReadModel"

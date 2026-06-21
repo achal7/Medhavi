@@ -1,6 +1,5 @@
 namespace Medhavi.Integration
 
-open System.Threading
 open Medhavi.Common.Patterns
 open Medhavi.Infrastructure
 open Medhavi.Infrastructure.Stores.EnvelopeStore

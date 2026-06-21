@@ -7,18 +7,22 @@
 
   <ItemGroup>
     <Compile Include="Types.fs" />
+    <Compile Include="MasterData\Uom.fs" />
+    <Compile Include="MasterData\Network.fs" />
+    <Compile Include="MasterData\Sku.fs" />
+    <Compile Include="MasterData\Bom.fs" />
+    <Compile Include="MasterData\Resource.fs" />
+    <Compile Include="MasterData\Routing.fs" />
+    <Compile Include="MasterData\Config.fs" />
+    <Compile Include="MasterData\Transport.fs" />
     <Compile Include="Scenario.fs" />
-    <Compile Include="MasterData.fs" />
     <Compile Include="Integration.fs" />
     <Compile Include="IntegrationPayloads.fs" />
     <Compile Include="Analytics.fs" />
     <Compile Include="Capacity.fs" />
-    <Compile Include="Transport.fs" />
     <Compile Include="Supply.fs" />
     <Compile Include="Promise.fs" />
-    <Compile Include="Projections.fs" />
     <Compile Include="Demand.fs" />
-    <Compile Include="API.fs" />
   </ItemGroup>
 
   <ItemGroup>

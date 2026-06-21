@@ -3,7 +3,8 @@ module Medhavi.MasterData.Application.TransportLeg
 open System
 open Medhavi.Common.Validation
 open Medhavi.Common.Patterns
-open Medhavi.Contracts
+open Medhavi.Contracts.MasterData
+open Medhavi.Contracts.MasterData.Transport
 open Medhavi.SharedKernel
 open Medhavi.SharedKernel.Aggregate
 open Medhavi.MasterData.Domain.TransportAgg
@@ -59,7 +60,7 @@ module ACL =
         |> toResult
         |> Result.mapError DomainError.combineValidationErrors
 
-    let toDefineCommand (req: Transport.TransportLegDefineReq) : Result<DefineTransportLegCmd, DomainError> =
+    let toDefineCommand (req: TransportLegDefineReq) : Result<DefineTransportLegCmd, DomainError> =
         let constraintsVal = parseConstraints req.Constraints
 
         let capacity =
@@ -123,7 +124,7 @@ module ACL =
         |> toResult
         |> Result.mapError DomainError.combineValidationErrors
 
-    let toUpdateCommand (req: Transport.TransportLegUpdateReq) : Result<UpdateTransportLegCmd, DomainError> =
+    let toUpdateCommand (req: TransportLegUpdateReq) : Result<UpdateTransportLegCmd, DomainError> =
         let mode =
             match req.Mode with
             | None -> Ok None
@@ -172,7 +173,7 @@ module ACL =
         |> toResult
         |> Result.mapError DomainError.combineValidationErrors
 
-    let toDeactivateCommand (req: Transport.TransportLegDeactivateReq) : Result<DeactivateTransportLegCmd, DomainError> =
+    let toDeactivateCommand (req: TransportLegDeactivateReq) : Result<DeactivateTransportLegCmd, DomainError> =
         TransportLegId.create req.Id
         |> Result.map(fun id ->
             { Id = id
@@ -182,9 +183,9 @@ module ACL =
 type Decision = Decision<TransportLeg, TransportLegEvent>
 
 type TransportLegCapabilities =
-    { Define: Transport.TransportLegDefineReq -> TaskResult<Decision, ApplicationError>
-      Update: Transport.TransportLegUpdateReq -> TaskResult<Decision, ApplicationError>
-      Deactivate: Transport.TransportLegDeactivateReq -> TaskResult<Decision, ApplicationError> }
+    { Define: TransportLegDefineReq -> TaskResult<Decision, ApplicationError>
+      Update: TransportLegUpdateReq -> TaskResult<Decision, ApplicationError>
+      Deactivate: TransportLegDeactivateReq -> TaskResult<Decision, ApplicationError> }
 
 let createCapabilities (repo: Repository<TransportLeg, string, TransportLegEvent>) =
     { Define =
@@ -197,7 +198,7 @@ let createCapabilities (repo: Repository<TransportLeg, string, TransportLegEvent
         liftCmdResult ACL.toDeactivateCommand
         >=> handleCommand (fun c -> TransportLegId.value c.Id) repo DeactivateTransportLeg decide }
 
-let mapTransportLegDto (l: TransportLeg) : MasterData.TransportLeg =
+let mapTransportLegDto (l: TransportLeg) : Transport.TransportLeg =
     let modeStr =
         match l.Mode with
         | TransportMode.Air -> "Air"
@@ -216,7 +217,7 @@ let mapTransportLegDto (l: TransportLeg) : MasterData.TransportLeg =
       CapacityUnit = l.CapacityUnit |> Option.map UomId.value
       Status = l.Status.ToBool() }
 
-let evolveProjection (state: Map<string, MasterData.TransportLeg>) (evt: TransportLegEvent) =
+let evolveProjection (state: Map<string, Transport.TransportLeg>) (evt: TransportLegEvent) =
     match evt with
     | TransportLegDefined e ->
         let modeStr =
@@ -228,7 +229,7 @@ let evolveProjection (state: Map<string, MasterData.TransportLeg>) (evt: Transpo
             | TransportMode.Pipeline -> "Pipeline"
             | TransportMode.Other s -> s
 
-        let dto: MasterData.TransportLeg =
+        let dto: Transport.TransportLeg =
             { Id = TransportLegId.value e.Id
               Origin = StockingPointId.value e.Origin
               Destination = StockingPointId.value e.Destination
@@ -281,15 +282,13 @@ let evolveProjection (state: Map<string, MasterData.TransportLeg>) (evt: Transpo
         | None -> state
 
 let createProjectionAgent () =
-    ProjectionAgent<Map<string, MasterData.TransportLeg>, TransportLegEvent>(
+    ProjectionAgent<Map<string, Transport.TransportLeg>, TransportLegEvent>(
         evolveProjection,
         Map.empty,
         "TransportLegReadModel"
     )
 
 let createQueryService agent = QueryServiceBase.getQueryService agent id
-
-open Medhavi.Contracts.API
 
 let createTransportLegApi (capabilities: TransportLegCapabilities) _ =
     { Define =

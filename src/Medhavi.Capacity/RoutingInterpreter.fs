@@ -17,24 +17,24 @@ type RoutingCapacityResult =
 
 module RoutingAcl =
     /// Translates the shared integration contract Routing DTO into the Capacity bounded context's specific RoutingLoadProfile.
-    let translate (dto: MasterData.Routing) : RoutingLoadProfile =
+    let translate (dto: MasterData.Routing.Routing) : RoutingLoadProfile =
         match dto.Details with
-        | MasterData.RoutingDetails.Work work ->
-            let translateStep (s: MasterData.RoutingStep) : RoutingStepLoadProfile =
+        | MasterData.Routing.RoutingDetails.Work work ->
+            let translateStep (s: MasterData.Routing.RoutingStep) : RoutingStepLoadProfile =
                 let loads =
                     s.ResourceRequirements
                     |> List.collect (fun req ->
                         let capacityLoadBasis =
                             match req.LoadBasis with
-                            | MasterData.ResourceLoadBasis.PerOrder -> CapacityLoadBasis.PerOrder
+                            | MasterData.Routing.ResourceLoadBasis.PerOrder -> CapacityLoadBasis.PerOrder
                             | _ -> CapacityLoadBasis.PerUnit
                         req.Options
                         |> List.map (fun ro ->
                             let runMin = ro.TimingProfile.RunTimePerBaseQuantity |> Option.defaultValue 1.0M
                             let eff =
                                 match ro.EfficiencyPolicy with
-                                | MasterData.ResourceEfficiencyPolicy.StandardEfficiency -> 1.0M
-                                | MasterData.ResourceEfficiencyPolicy.EfficiencyFactor f -> f
+                                | MasterData.Routing.ResourceEfficiencyPolicy.StandardEfficiency -> 1.0M
+                                | MasterData.Routing.ResourceEfficiencyPolicy.EfficiencyFactor f -> f
                             let target =
                                 match ro.WorkCenterId with
                                 | Some resId when not (String.IsNullOrWhiteSpace resId) ->
@@ -51,13 +51,13 @@ module RoutingAcl =
 
                 let yieldVal =
                     match s.YieldPolicy with
-                    | MasterData.StepYieldPolicy.NoYieldLoss -> None
-                    | MasterData.StepYieldPolicy.ExpectedYield y -> Some y
+                    | MasterData.Routing.StepYieldPolicy.NoYieldLoss -> None
+                    | MasterData.Routing.StepYieldPolicy.ExpectedYield y -> Some y
 
                 let reworkStep, reworkRate =
                     match s.ReworkPolicy with
-                    | MasterData.ReworkPolicy.NoRework -> None, None
-                    | MasterData.ReworkPolicy.ReworkToStep(stepId, rate) -> Some stepId, Some rate
+                    | MasterData.Routing.ReworkPolicy.NoRework -> None, None
+                    | MasterData.Routing.ReworkPolicy.ReworkToStep(stepId, rate) -> Some stepId, Some rate
 
                 { RoutingStepId = s.StepId
                   OperationCode = s.OperationCode
@@ -73,14 +73,14 @@ module RoutingAcl =
               BaseQuantity = work.BaseOutputQuantity
               StepLoads = work.Steps |> List.map translateStep }
 
-        | MasterData.RoutingDetails.Transport trans ->
+        | MasterData.Routing.RoutingDetails.Transport trans ->
             { RoutingId = dto.Id
               ProductId = trans.SkuId
               PreferencePriority = dto.Preference.Priority
               BaseQuantity = 1.0M
               StepLoads = [] }
 
-        | MasterData.RoutingDetails.Purchase pur ->
+        | MasterData.Routing.RoutingDetails.Purchase pur ->
             { RoutingId = dto.Id
               ProductId = pur.SkuId
               PreferencePriority = dto.Preference.Priority

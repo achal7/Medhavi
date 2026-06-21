@@ -116,7 +116,7 @@ type TransportAtpCapabilities =
       InvalidateCache: unit -> unit }
 
 /// Build a TransportLegRef from the Contracts DTO
-let private legRefFromDto (dto: Medhavi.Contracts.MasterData.TransportLeg) : TransportLegRef =
+let private legRefFromDto (dto: Medhavi.Contracts.MasterData.Transport.TransportLeg) : TransportLegRef =
     { LegId              = dto.Id
       Origin             = dto.Origin
       Destination        = dto.Destination

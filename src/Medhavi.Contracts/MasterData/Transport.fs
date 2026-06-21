@@ -1,9 +1,8 @@
-module Medhavi.Contracts.Transport
+module Medhavi.Contracts.MasterData.Transport
 
 open System
 open System.Threading.Tasks
 open Medhavi.Contracts
-open Medhavi.Contracts.Analytics
 
 type TransportLeg =
     { Id: string
@@ -38,19 +37,6 @@ type ShipmentView =
       CarrierId: string option
       Status: ShipmentStatus
       IsFirm: bool }
-
-/// Aggregated transport view for a single PlanningPeriod on a transport leg.
-type TransportPeriodView =
-    { Period: PlanningPeriod
-      TransportLegId: string
-      FromPlantId: string
-      ToPlantId: string
-      TotalOutboundQty: decimal
-      TotalInboundQty: decimal
-      LegCapacity: decimal option
-      CapacityUtilizPct: decimal option
-      EstimatedCost: decimal option
-      Shipments: ShipmentView list }
 
 type TransportLegDefineReq =
     { Id: string

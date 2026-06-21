@@ -2,10 +2,10 @@ module Medhavi.MasterData.Application.Node
 
 open Medhavi.Common.Validation
 open Medhavi.Common.Patterns
+open Medhavi.Contracts.MasterData.Network
 open Medhavi.SharedKernel
-open Medhavi.MasterData.Domain.NodeAgg
-open Medhavi.Contracts.Integration
 open Medhavi.SharedKernel.Aggregate
+open Medhavi.MasterData.Domain.NodeAgg
 
 module ACL =
     let parseNodeType (t: string) : Result<NodeType, DomainError> =

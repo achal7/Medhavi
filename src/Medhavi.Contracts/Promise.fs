@@ -1,6 +1,7 @@
 module Medhavi.Contracts.Promise
 
 open System
+
 /// Order line for promise evaluation
 type PromiseOrderLine =
     { LineId: string
@@ -27,6 +28,20 @@ type PromiseRequest =
       CustomerTier: string option
       SkuTier: string option
       Currency: string option }
+
+// type PromiseRequest =
+//     { OrderId: string
+//       SkuId: string
+//       NodeId: string
+//       Quantity: decimal
+//       RequestedDate: DateTimeOffset }
+
+type PromiseResponse =
+    { OrderId: string
+      SkuId: string
+      PromiseDate: DateTimeOffset
+      IsFeasible: bool
+      LimiterReason: string }
 
 /// Reason codes for promise limiters
 type PromiseReasonCode =
@@ -87,6 +102,7 @@ type PromiseCostBreakdown =
       TransportCost: decimal
       HoldingCost: decimal
       LatenessPenalty: decimal }
+
     member this.TotalCost =
         this.MaterialCost + this.ProductionCost + this.TransportCost + this.HoldingCost + this.LatenessPenalty
 

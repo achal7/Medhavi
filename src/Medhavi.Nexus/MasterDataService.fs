@@ -2,10 +2,15 @@ module Medhavi.Nexus.MasterDataService
 
 open System.Threading
 open System.Threading.Tasks
-open Medhavi.Common
 open Medhavi.Common.Patterns
 open Medhavi.Contracts
-open Medhavi.Contracts.MasterData
+open Medhavi.Contracts.MasterData.Uom
+open Medhavi.Contracts.MasterData.Network
+open Medhavi.Contracts.MasterData.Sku
+open Medhavi.Contracts.MasterData.Bom
+open Medhavi.Contracts.MasterData.Resource
+open Medhavi.Contracts.MasterData.Routing
+open Medhavi.Contracts.MasterData.Transport
 open Medhavi.Infrastructure.Stores.EnvelopeStore
 open Medhavi.MasterData
 open Medhavi.SharedKernel
@@ -118,6 +123,6 @@ let getTransportLegs (context: MasterDataContext) =
                   FixedCost = 0.0m
                   VariableCostPerUnit = None
                   Status = l.Status }
-                : Medhavi.Transport.TransportLegRef)
+                : TransportLegRef)
 
     }

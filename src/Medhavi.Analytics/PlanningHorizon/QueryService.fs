@@ -6,7 +6,6 @@ open Medhavi.Contracts.Analytics
 open Medhavi.Contracts.Capacity
 open Medhavi.Contracts.Demand
 open Medhavi.Contracts.Supply
-open Medhavi.Contracts.Transport
 
 // =============================================================================
 // Planning Horizon Query Service — the main entry point for projections

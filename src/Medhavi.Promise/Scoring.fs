@@ -3,7 +3,7 @@ module Medhavi.Promise.Scoring
 open System
 open Medhavi.SharedKernel.PromisePolicy
 open Medhavi.Promise.PromiseTypes
-open Medhavi.Contracts.Transport
+open Medhavi.Contracts.MasterData.Transport
 
 type Score = private Score of float
 

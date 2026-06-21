@@ -4,8 +4,6 @@ open System
 open System.Threading.Tasks
 open Medhavi.Common.Patterns
 open Medhavi.SharedKernel
-open Medhavi.Contracts.API
-open Medhavi.Contracts.Projections
 open Medhavi.Contracts.Supply
 open Medhavi.Supply
 

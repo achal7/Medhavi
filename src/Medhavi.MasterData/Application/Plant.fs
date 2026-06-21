@@ -2,10 +2,9 @@ module Medhavi.MasterData.Application.Plant
 
 open Medhavi
 open Medhavi.Common.Patterns
-open Medhavi.Contracts.Integration
+open Medhavi.Contracts.MasterData.Network
 open Medhavi.MasterData.Domain.PlantAgg
 open Medhavi.SharedKernel
-open Medhavi.Contracts.API
 open Medhavi.SharedKernel.Aggregate
 open Medhavi.Infrastructure.Projections
 
@@ -34,16 +33,16 @@ let createCapabilities (repo: Repository<Plant, string, PlantEvent>) =
       Rename = liftCmdResult ACL.toRenameCommand >=> handleCommand (fun c -> PlantId.value c.Id) repo RenamePlant decide
       Retire = liftCmdResult ACL.toRetireCommand >=> handleCommand (fun c -> PlantId.value c.Id) repo RetirePlant decide }
 
-let mapPlantDto (p: Plant) : Contracts.MasterData.Plant =
+let mapPlantDto (p: Plant) : Contracts.MasterData.Network.Plant =
     { Id = PlantId.value p.Id
       Code = p.Code
       Name = p.Name
       Status = p.Status.ToBool() }
 
-let evolveProjection (state: Map<string, Contracts.MasterData.Plant>) (evt: PlantEvent) =
+let evolveProjection (state: Map<string, Contracts.MasterData.Network.Plant>) (evt: PlantEvent) =
     match evt with
     | PlantDefined e ->
-        let dto: Contracts.MasterData.Plant =
+        let dto: Contracts.MasterData.Network.Plant =
             { Id = PlantId.value e.Id
               Code = e.Code
               Name = e.Name
@@ -64,7 +63,7 @@ let evolveProjection (state: Map<string, Contracts.MasterData.Plant>) (evt: Plan
         | None -> state
 
 let createProjectionAgent () =
-    ProjectionAgent<Map<string, Contracts.MasterData.Plant>, PlantEvent>(evolveProjection, Map.empty, "PlantReadModel")
+    ProjectionAgent<Map<string, Contracts.MasterData.Network.Plant>, PlantEvent>(evolveProjection, Map.empty, "PlantReadModel")
 
 let createPlantApi (capabilities: PlantCapabilities)=
     { Define =

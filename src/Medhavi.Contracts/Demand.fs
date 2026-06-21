@@ -2,7 +2,6 @@ module Medhavi.Contracts.Demand
 
 open System
 open System.Threading.Tasks
-open Medhavi.Contracts.Projections
 
 /// Risk classification for a demand line's on-time delivery status
 type LatenessRisk =

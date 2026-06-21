@@ -4,7 +4,6 @@ open Medhavi
 open Medhavi.Common.Patterns
 open Medhavi.Common.Validation
 open Medhavi.Contracts.Supply
-open Medhavi.Contracts.API
 open Medhavi.SharedKernel
 open Medhavi.Infrastructure.Projections
 open Medhavi.SharedKernel.Aggregate

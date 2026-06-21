@@ -4,7 +4,7 @@ open System
 open Medhavi.Common.Validation
 open Medhavi.Common.Patterns
 open Medhavi.Contracts
-open Medhavi.Contracts.Integration
+open Medhavi.Contracts.MasterData.Routing
 open Medhavi.Infrastructure.Projections
 open Medhavi.SharedKernel
 open Medhavi.SharedKernel.Aggregate
@@ -404,59 +404,59 @@ let createCapabilities (repo: Repository<Routing, string, RoutingEvent>) =
       Deactivate = liftCmdResult ACL.toDeactivateCommand >=> handleCommand RoutingId.value repo DeactivateRouting decide }
 
 module Mappers =
-    let mapApplicability (app: RoutingApplicability) : MasterData.RoutingApplicability =
+    let mapApplicability (app: RoutingApplicability) : MasterData.Routing.RoutingApplicability =
         { StockingPointId = app.StockingPointId |> Option.map StockingPointId.value
           EffectiveStart = Timestamp.value app.EffectivePeriod.Start
           EffectiveEnd = app.EffectivePeriod.End |> Option.map(fun t -> Timestamp.value t) }
 
-    let mapPreference (pref: RoutingPreference) : MasterData.RoutingPreference =
+    let mapPreference (pref: RoutingPreference) : MasterData.Routing.RoutingPreference =
         { Priority = pref.Priority
           IsPreferred = pref.IsPreferred }
 
-    let mapQuantityRule (rule: RoutingQuantityRule) : MasterData.RoutingQuantityRule =
+    let mapQuantityRule (rule: RoutingQuantityRule) : MasterData.Routing.RoutingQuantityRule =
         { MinQuantity = rule.MinQuantity |> Option.map PositiveDecimal.value
           MaxQuantity = rule.MaxQuantity |> Option.map PositiveDecimal.value
           LotSize = rule.LotSize |> Option.map PositiveDecimal.value
           OrderMultiple = rule.OrderMultiple |> Option.map PositiveDecimal.value }
 
-    let mapCostPolicy (policy: RoutingCostPolicy) : MasterData.RoutingCostPolicy =
+    let mapCostPolicy (policy: RoutingCostPolicy) : MasterData.Routing.RoutingCostPolicy =
         match policy with
-        | RoutingCostPolicy.NoRoutingCost -> MasterData.RoutingCostPolicy.NoRoutingCost
-        | RoutingCostPolicy.FixedCost v -> MasterData.RoutingCostPolicy.FixedCost(PositiveDecimal.value v)
+        | RoutingCostPolicy.NoRoutingCost -> MasterData.Routing.RoutingCostPolicy.NoRoutingCost
+        | RoutingCostPolicy.FixedCost v -> MasterData.Routing.RoutingCostPolicy.FixedCost(PositiveDecimal.value v)
         | RoutingCostPolicy.CostPerUnit v ->
-            Medhavi.Contracts.MasterData.RoutingCostPolicy.CostPerUnit(PositiveDecimal.value v)
+            MasterData.Routing.RoutingCostPolicy.CostPerUnit(PositiveDecimal.value v)
 
-    let mapStepInputTiming (t: StepInputTiming) : MasterData.StepInputTiming =
+    let mapStepInputTiming (t: StepInputTiming) : MasterData.Routing.StepInputTiming =
         match t with
-        | StepInputTiming.AtStepStart -> MasterData.StepInputTiming.AtStepStart
-        | StepInputTiming.AtStepEnd -> MasterData.StepInputTiming.AtStepEnd
+        | StepInputTiming.AtStepStart -> MasterData.Routing.StepInputTiming.AtStepStart
+        | StepInputTiming.AtStepEnd -> MasterData.Routing.StepInputTiming.AtStepEnd
         | StepInputTiming.OffsetBeforeStepStart v ->
-            MasterData.StepInputTiming.OffsetBeforeStepStart(DurationMinutes.value v)
+            MasterData.Routing.StepInputTiming.OffsetBeforeStepStart(DurationMinutes.value v)
         | StepInputTiming.OffsetAfterStepStart v ->
-            MasterData.StepInputTiming.OffsetAfterStepStart(DurationMinutes.value v)
+            MasterData.Routing.StepInputTiming.OffsetAfterStepStart(DurationMinutes.value v)
         | StepInputTiming.OffsetBeforeStepEnd v ->
-            MasterData.StepInputTiming.OffsetBeforeStepEnd(DurationMinutes.value v)
+            MasterData.Routing.StepInputTiming.OffsetBeforeStepEnd(DurationMinutes.value v)
         | StepInputTiming.OffsetAfterStepEnd v ->
-            MasterData.StepInputTiming.OffsetAfterStepEnd(DurationMinutes.value v)
+            MasterData.Routing.StepInputTiming.OffsetAfterStepEnd(DurationMinutes.value v)
 
-    let mapStepOutputTiming (t: StepOutputTiming) : MasterData.StepOutputTiming =
+    let mapStepOutputTiming (t: StepOutputTiming) : MasterData.Routing.StepOutputTiming =
         match t with
-        | StepOutputTiming.AtStepStart -> MasterData.StepOutputTiming.AtStepStart
-        | StepOutputTiming.AtStepEnd -> MasterData.StepOutputTiming.AtStepEnd
+        | StepOutputTiming.AtStepStart -> MasterData.Routing.StepOutputTiming.AtStepStart
+        | StepOutputTiming.AtStepEnd -> MasterData.Routing.StepOutputTiming.AtStepEnd
         | StepOutputTiming.OffsetAfterStepStart v ->
-            MasterData.StepOutputTiming.OffsetAfterStepStart(DurationMinutes.value v)
+            MasterData.Routing.StepOutputTiming.OffsetAfterStepStart(DurationMinutes.value v)
         | StepOutputTiming.OffsetAfterStepEnd v ->
-            MasterData.StepOutputTiming.OffsetAfterStepEnd(DurationMinutes.value v)
+            MasterData.Routing.StepOutputTiming.OffsetAfterStepEnd(DurationMinutes.value v)
 
-    let mapRoutingOutputRole (r: RoutingOutputRole) : MasterData.RoutingOutputRole =
+    let mapRoutingOutputRole (r: RoutingOutputRole) : MasterData.Routing.RoutingOutputRole =
         match r with
-        | RoutingOutputRole.PrimaryOutput -> MasterData.RoutingOutputRole.PrimaryOutput
-        | RoutingOutputRole.CoProduct -> MasterData.RoutingOutputRole.CoProduct
-        | RoutingOutputRole.ByProduct -> MasterData.RoutingOutputRole.ByProduct
-        | RoutingOutputRole.Scrap -> MasterData.RoutingOutputRole.Scrap
-        | RoutingOutputRole.Waste -> MasterData.RoutingOutputRole.Waste
+        | RoutingOutputRole.PrimaryOutput -> MasterData.Routing.RoutingOutputRole.PrimaryOutput
+        | RoutingOutputRole.CoProduct -> MasterData.Routing.RoutingOutputRole.CoProduct
+        | RoutingOutputRole.ByProduct -> MasterData.Routing.RoutingOutputRole.ByProduct
+        | RoutingOutputRole.Scrap -> MasterData.Routing.RoutingOutputRole.Scrap
+        | RoutingOutputRole.Waste -> MasterData.Routing.RoutingOutputRole.Waste
 
-    let mapStepInput (i: RoutingStepInput) : MasterData.RoutingStepInput =
+    let mapStepInput (i: RoutingStepInput) : MasterData.Routing.RoutingStepInput =
         { SkuId = SkuId.value i.SkuId
           FromNodeId = i.FromNodeId |> Option.map NodeId.value
           QuantityPerBaseOutput = i.QuantityPerBaseOutput |> Option.map PositiveDecimal.value
@@ -464,68 +464,68 @@ module Mappers =
           IsConsumed = i.IsConsumed
           IsOptional = i.IsOptional }
 
-    let mapStepOutput (o: RoutingStepOutput) : MasterData.RoutingStepOutput =
+    let mapStepOutput (o: RoutingStepOutput) : MasterData.Routing.RoutingStepOutput =
         { SkuId = SkuId.value o.SkuId
           ToNodeId = o.ToNodeId |> Option.map NodeId.value
           QuantityRatioToPrimaryOutput = o.QuantityRatioToPrimaryOutput |> Option.map PositiveDecimal.value
           Role = mapRoutingOutputRole o.Role
           Timing = mapStepOutputTiming o.Timing }
 
-    let mapResourceKind (k: RoutingResourceKind) : MasterData.RoutingResourceKind =
+    let mapResourceKind (k: RoutingResourceKind) : MasterData.Routing.RoutingResourceKind =
         match k with
-        | RoutingResourceKind.Machine -> MasterData.RoutingResourceKind.Machine
-        | RoutingResourceKind.WorkCenter -> MasterData.RoutingResourceKind.WorkCenter
-        | RoutingResourceKind.LaborPool -> MasterData.RoutingResourceKind.LaborPool
-        | RoutingResourceKind.Tool -> MasterData.RoutingResourceKind.Tool
-        | RoutingResourceKind.Utility -> MasterData.RoutingResourceKind.Utility
-        | RoutingResourceKind.Berth -> MasterData.RoutingResourceKind.Berth
-        | RoutingResourceKind.Conveyor -> MasterData.RoutingResourceKind.Conveyor
-        | RoutingResourceKind.RailTrack -> MasterData.RoutingResourceKind.RailTrack
-        | RoutingResourceKind.TruckFleet -> MasterData.RoutingResourceKind.TruckFleet
-        | RoutingResourceKind.VesselClass -> MasterData.RoutingResourceKind.VesselClass
+        | RoutingResourceKind.Machine -> MasterData.Routing.RoutingResourceKind.Machine
+        | RoutingResourceKind.WorkCenter -> MasterData.Routing.RoutingResourceKind.WorkCenter
+        | RoutingResourceKind.LaborPool -> MasterData.Routing.RoutingResourceKind.LaborPool
+        | RoutingResourceKind.Tool -> MasterData.Routing.RoutingResourceKind.Tool
+        | RoutingResourceKind.Utility -> MasterData.Routing.RoutingResourceKind.Utility
+        | RoutingResourceKind.Berth -> MasterData.Routing.RoutingResourceKind.Berth
+        | RoutingResourceKind.Conveyor -> MasterData.Routing.RoutingResourceKind.Conveyor
+        | RoutingResourceKind.RailTrack -> MasterData.Routing.RoutingResourceKind.RailTrack
+        | RoutingResourceKind.TruckFleet -> MasterData.Routing.RoutingResourceKind.TruckFleet
+        | RoutingResourceKind.VesselClass -> MasterData.Routing.RoutingResourceKind.VesselClass
 
-    let mapLoadBasis (b: ResourceLoadBasis) : MasterData.ResourceLoadBasis =
+    let mapLoadBasis (b: ResourceLoadBasis) : MasterData.Routing.ResourceLoadBasis =
         match b with
-        | ResourceLoadBasis.PerOrder -> MasterData.ResourceLoadBasis.PerOrder
-        | ResourceLoadBasis.PerUnit -> MasterData.ResourceLoadBasis.PerUnit
-        | ResourceLoadBasis.PerBatch -> MasterData.ResourceLoadBasis.PerBatch
-        | ResourceLoadBasis.PerTonne -> MasterData.ResourceLoadBasis.PerTonne
-        | ResourceLoadBasis.PerPallet -> MasterData.ResourceLoadBasis.PerPallet
-        | ResourceLoadBasis.PerContainer -> MasterData.ResourceLoadBasis.PerContainer
+        | ResourceLoadBasis.PerOrder -> MasterData.Routing.ResourceLoadBasis.PerOrder
+        | ResourceLoadBasis.PerUnit -> MasterData.Routing.ResourceLoadBasis.PerUnit
+        | ResourceLoadBasis.PerBatch -> MasterData.Routing.ResourceLoadBasis.PerBatch
+        | ResourceLoadBasis.PerTonne -> MasterData.Routing.ResourceLoadBasis.PerTonne
+        | ResourceLoadBasis.PerPallet -> MasterData.Routing.ResourceLoadBasis.PerPallet
+        | ResourceLoadBasis.PerContainer -> MasterData.Routing.ResourceLoadBasis.PerContainer
 
-    let mapSelectionRule (r: ResourceSelectionRule) : MasterData.ResourceSelectionRule =
+    let mapSelectionRule (r: ResourceSelectionRule) : MasterData.Routing.ResourceSelectionRule =
         match r with
-        | ResourceSelectionRule.AnyAllowed -> MasterData.ResourceSelectionRule.AnyAllowed
-        | ResourceSelectionRule.PreferPrimary -> MasterData.ResourceSelectionRule.PreferPrimary
-        | ResourceSelectionRule.PreferLowestCost -> MasterData.ResourceSelectionRule.PreferLowestCost
-        | ResourceSelectionRule.PreferFastest -> MasterData.ResourceSelectionRule.PreferFastest
+        | ResourceSelectionRule.AnyAllowed -> MasterData.Routing.ResourceSelectionRule.AnyAllowed
+        | ResourceSelectionRule.PreferPrimary -> MasterData.Routing.ResourceSelectionRule.PreferPrimary
+        | ResourceSelectionRule.PreferLowestCost -> MasterData.Routing.ResourceSelectionRule.PreferLowestCost
+        | ResourceSelectionRule.PreferFastest -> MasterData.Routing.ResourceSelectionRule.PreferFastest
         | ResourceSelectionRule.PreferPriorityOrder ->
-            MasterData.ResourceSelectionRule.PreferPriorityOrder
+            MasterData.Routing.ResourceSelectionRule.PreferPriorityOrder
 
-    let mapResourceUsage (u: ResourceUsage) : MasterData.ResourceUsage =
+    let mapResourceUsage (u: ResourceUsage) : MasterData.Routing.ResourceUsage =
         match u with
-        | ResourceUsage.Primary -> MasterData.ResourceUsage.Primary
-        | ResourceUsage.Alternate -> MasterData.ResourceUsage.Alternate
-        | ResourceUsage.Optional -> MasterData.ResourceUsage.Optional
-        | ResourceUsage.Parallel -> MasterData.ResourceUsage.Parallel
-        | ResourceUsage.Rework -> MasterData.ResourceUsage.Rework
+        | ResourceUsage.Primary -> MasterData.Routing.ResourceUsage.Primary
+        | ResourceUsage.Alternate -> MasterData.Routing.ResourceUsage.Alternate
+        | ResourceUsage.Optional -> MasterData.Routing.ResourceUsage.Optional
+        | ResourceUsage.Parallel -> MasterData.Routing.ResourceUsage.Parallel
+        | ResourceUsage.Rework -> MasterData.Routing.ResourceUsage.Rework
 
-    let mapSetupPolicy (p: SetupPolicy) : MasterData.SetupPolicy =
+    let mapSetupPolicy (p: SetupPolicy) : MasterData.Routing.SetupPolicy =
         match p with
-        | SetupPolicy.NoSetup -> MasterData.SetupPolicy.NoSetup
-        | SetupPolicy.FixedSetup v -> MasterData.SetupPolicy.FixedSetup(DurationMinutes.value v)
+        | SetupPolicy.NoSetup -> MasterData.Routing.SetupPolicy.NoSetup
+        | SetupPolicy.FixedSetup v -> MasterData.Routing.SetupPolicy.FixedSetup(DurationMinutes.value v)
 
-    let mapCoolingPolicy (p: CoolingPolicy) : MasterData.CoolingPolicy =
+    let mapCoolingPolicy (p: CoolingPolicy) : MasterData.Routing.CoolingPolicy =
         match p with
-        | CoolingPolicy.NoCooling -> MasterData.CoolingPolicy.NoCooling
-        | CoolingPolicy.FixedCooling v -> MasterData.CoolingPolicy.FixedCooling(DurationMinutes.value v)
+        | CoolingPolicy.NoCooling -> MasterData.Routing.CoolingPolicy.NoCooling
+        | CoolingPolicy.FixedCooling v -> MasterData.Routing.CoolingPolicy.FixedCooling(DurationMinutes.value v)
 
-    let mapResourceEfficiencyPolicy (p: ResourceEfficiencyPolicy) : MasterData.ResourceEfficiencyPolicy =
+    let mapResourceEfficiencyPolicy (p: ResourceEfficiencyPolicy) : MasterData.Routing.ResourceEfficiencyPolicy =
         match p with
         | ResourceEfficiencyPolicy.StandardEfficiency ->
-            MasterData.ResourceEfficiencyPolicy.StandardEfficiency
+            MasterData.Routing.ResourceEfficiencyPolicy.StandardEfficiency
         | ResourceEfficiencyPolicy.EfficiencyFactor v ->
-            MasterData.ResourceEfficiencyPolicy.EfficiencyFactor(PositiveDecimal.value v)
+            MasterData.Routing.ResourceEfficiencyPolicy.EfficiencyFactor(PositiveDecimal.value v)
 
     let mapResourceTimingProfile
         (setup: DurationMinutes option)
@@ -533,14 +533,14 @@ module Mappers =
         (teardown: DurationMinutes option)
         (cooling: DurationMinutes option)
         (minLead: DurationMinutes option)
-        : MasterData.ResourceTimingProfile =
+        : MasterData.Routing.ResourceTimingProfile =
         { SetupTime = setup |> Option.map DurationMinutes.value
           RunTimePerBaseQuantity = run |> Option.map DurationMinutes.value
           TeardownTime = teardown |> Option.map DurationMinutes.value
           CoolingTime = cooling |> Option.map DurationMinutes.value
           MinLeadTime = minLead |> Option.map DurationMinutes.value }
 
-    let mapResourceOption (opt: TransportResourceOption) : MasterData.TransportResourceOption =
+    let mapResourceOption (opt: TransportResourceOption) : MasterData.Routing.TransportResourceOption =
         { OptionId = RoutingResourceOptionId.value opt.OptionId
           ResourceGroupId = opt.ResourceGroupId |> Option.map ResourceGroupId.value
           CarrierId = opt.CarrierId |> Option.map CarrierId.value
@@ -554,7 +554,7 @@ module Mappers =
           EffectivePeriodStart = opt.EffectivePeriod |> Option.bind(fun p -> Some(Timestamp.value p.Start))
           EffectivePeriodEnd = opt.EffectivePeriod |> Option.bind(fun p -> p.End |> Option.map Timestamp.value) }
 
-    let mapWorkResourceOption (opt: RoutingResourceOption) : MasterData.RoutingResourceOption =
+    let mapWorkResourceOption (opt: RoutingResourceOption) : MasterData.Routing.RoutingResourceOption =
         { OptionId = RoutingResourceOptionId.value opt.OptionId
           ResourceGroupId = ResourceGroupId.value opt.ResourceGroupId
           WorkCenterId = opt.WorkCenterId |> Option.map WorkCenterId.value
@@ -575,7 +575,7 @@ module Mappers =
 
     let mapResourceRequirement
         (req: RoutingStepResourceRequirement)
-        : MasterData.RoutingStepResourceRequirement =
+        : MasterData.Routing.RoutingStepResourceRequirement =
         { RequirementId = RoutingResourceRequirementId.value req.RequirementId
           ResourceKind = mapResourceKind req.ResourceKind
           LoadBasis = mapLoadBasis req.LoadBasis
@@ -583,40 +583,40 @@ module Mappers =
           SelectionRule = mapSelectionRule req.SelectionRule
           Options = req.Options |> List.map mapWorkResourceOption }
 
-    let mapStepYieldPolicy (p: StepYieldPolicy) : MasterData.StepYieldPolicy =
+    let mapStepYieldPolicy (p: StepYieldPolicy) : MasterData.Routing.StepYieldPolicy =
         match p with
-        | StepYieldPolicy.NoYieldLoss -> MasterData.StepYieldPolicy.NoYieldLoss
-        | StepYieldPolicy.ExpectedYield v -> MasterData.StepYieldPolicy.ExpectedYield(Percent.value v)
+        | StepYieldPolicy.NoYieldLoss -> MasterData.Routing.StepYieldPolicy.NoYieldLoss
+        | StepYieldPolicy.ExpectedYield v -> MasterData.Routing.StepYieldPolicy.ExpectedYield(Percent.value v)
 
-    let mapReworkPolicy (p: ReworkPolicy) : MasterData.ReworkPolicy =
+    let mapReworkPolicy (p: ReworkPolicy) : MasterData.Routing.ReworkPolicy =
         match p with
-        | ReworkPolicy.NoRework -> MasterData.ReworkPolicy.NoRework
+        | ReworkPolicy.NoRework -> MasterData.Routing.ReworkPolicy.NoRework
         | ReworkPolicy.ReworkToStep(stepId, rate) ->
-            MasterData.ReworkPolicy.ReworkToStep(RoutingStepId.value stepId, Percent.value rate)
+            MasterData.Routing.ReworkPolicy.ReworkToStep(RoutingStepId.value stepId, Percent.value rate)
 
-    let mapStepTimingProfile (t: StepTimingProfile) : MasterData.StepTimingProfile =
+    let mapStepTimingProfile (t: StepTimingProfile) : MasterData.Routing.StepTimingProfile =
         { FixedLeadTime = t.FixedLeadTime |> Option.map DurationMinutes.value
           QueueTime = t.QueueTime |> Option.map DurationMinutes.value
           WaitTime = t.WaitTime |> Option.map DurationMinutes.value
           MoveTime = t.MoveTime |> Option.map DurationMinutes.value }
 
-    let mapStepOverlapPolicy (p: StepOverlapPolicy) : MasterData.StepOverlapPolicy =
+    let mapStepOverlapPolicy (p: StepOverlapPolicy) : MasterData.Routing.StepOverlapPolicy =
         match p with
-        | StepOverlapPolicy.NoOverlap -> MasterData.StepOverlapPolicy.NoOverlap
+        | StepOverlapPolicy.NoOverlap -> MasterData.Routing.StepOverlapPolicy.NoOverlap
         | StepOverlapPolicy.OverlapAfterQuantity v ->
-            MasterData.StepOverlapPolicy.OverlapAfterQuantity(Quantity.value v)
+            MasterData.Routing.StepOverlapPolicy.OverlapAfterQuantity(Quantity.value v)
         | StepOverlapPolicy.OverlapAfterDuration v ->
-            MasterData.StepOverlapPolicy.OverlapAfterDuration(DurationMinutes.value v)
+            MasterData.Routing.StepOverlapPolicy.OverlapAfterDuration(DurationMinutes.value v)
 
-    let mapStepKind (k: RoutingStepKind) : MasterData.RoutingStepKind =
+    let mapStepKind (k: RoutingStepKind) : MasterData.Routing.RoutingStepKind =
         match k with
-        | RoutingStepKind.Standard -> MasterData.RoutingStepKind.Standard
-        | RoutingStepKind.Alternate -> MasterData.RoutingStepKind.Alternate
-        | RoutingStepKind.Parallel -> MasterData.RoutingStepKind.Parallel
-        | RoutingStepKind.Rework -> MasterData.RoutingStepKind.Rework
-        | RoutingStepKind.External -> MasterData.RoutingStepKind.External
+        | RoutingStepKind.Standard -> MasterData.Routing.RoutingStepKind.Standard
+        | RoutingStepKind.Alternate -> MasterData.Routing.RoutingStepKind.Alternate
+        | RoutingStepKind.Parallel -> MasterData.Routing.RoutingStepKind.Parallel
+        | RoutingStepKind.Rework -> MasterData.Routing.RoutingStepKind.Rework
+        | RoutingStepKind.External -> MasterData.Routing.RoutingStepKind.External
 
-    let mapStep (s: RoutingStep) : MasterData.RoutingStep =
+    let mapStep (s: RoutingStep) : MasterData.Routing.RoutingStep =
         { StepId = RoutingStepId.value s.StepId
           Sequence = s.Sequence
           OperationCode = s.OperationCode
@@ -633,23 +633,23 @@ module Mappers =
           EffectivePeriodStart = s.EffectivePeriod |> Option.bind(fun p -> Some(Timestamp.value p.Start))
           EffectivePeriodEnd = s.EffectivePeriod |> Option.bind(fun p -> p.End |> Option.map Timestamp.value) }
 
-    let mapWorkDetails (work: WorkRoutingDetails) : MasterData.WorkRoutingDetails =
+    let mapWorkDetails (work: WorkRoutingDetails) : MasterData.Routing.WorkRoutingDetails =
         { ProductId = SkuId.value work.ProductId
           PrimaryOutputSkuId = SkuId.value work.PrimaryOutputSkuId
           BaseOutputQuantity = Quantity.value work.BaseOutputQuantity
           Steps = work.Steps |> List.map mapStep }
 
-    let mapTransportMode (m: TransportMode) : MasterData.TransportMode =
+    let mapTransportMode (m: TransportMode) : MasterData.Routing.TransportMode =
         match m with
-        | TransportMode.Road -> MasterData.TransportMode.Road
-        | TransportMode.Rail -> MasterData.TransportMode.Rail
-        | TransportMode.Sea -> MasterData.TransportMode.Sea
-        | TransportMode.Air -> MasterData.TransportMode.Air
-        | TransportMode.Pipeline -> MasterData.TransportMode.Pipeline
-        | TransportMode.Conveyor -> MasterData.TransportMode.Conveyor
-        | TransportMode.InternalTransfer -> MasterData.TransportMode.InternalTransfer
+        | TransportMode.Road -> MasterData.Routing.TransportMode.Road
+        | TransportMode.Rail -> MasterData.Routing.TransportMode.Rail
+        | TransportMode.Sea -> MasterData.Routing.TransportMode.Sea
+        | TransportMode.Air -> MasterData.Routing.TransportMode.Air
+        | TransportMode.Pipeline -> MasterData.Routing.TransportMode.Pipeline
+        | TransportMode.Conveyor -> MasterData.Routing.TransportMode.Conveyor
+        | TransportMode.InternalTransfer -> MasterData.Routing.TransportMode.InternalTransfer
 
-    let mapTransportDetails (t: TransportRoutingDetails) : MasterData.TransportRoutingDetails =
+    let mapTransportDetails (t: TransportRoutingDetails) : MasterData.Routing.TransportRoutingDetails =
         { SkuId = SkuId.value t.SkuId
           FromNodeId = NodeId.value t.FromNodeId
           ToNodeId = NodeId.value t.ToNodeId
@@ -659,15 +659,15 @@ module Mappers =
           ResourceSelectionRule = mapSelectionRule t.ResourceSelectionRule
           TransportResourceOptions = t.TransportResourceOptions |> List.map mapResourceOption }
 
-    let mapPurchasePricingPolicy (p: PurchasePricingPolicy) : MasterData.PurchasePricingPolicy =
+    let mapPurchasePricingPolicy (p: PurchasePricingPolicy) : MasterData.Routing.PurchasePricingPolicy =
         match p with
-        | PurchasePricingPolicy.NoPurchaseCost -> MasterData.PurchasePricingPolicy.NoPurchaseCost
+        | PurchasePricingPolicy.NoPurchaseCost -> MasterData.Routing.PurchasePricingPolicy.NoPurchaseCost
         | PurchasePricingPolicy.PurchaseCostPerUnit v ->
-            MasterData.PurchasePricingPolicy.PurchaseCostPerUnit(PositiveDecimal.value v)
+            MasterData.Routing.PurchasePricingPolicy.PurchaseCostPerUnit(PositiveDecimal.value v)
         | PurchasePricingPolicy.ContractPriceReference ref ->
-            MasterData.PurchasePricingPolicy.ContractPriceReference ref
+            MasterData.Routing.PurchasePricingPolicy.ContractPriceReference ref
 
-    let mapPurchaseDetails (p: PurchaseRoutingDetails) : MasterData.PurchaseRoutingDetails =
+    let mapPurchaseDetails (p: PurchaseRoutingDetails) : MasterData.Routing.PurchaseRoutingDetails =
         { SkuId = SkuId.value p.SkuId
           SupplierId = SupplierId.value p.SupplierId
           ReceivingNodeId = NodeId.value p.ReceivingNodeId
@@ -681,15 +681,15 @@ module Mappers =
               IsPreferred = p.SupplierPreference.IsPreferred }
           PurchasePricingPolicy = mapPurchasePricingPolicy p.PurchasePricingPolicy }
 
-    let mapDetails (d: RoutingDetails) : MasterData.RoutingDetails =
+    let mapDetails (d: RoutingDetails) : MasterData.Routing.RoutingDetails =
         match d with
-        | RoutingDetails.Work w -> MasterData.RoutingDetails.Work(mapWorkDetails w)
-        | RoutingDetails.Transport t -> MasterData.RoutingDetails.Transport(mapTransportDetails t)
-        | RoutingDetails.Purchase p -> MasterData.RoutingDetails.Purchase(mapPurchaseDetails p)
+        | RoutingDetails.Work w -> MasterData.Routing.RoutingDetails.Work(mapWorkDetails w)
+        | RoutingDetails.Transport t -> MasterData.Routing.RoutingDetails.Transport(mapTransportDetails t)
+        | RoutingDetails.Purchase p -> MasterData.Routing.RoutingDetails.Purchase(mapPurchaseDetails p)
 
 open Mappers
 
-let mapRoutingDto (r: Routing) : MasterData.Routing =
+let mapRoutingDto (r: Routing) : MasterData.Routing.Routing =
     { Id = RoutingId.value r.Id
       Name = r.Name
       Description = r.Description
@@ -702,7 +702,7 @@ let mapRoutingDto (r: Routing) : MasterData.Routing =
       CreatedAt = Timestamp.value r.CreatedAt
       ModifiedAt = Timestamp.value r.ModifiedAt }
 
-let evolveProjection (state: Map<string, MasterData.Routing>) (evt: RoutingEvent) =
+let evolveProjection (state: Map<string, MasterData.Routing.Routing>) (evt: RoutingEvent) =
     match evt with
     | RoutingDefined r -> Map.add (RoutingId.value r.Id) (mapRoutingDto r) state
     | RoutingActivated(id, _) ->
@@ -719,15 +719,13 @@ let evolveProjection (state: Map<string, MasterData.Routing>) (evt: RoutingEvent
         | None -> state
 
 let createProjectionAgent () =
-    ProjectionAgent<Map<string, MasterData.Routing>, RoutingEvent>(
+    ProjectionAgent<Map<string, MasterData.Routing.Routing>, RoutingEvent>(
         evolveProjection,
         Map.empty,
         "RoutingReadModel"
     )
 
 let createQueryService agent = QueryServiceBase.getQueryService agent id
-
-open Medhavi.Contracts.API
 
 let createRoutingApi (capabilities: RoutingCapabilities) =
     { Define =

@@ -2,9 +2,7 @@ module Medhavi.MasterData.Application.StandardResource
 
 open Medhavi
 open Medhavi.Common.Patterns
-open Medhavi.Contracts
-open Medhavi.Contracts.API
-open Medhavi.Contracts.Integration
+open Medhavi.Contracts.MasterData.Resource
 open Medhavi.SharedKernel
 open Medhavi.SharedKernel.Aggregate
 open Medhavi.MasterData.Domain.StandardResourceAgg
@@ -44,7 +42,7 @@ let createCapabilities (repo: Repository<StandardResource, string, StandardResou
         liftCmdResult ACL.toRetireCommand
         >=> handleCommand (fun c -> StandardResourceId.value c.Id) repo RetireStandardResource decide }
 
-let mapStandardResourceDto (sr: StandardResource) : MasterData.StandardResource =
+let mapStandardResourceDto (sr: StandardResource) : Medhavi.Contracts.MasterData.Resource.StandardResource =
     { Id = StandardResourceId.value sr.Id
       ResourceGroupId = ResourceGroupId.value sr.ResourceGroupId
       Name = sr.Name
@@ -56,10 +54,10 @@ let mapStandardResourceDto (sr: StandardResource) : MasterData.StandardResource 
       Created = Timestamp.value sr.Created
       Modified = Timestamp.value sr.Modified }
 
-let evolveProjection (state: Map<string, MasterData.StandardResource>) (evt: StandardResourceEvent) =
+let evolveProjection (state: Map<string, Medhavi.Contracts.MasterData.Resource.StandardResource>) (evt: StandardResourceEvent) =
     match evt with
     | StandardResourceDefined e ->
-        let dto: MasterData.StandardResource =
+        let dto: Medhavi.Contracts.MasterData.Resource.StandardResource =
             { Id = StandardResourceId.value e.Id
               ResourceGroupId = ResourceGroupId.value e.ResourceGroupId
               Name = e.Name
@@ -98,7 +96,7 @@ let evolveProjection (state: Map<string, MasterData.StandardResource>) (evt: Sta
         | None -> state
 
 let createProjectionAgent () =
-    ProjectionAgent<Map<string, MasterData.StandardResource>, StandardResourceEvent>(
+    ProjectionAgent<Map<string, Medhavi.Contracts.MasterData.Resource.StandardResource>, StandardResourceEvent>(
         evolveProjection,
         Map.empty,
         "StandardResourceReadModel"

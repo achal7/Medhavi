@@ -1,10 +1,7 @@
 module Medhavi.MasterData.Application.ResourceGroup
 
-open Medhavi
 open Medhavi.Common.Patterns
-open Medhavi.Contracts
-open Medhavi.Contracts.API
-open Medhavi.Contracts.Integration
+open Medhavi.Contracts.MasterData.Resource
 open Medhavi.SharedKernel
 open Medhavi.SharedKernel.Aggregate
 open Medhavi.MasterData.Domain.ResourceGroupAgg
@@ -42,7 +39,7 @@ let createCapabilities (repo: Repository<ResourceGroup, string, ResourceGroupEve
         liftCmdResult ACL.toRetireCommand
         >=> handleCommand (fun c -> ResourceGroupId.value c.Id) repo RetireResourceGroup decide }
 
-let mapResourceGroupDto (rg: ResourceGroup) : MasterData.ResourceGroup =
+let mapResourceGroupDto (rg: ResourceGroup) : Medhavi.Contracts.MasterData.Resource.ResourceGroup =
     { Id = ResourceGroupId.value rg.Id
       PlantId = rg.PlantId |> Option.map PlantId.value
       Name = rg.Name
@@ -52,10 +49,10 @@ let mapResourceGroupDto (rg: ResourceGroup) : MasterData.ResourceGroup =
       Created = Timestamp.value rg.Created
       Modified = Timestamp.value rg.Modified }
 
-let evolveProjection (state: Map<string, MasterData.ResourceGroup>) (evt: ResourceGroupEvent) =
+let evolveProjection (state: Map<string, Medhavi.Contracts.MasterData.Resource.ResourceGroup>) (evt: ResourceGroupEvent) =
     match evt with
     | ResourceGroupDefined e ->
-        let dto: MasterData.ResourceGroup =
+        let dto: Medhavi.Contracts.MasterData.Resource.ResourceGroup =
             { Id = ResourceGroupId.value e.Id
               PlantId = e.PlantId |> Option.map PlantId.value
               Name = e.Name
@@ -92,7 +89,7 @@ let evolveProjection (state: Map<string, MasterData.ResourceGroup>) (evt: Resour
         | None -> state
 
 let createProjectionAgent () =
-    ProjectionAgent<Map<string, MasterData.ResourceGroup>, ResourceGroupEvent>(
+    ProjectionAgent<Map<string, Medhavi.Contracts.MasterData.Resource.ResourceGroup>, ResourceGroupEvent>(
         evolveProjection,
         Map.empty,
         "ResourceGroupReadModel"

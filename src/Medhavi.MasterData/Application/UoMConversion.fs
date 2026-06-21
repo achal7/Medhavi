@@ -1,7 +1,7 @@
 module Medhavi.MasterData.Application.UoMConversion
 
 open Medhavi
-open Medhavi.Contracts.Integration
+open Medhavi.Contracts.MasterData.Uom
 open Medhavi.Common.Validation
 open Medhavi.Common.Patterns
 open Medhavi.Infrastructure.Projections
@@ -47,7 +47,7 @@ let createCapabilities (repo: Repository<UnitConversion, string, UnitConversionE
         liftCmdResult ACL.toRetireCommand
         >=> handleCommand (fun (id, _) -> UnitConversionId.value id) repo UpdateStatus decide }
 
-let mapUnitConversionDto (uc: UnitConversion) : Contracts.MasterData.UnitConversion =
+let mapUnitConversionDto (uc: UnitConversion) : Contracts.MasterData.Uom.UnitConversion =
     { Id = UnitConversionId.value uc.Id
       ProductId = uc.ProductId |> Option.map SkuId.value
       FromUnitCode = UomId.value uc.FromUom
@@ -55,7 +55,7 @@ let mapUnitConversionDto (uc: UnitConversion) : Contracts.MasterData.UnitConvers
       Ratio = PositiveDecimal.value uc.Ratio
       Status = uc.Status.IsActive }
 
-let evolveProjection (state: Map<string, Contracts.MasterData.UnitConversion>) (evt: UnitConversionEvent) =
+let evolveProjection (state: Map<string, Contracts.MasterData.Uom.UnitConversion>) (evt: UnitConversionEvent) =
     match evt with
     | UnitConversionDefined uc ->
         let dto = mapUnitConversionDto uc
@@ -91,15 +91,13 @@ let evolveProjection (state: Map<string, Contracts.MasterData.UnitConversion>) (
         | None -> state
 
 let createProjectionAgent () =
-    ProjectionAgent<Map<string, Contracts.MasterData.UnitConversion>, UnitConversionEvent>(
+    ProjectionAgent<Map<string, Contracts.MasterData.Uom.UnitConversion>, UnitConversionEvent>(
         evolveProjection,
         Map.empty,
         "UnitConversionReadModel"
     )
 
 let createQueryService agent = QueryServiceBase.getQueryService agent id
-
-open Medhavi.Contracts.API
 
 let createUnitConversionApi (capabilities: UnitConversionCapabilities) =
     { Define =

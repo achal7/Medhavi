@@ -1,6 +1,7 @@
 namespace Medhavi.Contracts.Analytics
 
 open System
+open Medhavi.Contracts.MasterData.Transport
 
 // =============================================================================
 // Planning Period — the fundamental time bucketing type for all projections
@@ -39,3 +40,16 @@ type KpiQueryDto =
 type PlanContext =
     | Live
     | Scenario of scenarioId: string
+
+// Aggregated transport view for a single PlanningPeriod on a transport leg.
+type TransportPeriodView =
+    { Period: PlanningPeriod
+      TransportLegId: string
+      FromPlantId: string
+      ToPlantId: string
+      TotalOutboundQty: decimal
+      TotalInboundQty: decimal
+      LegCapacity: decimal option
+      CapacityUtilizPct: decimal option
+      EstimatedCost: decimal option
+      Shipments: ShipmentView list }

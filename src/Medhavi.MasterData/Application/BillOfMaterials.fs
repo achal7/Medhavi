@@ -2,7 +2,7 @@ module Medhavi.MasterData.Application.BillOfMaterials
 
 open Medhavi.Common.Validation
 open Medhavi.Common.Patterns
-open Medhavi.Contracts.Integration
+open Medhavi.Contracts.MasterData.Bom
 open Medhavi.Infrastructure.Projections
 open Medhavi.MasterData.Domain.BoMAgg
 open Medhavi.SharedKernel
@@ -51,11 +51,11 @@ let createCapabilities (repo: Repository<BillOfMaterial, string, BomEvent>) =
       Deactivate =
         liftCmdResult ACL.toDeactivateCommand >=> handleCommand BillOfMaterialId.value repo DeactivateBom decide }
 
-let mapBomDto (b: BillOfMaterial) : Medhavi.Contracts.MasterData.Bom =
+let mapBomDto (b: BillOfMaterial) : Medhavi.Contracts.MasterData.Bom.Bom =
     let lines =
         b.Items
         |> List.map(fun i ->
-            let item: Medhavi.Contracts.MasterData.BomItem =
+            let item: Medhavi.Contracts.MasterData.Bom.BomItem =
                 { ComponentSkuId = SkuId.value i.ComponentSkuId
                   Quantity = (Quantity.value i.Quantity)
                   Sequence = i.Sequence }
@@ -67,7 +67,7 @@ let mapBomDto (b: BillOfMaterial) : Medhavi.Contracts.MasterData.Bom =
       Items = lines
       Status = b.Status.ToBool() }
 
-let evolveProjection (state: Map<string, Medhavi.Contracts.MasterData.Bom>) (evt: BomEvent) =
+let evolveProjection (state: Map<string, Medhavi.Contracts.MasterData.Bom.Bom>) (evt: BomEvent) =
     match evt with
     | BomDefined b -> Map.add (BillOfMaterialId.value b.Id) (mapBomDto b) state
     | BomActivated(id, _) ->
@@ -84,11 +84,9 @@ let evolveProjection (state: Map<string, Medhavi.Contracts.MasterData.Bom>) (evt
         | None -> state
 
 let createProjectionAgent () =
-    ProjectionAgent<Map<string, Medhavi.Contracts.MasterData.Bom>, BomEvent>(evolveProjection, Map.empty, "BomReadModel")
+    ProjectionAgent<Map<string, Medhavi.Contracts.MasterData.Bom.Bom>, BomEvent>(evolveProjection, Map.empty, "BomReadModel")
 
 let createQueryService agent = QueryServiceBase.getQueryService agent id
-
-open Medhavi.Contracts.API
 
 let createBomApi (capabilities: BomCapabilities) =
     { Define =

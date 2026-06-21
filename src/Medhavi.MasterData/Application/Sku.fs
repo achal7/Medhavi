@@ -2,9 +2,8 @@ module Medhavi.MasterData.Application.Sku
 
 open Medhavi
 open Medhavi.Common.Patterns
-open Medhavi.Contracts.Integration
+open Medhavi.Contracts.MasterData.Sku
 open Medhavi.SharedKernel
-open Medhavi.Contracts.API
 open Medhavi.SharedKernel.Aggregate
 open Medhavi.MasterData.Domain.SkuAgg
 open Medhavi.Infrastructure.Projections
@@ -34,14 +33,14 @@ let createCapabilities (repo: Repository<Sku, string, SkuEvent>) =
       Rename = liftCmdResult ACL.toRenameCommand >=> handleCommand (fun (id, _) -> SkuId.value id) repo RenameSku decide
       Retire = liftCmdResult ACL.toRetireCommand >=> handleCommand SkuId.value repo RetireSku decide }
 
-let mapSkuDto (s: Sku) : Contracts.MasterData.Sku =
+let mapSkuDto (s: Sku) : Contracts.MasterData.Sku.Sku =
     { Id = SkuId.value s.Id
       Code = s.Code
       Name = s.Name
       Group = s.Group
       Status = s.Status.ToBool() }
 
-let evolveProjection (state: Map<string, Contracts.MasterData.Sku>) (evt: SkuEvent) =
+let evolveProjection (state: Map<string, Contracts.MasterData.Sku.Sku>) (evt: SkuEvent) =
     match evt with
     | SkuDefined s -> Map.add (SkuId.value s.Id) (mapSkuDto s) state
     | SkuRenamed(id, name, _) ->
@@ -58,7 +57,7 @@ let evolveProjection (state: Map<string, Contracts.MasterData.Sku>) (evt: SkuEve
         | None -> state
 
 let createProjection () =
-    ProjectionAgent<Map<string, Contracts.MasterData.Sku>, SkuEvent>(evolveProjection, Map.empty, "SkuReadModel")
+    ProjectionAgent<Map<string, Contracts.MasterData.Sku.Sku>, SkuEvent>(evolveProjection, Map.empty, "SkuReadModel")
 
 let createQueryService agent = QueryServiceBase.getQueryService agent id
 

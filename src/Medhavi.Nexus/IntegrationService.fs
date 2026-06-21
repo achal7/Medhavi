@@ -1,10 +1,7 @@
 module Medhavi.Nexus.IntegrationService
 
-open System.Threading.Tasks
 open Medhavi.Common
-
 open Medhavi.Infrastructure.Stores.EnvelopeStore
-open Medhavi.Infrastructure.Stores.EnvelopeStoreMem
 open Medhavi.Integration
 
 type ExtractEnvelope = EnvelopedEvent -> Result<IntegrationEvent,Serialization.SerializationError>

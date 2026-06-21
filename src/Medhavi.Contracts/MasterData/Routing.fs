@@ -1,124 +1,8 @@
-namespace Medhavi.Contracts.MasterData
+namespace Medhavi.Contracts.MasterData.Routing
 
 open System
-
-type UnitOfMeasure =
-    { Id: string
-      Code: string
-      Name: string
-      Status: bool
-      ConversionFactor: decimal
-      IsBase: bool }
-
-type UnitConversion =
-    { Id: string
-      ProductId: string option
-      FromUnitCode: string
-      ToUnitCode: string
-      Ratio: decimal
-      Status: bool }
-
-type Plant =
-    { Id: string
-      Code: string
-      Name: string
-      Status: bool }
-
-type StockingPoint =
-    { Id: string
-      PlantId: string
-      Code: string
-      Name: string
-      Type: string
-      Status: bool }
-
-type Sku =
-    { Id: string
-      Code: string
-      Name: string
-      Group: string
-      Status: bool }
-
-type BomItem =
-    { ComponentSkuId: string
-      Quantity: decimal
-      Sequence: int }
-
-type Bom =
-    { Id: string
-      SkuId: string
-      Items: BomItem list
-      Status: bool }
-
-type ResourceGroup =
-    { Id: string
-      PlantId: string option
-      Name: string
-      Description: string option
-      DefaultCalendarId: string option
-      IsActive: bool
-      Created: DateTimeOffset
-      Modified: DateTimeOffset }
-
-type StandardResource =
-    { Id: string
-      ResourceGroupId: string
-      Name: string
-      Description: string option
-      DefaultEfficiency: decimal
-      DefaultCostRateAmount: decimal option
-      DefaultCostRateCurrency: string option
-      IsActive: bool
-      Created: DateTimeOffset
-      Modified: DateTimeOffset }
-
-type PhysicalResource =
-    { Id: string
-      StandardResourceId: string
-      Name: string
-      SerialNumber: string option
-      Location: string option
-      EfficiencyOverride: decimal option
-      CostRateOverrideAmount: decimal option
-      CostRateOverrideCurrency: string option
-      CalendarId: string option
-      IsActive: bool
-      Created: DateTimeOffset
-      Modified: DateTimeOffset }
-
-type ResourceGroupDefined = ResourceGroup
-type StandardResourceDefined = StandardResource
-type PhysicalResourceDefined = PhysicalResource
-
-type ResourceGroupEvent =
-    | ResourceGroupDefined of ResourceGroupDefined
-    | ResourceGroupRenamed of id: string * name: string
-    | ResourceGroupRetired of id: string
-
-type StandardResourceEvent =
-    | StandardResourceDefined of StandardResourceDefined
-    | StandardResourceRenamed of id: string * name: string
-    | StandardResourceRetired of id: string
-
-type PhysicalResourceEvent =
-    | PhysicalResourceDefined of PhysicalResourceDefined
-    | PhysicalResourceRenamed of id: string * name: string
-    | PhysicalResourceRetired of id: string
-
-
-type PromiseRequest =
-    { OrderId: string
-      SkuId: string
-      NodeId: string
-      Quantity: decimal
-      RequestedDate: DateTimeOffset }
-
-type PromiseResponse =
-    { OrderId: string
-      SkuId: string
-      PromiseDate: DateTimeOffset
-      IsFeasible: bool
-      LimiterReason: string }
+open System.Threading.Tasks
+open Medhavi.Contracts
 
 type RoutingPreference = { Priority: int; IsPreferred: bool }
 
@@ -370,60 +254,172 @@ type Routing =
       CreatedAt: DateTimeOffset
       ModifiedAt: DateTimeOffset }
 
-type TransportLeg =
-    { Id: string
-      Origin: string
-      Destination: string
-      Mode: string
-      LeadTimeMinutes: decimal
-      Capacity: decimal option
-      CapacityUnit: string option
-      Status: bool }
+type StepInputTimingReq =
+    | AtStepStart
+    | AtStepEnd
+    | OffsetBeforeStepStart of decimal
+    | OffsetAfterStepStart of decimal
+    | OffsetBeforeStepEnd of decimal
+    | OffsetAfterStepEnd of decimal
 
-type SupplyProposal =
-    { Id: string
-      ProposalType: string // "PlannedPurchaseOrder" | "PlannedWorkOrder" | "PlannedTransferOrder"
-      SkuId: string
-      NodeId: string
-      StockingPointId: string
-      Quantity: decimal
-      DueDate: DateTimeOffset
-      StartDate: DateTimeOffset option
-      RoutingId: string option
-      SupplierId: string option
-      Priority: int
-      IsExpedite: bool
-      Status: string // "Planned" | "Firmed" | "Released" | "Cancelled"
-      PeggingRefs: string list
-      CapacityCheckedDate: DateTimeOffset option
-      CreatedAt: DateTimeOffset }
+type StepOutputTimingReq =
+    | AtStepStart
+    | AtStepEnd
+    | OffsetAfterStepStart of decimal
+    | OffsetAfterStepEnd of decimal
 
-type KpiConfig =
-    {
-        KpiId: string
-        Name: string
-        Description: string
-        /// Category grouping for UI display: "Business" | "Operational" | "Financial"
-        Category: string
-        /// KPI invalidation class: "PlanRunDependent" | "OperationalState" | "ExecutionRealTime"
-        KpiClass: string
-        /// Whether this KPI is currently active (planners can turn off individual KPIs)
-        IsEnabled: bool
-        /// Display unit (e.g., "%", "days", "units")
-        Unit: string
-        /// Target value (e.g., OTD target = 95%)
-        Target: decimal option
-        /// Alert threshold — triggers warning when crossed
-        AlertThreshold: decimal option
-        /// Direction: true = higher is better (OTD%), false = lower is better (lateness)
-        HigherIsBetter: bool
-        /// Weight this KPI carries in the optimizer's multi-objective function
-        OptimizerWeight: decimal
-        /// UI display order within its category
-        DisplayOrder: int
-        /// Optional color for UI rendering
-        Color: string option
-        /// Audit fields
-        LastModifiedBy: string
-        LastModifiedAt: DateTimeOffset
-    }
+type RoutingOutputRoleReq =
+    | PrimaryOutput
+    | CoProduct
+    | ByProduct
+    | Scrap
+    | Waste
+
+type RoutingStepInputReq =
+    { SkuId: string
+      FromNodeId: string option
+      QuantityPerBaseOutput: decimal option
+      Timing: StepInputTimingReq
+      IsConsumed: bool
+      IsOptional: bool }
+
+type RoutingStepOutputReq =
+    { SkuId: string
+      ToNodeId: string option
+      QuantityRatioToPrimaryOutput: decimal option
+      Role: RoutingOutputRoleReq
+      Timing: StepOutputTimingReq }
+
+type RoutingResourceOptionReq =
+    { OptionId: string
+      ResourceGroupId: string
+      ResourceId: string option
+      WorkCenterId: string option
+      Usage: string // "Primary", "Alternate", "Optional", "Parallel", "Rework"
+      Priority: int option
+      SetupTimeMinutes: decimal option
+      RunTimePerBaseQuantityMinutes: decimal option
+      TeardownTimeMinutes: decimal option
+      CoolingTimeMinutes: decimal option
+      MinLeadTimeMinutes: decimal option
+      CostPerMinute: decimal option
+      EfficiencyFactor: decimal option
+      SetupTimeFixed: decimal option
+      CoolingTimeFixed: decimal option
+      EffectiveStart: DateTimeOffset option
+      EffectiveEnd: DateTimeOffset option }
+
+type RoutingStepResourceRequirementReq =
+    { RequirementId: string
+      ResourceKind: string // "Machine", "WorkCenter", etc.
+      LoadBasis: string // "PerOrder", "PerUnit", etc.
+      RequiredUnits: decimal
+      SelectionRule: string // "AnyAllowed", "PreferPrimary", etc.
+      SelectionRuleGroupId: string option
+      Options: RoutingResourceOptionReq list }
+
+type StepTimingProfileReq =
+    { FixedLeadTime: decimal option
+      QueueTime: decimal option
+      WaitTime: decimal option
+      MoveTime: decimal option }
+
+type RoutingStepReq =
+    { StepId: string
+      Sequence: int
+      OperationCode: string
+      Name: string
+      Description: string option
+      Kind: string // "Standard", "Alternate", etc.
+      Inputs: RoutingStepInputReq list
+      Outputs: RoutingStepOutputReq list
+      ResourceRequirements: RoutingStepResourceRequirementReq list
+      TimingProfile: StepTimingProfileReq
+      YieldPercentage: decimal option
+      ReworkStepId: string option
+      ReworkRate: decimal option
+      OverlapPolicyType: string // "NoOverlap", "OverlapAfterQuantity", "OverlapAfterDuration"
+      OverlapPolicyValue: decimal option
+      EffectiveStart: DateTimeOffset option
+      EffectiveEnd: DateTimeOffset option }
+
+type WorkRoutingDetailsReq =
+    { ProductId: string
+      PrimaryOutputSkuId: string
+      BaseOutputQuantity: decimal
+      Steps: RoutingStepReq list }
+
+type TransportResourceOptionReq =
+    { OptionId: string
+      ResourceGroupId: string option
+      ResourceId: string option
+      CarrierId: string option
+      Usage: string
+      Priority: int option
+      TransitTime: decimal
+      LoadingTime: decimal option
+      UnloadingTime: decimal option
+      CostPerUnit: decimal option
+      CostPerTrip: decimal option
+      EffectiveStart: DateTimeOffset option
+      EffectiveEnd: DateTimeOffset option }
+
+type TransportRoutingDetailsReq =
+    { SkuId: string
+      FromNodeId: string
+      ToNodeId: string
+      Mode: string // "Road", "Rail", etc.
+      TransitLeadTime: decimal
+      LossFactor: decimal option
+      ResourceSelectionRule: string
+      TransportResourceOptions: TransportResourceOptionReq list }
+
+type PurchaseRoutingDetailsReq =
+    { SkuId: string
+      SupplierId: string
+      ReceivingNodeId: string
+      SupplierShipFromNodeId: string option
+      SupplierLeadTime: decimal
+      InspectionLeadTime: decimal option
+      PutawayLeadTime: decimal option
+      SupplierSkuCode: string option
+      SupplierPriority: int
+      SupplierIsPreferred: bool
+      PricingPolicyType: string // "NoPurchaseCost", "PurchaseCostPerUnit", "ContractPriceReference"
+      PricingPolicyValue: string option }
+
+type RoutingDetailsReq =
+    | WorkDetails of WorkRoutingDetailsReq
+    | TransportDetails of TransportRoutingDetailsReq
+    | PurchaseDetails of PurchaseRoutingDetailsReq
+
+type RoutingDefineReq =
+    { Id: string
+      Name: string
+      Description: string option
+      Type: string // "Work", "Transport", "Purchase"
+      StockingPointId: string option
+      EffectiveStart: DateTimeOffset
+      EffectiveEnd: DateTimeOffset option
+      PreferencePriority: int
+      IsPreferred: bool
+      MinQuantity: decimal option
+      MaxQuantity: decimal option
+      LotSize: decimal option
+      OrderMultiple: decimal option
+      CostPolicyType: string // "NoRoutingCost", "FixedCost", "CostPerUnit", "EstimatedCost"
+      CostPolicyValue: decimal option
+      Details: RoutingDetailsReq
+      Created: DateTimeOffset }
+
+type RoutingActivateReq = { Id: string }
+
+type RoutingDeactivateReq = { Id: string }
+
+type RoutingApi =
+    { Define: RoutingDefineReq -> Task<Result<Routing, ApiError>>
+      DefineBulk: RoutingDefineReq list -> Task<Result<Routing list, ApiError>>
+      Activate: RoutingActivateReq -> Task<Result<Routing, ApiError>>
+      Deactivate: RoutingDeactivateReq -> Task<Result<Routing, ApiError>> }
+
+type RoutingQueryService = QueryService<Routing, string>

@@ -2,9 +2,14 @@ namespace Medhavi.MasterData
 
 open System
 open System.Threading.Tasks
+open Medhavi.Contracts.MasterData.Bom
+open Medhavi.Contracts.MasterData.Network
+open Medhavi.Contracts.MasterData.Resource
+open Medhavi.Contracts.MasterData.Routing
+open Medhavi.Contracts.MasterData.Sku
+open Medhavi.Contracts.MasterData.Transport
+open Medhavi.Contracts.MasterData.Uom
 open Medhavi.Infrastructure.Projections
-open Medhavi.Contracts.API
-open Medhavi.Contracts.Projections
 open Medhavi.SharedKernel
 open Medhavi.SharedKernel.BoundedContexts
 open Medhavi.SharedKernel.InMemRepository

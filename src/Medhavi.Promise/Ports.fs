@@ -3,7 +3,7 @@ namespace Medhavi.Promise
 open System
 open Medhavi.SharedKernel
 open Medhavi.Promise.PromiseTypes
-open Medhavi.Contracts.Transport
+open Medhavi.Contracts.MasterData.Transport
 
 /// Material provider interface
 type MaterialProvider =

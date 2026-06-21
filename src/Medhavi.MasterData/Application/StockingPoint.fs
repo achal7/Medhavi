@@ -3,7 +3,7 @@ module Medhavi.MasterData.Application.StockingPoint
 open Medhavi
 open Medhavi.Common.Validation
 open Medhavi.Common.Patterns
-open Medhavi.Contracts.Integration
+open Medhavi.Contracts.MasterData.Network
 open Medhavi.SharedKernel
 open Medhavi.SharedKernel.Aggregate
 open Medhavi.MasterData.Domain.StockingPointAgg
@@ -61,7 +61,7 @@ let createCapabilities (repo: Repository<StockingPoint, string, StockingPointEve
         >=> handleCommand (fun c -> StockingPointId.value c.Id) repo RenameStockingPoint decide
       Retire = liftCmdResult ACL.toRetireCommand >=> handleCommand StockingPointId.value repo RetireStockingPoint decide }
 
-let mapStockingPointDto (s: StockingPoint) : Contracts.MasterData.StockingPoint =
+let mapStockingPointDto (s: StockingPoint) : Contracts.MasterData.Network.StockingPoint =
     let tStr =
         match s.Type with
         | StockingPointType.Plant -> "Plant"
@@ -75,7 +75,7 @@ let mapStockingPointDto (s: StockingPoint) : Contracts.MasterData.StockingPoint 
       Type = tStr
       Status = s.Status.ToBool() }
 
-let evolveProjection (state: Map<string, Contracts.MasterData.StockingPoint>) (evt: StockingPointEvent) =
+let evolveProjection (state: Map<string, Contracts.MasterData.Network.StockingPoint>) (evt: StockingPointEvent) =
     match evt with
     | StockingPointDefined s -> Map.add (StockingPointId.value s.Id) (mapStockingPointDto s) state
     | StockingPointRenamed e ->
@@ -92,15 +92,13 @@ let evolveProjection (state: Map<string, Contracts.MasterData.StockingPoint>) (e
         | None -> state
 
 let createProjectionAgent () =
-    ProjectionAgent<Map<string, Contracts.MasterData.StockingPoint>, StockingPointEvent>(
+    ProjectionAgent<Map<string, Contracts.MasterData.Network.StockingPoint>, StockingPointEvent>(
         evolveProjection,
         Map.empty,
         "StockingPointReadModel"
     )
 
 let createQueryService agent = QueryServiceBase.getQueryService agent id
-
-open Medhavi.Contracts.API
 
 let createStockingPointApi (capabilities: StockingPointCapabilities) =
     { Define =

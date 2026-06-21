@@ -10,7 +10,6 @@ open Medhavi.Demand.Domain
 open Medhavi.Demand.Domain.DemandLineAgg
 open Medhavi.Demand.Projections
 open Medhavi.Demand.Application
-open Medhavi.Contracts
 
 type DemandContext =
     { Commands: Demand.DemandLineApi

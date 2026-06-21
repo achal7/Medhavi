@@ -4,9 +4,14 @@ open System
 open Medhavi.Infrastructure
 open Medhavi.Contracts
 open Medhavi.Common.Serialization
-open Medhavi.Contracts.Integration
+open Medhavi.Contracts.MasterData.Uom
+open Medhavi.Contracts.MasterData.Resource
+open Medhavi.Contracts.MasterData.Network
+open Medhavi.Contracts.MasterData.Routing
+open Medhavi.Contracts.MasterData.Sku
+open Medhavi.Contracts.MasterData.Bom
+open Medhavi.Contracts.MasterData.Transport
 open Medhavi.Contracts.Supply
-open Medhavi.Contracts.Transport
 open Medhavi.Contracts.Demand
 type IntegrationSuccess =
     { EnvelopeId: EventId
