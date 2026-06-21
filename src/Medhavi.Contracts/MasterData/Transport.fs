@@ -1,7 +1,19 @@
 module Medhavi.Contracts.Transport
 
 open System
+open System.Threading.Tasks
+open Medhavi.Contracts
 open Medhavi.Contracts.Analytics
+
+type TransportLeg =
+    { Id: string
+      Origin: string
+      Destination: string
+      Mode: string
+      LeadTimeMinutes: decimal
+      Capacity: decimal option
+      CapacityUnit: string option
+      Status: bool }
 
 /// Shipment lifecycle status
 type ShipmentStatus =
@@ -40,7 +52,6 @@ type TransportPeriodView =
       EstimatedCost: decimal option
       Shipments: ShipmentView list }
 
-
 type TransportLegDefineReq =
     { Id: string
       Origin: string
@@ -76,7 +87,6 @@ type TransportLegDeactivateReq =
     { Id: string
       DeactivatedAt: DateTimeOffset }
 
-
 /// A single hop in a multi-hop route
 type ItineraryHop =
     { LegId: string
@@ -85,7 +95,7 @@ type ItineraryHop =
       Mode: string
       LeadTimeMinutes: decimal
       DepartureDateOffset: decimal // minutes from route start
-      ArrivalDateOffset: decimal   // minutes from route start
+      ArrivalDateOffset: decimal // minutes from route start
       FixedCost: decimal
       VariableCostPerUnit: decimal option }
 
@@ -100,5 +110,13 @@ type Itinerary =
       TotalFixedCost: decimal
       TotalVariableCostPerUnit: decimal option
       TotalCO2: decimal option
-      TotalReliability: decimal  // product of hop reliabilities
+      TotalReliability: decimal // product of hop reliabilities
       HopCount: int }
+
+type TransportLegApi =
+    { Define: TransportLegDefineReq -> Task<Result<TransportLeg, ApiError>>
+      DefineBulk: TransportLegDefineReq list -> Task<Result<TransportLeg list, ApiError>>
+      Update: TransportLegUpdateReq -> Task<Result<TransportLeg, ApiError>>
+      Deactivate: TransportLegDeactivateReq -> Task<Result<TransportLeg, ApiError>> }
+
+type TransportLegQueryService = QueryService<TransportLeg, string>
