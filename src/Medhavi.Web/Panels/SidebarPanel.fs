@@ -1,12 +1,10 @@
 namespace Medhavi.Web.Panels
 
 open System
-open Microsoft.AspNetCore.Components
 open Microsoft.AspNetCore.Components.Web
 open Bolero
 open Bolero.Html
 open Medhavi.Web
-open Medhavi.Web.Components
 open Medhavi.Web.Controls
 open Radzen
 open Radzen.Blazor

@@ -1,19 +1,19 @@
 module Medhavi.Web.SystemShell
 
+open System
 open Elmish
 open Bolero
 open Bolero.Html
 open Bolero.Server.Html
-open Medhavi.Web.AppShell
 open Microsoft.AspNetCore.Components
+open Radzen
+open Radzen.Blazor
 open Medhavi.Contracts
 open Medhavi.Contracts.Demand
 open Medhavi.Contracts.Scenario
+open Medhavi.Web.AppShell
 open Medhavi.Web.Stores
 open Medhavi.SharedKernel.BoundedContexts
-open Radzen.Blazor
-open Radzen
-open System
 
 type IAuthApplicationService =
     abstract Authenticate: string -> string -> Async<Result<User, string>>

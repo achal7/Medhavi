@@ -2,8 +2,9 @@ module Medhavi.Contracts.Demand
 
 open System
 open System.Threading.Tasks
+open System.Text.Json.Serialization
 
-/// Risk classification for a demand line's on-time delivery status
+[<JsonFSharpConverter>]
 type LatenessRisk =
     | OnTrack // ConfirmedDeliveryDate <= RequestedDeliveryDate
     | AtRisk of daysLate: int // late but within LatestDeliveryDate
@@ -16,8 +17,21 @@ type PeggedSupplySummary =
       Quantity: decimal
       PlannedDate: DateOnly }
 
-/// Denormalized demand line for the planning board.
-/// The RequestedDeliveryDate determines which PlanningPeriod bucket this line falls into.
+[<JsonFSharpConverter>]
+type DemandLineStatus =
+    | Cancelled
+    | Fulfilled
+    | Active
+
+[<JsonFSharpConverter>]
+type DemandCategory =
+    | CustomerOrderDemand // hard demand from a confirmed sales order
+    | SalesOrderForecast // statistical forecast before order confirmation
+    | InterplantTransfer // demand from another plant/node in the network
+    | ServicePart // spare parts / aftermarket demand
+    | InternalConsumption // production self-consumption (e.g., components)
+    | DependentDemand // exp
+
 type DemandLine =
     { DemandLineId: string
       DemandOrderId: string
@@ -28,8 +42,13 @@ type DemandLine =
       CustomerName: string
       StockingPointId: string
       Priority: int
-      DemandCategory: string // "CustomerOrder" | "Forecast" etc.
+      DemandCategory: DemandCategory
+      IsFrozen: bool
+      FrozenUntilUtc: DateTimeOffset option
       IsFirm: bool
+      IsOnHold: bool
+      OnHoldReason: string option
+      CancelReason: string option
       // --- Dates ---
       EarliestDeliveryDate: DateOnly option
       RequestedDeliveryDate: DateOnly // determines the bucket
@@ -42,10 +61,32 @@ type DemandLine =
       ConfirmedQty: decimal // APS promise — what has been planned
       ShortfallQty: decimal // max(0, OpenQty - ConfirmedQty)
       LatenessRisk: LatenessRisk
-      Status: string
+      Status: DemandLineStatus
       UnitOfMeasure: string
       // --- Pegging ---
       PeggedSupply: PeggedSupplySummary list }
+
+let private formatDate (dt: DateTimeOffset) = dt.ToString("yyyy-MM-dd")
+
+module DeamandLine =
+    let statusDescription line =
+        match line.Status with
+        | DemandLineStatus.Cancelled ->
+                let reason = line.CancelReason |> Option.defaultValue ""
+                $"Cancelled: {reason}"
+        | DemandLineStatus.Fulfilled -> $"Fulfilled (Qty: {line.FulfilledQty})"
+        | DemandLineStatus.Active ->
+            if line.IsOnHold then
+                let reason = line.OnHoldReason |> Option.defaultValue ""
+                $"OnHold: {reason}"
+            elif line.IsFrozen then
+                match line.FrozenUntilUtc with
+                | Some dt -> $"Frozen until {formatDate dt}"
+                | None -> "Frozen"
+            elif line.ConfirmedDeliveryDate.IsSome then
+                $"Promised on {line.ConfirmedDeliveryDate.Value} (Qty: {line.ConfirmedQty})"
+            else
+                "Ingested"
 
 /// Aggregated demand view for a single PlanningPeriod.
 type DemandPeriodView =
@@ -87,13 +128,31 @@ type FulfillDemandLineReq =
     { DemandLineId: string
       Quantity: decimal }
 
-/// Notification emitted when a new demand line is created
+type PromiseDemandReq =
+    { DemandLineId: string
+      PromisedDate: DateTimeOffset
+      ConfirmedQty: decimal
+      PeggedSupply: PeggedSupplySummary list }
+
+type FreezeDemandReq =
+    { DemandLineId: string
+      FrozenUntilUtc: DateTimeOffset }
+
+type ReleaseDemandReq =
+    { DemandLineId: string
+      ReleaseFromHold: bool
+      Unfreeze: bool }
+
+type CancelDemandReq =
+    { DemandLineId: string
+      Reason: string
+      CancelledAtUtc: DateTimeOffset
+      ForceOverride: bool }
+
 type DemandCreatedNotification = { DemandLineId: string }
 
-/// Notification emitted when an existing demand line is updated
 type DemandUpdatedNotification = { DemandLineId: string }
 
-/// Notification emitted when an existing demand line is deleted
 type DemandDeletedNotification = { DemandLineId: string }
 
 type DemandLineQueries = QueryService<DemandLine, string>
@@ -101,4 +160,8 @@ type DemandLineQueries = QueryService<DemandLine, string>
 type DemandLineApi =
     { Define: DemandDefineReq -> Task<Result<unit, ApiError>>
       DefineBulk: DemandDefineReq list -> Task<Result<unit, ApiError>>
-      Fulfill: FulfillDemandLineReq -> Task<Result<unit, ApiError>> }
+      Fulfill: FulfillDemandLineReq -> Task<Result<unit, ApiError>>
+      Promise: PromiseDemandReq -> Task<Result<unit, ApiError>>
+      Freeze: FreezeDemandReq -> Task<Result<unit, ApiError>>
+      Release: ReleaseDemandReq -> Task<Result<unit, ApiError>>
+      Cancel: CancelDemandReq -> Task<Result<unit, ApiError>> }

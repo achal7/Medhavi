@@ -69,7 +69,15 @@ module DemandPanel =
                           filterable = false,
                           template =
                               fun d ->
-                                  let icon = if d.DemandCategory = "CustomerOrder" then "person" else "trending_up"
+                                  let icon =
+                                      match d.DemandCategory with
+                                      | DemandCategory.CustomerOrderDemand -> "person"
+                                      | DemandCategory.SalesOrderForecast -> "trending_up"
+                                      | DemandCategory.DependentDemand -> "trending_up"
+                                      | DemandCategory.InternalConsumption -> "network_node"
+                                      | DemandCategory.InterplantTransfer -> "local_shipping"
+                                      | DemandCategory.ServicePart -> "build"
+
                                   comp<Radzen.Blazor.RadzenIcon> { "Icon" => icon }
                       )
                       Rz.dataGridColumn<DemandLine>("SkuCode", "SKU Code", width = "120px")
@@ -134,7 +142,7 @@ module DemandPanel =
                                   "Due Date", demand.RequestedDeliveryDate.ToString("yyyy-MM-dd")
                                   "Priority", sprintf "%d" demand.Priority
                                   "Lateness Risk", sprintf "%A" demand.LatenessRisk
-                                  "Status", demand.Status ]
+                                  "Status", demand.Status.ToString() ]
                               OnClose = fun () -> dispatch(SelectDemand None) }
 
                         comp<DetailPanel> {

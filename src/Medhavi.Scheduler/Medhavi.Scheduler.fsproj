@@ -60,6 +60,7 @@
 
     <!-- Main Scheduler Entry -->
     <Compile Include="Engine.fs" />
+    <Compile Include="Relationships.fs" />
   </ItemGroup>
 
   <ItemGroup>
