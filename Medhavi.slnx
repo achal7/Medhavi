@@ -11,7 +11,7 @@
     <Project Path="src/Medhavi.Transport/Medhavi.Transport.fsproj" />
     <Project Path="src/Medhavi.Promise/Medhavi.Promise.fsproj" />
     <Project Path="src/Medhavi.Scenario/Medhavi.Scenario.fsproj" />
-    <Project Path="src/Medhavi.Scheduler/Medhavi.Scheduler.fsproj" />
+    <Project Path="src/Medhavi.PlanningEngine/Medhavi.PlanningEngine.fsproj" />
     <Project Path="src/Medhavi.Analytics/Medhavi.Analytics.fsproj" />
     <Project Path="src/Medhavi.Integration/Medhavi.Integration.fsproj" />
     <Project Path="src/Medhavi.Nexus/Medhavi.Nexus.fsproj" />
