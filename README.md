@@ -2,7 +2,91 @@
 
 ## Overview
 
-**Medhāvī** is an AI-first supply chain orchestration platform that leverages event-driven architecture, artificial intelligence, digital twins, and real-time analytics to provide end-to-end supply chain management for manufacturing companies.
+**Medhāvī** is a next-generation, AI-native Advanced Planning and Scheduling (APS) platform built on a fundamentally different architectural philosophy. Instead of organizing enterprise planning around applications, transactions, or data models, Medhavi is organized around authoritative business understanding. It establishes a governed semantic foundation that defines what the enterprise knows before determining what it should do. Planning, optimization, and AI are treated as reasoning capabilities built upon this shared understanding—not as isolated technologies. The result is an explainable, traceable, deterministic, and continuously evolvable decision platform where every capability, decision, rule, policy, and AI recommendation can be traced back to a common business language and governed architectural principles.
+
+## Documents
+
+| Layer (Document)               | Core Concept      | Question it answers                       | Ends With                                      |
+| ------------------------------ | ----------------- | ----------------------------------------- | ---------------------------------------------- |
+| **Vision**                     | —                 | —                                         | —                                              |
+| **Constitution**               | Principles        | What must always be true?                 | Principles                                     |
+| **ARS**                        | Requirements      | How is architecture governed?             | Requirements                                   |
+| **Semantic Model**             | Meaning           | What do we understand?                    | Enterprise Questions & Intelligence Domains    |
+| **Capability Model**           | Abilities         | What can we do?                           | Enterprise Understanding                       |
+| **Decision Model**             | Choices           | What choices do we make?                  | Enterprise Decisions                           |
+| **Rule Model**                 | Logic             | How do we decide consistently?            | Business Rules                                 |
+| **Policy Model**               | Governance        | What is configurable?                     | Policies                                       |
+| **Functional Specification**   | Behaviour         | What does the system do?                  | Commands, Events, Queries (within each domain) |
+| **Architecture Blueprint**     | Software Design   | How is it architected?                    | Software Components                            |
+
+---
+
+### Architecture Evolution Diagram
+
+```
+                 Constitution
+                       │
+                       ▼
+     Architectural Requirement Specification
+                       │
+                       ▼
+                Semantic Model
+                       │
+                       ▼
+               Capability Model
+                       │
+                       ▼
+                Decision Model      
+                       │
+                       ▼
+                  Rule Model
+                       │
+                       ▼
+                 Policy Model
+                       │
+                       ▼
+   Intelligence Domain Realization Specifications
+        (containing Functional Behaviour,
+            Commands, Events, Queries)
+                       │
+                       ▼
+            Architecture Blueprint
+```
+
+---
+
+### “How architecture documents evolve” (linear view)
+
+```
+Semantic Model
+        │
+Meaning │
+        ▼
+Capability Model
+        │
+Understanding
+        ▼
+Decision Model
+        │
+Recommendations
+        ▼
+Rule Model
+        │
+Validated Recommendations
+        ▼
+Policy Model
+        │
+Governed Recommendations
+        │
+        ▼
+Intelligence Domain Realization Specifications
+        │
+System Behaviour (Commands, Events, Queries)
+        │
+        ▼
+Architecture Blueprint
+```
+
 
 ## Architecture
 
