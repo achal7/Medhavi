@@ -16,7 +16,6 @@
     <Compile Include="Patterns\StateMonad.fs" />
     <Compile Include="Patterns\WriterMonad.fs" />
     <Compile Include="Patterns\Result.fs" />
-    <Compile Include="Patterns\ResultAsyncCommon.fs" />
     <Compile Include="Task.fs" />
     <Compile Include="Patterns\AsyncResult.fs" />
     <Compile Include="Patterns\Validation.fs" />

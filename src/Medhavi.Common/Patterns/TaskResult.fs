@@ -25,6 +25,7 @@ type TaskResult<'T, 'E> = Task<Result<'T, 'E>>
 
 [<RequireQualifiedAccess>]
 module TaskResult =
+    open System.Threading
 
     /// Convert result to a task result
     let ofResult (result: Result<'T, 'E>) : TaskResult<'T, 'E> = task { return result }
@@ -76,7 +77,7 @@ module TaskResult =
             | Ok value -> return value
             | Error err ->
                 // Explicitly handle error case - throw with clear message
-                return raise (InvalidOperationException($"TaskResult failed with error: %A{err}"))
+                return raise(InvalidOperationException($"TaskResult failed with error: %A{err}"))
         }
 
     /// Lift a function to the TaskResult world (functor operation)
@@ -133,15 +134,15 @@ module TaskResult =
 
     /// Execute TaskResults in sequence, keeping only the last result
     let sequence_ (TaskResults: TaskResult<'T, 'E> list) : TaskResult<unit, 'E> =
-        let folder _ acc = bind (fun _ -> acc) (return_ ())
-        List.foldBack folder TaskResults (return_ ())
+        let folder _ acc = bind (fun _ -> acc) (return_())
+        List.foldBack folder TaskResults (return_())
 
     /// Filter TaskResults based on a predicate
     let filterM (pred: 'T -> TaskResult<bool, 'E>) (xs: 'T list) : TaskResult<'T list, 'E> =
         let folder x acc =
             bind
                 (fun boolList ->
-                    bind (fun predResult -> return_ (if predResult then x :: boolList else boolList)) (pred x))
+                    bind (fun predResult -> return_(if predResult then x :: boolList else boolList)) (pred x))
                 acc
 
         List.foldBack folder xs (return_ [])
@@ -170,27 +171,21 @@ module TaskResult =
                     let! result = tr
                     return result
                 else
-                    return Error(mapTimeout (sprintf "Operation timed out after %dms" timeoutMs))
+                    return Error(mapTimeout(sprintf "Operation timed out after %dms" timeoutMs))
             with ex ->
                 return Error(mapException ex)
         }
 
-    /// Retry TaskResult computation with exponential backoff
-    /// Uses the shared Retry module to avoid duplication
-    /// Note: The taskResult is a value, not a function, so it will be evaluated once per attempt
-    let retry (retries: int) (delayMs: int) (taskResult: TaskResult<'T, 'E>) : TaskResult<'T, 'E> =
+    let retry (retries: int) (taskResult: TaskResult<'T, 'E>) (ct: CancellationToken) handleCancellationError : TaskResult<'T, 'E> =
         let logger = NullLogger.Instance
 
-        let config =
-            { RetryConfig.Default with
-                MaxAttempts = retries
-                BaseDelayMs = delayMs }
+        let config = Some <| RetryConfig.DefaultWithAttempts retries
 
         task {
             // Operation function that will be called on each retry attempt
             // Each call will re-execute the taskResult computation
-            let operation (_attempt: int) = taskResult
-            let! result = ResultAsyncRetry.retryAsyncResult config operation logger
+            let operation ct (_attempt: int) = taskResult
+            let! result = Retry.executeWithRetry operation logger config ct handleCancellationError
             return result
         }
 
@@ -202,7 +197,7 @@ module TaskResult =
             let! results = trs |> Task.WhenAll
 
             // Use safe partition function from ResultAsyncCommon
-            return ResultAsyncCommon.partitionResultsSafe results
+            return Result.partitionResultsSafe results
         }
 
 /// COMPUTATION EXPRESSION BUILDER FOR TaskResult
@@ -227,8 +222,8 @@ type TaskResultBuilder() =
         TaskResult.bind f (TaskResult.ofAsync asyncOp)
 
     member _.ReturnFrom(x: Task<Result<'T, 'E>>) : Task<Result<'T, 'E>> = x
-    member _.Zero() : Task<Result<unit, 'E>> = TaskResult.return_ ()
-    member _.Delay(f: unit -> Task<Result<'T, 'E>>) : Task<Result<'T, 'E>> = f ()
+    member _.Zero() : Task<Result<unit, 'E>> = TaskResult.return_()
+    member _.Delay(f: unit -> Task<Result<'T, 'E>>) : Task<Result<'T, 'E>> = f()
     member _.Run(f: Task<Result<'T, 'E>>) : Task<Result<'T, 'E>> = f
 
     // Sequential composition
@@ -239,18 +234,18 @@ type TaskResultBuilder() =
     member _.IfThenElse
         (condition: bool, ifBody: unit -> Task<Result<'T, 'E>>, elseBody: unit -> Task<Result<'T, 'E>>)
         : Task<Result<'T, 'E>> =
-        if condition then ifBody () else elseBody ()
+        if condition then ifBody() else elseBody()
 
     // Loops
     member _.For(xs: seq<'a>, body: 'a -> Task<Result<unit, 'E>>) : Task<Result<unit, 'E>> =
         let folder acc x = TaskResult.bind (fun () -> body x) acc
-        Seq.fold folder (TaskResult.return_ ()) xs
+        Seq.fold folder (TaskResult.return_()) xs
 
     // Try-with
     member __.TryWith(body: unit -> Task<Result<'T, 'E>>, handler: exn -> Task<Result<'T, 'E>>) : Task<Result<'T, 'E>> =
         task {
             try
-                return! body ()
+                return! body()
             with ex ->
                 return! handler ex
         }
@@ -259,9 +254,9 @@ type TaskResultBuilder() =
     member __.TryFinally(body: unit -> Task<Result<'T, 'E>>, compensation: unit -> unit) : Task<Result<'T, 'E>> =
         task {
             try
-                return! body ()
+                return! body()
             finally
-                compensation ()
+                compensation()
         }
 
     // Using

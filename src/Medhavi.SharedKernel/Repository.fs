@@ -1,7 +1,6 @@
 namespace Medhavi.SharedKernel
 
 open Medhavi.Common.Patterns
-open System.Threading.Tasks
 
 /// Versioned aggregate for optimistic concurrency
 type VersionedAggregate<'Aggregate> = { Aggregate: 'Aggregate; Version: int }

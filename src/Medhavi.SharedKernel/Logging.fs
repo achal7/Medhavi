@@ -1,15 +1,12 @@
 namespace Medhavi.SharedKernel.Logging
 
 open System
-open System.Diagnostics
-open System.Threading.Tasks
 open Microsoft.Extensions.Logging
-open Microsoft.FSharp.Control
-open Medhavi.Common.Result
+open Medhavi.SharedKernel.ExceptionHandling
 
 /// Log context for structured logging
 type LogContext =
-    { CorrelationId: Guid option
+    { CorrelationId: CorrelationId option
       Operation: string option
       Component: string
       EntityId: string option
@@ -34,10 +31,7 @@ type LogContext =
 
     member ctx.withEntityId (entityKey: string) (entityId: string) : LogContext =
         let additionalData =
-            ctx.AdditionalData
-            |> Option.defaultValue Map.empty
-            |> Map.add entityKey (box entityId)
-            |> Some
+            ctx.AdditionalData |> Option.defaultValue Map.empty |> Map.add entityKey (box entityId) |> Some
 
         { ctx with
             AdditionalData = additionalData }
@@ -48,8 +42,7 @@ type LogContext =
             entities
             |> List.fold
                 (fun acc (key, value) -> Map.add key (box value) acc)
-                (ctx.AdditionalData
-                 |> Option.defaultValue Map.empty)
+                (ctx.AdditionalData |> Option.defaultValue Map.empty)
             |> Some
 
         { ctx with
@@ -57,42 +50,20 @@ type LogContext =
 
     /// Extract business entity ID from LogContext's AdditionalData
     member ctx.getEntityId(entityKey: string) : string option =
-        ctx.AdditionalData
-        |> Option.bind (fun data -> data.TryFind entityKey)
-        |> Option.map (fun v -> v :?> string)
+        ctx.AdditionalData |> Option.bind(fun data -> data.TryFind entityKey) |> Option.map(fun v -> v :?> string)
 
 module LogContext =
     /// Merge two LogContexts, with override taking precedence for Some values
     let mergeContexts (baseCtx: LogContext) (overrideCtx: LogContext) : LogContext =
-        { CorrelationId =
-            overrideCtx.CorrelationId
-            |> Option.orElse baseCtx.CorrelationId
-          Operation =
-            overrideCtx.Operation
-            |> Option.orElse baseCtx.Operation
-          Component =
-            if overrideCtx.Component <> "" then
-                overrideCtx.Component
-            else
-                baseCtx.Component
-          EntityId =
-            overrideCtx.EntityId
-            |> Option.orElse baseCtx.EntityId
-          EntityType =
-            overrideCtx.EntityType
-            |> Option.orElse baseCtx.EntityType
-          StreamName =
-            overrideCtx.StreamName
-            |> Option.orElse baseCtx.StreamName
-          EventId =
-            overrideCtx.EventId
-            |> Option.orElse baseCtx.EventId
-          EventType =
-            overrideCtx.EventType
-            |> Option.orElse baseCtx.EventType
-          Duration =
-            overrideCtx.Duration
-            |> Option.orElse baseCtx.Duration
+        { CorrelationId = overrideCtx.CorrelationId |> Option.orElse baseCtx.CorrelationId
+          Operation = overrideCtx.Operation |> Option.orElse baseCtx.Operation
+          Component = if overrideCtx.Component <> "" then overrideCtx.Component else baseCtx.Component
+          EntityId = overrideCtx.EntityId |> Option.orElse baseCtx.EntityId
+          EntityType = overrideCtx.EntityType |> Option.orElse baseCtx.EntityType
+          StreamName = overrideCtx.StreamName |> Option.orElse baseCtx.StreamName
+          EventId = overrideCtx.EventId |> Option.orElse baseCtx.EventId
+          EventType = overrideCtx.EventType |> Option.orElse baseCtx.EventType
+          Duration = overrideCtx.Duration |> Option.orElse baseCtx.Duration
           AdditionalData =
             match baseCtx.AdditionalData, overrideCtx.AdditionalData with
             | Some baseMap, Some overrideMap -> Some(Map.fold (fun acc k v -> Map.add k v acc) baseMap overrideMap)
@@ -151,7 +122,7 @@ module LogContext =
     let logCritical (logger: ILogger) (message: string) (context: LogContext) =
         logger.LogCritical(message, contextToState context |> Seq.toArray)
 
-    let logPerformance (logger: ILogger) (operation: string) (comp: string) (duration: TimeSpan) (context: LogContext) =
+    let logPerformance (logger: ILogger) (operation: string) (comp: string) (duration: TimeSpan) (_: LogContext) =
         let context =
             { LogContext.Empty with
                 Operation = Some operation
@@ -174,9 +145,7 @@ module ComponentNaming =
 
     /// Create hierarchical component name
     let combine (parts: string list) : string =
-        parts
-        |> List.filter (fun s -> not (String.IsNullOrWhiteSpace s))
-        |> String.concat "."
+        parts |> List.filter(fun s -> not(String.IsNullOrWhiteSpace s)) |> String.concat "."
 
     /// Actor component names
     module Actor =

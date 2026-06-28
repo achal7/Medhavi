@@ -54,7 +54,7 @@ and CalendarEvent =
       EventType: EventType
       CapacityFactor: Percent // 0.0–1.0
       IsDefault: bool
-      Window: Window
+      Window: TimeWindow
       Recurrence: RecurrencePattern option
       Created: Timestamp
       Modified: Timestamp }
@@ -71,7 +71,7 @@ module EventId =
 type EventSchedule =
     { EventId: EventId
       CalendarId: CalendarId
-      Window: Window
+      Window: TimeWindow
       CapacityFactor: Percent }
 
 type CalendarAvailability =
@@ -191,9 +191,7 @@ let applyCreated (evt: CalendarCreatedEvt) : Calendar =
       Modified = evt.Created }
 
 let applyEventAdded (evt: CalendarEventAddedEvt) (state: Calendar) : Calendar =
-    let eventExists =
-        state.Events
-        |> List.exists (fun e -> e.Id = evt.Event.Id)
+    let eventExists = state.Events |> List.exists(fun e -> e.Id = evt.Event.Id)
 
     if eventExists then
         state
@@ -204,9 +202,7 @@ let applyEventAdded (evt: CalendarEventAddedEvt) (state: Calendar) : Calendar =
 
 let applyEventRemoved (evt: CalendarEventRemovedEvt) (state: Calendar) : Calendar =
     { state with
-        Events =
-            state.Events
-            |> List.filter (fun e -> e.Id <> evt.EventId)
+        Events = state.Events |> List.filter(fun e -> e.Id <> evt.EventId)
         Modified = evt.Modified }
 
 let applyCleared (evt: CalendarClearedEvt) (state: Calendar) : Calendar =
@@ -240,7 +236,7 @@ let decide: DecideResourceCalendar =
         match cmd, stateOpt with
         | CreateCalendar cmd, None ->
             validateCreate cmd
-            |> Result.map (fun _ ->
+            |> Result.map(fun _ ->
                 { NewState =
                     applyCreated
                         { Id = cmd.Id
@@ -257,7 +253,7 @@ let decide: DecideResourceCalendar =
 
         | AddCalendarEvent cmd, Some state ->
             validateAddEvent cmd
-            |> Result.map (fun _ ->
+            |> Result.map(fun _ ->
                 let evt =
                     { CalendarId = state.Id
                       Event = cmd.Event }
@@ -269,7 +265,7 @@ let decide: DecideResourceCalendar =
 
         | RemoveCalendarEvent cmd, Some state ->
             validateRemoveEvent cmd
-            |> Result.map (fun _ ->
+            |> Result.map(fun _ ->
                 let evt =
                     { CalendarId = state.Id
                       EventId = cmd.EventId
@@ -282,7 +278,7 @@ let decide: DecideResourceCalendar =
 
         | ClearCalendar cmd, Some state ->
             validateClear cmd
-            |> Result.map (fun _ ->
+            |> Result.map(fun _ ->
                 let evt: CalendarClearedEvt =
                     { CalendarId = state.Id
                       Modified = cmd.Modified }
@@ -294,7 +290,7 @@ let decide: DecideResourceCalendar =
 
         | ActivateCalendar cmd, Some state ->
             validateActivate cmd
-            |> Result.map (fun _ ->
+            |> Result.map(fun _ ->
                 let evt: CalendarActivatedEvt =
                     { CalendarId = state.Id
                       Modified = cmd.Modified }
@@ -306,7 +302,7 @@ let decide: DecideResourceCalendar =
 
         | DeactivateCalendar cmd, Some state ->
             validateDeactivate cmd
-            |> Result.map (fun _ ->
+            |> Result.map(fun _ ->
                 let evt =
                     { CalendarId = state.Id
                       Modified = cmd.Modified }
@@ -337,17 +333,14 @@ module CalendarNormalization =
     let getStartOfWeek (d: DateTimeOffset) =
         let daysToSub = int d.DayOfWeek
 
-        DateTimeOffset(d.Year, d.Month, d.Day, 0, 0, 0, d.Offset)
-            .AddDays(float -daysToSub)
+        DateTimeOffset(d.Year, d.Month, d.Day, 0, 0, 0, d.Offset).AddDays(float -daysToSub)
 
-    let expandEvent (event: CalendarEvent) (window: Window) : EventSchedule list =
-        let eventDur =
-            (Timestamp.value event.Window.End)
-            - (Timestamp.value event.Window.Start)
+    let expandEvent (event: CalendarEvent) (window: TimeWindow) : EventSchedule list =
+        let eventDur = (Timestamp.value event.Window.End) - (Timestamp.value event.Window.Start)
 
         match event.Recurrence with
         | None ->
-            if Window.overlaps event.Window window then
+            if TimeWindow.overlaps event.Window window then
                 [ { EventId = event.Id
                     CalendarId = event.CalendarId
                     Window = event.Window
@@ -370,11 +363,11 @@ module CalendarNormalization =
                         let occStart = curr
                         let occEnd = curr.Add(eventDur)
 
-                        match Window.createFromTime occStart occEnd with
+                        match TimeWindow.createFromTime occStart occEnd with
                         | Error _ -> loop (curr.AddDays(float intv)) acc
                         | Ok occWin ->
                             let acc' =
-                                if Window.overlaps occWin window then
+                                if TimeWindow.overlaps occWin window then
                                     { EventId = event.Id
                                       CalendarId = event.CalendarId
                                       Window = occWin
@@ -399,10 +392,7 @@ module CalendarNormalization =
                         let currOfWeek = getStartOfWeek curr
                         let weeksDiff = int (currOfWeek - startOfWeek).TotalDays / 7
 
-                        let isMatch =
-                            weeksDiff % intv = 0
-                            && curr >= startT
-                            && Set.contains curr.DayOfWeek targetDays
+                        let isMatch = weeksDiff % intv = 0 && curr >= startT && Set.contains curr.DayOfWeek targetDays
 
                         let acc' =
                             if isMatch then
@@ -419,10 +409,10 @@ module CalendarNormalization =
 
                                 let occEnd = occStart.Add(eventDur)
 
-                                match Window.createFromTime occStart occEnd with
+                                match TimeWindow.createFromTime occStart occEnd with
                                 | Error _ -> acc
                                 | Ok occWin ->
-                                    if Window.overlaps occWin window then
+                                    if TimeWindow.overlaps occWin window then
                                         { EventId = event.Id
                                           CalendarId = event.CalendarId
                                           Window = occWin
@@ -437,7 +427,7 @@ module CalendarNormalization =
 
                 loop (DateTimeOffset(startT.Year, startT.Month, startT.Day, 0, 0, 0, startT.Offset)) []
             | _ ->
-                if Window.overlaps event.Window window then
+                if TimeWindow.overlaps event.Window window then
                     [ { EventId = event.Id
                         CalendarId = event.CalendarId
                         Window = event.Window
@@ -449,14 +439,14 @@ module CalendarNormalization =
         let startOfDay = DateTimeOffset(day.Year, day.Month, day.Day, 0, 0, 0, day.Offset)
         let endOfDay = startOfDay.AddDays(1.0)
 
-        match Window.createFromTime startOfDay endOfDay with
+        match TimeWindow.createFromTime startOfDay endOfDay with
         | Error _ -> DurationMinutes.zero
         | Ok dayWindow ->
             let expandedEvents =
                 calendar.Events
-                |> List.collect (fun ev ->
+                |> List.collect(fun ev ->
                     expandEvent ev dayWindow
-                    |> List.map (fun s ->
+                    |> List.map(fun s ->
                         { Schedule = s
                           EventType = ev.EventType }))
 
@@ -466,18 +456,15 @@ module CalendarNormalization =
                 let slotStart = startOfDay.AddMinutes(float m)
                 let slotEnd = slotStart.AddMinutes(1.0)
 
-                match Window.createFromTime slotStart slotEnd with
+                match TimeWindow.createFromTime slotStart slotEnd with
                 | Error _ -> ()
                 | Ok slotWin ->
                     let matching =
-                        expandedEvents
-                        |> List.filter (fun ee -> Window.overlaps ee.Schedule.Window slotWin)
+                        expandedEvents |> List.filter(fun ee -> TimeWindow.overlaps ee.Schedule.Window slotWin)
 
                     let factor =
                         if List.isEmpty matching then
-                            let hasDefaultShifts =
-                                calendar.Events
-                                |> List.exists (fun e -> e.IsDefault)
+                            let hasDefaultShifts = calendar.Events |> List.exists(fun e -> e.IsDefault)
 
                             if hasDefaultShifts then 0.0m else 1.0m
                         else
@@ -491,9 +478,7 @@ module CalendarNormalization =
                                 | Shift -> 1
                                 | _ -> 0
 
-                            let highest =
-                                matching
-                                |> List.maxBy (fun ee -> getPriority ee.EventType)
+                            let highest = matching |> List.maxBy(fun ee -> getPriority ee.EventType)
 
                             Percent.value highest.Schedule.CapacityFactor
 

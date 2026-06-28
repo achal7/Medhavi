@@ -82,8 +82,7 @@ module CombinedResourceId =
 type CapacityReservationId = private CapacityReservationId of string
 
 module CapacityReservationId =
-    let create =
-        IdsFactory.createExplicitId CapacityReservationId "CapacityReservationId"
+    let create = IdsFactory.createExplicitId CapacityReservationId "CapacityReservationId"
 
     let value (CapacityReservationId id) = id
 
@@ -91,8 +90,7 @@ module CapacityReservationId =
 type CapacityRequirementId = private CapacityRequirementId of string
 
 module CapacityRequirementId =
-    let create =
-        IdsFactory.createExplicitId CapacityRequirementId "CapacityRequirementId"
+    let create = IdsFactory.createExplicitId CapacityRequirementId "CapacityRequirementId"
 
     let value (CapacityRequirementId id) = id
 
@@ -100,7 +98,7 @@ module CapacityRequirementId =
 type CapacityBucketId = private CapacityBucketId of string
 
 module CapacityBucketId =
-    let create (resId: PhysicalResourceId) (window: Window) =
+    let create (resId: PhysicalResourceId) (window: TimeWindow) =
         let resVal = PhysicalResourceId.value resId
         let startVal = Timestamp.value window.Start
         let endVal = Timestamp.value window.End

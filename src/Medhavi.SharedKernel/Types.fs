@@ -15,11 +15,7 @@ module Version =
     let value (Version v) = v
     let equals (Version v1) (Version v2) = v1 = v2
 
-    let create value =
-        if value < 0 then
-            Error "Version must be non-negative"
-        else
-            Ok(Version value)
+    let create value = if value < 0 then Error "Version must be non-negative" else Ok(Version value)
 
 [<Struct>]
 [<JsonFSharpConverter>]
@@ -106,11 +102,7 @@ type PositiveDecimal =
         else
             Ok(PositiveDecimal value)
 
-    static member createSafe(value: decimal) =
-        if value < 0m then
-            PositiveDecimal.Zero
-        else
-            PositiveDecimal(value)
+    static member createSafe(value: decimal) = if value < 0m then PositiveDecimal.Zero else PositiveDecimal(value)
 
     static member value(PositiveDecimal v) = v
 
@@ -197,44 +189,57 @@ module DurationMinutes =
     let zero = DurationMinutes 0m
 
 [<JsonFSharpConverter>]
-type DateRange =
-    { Start: Timestamp
-      End: Timestamp option }
+type TimeWindow = { Start: Timestamp; End: Timestamp }
 
-module DateRange =
-    let isOpenEnded range = range.End.IsNone
+module TimeWindow =
 
-    let contains timestamp range =
+    let isOpenEnded range = Timestamp.maxValue = range.End
+
+    let overlaps (a: TimeWindow) (b: TimeWindow) = a.Start < b.End && b.Start < a.End
+
+    let contains (outer: TimeWindow) (inner: TimeWindow) = outer.Start <= inner.Start && outer.End >= inner.End
+
+    let containsTime timestamp range =
         let afterStart = timestamp >= range.Start
-
-        let beforeEnd =
-            match range.End with
-            | None -> true
-            | Some endDate -> timestamp <= endDate
-
+        let beforeEnd = timestamp <= range.End
         afterStart && beforeEnd
 
-[<JsonFSharpConverter>]
-type Window =
-    private
-        { StartVal: Timestamp
-          EndVal: Timestamp }
+    let intersection (a: TimeWindow) (b: TimeWindow) : option<TimeWindow> =
+        if overlaps a b then
+            Some
+                { Start = max a.Start b.Start
+                  End = min a.End b.End }
+        else
+            None
 
-    member this.Start = this.StartVal
-    member this.End = this.EndVal
+    let expand (window: TimeWindow) (duration: TimeSpan) =
+        { Start = window.Start - duration
+          End = window.End + duration }
 
-module Window =
-    let overlaps (a: Window) (b: Window) = a.Start < b.End && b.Start < a.End
+    let shift (window: TimeWindow) (offset: TimeSpan) =
+        { Start = window.Start + offset
+          End = window.End + offset }
 
-    let contains (outer: Window) (inner: Window) =
-        outer.Start <= inner.Start
-        && outer.End >= inner.End
+    let slack (a: TimeWindow) (b: TimeWindow) =
+        if a.End < b.Start then b.Start - a.End
+        elif b.End < a.Start then a.Start - b.End
+        else TimeSpan.Zero
 
-    let applySlack (slack: TimeSpan) (w: Window) =
-        { StartVal = w.Start
-          EndVal = Timestamp.add w.End slack }
+    let bucketAlign (timestamp: DateTimeOffset) (bucketSize: TimeSpan) =
+        let ticks = timestamp.Ticks
+        let bucketTicks = bucketSize.Ticks
+        let alignedTicks = (ticks / bucketTicks) * bucketTicks
+        DateTimeOffset(alignedTicks, timestamp.Offset)
 
-    let isBefore (t: Timestamp) (w: Window) = t < w.Start
+    let leadTimeOffset (window: TimeWindow) (leadTime: TimeSpan) =
+        { window with
+            Start = window.Start - leadTime }
+
+    let applySlack (slack: TimeSpan) (w: TimeWindow) =
+        { Start = w.Start
+          End = Timestamp.add w.End slack }
+
+    let isBefore (t: Timestamp) (w: TimeWindow) = t < w.Start
 
     /// Validate cutoff: departure must be >= earliest and before cutoff end.
     let meetsCutoff (earliest: DateTimeOffset) (cutoffEnd: DateTimeOffset) (departure: DateTimeOffset) =
@@ -242,12 +247,11 @@ module Window =
         let utcCutoff = cutoffEnd.ToUniversalTime()
         let utcDeparture = departure.ToUniversalTime()
 
-        utcDeparture >= utcEarliest
-        && utcDeparture <= utcCutoff
+        utcDeparture >= utcEarliest && utcDeparture <= utcCutoff
 
-    let startTime (window: Window) = Timestamp.value window.Start
-    let endTime (window: Window) = Timestamp.value window.End
-    let duration (window: Window) = window.End - window.Start
+    let startTime (window: TimeWindow) = Timestamp.value window.Start
+    let endTime (window: TimeWindow) = Timestamp.value window.End
+    let duration (window: TimeWindow) = window.End - window.Start
 
     let createFromTime (startTime: DateTimeOffset) (endTime: DateTimeOffset) =
         let utcStart = startTime.ToUniversalTime()
@@ -256,8 +260,8 @@ module Window =
         match utcStart < utcEnd with
         | true ->
             Ok
-                { StartVal = Timestamp utcStart
-                  EndVal = Timestamp utcEnd }
+                { Start = Timestamp utcStart
+                  End = Timestamp utcEnd }
         | false -> Error(DomainError.validation $"Start {utcStart} is after end time {utcEnd} ")
 
     let create (startTime: Timestamp) (endTime: Timestamp) =

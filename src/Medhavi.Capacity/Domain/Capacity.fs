@@ -74,7 +74,7 @@ type CapacityReservation =
 type CapacityBucket =
     { Id: CapacityBucketId
       ResourceId: PhysicalResourceId
-      Window: Window
+      Window: TimeWindow
       AvailableMinutes: DurationMinutes
       ReservedMinutes: DurationMinutes
       FirmMinutes: DurationMinutes
@@ -85,14 +85,20 @@ type CapacityBucket =
       Reservations: CapacityReservation list }
 
 type CapacityCommand =
-    | DefineBucket of PhysicalResourceId * Window * DurationMinutes
-    | ReserveCapacity of CapacityReservationId * CapacityRequirementId * DurationMinutes * start: Timestamp option * endVal: Timestamp option * LoadSource
+    | DefineBucket of PhysicalResourceId * TimeWindow * DurationMinutes
+    | ReserveCapacity of
+        CapacityReservationId *
+        CapacityRequirementId *
+        DurationMinutes *
+        start: Timestamp option *
+        endVal: Timestamp option *
+        LoadSource
     | CancelReservation of CapacityReservationId
 
 type CapacityBucketCreatedEvt =
     { ResourceId: PhysicalResourceId
       Id: CapacityBucketId
-      Window: Window
+      Window: TimeWindow
       TotalCapacity: DurationMinutes }
 
 type CapacityReservedEvt =
@@ -123,12 +129,14 @@ type EvolveCapacity = Evolve<CapacityBucket, CapacityEvent>
 // Helper functions for DurationMinutes addition and subtraction
 let addMinutes (d1: DurationMinutes) (d2: DurationMinutes) : DurationMinutes =
     let v = DurationMinutes.value d1 + DurationMinutes.value d2
+
     match DurationMinutes.create v with
     | Ok res -> res
     | Error e -> failwith e
 
 let subMinutes (d1: DurationMinutes) (d2: DurationMinutes) : DurationMinutes =
     let v = max 0m (DurationMinutes.value d1 - DurationMinutes.value d2)
+
     match DurationMinutes.create v with
     | Ok res -> res
     | Error e -> failwith e
@@ -159,13 +167,15 @@ let applyCapacityReserved (evt: CapacityReservedEvt) (state: CapacityBucket) : C
           Source = evt.Source
           CreatedAt = evt.Created
           ModifiedAt = evt.Created }
+
     { state with
         PlannedMinutes = addMinutes state.PlannedMinutes evt.Minutes
         FreeMinutes = subMinutes state.FreeMinutes evt.Minutes
         Reservations = res :: state.Reservations }
 
 let applyReservationCancelled (evt: ReservationCancelledEvt) (state: CapacityBucket) : CapacityBucket =
-    let remaining = state.Reservations |> List.filter (fun r -> r.Id <> evt.Id)
+    let remaining = state.Reservations |> List.filter(fun r -> r.Id <> evt.Id)
+
     { state with
         PlannedMinutes = subMinutes state.PlannedMinutes evt.Minutes
         FreeMinutes = addMinutes state.FreeMinutes evt.Minutes
@@ -185,11 +195,13 @@ let decide: DecideCapacity =
         match command, stateOpt with
         | DefineBucket(resId, window, total), None ->
             let id = CapacityBucketId.create resId window
+
             let evt =
                 { ResourceId = resId
                   Window = window
                   Id = id
                   TotalCapacity = total }
+
             Ok
                 { NewState = applyBucketCreated evt
                   Events = [ BucketCreated evt ] }
@@ -210,12 +222,13 @@ let decide: DecideCapacity =
                       End = endOpt
                       Source = source
                       Created = Timestamp.now }
+
                 Ok
                     { NewState = applyCapacityReserved evt state
                       Events = [ CapacityReserved evt ] }
 
         | CancelReservation resId, Some state ->
-            match state.Reservations |> List.tryFind (fun r -> r.Id = resId) with
+            match state.Reservations |> List.tryFind(fun r -> r.Id = resId) with
             | None -> Error(DomainError.validation "Reservation NotFound")
             | Some res ->
                 let evt =
@@ -223,6 +236,7 @@ let decide: DecideCapacity =
                       BucketId = state.Id
                       Minutes = res.Minutes
                       CancelledAt = Timestamp.now }
+
                 Ok
                     { NewState = applyReservationCancelled evt state
                       Events = [ ReservationCancelled evt ] }

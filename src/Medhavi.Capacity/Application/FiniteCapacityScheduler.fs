@@ -12,7 +12,12 @@ type CapacityOutcome =
     | Unscheduled
 
 type CapacityViolation =
-    | CapacityOverload of resourceId: string * bucketId: string option * date: DateOnly * requestedMinutes: decimal * availableMinutes: decimal
+    | CapacityOverload of
+        resourceId: string *
+        bucketId: string option *
+        date: DateOnly *
+        requestedMinutes: decimal *
+        availableMinutes: decimal
     | DueDateMiss of workOrderId: string * startDate: DateTimeOffset * now: DateTimeOffset
     | ResourceUnavailable of resourceId: string
     | CalendarViolation of calendarId: string * date: DateOnly
@@ -27,7 +32,7 @@ type ScheduledOperation =
       OperationCode: string
       SequenceNumber: int
       ResourceId: PhysicalResourceId
-      Window: Window
+      Window: TimeWindow
       DurationMinutes: decimal }
 
 type ProductionOrder =
@@ -39,10 +44,10 @@ type ProductionOrder =
       Violations: CapacityViolation list }
 
 type CapacityResult =
-    { ProductionOrder : ProductionOrder
-      Reservations : CapacityReservation list
-      Violations : CapacityViolation list
-      Outcome : CapacityOutcome }
+    { ProductionOrder: ProductionOrder
+      Reservations: CapacityReservation list
+      Violations: CapacityViolation list
+      Outcome: CapacityOutcome }
 
 type CapacityPlanningRequest =
     { WorkOrderId: string
@@ -51,7 +56,8 @@ type CapacityPlanningRequest =
       DueDate: DateTimeOffset }
 
 module Result =
-    let get = function
+    let get =
+        function
         | Ok x -> x
         | Error e -> failwithf "Result was Error: %A" e
 
@@ -67,7 +73,7 @@ module FiniteCapacityScheduler =
         : Result<CapacityResult * Map<CapacityBucketId, decimal>, CapacityError> =
 
         let stepFlows = RoutingInterpreter.calculateStepFlows routing request.Quantity
-        let steps = routing.StepLoads |> List.sortByDescending (fun s -> s.SequenceNumber)
+        let steps = routing.StepLoads |> List.sortByDescending(fun s -> s.SequenceNumber)
 
         let rec scheduleSteps
             (remainingSteps: RoutingStepLoadProfile list)
@@ -76,10 +82,17 @@ module FiniteCapacityScheduler =
             (violations: CapacityViolation list)
             (accOps: ScheduledOperation list)
             (accReservations: CapacityReservation list)
-            : Result<ScheduledOperation list * CapacityReservation list * Map<CapacityBucketId, decimal> * CapacityViolation list, CapacityError> =
+            : Result<
+                  ScheduledOperation list *
+                  CapacityReservation list *
+                  Map<CapacityBucketId, decimal> *
+                  CapacityViolation list,
+                  CapacityError
+               >
+            =
 
             match remainingSteps with
-            | [] -> Ok (accOps, accReservations, allocations, violations)
+            | [] -> Ok(accOps, accReservations, allocations, violations)
             | step :: rest ->
                 match step.Loads |> List.tryHead with
                 | None ->
@@ -98,12 +111,13 @@ module FiniteCapacityScheduler =
                                 activeResources
                                 |> Map.toList
                                 |> List.map snd
-                                |> List.filter (fun r -> ResourceGroupId.value r.ResourceGroupId = rgId && r.IsActive)
-                                |> List.sortByDescending (fun r -> Percent.value r.EffectiveEfficiency)
+                                |> List.filter(fun r -> ResourceGroupId.value r.ResourceGroupId = rgId && r.IsActive)
+                                |> List.sortByDescending(fun r -> Percent.value r.EffectiveEfficiency)
+
                             candidates |> List.tryHead
 
                     match resourceOpt with
-                    | None -> Error (NoEligibleResource (step.RoutingStepId, load.Target))
+                    | None -> Error(NoEligibleResource(step.RoutingStepId, load.Target))
                     | Some res ->
                         // Calculate duration
                         let setup = load.SetupLoadMinutes |> Option.defaultValue 0.0m
@@ -120,9 +134,9 @@ module FiniteCapacityScheduler =
                         if durationMinutes < 0.0m then
                             // If duration is invalid, we return NoEligibleResource or raise error.
                             // Let's treat it as NoEligibleResource to satisfy error union
-                            Error (NoEligibleResource (step.RoutingStepId, load.Target))
+                            Error(NoEligibleResource(step.RoutingStepId, load.Target))
                         else
-                            let duration = TimeSpan.FromMinutes (float durationMinutes)
+                            let duration = TimeSpan.FromMinutes(float durationMinutes)
                             let startTime = currentEnd.Subtract(duration)
 
                             // 1. DueDateMiss violation check
@@ -134,14 +148,15 @@ module FiniteCapacityScheduler =
 
                             // 2. CapacityOverload violation check
                             let targetDate = DateOnly.FromDateTime(startTime.Date)
+
                             let bucketOpt =
                                 bucketsState
                                 |> Map.toList
                                 |> List.map snd
-                                |> List.tryFind (fun b ->
-                                    b.ResourceId = res.Id &&
-                                    let startVal = Timestamp.value b.Window.Start
-                                    DateOnly.FromDateTime(startVal.Date) = targetDate)
+                                |> List.tryFind(fun b ->
+                                    b.ResourceId = res.Id
+                                    && let startVal = Timestamp.value b.Window.Start in
+                                       DateOnly.FromDateTime(startVal.Date) = targetDate)
 
                             let bucketId, freeMinutes, nextAllocations =
                                 match bucketOpt with
@@ -152,11 +167,24 @@ module FiniteCapacityScheduler =
                                     Some b.Id, free, Map.add b.Id nextAlloc allocations
                                 | None ->
                                     // Generate a synthetic bucket ID for tracking allocations
-                                    let dayStart = DateTimeOffset(startTime.Year, startTime.Month, startTime.Day, 0, 0, 0, startTime.Offset)
+                                    let dayStart =
+                                        DateTimeOffset(
+                                            startTime.Year,
+                                            startTime.Month,
+                                            startTime.Day,
+                                            0,
+                                            0,
+                                            0,
+                                            startTime.Offset
+                                        )
+
                                     let dayEnd = dayStart.AddDays(1.0)
-                                    let win = Window.createFromTime dayStart dayEnd |> Result.get
+                                    let win = TimeWindow.createFromTime dayStart dayEnd |> Result.get
                                     let syntheticBucketId = CapacityBucketId.create res.Id win
-                                    let currentAlloc = Map.tryFind syntheticBucketId allocations |> Option.defaultValue 0.0m
+
+                                    let currentAlloc =
+                                        Map.tryFind syntheticBucketId allocations |> Option.defaultValue 0.0m
+
                                     let free = 480.0m // Standard fallback capacity
                                     let nextAlloc = currentAlloc + durationMinutes
                                     None, free, Map.add syntheticBucketId nextAlloc allocations
@@ -166,22 +194,41 @@ module FiniteCapacityScheduler =
                                     match bucketId with
                                     | Some bid -> Map.tryFind bid allocations |> Option.defaultValue 0.0m
                                     | None ->
-                                        let dayStart = DateTimeOffset(startTime.Year, startTime.Month, startTime.Day, 0, 0, 0, startTime.Offset)
+                                        let dayStart =
+                                            DateTimeOffset(
+                                                startTime.Year,
+                                                startTime.Month,
+                                                startTime.Day,
+                                                0,
+                                                0,
+                                                0,
+                                                startTime.Offset
+                                            )
+
                                         let dayEnd = dayStart.AddDays(1.0)
-                                        let win = Window.createFromTime dayStart dayEnd |> Result.get
+                                        let win = TimeWindow.createFromTime dayStart dayEnd |> Result.get
                                         let syntheticBucketId = CapacityBucketId.create res.Id win
                                         Map.tryFind syntheticBucketId allocations |> Option.defaultValue 0.0m
+
                                 let remainingFree = freeMinutes - currentAlloc
+
                                 if remainingFree < durationMinutes then
                                     let bidStr = bucketId |> Option.map CapacityBucketId.value
-                                    CapacityOverload(PhysicalResourceId.value res.Id, bidStr, targetDate, durationMinutes, remainingFree) :: dueViolations
+
+                                    CapacityOverload(
+                                        PhysicalResourceId.value res.Id,
+                                        bidStr,
+                                        targetDate,
+                                        durationMinutes,
+                                        remainingFree
+                                    )
+                                    :: dueViolations
                                 else
                                     dueViolations
 
                             // Create scheduled operation window
-                            match Window.createFromTime startTime currentEnd with
-                            | Error _ ->
-                                Error (NoEligibleResource (step.RoutingStepId, load.Target))
+                            match TimeWindow.createFromTime startTime currentEnd with
+                            | Error _ -> Error(NoEligibleResource(step.RoutingStepId, load.Target))
                             | Ok win ->
                                 let scheduledOp =
                                     { StepId = step.RoutingStepId
@@ -195,32 +242,51 @@ module FiniteCapacityScheduler =
                                     match bucketId with
                                     | Some bid -> bid
                                     | None ->
-                                        let dayStart = DateTimeOffset(startTime.Year, startTime.Month, startTime.Day, 0, 0, 0, startTime.Offset)
+                                        let dayStart =
+                                            DateTimeOffset(
+                                                startTime.Year,
+                                                startTime.Month,
+                                                startTime.Day,
+                                                0,
+                                                0,
+                                                0,
+                                                startTime.Offset
+                                            )
+
                                         let dayEnd = dayStart.AddDays(1.0)
-                                        let win = Window.createFromTime dayStart dayEnd |> Result.get
+                                        let win = TimeWindow.createFromTime dayStart dayEnd |> Result.get
                                         CapacityBucketId.create res.Id win
 
                                 let reservation =
                                     { Id = CapacityReservationId.create $"RES-{Guid.NewGuid().ToString()}" |> Result.get
-                                      RequirementId = CapacityRequirementId.create $"REQ-{Guid.NewGuid().ToString()}" |> Result.get
+                                      RequirementId =
+                                        CapacityRequirementId.create $"REQ-{Guid.NewGuid().ToString()}" |> Result.get
                                       ResourceId = res.Id
                                       BucketId = actualBucketId
-                                      Minutes = DurationMinutes.create durationMinutes |> Result.defaultValue DurationMinutes.zero
-                                      Start = Some (Timestamp startTime)
-                                      End = Some (Timestamp currentEnd)
+                                      Minutes =
+                                        DurationMinutes.create durationMinutes
+                                        |> Result.defaultValue DurationMinutes.zero
+                                      Start = Some(Timestamp startTime)
+                                      End = Some(Timestamp currentEnd)
                                       Status = CapacityReservationStatus.Planned
                                       Source = LoadSource.FromScheduler
                                       CreatedAt = Timestamp.now
                                       ModifiedAt = Timestamp.now }
 
-                                scheduleSteps rest startTime nextAllocations capViolations (scheduledOp :: accOps) (reservation :: accReservations)
+                                scheduleSteps
+                                    rest
+                                    startTime
+                                    nextAllocations
+                                    capViolations
+                                    (scheduledOp :: accOps)
+                                    (reservation :: accReservations)
 
         if List.isEmpty routing.StepLoads then
-            Error (RoutingNotFound request.ProductId)
+            Error(RoutingNotFound request.ProductId)
         else
             match scheduleSteps steps request.DueDate initialAllocations [] [] [] with
             | Error err -> Error err
-            | Ok (ops, reservations, finalAllocations, violations) ->
+            | Ok(ops, reservations, finalAllocations, violations) ->
                 let prodOrder =
                     { WorkOrderId = request.WorkOrderId
                       ProductId = request.ProductId
@@ -230,12 +296,9 @@ module FiniteCapacityScheduler =
                       Violations = violations }
 
                 let outcome =
-                    if ops.IsEmpty then
-                        Unscheduled
-                    elif violations.IsEmpty then
-                        FullyScheduled
-                    else
-                        PartiallyScheduled
+                    if ops.IsEmpty then Unscheduled
+                    elif violations.IsEmpty then FullyScheduled
+                    else PartiallyScheduled
 
                 let result =
                     { ProductionOrder = prodOrder
@@ -243,4 +306,4 @@ module FiniteCapacityScheduler =
                       Violations = violations
                       Outcome = outcome }
 
-                Ok (result, finalAllocations)
+                Ok(result, finalAllocations)

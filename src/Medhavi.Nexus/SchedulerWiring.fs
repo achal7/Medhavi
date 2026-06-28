@@ -510,7 +510,7 @@ module SchedulerWiring =
                                             async {
                                                 let dayStart = DateTimeOffset(startTime.Year, startTime.Month, startTime.Day, 0, 0, 0, startTime.Offset)
                                                 let dayEnd = dayStart.AddDays(1.0)
-                                                match Window.createFromTime dayStart dayEnd with
+                                                match TimeWindow.createFromTime dayStart dayEnd with
                                                 | Error _ -> ()
                                                 | Ok win ->
                                                     let! _ =

@@ -1,7 +1,8 @@
 # Medhavi APS — Architecture Blueprint  
-## Chapter 1 — Introduction  
 
-### 1.1 Purpose  
+# Chapter 1 — Introduction  
+
+## 1.1 Purpose  
 
 This document defines the software architecture that realises the Medhavi APS business specifications. It translates the five Intelligence Specifications—Demand, Supply, Promise, Scenario, and Knowledge—into a concrete technical design that governs how the system is built, deployed, and evolved.  
 
@@ -14,7 +15,7 @@ The Architecture Blueprint is the bridge between business intent and working sof
 
 This document is the single source of truth for the technical design. No implementation decision should contradict it without a documented architectural review.  
 
-### 1.2 Relationship to Other Documents  
+## 1.2 Relationship to Other Documents  
 
 This Blueprint does not stand alone. It depends on and extends:  
 
@@ -32,7 +33,7 @@ This Blueprint does not stand alone. It depends on and extends:
 
 The Intelligence Specifications define **what** the system must do. This Blueprint defines **how** it will be built.  
 
-### 1.3 Architectural Principles  
+## 1.3 Architectural Principles  
 
 Every design decision in this Blueprint is governed by the following principles. They are derived from the Constitution, the ARS, and the practical experience of building the MVP.  
 
@@ -54,7 +55,7 @@ The system is designed to evolve. The MVP monolith can be extracted into indepen
 **P6 — Production‑Ready from Day One**  
 Resilience, observability, traceability, and security are not afterthoughts. They are built into the architecture from the first line of code.  
 
-### 1.4 Document Structure  
+## 1.4 Document Structure  
 
 - **Chapter 2** provides a high‑level system overview and component map.  
 - **Chapters 3–6** define the core architecture: bounded contexts, events, command handling, and projections.  
@@ -68,7 +69,7 @@ Resilience, observability, traceability, and security are not afterthoughts. The
 
 # Chapter 2 — System Overview  
 
-### 2.1 High‑Level Component Map  
+## 2.1 High‑Level Component Map  
 
 The Medhavi APS is composed of the following major elements:  
 
@@ -129,7 +130,7 @@ The Medhavi APS is composed of the following major elements:
 - **DecisionCore** — A pure F# library shared by all bounded contexts. It contains scoring, feasibility, reservations, fingerprints, policy validation, and autonomy contracts. It has no dependencies and no side effects.
 - **SharedKernel, Contracts, Infrastructure** — Supporting libraries providing base types, DTOs, and persistence adapters.
 
-### 2.2 The Five Intelligence Domains  
+## 2.2 The Five Intelligence Domains  
 
 Each Intelligence Specification maps to one bounded context:
 
@@ -148,7 +149,7 @@ Supporting contexts provide foundational capabilities:
 | `Medhavi.MasterData` | Products, BOMs, routings, resources, calendars, suppliers, customers, locations |
 | `Medhavi.Integration` | Anti‑corruption layer, external event ingestion, data normalisation |
 
-### 2.3 MVP Monolith Structure  
+## 2.3 MVP Monolith Structure  
 
 The MVP is a **modular monolith**. All bounded contexts are deployed as a single process within `Medhavi.Nexus`. They communicate through an in‑process `DomainEventBus` (an F# `Event<T>`). The in‑memory repository allows rapid development and testing without external dependencies.
 
@@ -192,9 +193,9 @@ Yes, let's continue with Chapter 3 — one of the most critical chapters, as it 
 
 ---
 
-## Chapter 3 — Bounded Context Realisation  
+# Chapter 3 — Bounded Context Realisation  
 
-### 3.1 Domain‑to‑Module Mapping  
+## 3.1 Domain‑to‑Module Mapping  
 
 The five Intelligence Specifications map directly to five bounded contexts within the Medhavi codebase. Supporting contexts provide master data and integration capabilities.
 
@@ -210,7 +211,7 @@ The five Intelligence Specifications map directly to five bounded contexts withi
 
 Each Intelligence Capability (from Chapter 5 of the Domain Specifications) becomes a module within its bounded context. The mapping is one‑to‑one: the capability specification is the source of truth; the module is its technical realisation.
 
-### 3.2 Capability‑to‑Module Translation Rules  
+## 3.2 Capability‑to‑Module Translation Rules  
 
 Every Intelligence Capability is specified with the same anatomy. The translation from specification to code follows consistent rules:
 
@@ -230,7 +231,7 @@ Every Intelligence Capability is specified with the same anatomy. The translatio
 
 The translation is deterministic. Given a capability specification, a developer can produce the code without ambiguity.
 
-### 3.3 Internal Structure of a Bounded Context  
+## 3.3 Internal Structure of a Bounded Context  
 
 Every bounded context follows the same folder and module structure. This consistency ensures that any developer can navigate any context.
 
@@ -276,11 +277,11 @@ Medhavi.Demand/
 
 **BoundedContext module** — The composition root. Creates the repository, projection agent, capabilities, and API. Registers event subscriptions.
 
-### 3.4 Example: Translating “Forecast Demand” into Software  
+## 3.4 Example: Translating “Forecast Demand” into Software  
 
 This section demonstrates the full translation of a single capability—**Forecast Demand (CA‑DI‑002)** from the Demand Intelligence Specification—into working code.
 
-#### 3.4.1 Specification as Source of Truth  
+### 3.4.1 Specification as Source of Truth  
 
 The Forecast Demand capability specification defines:
 
@@ -291,7 +292,7 @@ The Forecast Demand capability specification defines:
 - **Policies**: `PO‑DI‑020` (Champion Promotion Approval), `PO‑DI‑023` (Auto‑Publication), etc.
 - **Events**: `ForecastGenerated`, `ForecastPublished`, `ForecastOverridden`, etc.
 
-#### 3.4.2 Derived Domain Types  
+### 3.4.2 Derived Domain Types  
 
 ```fsharp
 // Domain/ForecastTypes.fs
@@ -324,7 +325,7 @@ type Forecast = {
 }
 ```
 
-#### 3.4.3 Derived Event Types  
+### 3.4.3 Derived Event Types  
 
 ```fsharp
 // Domain/ForecastEvents.fs
@@ -363,7 +364,7 @@ type PublishForecastCmd = {
 }
 ```
 
-#### 3.4.5 Derived Decision Functions  
+### 3.4.5 Derived Decision Functions  
 
 Each decision from the specification becomes a pure function:
 
@@ -404,7 +405,7 @@ let overrideForecast (forecast: Forecast)
         Ok [ ForecastOverridden(forecast.ForecastId, newValue, justification) ]
 ```
 
-#### 3.4.6 Derived Application Service  
+### 3.4.6 Derived Application Service  
 
 The application service wires commands to the aggregate, decisions, and policies:
 
@@ -443,7 +444,7 @@ let createForecastCapabilities
       PublishForecast = handleCommand publishForecastDecision }
 ```
 
-#### 3.4.7 Derived Projection  
+### 3.4.7 Derived Projection  
 
 ```fsharp
 // Projections/ForecastProjection.fs
@@ -464,7 +465,7 @@ let createForecastQueryService (agent: ProjectionAgent<ForecastReadModel, Foreca
       GetAllForecasts = fun () -> agent.QueryAsync(Map.values >> Seq.toList) }
 ```
 
-#### 3.4.8 Wiring in the Bounded Context  
+### 3.4.8 Wiring in the Bounded Context  
 
 ```fsharp
 // BoundedContext.fs
@@ -488,9 +489,9 @@ This example demonstrates the complete translation from specification to code. E
 
 ---
 
-## Chapter 4 — Event Architecture  
+# Chapter 4 — Event Architecture  
 
-### 4.1 Events as the Source of Truth  
+## 4.1 Events as the Source of Truth  
 
 Every state change in Medhavi is captured as an **immutable event**. Events are the single source of truth for both domain state and cross‑context integration. No component directly mutates another component’s data—they communicate exclusively through events.
 
@@ -504,7 +505,7 @@ An event is a fact. It records something that has already happened:
 
 Each event is stored immutably in a PostgreSQL `events` table. The event stream for an aggregate can be replayed at any time to reconstruct its state. This is the foundation of auditability, traceability, and resilience.
 
-### 4.2 The `Envelope` Type  
+## 4.2 The `Envelope` Type  
 
 Every event is wrapped in an `Envelope` before it is stored or published. The `Envelope` carries metadata that enables distributed tracing, idempotency, schema evolution, and debugging—without cluttering the domain event itself.
 
@@ -536,7 +537,7 @@ type Envelope = {
 
 Every event appended to the store **must** carry at minimum `correlationId` and `causationId`. The `Envelope` module provides helper functions (`withExecutionContext`, `withAggregateContext`) to enrich the envelope from the current `ExecutionContext`.
 
-### 4.3 PostgreSQL `events` Table  
+## 4.3 PostgreSQL `events` Table  
 
 The single source of truth for all events is a PostgreSQL table. This schema is designed for simplicity, performance, and compatibility with the existing `Envelope` type.
 
@@ -572,11 +573,11 @@ CREATE INDEX idx_events_correlation ON events ((metadata_json->>'correlationId')
 - Writes to a stream must specify an **expected stream position** (`ExpectedRevision`). The database enforces optimistic concurrency: if another writer has appended since the read, the write is rejected and the caller must retry.
 - Writes are atomic per stream. A batch of events appended to a single stream either all succeed or all fail.
 
-### 4.4 Event Bus  
+## 4.4 Event Bus  
 
 The event bus is the mechanism by which events are delivered from publishers to subscribers across bounded contexts.
 
-#### 4.4.1 MVP: In‑Process `DomainEventBus`  
+### 4.4.1 MVP: In‑Process `DomainEventBus`  
 
 In the MVP, all bounded contexts run in the same process within `Medhavi.Nexus`. The event bus is a lightweight in‑process pub/sub:
 
@@ -597,7 +598,7 @@ type DomainEventBus =
 
 Publishers call `DomainEventBus.Publish(envelope)`. Subscribers register typed handlers. This is fast, simple, and sufficient for a single‑process deployment.
 
-#### 4.4.2 Production: PostgreSQL `LISTEN`/`NOTIFY`  
+### 4.4.2 Production: PostgreSQL `LISTEN`/`NOTIFY`  
 
 When the system scales to multiple processes, the in‑process bus is replaced by a PostgreSQL‑backed implementation that uses the same `events` table as the transport:
 
@@ -616,11 +617,11 @@ type EventBusPort = {
 
 The same interface works for in‑process, PostgreSQL `LISTEN`/`NOTIFY`, and later RabbitMQ or Kafka. The bounded contexts never know which implementation is active.
 
-### 4.5 Checkpointing and Idempotency  
+## 4.5 Checkpointing and Idempotency  
 
 Projections and subscribers must be able to resume processing from where they left off after a restart, and must never process the same event twice.
 
-#### 4.5.1 Checkpoints  
+### 4.5.1 Checkpoints  
 
 A checkpoint records the last successfully processed position in the event stream.
 
@@ -646,7 +647,7 @@ CREATE TABLE checkpoints (
 
 On startup, a projection reads its checkpoint and resumes from `last_position + 1`. After processing a batch of events, it updates the checkpoint atomically.
 
-#### 4.5.2 Idempotency  
+### 4.5.2 Idempotency  
 
 Idempotency ensures that an event is never processed twice, even if it is delivered more than once. The system uses a two‑tier approach:
 
@@ -664,7 +665,7 @@ CREATE TABLE idempotency (
 
 Before processing any event, the handler checks the in‑memory cache, then the persistent store. After successful processing, it records the event’s `messageId` in both.
 
-### 4.6 Schema Evolution  
+## 4.6 Schema Evolution  
 
 Event schemas evolve over time. The `SchemaVersion` field in the `Envelope` enables backward‑compatible changes without rewriting history.
 
@@ -686,7 +687,7 @@ Upcasters are registered by event type at application startup. When a projection
 - **Breaking changes** (renamed fields, changed types): increment major version. Upcaster transforms the old shape to the new shape.
 - **Never mutate** the original stored event. Upcasters are applied at read time.
 
-### 4.7 Cross‑Context Event Routing  
+## 4.7 Cross‑Context Event Routing  
 
 Events produced by one bounded context are consumed by others according to the dependency chains defined in the Intelligence Specifications. The following table is the authoritative routing map.
 
@@ -711,9 +712,9 @@ Each consumer maintains its own projection of the events it needs, built from th
 
 ---
 
-## Chapter 5 — Command Handling & Concurrency  
+# Chapter 5 — Command Handling & Concurrency  
 
-### 5.1 Stateless Command Execution  
+## 5.1 Stateless Command Execution  
 
 The default command execution path is **stateless**. Any application node can handle any command for any aggregate. The node loads the aggregate’s event stream from the event store, reconstructs the current state, runs the domain decision function, and appends new events.
 
@@ -769,7 +770,7 @@ let handleCommand
 
 The application service is thin. It orchestrates but does not contain business logic. The `decide` function is pure and testable in isolation.
 
-### 5.2 Optimistic Concurrency Control  
+## 5.2 Optimistic Concurrency Control  
 
 Multiple nodes may handle commands for the same aggregate concurrently. Medhavi uses **optimistic concurrency** to prevent conflicting writes without pessimistic locks.
 
@@ -820,13 +821,13 @@ let rec handleWithRetry (maxRetries: int) (cmd: Command) =
 
 For the vast majority of aggregates, the default retry count of 3 with exponential backoff is sufficient to resolve contention without noticeable latency.
 
-### 5.3 Hotspot Concurrency — `MailboxProcessor`  
+## 5.3 Hotspot Concurrency — `MailboxProcessor`  
 
 For high‑contention aggregates—particularly the **ATP/CTP engine** in Promise Intelligence and **capacity reservation** in Supply Intelligence—stateless optimistic concurrency can cause unacceptable retry rates and latency under load.
 
 These hotspots are handled by **F# MailboxProcessor agents**. An agent serialises all commands for its assigned partition, eliminating contention entirely.
 
-#### 5.3.1 When to Use an Agent  
+### 5.3.1 When to Use an Agent  
 
 An aggregate or partition qualifies for a `MailboxProcessor` agent if:
 
@@ -837,7 +838,7 @@ An aggregate or partition qualifies for a `MailboxProcessor` agent if:
 
 The ATP/CTP engine is the primary example. Promise evaluations are high‑frequency, low‑latency, and require absolute correctness in supply consumption.
 
-#### 5.3.2 Agent Lifecycle  
+### 5.3.2 Agent Lifecycle  
 
 Each agent is assigned a **partition key**—typically `SkuId` or `NodeId`—using consistent hashing. Only one agent owns a given partition across the entire cluster.
 
@@ -872,7 +873,7 @@ type AgentState = {
 }
 ```
 
-#### 5.3.3 Crash Recovery  
+### 5.3.3 Crash Recovery  
 
 If the node hosting the agent crashes, a new agent is initialised on another node:
 
@@ -882,7 +883,7 @@ If the node hosting the agent crashes, a new agent is initialised on another nod
 
 This is the same replay mechanism used by projections. The warm‑up time depends on the event volume for that partition, typically seconds.
 
-### 5.4 Aggregate State Reconstruction  
+## 5.4 Aggregate State Reconstruction  
 
 Aggregates are not persisted as current state. They are **reconstructed on demand** by folding their event streams.
 
@@ -903,11 +904,11 @@ For aggregates with long event histories, a **snapshot** can be used to speed up
 
 Snapshots are optional. The system is correct without them; they exist purely for performance.
 
-### 5.5 Repository Pattern  
+## 5.5 Repository Pattern  
 
 The repository abstraction hides the event store implementation behind a pure interface. This enables the MVP to use an in‑memory store and production to use PostgreSQL—without changing any domain or application code.
 
-#### 5.5.1 In‑Memory Repository (MVP)  
+### 5.5.1 In‑Memory Repository (MVP)  
 
 ```fsharp
 type InMemRepository<'Aggregate, 'Id, 'Event>() =
@@ -925,7 +926,7 @@ type InMemRepository<'Aggregate, 'Id, 'Event>() =
 
 The in‑memory repository is single‑process only and does not survive restarts. It is intended for development and MVP testing. The interface is identical to the PostgreSQL implementation.
 
-#### 5.5.2 PostgreSQL Repository (Production)  
+### 5.5.2 PostgreSQL Repository (Production)  
 
 The production repository implements the same interface using the `events` table:
 
@@ -951,7 +952,7 @@ type PostgresRepository<'Aggregate, 'Id, 'Event>(conn: NpgsqlConnection, evolve:
         }
 ```
 
-### 5.6 Command Validation Flow  
+## 5.6 Command Validation Flow  
 
 Before a command reaches the aggregate decision function, it passes through the **Anti‑Corruption Layer (ACL)**. The ACL:
 
@@ -973,7 +974,7 @@ module ACL =
 
 The `Validation` applicative ensures all fields are validated independently and errors are accumulated. A valid `Command` is guaranteed to be well‑formed before it reaches the domain.
 
-### 5.7 Command → Event → Policy Pipeline  
+## 5.7 Command → Event → Policy Pipeline  
 
 The complete pipeline for a command is:
 
@@ -989,9 +990,9 @@ Policies are evaluated **after** events are appended. They do not block the comm
 
 ---
 
-## Chapter 6 — Query Side & Projections  
+# Chapter 6 — Query Side & Projections  
 
-### 6.1 CQRS Separation  
+## 6.1 CQRS Separation  
 
 Medhavi separates command processing from query processing. The command side writes events to the event store. The query side reads from **projections**—optimised read models built by subscribing to those events.
 
@@ -1002,7 +1003,7 @@ This separation means:
 - **Queries are real‑time.** When an event is appended, the projection updates immediately (in‑process) or within milliseconds (distributed).
 - **Queries are isolated.** The read model for one bounded context is never directly accessed by another context.
 
-### 6.2 The Projection Agent  
+## 6.2 The Projection Agent  
 
 The core of the query side is the **projection agent**—an F# `MailboxProcessor` that holds the read model state and processes events sequentially.
 
@@ -1042,7 +1043,7 @@ A projection agent:
 
 Every bounded context creates one or more projection agents for its read models. For example, Demand Intelligence creates a `DemandProjectionAgent` for the demand line read model and a `ForecastProjectionAgent` for the forecast read model.
 
-### 6.3 Event Evolution Functions  
+## 6.3 Event Evolution Functions  
 
 The core of a projection is its **evolution function**: a pure function that takes the current read model state and an event, and returns the new state.
 
@@ -1071,7 +1072,7 @@ Key design rules:
 - **The function is total.** Every event case is handled, even if the handler is a no‑op (`state`).
 - **DTOs are pre‑computed.** The evolution function computes everything needed by queries. Queries never do calculation; they only return pre‑computed values.
 
-### 6.4 Startup: Rebuilding Projections from Events  
+## 6.4 Startup: Rebuilding Projections from Events  
 
 When the application starts, every projection agent must rebuild its read model from the event store. The sequence is:
 
@@ -1117,7 +1118,7 @@ let rebuildProjection (agent: ProjectionAgent<'State, 'Event>)
 
 The replay is performed **once at startup per agent**. For the MVP with an in‑memory store, the repository can be seeded with initial data, and the replay is instantaneous. For production, the replay time depends on the event volume, but the system is designed so that a projection can catch up from any position without blocking queries—queries simply see a progressively more current view.
 
-### 6.5 Optional Projection Snapshots  
+## 6.5 Optional Projection Snapshots  
 
 For projections with very large event histories (hundreds of thousands of events), replaying from the beginning on every restart can be slow. A **snapshot** captures the entire read model state at a specific stream position.
 
@@ -1145,7 +1146,7 @@ CREATE TABLE snapshots (
 
 Snapshots are an optimisation, not a correctness requirement. The system is fully correct without them; they exist purely to reduce warm‑up time.
 
-### 6.6 Query Service Design  
+## 6.6 Query Service Design  
 
 Queries are exposed through **query services**—records of pure functions that the application and API layers call to retrieve data.
 
@@ -1182,7 +1183,7 @@ Key design rules:
 - **Queries are non‑blocking for writes.** Because the agent processes messages sequentially, a long‑running query could theoretically delay event application. In practice, projection queries are simple map/filter operations that complete in microseconds. If a query is genuinely expensive (e.g., a complex aggregation), it can be run against a periodic snapshot of the state instead of the live agent.
 - **Queries are versioned with the read model.** When the read model DTO changes, the query service changes with it. There is no separate API versioning layer between the query service and the read model.
 
-### 6.7 Query‑Side Integration with the Store Pattern  
+## 6.7 Query‑Side Integration with the Store Pattern  
 
 The query services are consumed by the **Store pattern** (Chapter 14). A Store wraps a query service and adds:
 
@@ -1192,7 +1193,7 @@ The query services are consumed by the **Store pattern** (Chapter 14). A Store w
 
 The query service remains a pure data access layer. The Store adds orchestration and caching semantics appropriate for the UI. Neither layer contains business logic—that remains in the domain.
 
-### 6.8 Multiple Projections per Bounded Context  
+## 6.8 Multiple Projections per Bounded Context  
 
 A single bounded context may maintain several independent read models, each served by its own projection agent. For example, Demand Intelligence may have:
 
@@ -1204,7 +1205,7 @@ A single bounded context may maintain several independent read models, each serv
 
 Each agent is independent. They can be rebuilt, snapshotted, and queried independently. They subscribe to the same event streams but maintain different slices of the data, optimised for their specific queries.
 
-### 6.9 Projection Agent Lifecycle  
+## 6.9 Projection Agent Lifecycle  
 
 ```
 Application Startup
@@ -1230,9 +1231,9 @@ Application Startup
 
 ---
 
-## Chapter 7 — Shared Libraries  
+# Chapter 7 — Shared Libraries  
 
-### 7.1 Overview  
+## 7.1 Overview  
 
 Three shared libraries provide the foundation for every bounded context in Medhavi. They contain no business logic—only the cross‑cutting types, contracts, and pure functions that every component depends on.
 
@@ -1244,13 +1245,13 @@ Three shared libraries provide the foundation for every bounded context in Medha
 
 These libraries are referenced by every bounded context. They ensure consistency across the entire system without introducing coupling between domains.
 
-### 7.2 Medhavi.SharedKernel  
+## 7.2 Medhavi.SharedKernel  
 
 `SharedKernel` provides the operational backbone for all components. It is not a dumping ground for utility functions—every type it contains is used across multiple bounded contexts and represents a genuine cross‑cutting concern.
 
 > **Configuration submodule.** `SharedKernel` also contains the `Configuration` submodule, which holds compile‑time ARS identifier constants, the `FeatureFlags` record type, and the `AppSettings` types with validation. These are used by every bounded context and have no additional dependencies, so they reside in `SharedKernel` rather than a separate project for MVP simplicity.
 
-#### 7.2.1 Execution Context  
+### 7.2.1 Execution Context  
 
 `ExecutionContext` is the carrier of distributed tracing information. It flows from the initial API request through every command, aggregate decision, event, and telemetry record.
 
@@ -1274,7 +1275,7 @@ Key functions:
 
 The context is propagated implicitly via `AsyncLocal<ExecutionContext>` so that every function in the call chain can access it without explicit parameter passing, or explicitly for pure functions that require testability.
 
-#### 7.2.2 Logging  
+### 7.2.2 Logging  
 
 The logging module provides structured, correlation‑aware logging built on `Microsoft.Extensions.Logging.ILogger`.
 
@@ -1307,7 +1308,7 @@ ComponentNaming.Integration.publisher "OrderEvents"
 
 Every log entry carries a structured component name, enabling precise filtering in observability tools.
 
-#### 7.2.3 Telemetry & Metrics  
+### 7.2.3 Telemetry & Metrics  
 
 The telemetry module provides structured event emission for observability:
 
@@ -1340,7 +1341,7 @@ type MetricPoint = {
 
 Domain‑specific telemetry types (`PlanningKpis`, `LimiterFrequency`, `LatencyTelemetry`, `TelemetryErrorMetric`) are defined in `SharedKernel` so they can be produced by any bounded context and consumed by Knowledge Intelligence. They carry `CorrelationId` and `TenantId` for traceability.
 
-#### 7.2.4 Health Checks  
+### 7.2.4 Health Checks  
 
 The `HealthCheck` module provides a standard pattern for component health reporting:
 
@@ -1358,7 +1359,7 @@ type ComponentHealth = {
 
 Every bounded context registers health checks that are aggregated by Nexus and exposed via the ASP.NET Core health check endpoint.
 
-#### 7.2.5 Distributed Tracing  
+### 7.2.5 Distributed Tracing  
 
 `ActivityTracking` wraps `System.Diagnostics.Activity` for OpenTelemetry‑compatible distributed tracing:
 
@@ -1378,7 +1379,7 @@ let withActivity (logger: LogTelemetryEvent) (activityName: string) (tags: (stri
         reraise()
 ```
 
-#### 7.2.6 Exception Handling & Error Taxonomy  
+### 7.2.6 Exception Handling & Error Taxonomy  
 
 The error handling module defines the canonical error types used across the entire system:
 
@@ -1404,7 +1405,7 @@ All bounded contexts use these types. Domain logic returns `Result<'T, DomainErr
 
 The `ApplicationError.fromException` function maps standard .NET exceptions to their appropriate `ApplicationError` variants, ensuring consistent error handling across all contexts.
 
-#### 7.2.7 Domain Event Bus (In‑Process)  
+### 7.2.7 Domain Event Bus (In‑Process)  
 
 For the MVP monolith, an in‑process event bus using F# `Event<T>` provides lightweight publish/subscribe:
 
@@ -1416,13 +1417,13 @@ type DomainEventBus =
 
 This will be replaced by a PostgreSQL‑backed bus in production (Chapter 4), but the interface remains the same.
 
-### 7.3 Medhavi.DecisionCore  
+## 7.3 Medhavi.DecisionCore  
 
 `DecisionCore` is a **pure F# library** with no dependencies. It contains the shared decision semantics that must be identical across all bounded contexts. It is the technical realisation of the Decision Model and Rule & Policy Model from the Medhavi architecture.
 
 Every function in DecisionCore is deterministic, side‑effect‑free, and independently testable.
 
-#### 7.3.1 Scoring  
+### 7.3.1 Scoring  
 
 Shared score model for plan evaluation:
 
@@ -1452,7 +1453,7 @@ type PlanScoreCard = {
 
 Functions: `emptyScore`, `combineScores`, `weightedObjectiveScore`, `candidateRanking`, `cardComparison`.
 
-#### 7.3.2 Feasibility  
+### 7.3.2 Feasibility  
 
 Pure feasibility contracts used by Promise (ATP/CTP) and Supply (plan validation):
 
@@ -1472,7 +1473,7 @@ type FeasibilityResult =
 
 Functions: `checkATP`, `checkCTP`, `composeFeasibility`, `determineAcceptability`.
 
-#### 7.3.3 Reservations  
+### 7.3.3 Reservations  
 
 Shared reservation semantics for Promise and PlanningEngine:
 
@@ -1495,7 +1496,7 @@ type Reservation = {
 
 Functions: `createTentative`, `confirm`, `release`, `expire`, `reduce`, `validateLifecycle`.
 
-#### 7.3.4 Fingerprints  
+### 7.3.4 Fingerprints  
 
 Content‑addressed identifiers for planning artifacts:
 
@@ -1508,7 +1509,7 @@ type GraphFingerprint = GraphFingerprint of string
 
 Fingerprints are deterministically generated from the content they identify. They are used by Knowledge Intelligence to correlate artifacts across domains and by the event store for deduplication.
 
-#### 7.3.5 Policy Gate  
+### 7.3.5 Policy Gate  
 
 The `PolicyGate` is a pure validation function that ensures no policy change violates safety boundaries:
 
@@ -1525,7 +1526,7 @@ let validatePolicy (current: PlanningPolicySet) (proposed: PlanningPolicySet) : 
 
 Every policy change—whether from a human planner or an AI recommendation—must pass through the `PolicyGate` before taking effect.
 
-#### 7.3.6 Autonomy Contracts  
+### 7.3.6 Autonomy Contracts  
 
 Formal contracts that define what an AI agent is permitted to do:
 
@@ -1543,7 +1544,7 @@ type AutonomyContract = {
 
 Functions: `validateAction(contract, action) -> Result<unit, string>`, `isWithinBoundary(contract, proposedChange) -> bool`.
 
-#### 7.3.7 AI Contracts  
+### 7.3.7 AI Contracts  
 
 AI‑facing contract shapes (not ML implementations):
 
@@ -1565,7 +1566,7 @@ type ModeRecommendation = {
 
 These contracts define the shape of data exchanged between AI models and the Planning Engine. The AI models themselves are external; DecisionCore defines only the contracts.
 
-#### 7.3.8 Integration Example  
+### 7.3.8 Integration Example  
 
 Promise Orders calls DecisionCore for ATP feasibility:
 
@@ -1585,7 +1586,7 @@ let evaluateATP (cmd: EvaluateATPCmd) (supplySnapshot: SupplySnapshot) : Result<
 
 This is the only place where feasibility logic lives. Both Promise and Supply use the same function, guaranteeing consistent behaviour.
 
-### 7.4 Medhavi.Contracts  
+## 7.4 Medhavi.Contracts  
 
 `Medhavi.Contracts` is a lightweight library of **plain F# records and discriminated unions** used for communication between bounded contexts and between the backend and the UI.
 
@@ -1602,13 +1603,13 @@ The mapping between domain types and contract types is performed by the ACL in e
 
 ---
 
-## Chapter 8 — Integration Patterns  
+# Chapter 8 — Integration Patterns  
 
-### 8.1 Internal Integration  
+## 8.1 Internal Integration  
 
 Bounded contexts within Medhavi communicate exclusively through events. One context publishes an event; zero or more other contexts subscribe to that event and react accordingly. There is no direct database access across bounded contexts, no shared mutable state, and no synchronous RPC between contexts for business operations.
 
-#### 8.1.1 DomainEventBus (MVP)  
+### 8.1.1 DomainEventBus (MVP)  
 
 In the MVP, all contexts run in the same process within `Medhavi.Nexus`. Integration is handled by the in‑process `DomainEventBus`:
 
@@ -1624,7 +1625,7 @@ let subscription = DomainEventBus.Subscribe<ForecastPublished>(fun env ->
 
 Because everything runs in one process, event delivery is synchronous and instantaneous. There is no network overhead, no serialisation cost beyond what is already stored in the event store, and no risk of message loss.
 
-#### 8.1.2 Evolution to PostgreSQL‑Backed Bus  
+### 8.1.2 Evolution to PostgreSQL‑Backed Bus  
 
 When contexts are extracted into separate services, the in‑process bus is replaced by a PostgreSQL `LISTEN`/`NOTIFY` implementation. The subscription interface remains identical; only the implementation changes:
 
@@ -1643,7 +1644,7 @@ When contexts are extracted into separate services, the in‑process bus is repl
 
 The same `EnvelopeStoreOps.Subscribe` function handles both modes. Bounded contexts never know which implementation is active.
 
-#### 8.1.3 Cross‑Context Event Routing  
+### 8.1.3 Cross‑Context Event Routing  
 
 The authoritative routing map is defined in Chapter 4, Section 4.7. Every event published by one domain and consumed by another is explicitly listed. No implicit dependencies are allowed.
 
@@ -1655,11 +1656,11 @@ This ensures:
 - **Independent deployability.** A consumer can be down without affecting the publisher.
 - **Resilience.** If a consumer misses events, it replays from its checkpoint.
 
-### 8.2 External Integration  
+## 8.2 External Integration  
 
 External systems—ERP, WMS, MES, IoT platforms, supplier portals—do not speak Medhavi’s domain language. The `Medhavi.Integration` bounded context is the gatekeeper between the outside world and the Medhavi domain.
 
-#### 8.2.1 Anti‑Corruption Layer (ACL)  
+### 8.2.1 Anti‑Corruption Layer (ACL)  
 
 The ACL is a set of pure translation functions that convert external data formats into well‑formed domain commands. It enforces the architectural principle that **external data must be validated before it enters the domain**.
 
@@ -1680,7 +1681,7 @@ The ACL performs three responsibilities:
 
 The ACL is a pure function. It can be tested exhaustively without any infrastructure.
 
-#### 8.2.2 Ingestion Pipeline  
+### 8.2.2 Ingestion Pipeline  
 
 External events flow through a standard pipeline:
 
@@ -1700,7 +1701,7 @@ ACL: External DTO → Domain Command (with validation)
 
 Integration adapters are **thin**. They deserialise the incoming payload, call the ACL, and route the result. They contain no business logic.
 
-#### 8.2.3 Integration Context Structure  
+### 8.2.3 Integration Context Structure  
 
 ```
 Medhavi.Integration/
@@ -1716,7 +1717,7 @@ Medhavi.Integration/
 └── IntegrationContext.fs       # Composition root, registers adapters and ACLs
 ```
 
-### 8.3 Saga / Process Manager for Long‑Running Workflows  
+## 8.3 Saga / Process Manager for Long‑Running Workflows  
 
 Some business processes span multiple bounded contexts and cannot be completed in a single command. For example, the **Order Promising** workflow involves:
 
@@ -1727,7 +1728,7 @@ Some business processes span multiple bounded contexts and cannot be completed i
 
 This is a **long‑running business transaction**. It cannot be a single ACID database transaction because it spans aggregates, and eventually spans services. Instead, it is managed by a **Process Manager** (a saga).
 
-#### 8.3.1 Process Manager Pattern  
+### 8.3.1 Process Manager Pattern  
 
 A Process Manager:
 
@@ -1758,7 +1759,7 @@ type OrderPromisingEvent =
 
 The Process Manager subscribes to domain events and, based on its current state, decides what command to send next.
 
-#### 8.3.2 Causation and Traceability  
+### 8.3.2 Causation and Traceability  
 
 Every command dispatched by a Process Manager carries the `CausationId` of the event that triggered it. This preserves the full causal chain:
 
@@ -1773,7 +1774,7 @@ OrderReceived (event)
 
 This chain is visible in every event’s envelope metadata and is queryable for audit and debugging.
 
-#### 8.3.3 Compensation  
+### 8.3.3 Compensation  
 
 If a step in the saga fails, the Process Manager must **compensate** for any steps that already succeeded. Compensation actions are themselves commands dispatched by the saga:
 
@@ -1785,13 +1786,13 @@ If a step in the saga fails, the Process Manager must **compensate** for any ste
 
 Compensation logic is part of the saga’s state machine. It is tested independently.
 
-#### 8.3.4 Where Sagas Live  
+### 8.3.4 Where Sagas Live  
 
 Sagas that coordinate a single dominant workflow (e.g., Order Promising) live **inside the bounded context that owns the workflow**. The Order Promising saga belongs to `Medhavi.Promise`, because Promise is the domain responsible for the promise outcome.
 
 Sagas that span domains without a clear single owner (e.g., a cross‑domain improvement rollout orchestrated by Knowledge Intelligence) live in a small `Medhavi.Sagas` project or within `Medhavi.Nexus`.
 
-#### 8.3.5 Saga Implementation  
+### 8.3.5 Saga Implementation  
 
 A saga is implemented as an **event‑sourced aggregate** with its own event stream. This means:
 
@@ -1802,7 +1803,7 @@ A saga is implemented as an **event‑sourced aggregate** with its own event str
 
 Alternatively, a lightweight saga can use a **projection agent** if its state is simple and does not need to survive restarts independently of the events it processes. The choice depends on the complexity of the workflow.
 
-### 8.4 External Event Publishing  
+## 8.4 External Event Publishing  
 
 Not all events are consumed only within Medhavi. Some must be sent to external systems:
 
@@ -1823,7 +1824,7 @@ DomainEventBus.Subscribe<ProductionSchedulePublished>(fun env ->
 
 The adapter is responsible for retry logic, circuit breaking (using the shared `CircuitBreaker`), and dead‑letter queuing. If the external system is unavailable, the adapter retries with exponential backoff and eventually places the message in a dead‑letter queue for manual intervention.
 
-### 8.5 Integration Testing  
+## 8.5 Integration Testing  
 
 Integration between bounded contexts is verified through:
 
@@ -1835,9 +1836,9 @@ All integration tests use the in‑memory event store and event bus, so they run
 
 ---
 
-## Chapter 9 — Planning Engine  
+# Chapter 9 — Planning Engine  
 
-### 9.1 Position and Purpose  
+## 9.1 Position and Purpose  
 
 The Planning Engine is a **computational service**, not a bounded context. It does not own business invariants, master data, or the source of truth for any plan. It is the engine that generates plans—material plans, production schedules, replenishment orders, optimised scenarios—on behalf of the Intelligence Capabilities that own the planning process.
 
@@ -1851,7 +1852,7 @@ The Planning Engine lives inside `Medhavi.Nexus` (in the MVP) and is called by:
 
 Every planning run is initiated by an Intelligence Capability. The Planning Engine executes the requested computation and returns results. It never decides *whether* to plan—that decision belongs to the domain.
 
-### 9.2 Planning Modes  
+## 9.2 Planning Modes  
 
 The Planning Engine supports five planning modes, each optimised for a specific situation.
 
@@ -1865,7 +1866,7 @@ The Planning Engine supports five planning modes, each optimised for a specific 
 
 The mode is selected by the calling capability, not by the Planning Engine itself. The `PlanningModeDispatcher` in Supply’s application layer determines the appropriate mode based on trigger type, impact classification, and policy.
 
-#### 9.2.1 FastInsert  
+### 9.2.1 FastInsert  
 
 FastInsert evaluates whether a single new demand can be satisfied without disrupting the existing plan. It:
 
@@ -1876,7 +1877,7 @@ FastInsert evaluates whether a single new demand can be satisfied without disrup
 
 FastInsert does not run a full MRP cycle. It operates on the existing plan’s indexed state. It is used by the Promise domain for real‑time order promising.
 
-#### 9.2.2 IncrementalRepair  
+### 9.2.2 IncrementalRepair  
 
 IncrementalRepair handles a local disruption—a supplier delay, a machine breakdown, a quality hold—by:
 
@@ -1887,7 +1888,7 @@ IncrementalRepair handles a local disruption—a supplier delay, a machine break
 
 IncrementalRepair uses the `PlanIndex` to efficiently identify impacted orders without scanning the entire plan.
 
-#### 9.2.3 FullReplan  
+### 9.2.3 FullReplan  
 
 FullReplan is the standard planning cycle. It runs the complete MRP pipeline for all products and locations in the planning scope. It is scheduled periodically (daily or weekly) and on detection of major plan drift.
 
@@ -1897,11 +1898,11 @@ Optimization is FullReplan with an **optimisation objective**—cost minimisatio
 
 Optimization runs are typically longer than FullReplan. The solver can be configured with time limits and quality bounds.
 
-#### 9.2.5 WhatIf  
+### 9.2.5 WhatIf  
 
 WhatIf mode is identical to FullReplan or Optimization, but operates on a **scenario overlay** rather than the baseline plan. The overlay is provided by Scenario Intelligence (`ScenarioOverlay`, equivalent to `SE‑SN‑014 Scenario Assumption`). WhatIf runs do not publish their results as the authoritative plan; they are used for comparison and recommendation.
 
-### 9.3 MRP Pipeline  
+## 9.3 MRP Pipeline  
 
 The core of the Planning Engine is the **Material Requirements Planning (MRP) pipeline**. It is used by FullReplan, Optimization, and WhatIf modes.
 
@@ -1911,7 +1912,7 @@ preprocess → forecast consumption → BOM explosion → netting → supply gen
 
 Each step is a pure function followed by a thin application adapter. The pipeline is identical whether it operates on the baseline plan or a scenario overlay.
 
-#### 9.3.1 Preprocess  
+### 9.3.1 Preprocess  
 
 Load and validate all inputs:
 
@@ -1924,15 +1925,15 @@ Load and validate all inputs:
 
 Validation checks: data freshness, completeness, horizon alignment. Failures are reported to the caller; the plan run is not started if critical inputs are missing.
 
-#### 9.3.2 Forecast Consumption  
+### 9.3.2 Forecast Consumption  
 
 Combine the demand forecast with actual orders. Firm customer orders consume the forecast within the demand time fence. Beyond the fence, the forecast is used directly. The result is a single, time‑phased demand quantity per product‑location.
 
-#### 9.3.3 BOM Explosion  
+### 9.3.3 BOM Explosion  
 
 For each finished product, explode the Bill of Materials to determine gross requirements for all components and raw materials. Multi‑level BOMs are expanded recursively. The output is a set of gross requirements at every level, time‑phased by the lead‑time offset from the parent order.
 
-#### 9.3.4 Netting  
+### 9.3.4 Netting  
 
 For each product at each location and time bucket:
 
@@ -1944,19 +1945,19 @@ If projected inventory falls below the safety stock level, a **net requirement**
 
 Netting is performed level‑by‑level, from finished goods down to raw materials. Lower‑level net requirements feed into the gross requirements of their components.
 
-#### 9.3.5 Supply Generation  
+### 9.3.5 Supply Generation  
 
 For each net requirement, generate a **planned supply order** (planned production order, planned purchase order, or planned transfer). The order quantity respects lot‑sizing rules (lot‑for‑lot, EOQ, minimum order quantity, period‑order‑quantity). The order release date is calculated by offsetting the due date by the item’s lead time.
 
 Supply generation may combine multiple net requirements into a single order if they fall within the same lot‑sizing window.
 
-#### 9.3.6 Capacity Check  
+### 9.3.6 Capacity Check  
 
 After supply orders are generated, the Planning Engine evaluates whether the required capacity is available. For each resource and time bucket, the total load from planned production orders is compared against available capacity. Overloads are flagged as constraint violations.
 
 In FullReplan mode, capacity violations are reported but do not block plan publication. In Optimization mode, the solver is instructed to resolve capacity violations by shifting orders or adding capacity (overtime, outsourcing).
 
-#### 9.3.7 Pegging  
+### 9.3.7 Pegging  
 
 Pegging traces the source of each supply order back to the demand that created it. It creates a graph of dependencies:
 
@@ -1966,7 +1967,7 @@ Customer Order → Finished Good Supply Order → Component Supply Order → Raw
 
 Pegging is stored as part of the plan result. It is used by IncrementalRepair to identify what must be replanned when a disruption occurs, and by the Explainability builder to generate decision narratives.
 
-#### 9.3.8 Postprocess  
+### 9.3.8 Postprocess  
 
 Generate the final plan outputs:
 
@@ -1979,7 +1980,7 @@ Generate the final plan outputs:
 
 The outputs are returned to the calling capability, which owns the decision to publish, revise, or reject the plan.
 
-### 9.4 Replenishment  
+## 9.4 Replenishment  
 
 Replenishment is a specialised planning mode that operates on **inventory thresholds** rather than a full MRP cycle. It is used by Supply Intelligence — Manage Inventory for continuous‑review items.
 
@@ -2003,7 +2004,7 @@ When the inventory position drops to or below the reorder point, a replenishment
 
 The trigger is converted into a command by the Manage Inventory capability. The Planning Engine does not decide to replenish; it executes the replenishment calculation when asked.
 
-### 9.5 Solver Integration (Optimization Mode)  
+## 9.5 Solver Integration (Optimization Mode)  
 
 Optimization mode uses a mathematical solver to find the best plan. The Planning Engine is **solver‑agnostic**. It defines a contract that any solver can implement:
 
@@ -2023,7 +2024,7 @@ The default implementation uses Google OR‑Tools (CP‑SAT for scheduling, Glop
 
 The model is built by the Planning Engine from the MRP data and the optimisation objectives. The solver runs within a configurable time limit. If no optimal solution is found within the limit, the best feasible solution found so far is returned.
 
-### 9.6 Scenario What‑If Execution  
+## 9.6 Scenario What‑If Execution  
 
 Scenario Intelligence calls the Planning Engine in **WhatIf mode** to evaluate plan variants. The flow:
 
@@ -2034,7 +2035,7 @@ Scenario Intelligence calls the Planning Engine in **WhatIf mode** to evaluate p
 
 WhatIf runs are **isolated**. They do not publish their results as the authoritative plan. They do not consume real supply reservations. The `ScenarioVariantRunner` in the Planning Engine ensures that what‑if runs operate on a copy of the plan state, not the live plan.
 
-### 9.7 Integration with DecisionCore  
+## 9.7 Integration with DecisionCore  
 
 The Planning Engine delegates to `DecisionCore` for all shared decision semantics. It does not implement its own scoring, feasibility, or reservation logic.
 
@@ -2046,7 +2047,7 @@ The Planning Engine delegates to `DecisionCore` for all shared decision semantic
 | Validating plan stability | `Fingerprints` | Content‑address plan versions for comparison |
 | Validating policy changes | `PolicyGate` | Ensure AI or planner policy changes are safe |
 
-### 9.8 Time‑Window Projections  
+## 9.8 Time‑Window Projections  
 
 The Planning Engine produces time‑phased plans over configurable horizons:
 
@@ -2058,11 +2059,11 @@ The Planning Engine produces time‑phased plans over configurable horizons:
 
 Time‑window math (overlap, containment, shifting, bucket alignment, lead‑time offsets) is provided by `DecisionCore.TimeWindows` and used consistently across all planning modes.
 
-### 9.9 Explainability and Telemetry  
+## 9.9 Explainability and Telemetry  
 
 Every planning run produces structured explainability data and telemetry.
 
-#### 9.9.1 Decision Traces  
+### 9.9.1 Decision Traces  
 
 The Planning Engine builds `DecisionTrace` records for every significant choice made during the run:
 
@@ -2072,7 +2073,7 @@ The Planning Engine builds `DecisionTrace` records for every significant choice 
 
 These traces are produced by `DecisionCore.Explainability` and stored with the plan result. They are consumed by each domain’s Explain capability to generate human‑ and AI‑readable explanations.
 
-#### 9.9.2 Telemetry  
+### 9.9.2 Telemetry  
 
 Every planning run emits `PlanningKpis` telemetry:
 
@@ -2090,7 +2091,7 @@ type PlanningKpis = {
 
 This is consumed by Knowledge Intelligence for cross‑domain pattern discovery and enterprise‑wide learning.
 
-### 9.10 Software Realisation  
+## 9.10 Software Realisation  
 
 ```
 Planning Engine
@@ -2132,9 +2133,9 @@ The Planning Engine is instantiated within `Medhavi.Nexus` and its public API is
 
 ---
 
-## Chapter 10 — AI Enablement & Copilot Architecture  
+# Chapter 10 — AI Enablement & Copilot Architecture  
 
-### 10.1 AI‑Ready by Design  
+## 10.1 AI‑Ready by Design  
 
 Medhavi is built from the ground up to support AI agents as first‑class participants in the planning process. This is not a future aspiration—it is embedded in the Constitution (C‑AI‑001), the Intelligence Specifications, and every layer of the architecture described in this Blueprint.
 
@@ -2149,7 +2150,7 @@ An AI‑ready system must satisfy four conditions:
 
 The architecture does not distinguish between “AI” and “human” as system actors. Both issue commands, consume events, read from Stores, and are subject to the same rules and policies. The only difference is that AI agents may operate at higher speed and scale, which is why autonomy contracts and guardrails exist.
 
-### 10.2 Knowledge Intelligence as the AI Foundation  
+## 10.2 Knowledge Intelligence as the AI Foundation  
 
 The Knowledge Intelligence domain is the primary source of context for AI agents. Before making a recommendation, an AI agent can query Knowledge Intelligence to answer:
 
@@ -2181,11 +2182,11 @@ AI agent uses knowledge context to inform its recommendation
 AI agent issues a Workspace Action (same as a human planner would)
 ```
 
-### 10.3 AI Agent Interaction Model  
+## 10.3 AI Agent Interaction Model  
 
 AI agents interact with the system through exactly the same interfaces as human users. There is no separate AI API for business operations.
 
-#### 10.3.1 Commands and Workspace Actions  
+### 10.3.1 Commands and Workspace Actions  
 
 An AI agent that wants to recommend a forecast override does not call a special “AI Override” endpoint. It issues the same `OverrideForecastCmd` that a human planner would use. The command goes through the same ACL validation, the same domain decision function, the same rule and policy evaluation.
 
@@ -2201,15 +2202,15 @@ let aiRecommendation =
     }
 ```
 
-#### 10.3.2 Reading State  
+### 10.3.2 Reading State  
 
 AI agents read current state from the same Stores and query services that the UI uses. They do not have direct database access. They do not bypass projections. They see exactly what a human planner would see, plus any additional knowledge context from Knowledge Intelligence.
 
-#### 10.3.3 Event Subscriptions  
+### 10.3.3 Event Subscriptions  
 
 AI agents can subscribe to domain events to react in real time, just as projections and other bounded contexts do. For example, an AI agent monitoring supply disruptions subscribes to `SupplyDisruptionDetected` and `PromiseBreached` events. When it detects a pattern, it can issue a command or escalate to a human planner.
 
-### 10.4 Autonomy Contracts  
+## 10.4 Autonomy Contracts  
 
 Not all AI actions are created equal. Some are safe to execute automatically; others require human approval. The **autonomy contract** defines the boundary.
 
@@ -2263,7 +2264,7 @@ let executeAiAction (contract: AutonomyContract) (command: Command) : Result<uni
             Error $"Action '{command.Action}' not permitted by contract {contract.ContractId}"
 ```
 
-### 10.5 PolicyGate for AI Recommendations  
+## 10.5 PolicyGate for AI Recommendations  
 
 When an AI agent recommends a **policy change**—adjusting a threshold, modifying safety stock parameters, changing planning mode selection rules—that recommendation must pass through the `PolicyGate`.
 
@@ -2289,7 +2290,7 @@ match DecisionCore.PolicyGate.validatePolicy currentPolicy proposedPolicy with
     escalateToPlanner (PolicyRecommendation proposedPolicy reasons)
 ```
 
-### 10.6 AI Explainability  
+## 10.6 AI Explainability  
 
 Every AI recommendation must be explainable. The AI agent populates the same `Explainability Template` that human decision traces use (defined in the Decision Model, Section 3.6).
 
@@ -2303,7 +2304,7 @@ An AI‑generated forecast override carries:
 
 This is the same structure used for human decisions. The AI agent simply populates it from its own reasoning context, which includes the knowledge retrieved from Knowledge Intelligence.
 
-### 10.7 AI Agent Implementation Model  
+## 10.7 AI Agent Implementation Model  
 
 AI agents are implemented as **external services** that interact with Medhavi through standard APIs and event subscriptions. They are not embedded in the Medhavi process.
 
@@ -2341,7 +2342,7 @@ The **Medhavi Client Library** is a thin wrapper (available in F# and potentiall
 
 The client library ensures that AI agents use the same contracts, the same identifier formats, and the same error handling as any other client.
 
-### 10.8 AI Agent Categories  
+## 10.8 AI Agent Categories  
 
 The architecture anticipates multiple categories of AI agent:
 
@@ -2355,7 +2356,7 @@ The architecture anticipates multiple categories of AI agent:
 
 Each category has different autonomy contracts, different permitted actions, and different value thresholds. The contracts are versioned and can be evolved as the AI’s reliability is demonstrated.
 
-### 10.9 The Continuous Learning Loop  
+## 10.9 The Continuous Learning Loop  
 
 AI agents participate in the enterprise learning loop orchestrated by Knowledge Intelligence:
 
@@ -2366,7 +2367,7 @@ AI agents participate in the enterprise learning loop orchestrated by Knowledge 
 
 The loop is the same whether the actor is human or AI. The system learns from every decision, regardless of source.
 
-### 10.10 LLM Integration  
+## 10.10 LLM Integration  
 
 Large Language Models (LLMs) are treated as a specialised category of AI agent. They do not mutate plan state. They operate at the Advisory autonomy level, providing:
 
@@ -2376,14 +2377,14 @@ Large Language Models (LLMs) are treated as a specialised category of AI agent. 
 
 LLMs interface through the same `Serve Knowledge to AI Agents` API. They receive structured knowledge context (patterns, best practices, precedents) and produce natural language output. The structured traceability chain remains the source of truth; the LLM output is an interpretation, not an authority.
 
-### 10.11 Security and Governance for AI  
+## 10.11 Security and Governance for AI  
 
 - **Authentication** — AI agents authenticate with the same OAuth 2.0 mechanism as human users. Each agent has its own identity and scoped permissions.  
 - **Audit** — Every AI action is recorded in the immutable event store with the agent’s identity, its autonomy contract reference, and the full decision trace.  
 - **Rate limiting** — AI agents are subject to rate limits to prevent runaway automation from overwhelming the system.  
 - **Rollback** — Any AI action that causes a statistically significant degradation in plan quality triggers an automatic rollback recommendation (via `DecisionCore.Autonomy.rollbackRules`). The rollback itself is a command that must be approved or executed by a human planner, depending on the autonomy contract.  
 
-### 10.12 Testing AI Behaviour  
+## 10.12 Testing AI Behaviour  
 
 AI behaviour is tested at multiple levels:
 
@@ -2396,9 +2397,9 @@ AI behaviour is tested at multiple levels:
 
 ---
 
-## Chapter 11 — End‑to‑End Traceability
+# Chapter 11 — End‑to‑End Traceability
 
-### 11.1 Traceability as a First‑Class Architectural Concern
+## 11.1 Traceability as a First‑Class Architectural Concern
 
 Traceability is not a logging add‑on or a debugging convenience. It is a Constitutional principle (C‑TR‑001) and an architectural requirement (ARS‑TR‑001) that every component must satisfy. The Architecture Reference Standard mandates:
 
@@ -2408,11 +2409,11 @@ Traceability is not a logging add‑on or a debugging convenience. It is a Const
 
 This chapter defines exactly how these requirements are realised in the running system—from compile‑time identifier constants to immutable event envelopes to AI‑readable explanation chains.
 
-### 11.2 ARS Identifier Propagation in Code
+## 11.2 ARS Identifier Propagation in Code
 
 Every artifact identifier defined in the Intelligence Specifications—capabilities (`CA‑DI‑002`), decisions (`DE‑DI‑020`), rules (`BR‑DI‑020`), policies (`PO‑DI‑023`), semantic objects (`SE‑DI‑003`), and performance indicators (`PI‑DI‑002`)—must be available at runtime for traceability.
 
-#### 11.2.1 Compile‑Time Identifier Registry
+### 11.2.1 Compile‑Time Identifier Registry
 
 Identifiers are defined as F# string constants in a dedicated `Medhavi.Configuration` project. This ensures they are safe from typos, searchable, and can be validated at build time.
 
@@ -2446,7 +2447,7 @@ module Demand =
         let overrideAuthorization = "PO-DI-025"
 ```
 
-#### 11.2.2 Runtime Attachment
+### 11.2.2 Runtime Attachment
 
 When a domain decision function executes, it attaches the relevant ARS identifiers to the events it produces. Every event carries a `DecisionTrace` record that links the event back to its governing identifiers.
 
@@ -2462,7 +2463,7 @@ type DecisionTrace = {
 
 This record is embedded in every event envelope's metadata under the key `decisionTrace`. It is the foundation for both human audit trails and AI‑generated explanations.
 
-### 11.3 Execution Context and Correlation
+## 11.3 Execution Context and Correlation
 
 The `ExecutionContext` is the carrier of distributed tracing information. It is created at the entry point (API request, event handler, or scheduler trigger) and propagated through every subsequent operation.
 
@@ -2477,7 +2478,7 @@ type ExecutionContext = {
 }
 ```
 
-#### 11.3.1 Propagation Through the Command Pipeline
+### 11.3.1 Propagation Through the Command Pipeline
 
 ```
 HTTP Request (CorrelationId from header, or newly generated)
@@ -2495,7 +2496,7 @@ Application Service reads ExecutionContext
 
 Every log entry, every telemetry event, and every event envelope carries the `CorrelationId` from the current `ExecutionContext`. This means a single business flow—say, an order promise—can be traced across every domain that participates: Demand validation → Supply reservation → Promise confirmation → Customer notification.
 
-#### 11.3.2 Causation Chains
+### 11.3.2 Causation Chains
 
 `CausationId` links each event to its immediate cause. When a Process Manager dispatches a command in response to an event, the command's `ExecutionContext` carries the event's ID as `CausationId`. This creates a directed acyclic graph of causality.
 
@@ -2509,7 +2510,7 @@ OrderReceived (Event A, CorrelationId = X, CausationId = None)
 
 This chain is queryable: given any event, you can walk backward to the originating request and forward to every consequence.
 
-### 11.4 Event Envelope Metadata
+## 11.4 Event Envelope Metadata
 
 Every event persisted to the event store carries the full traceability context in its envelope metadata.
 
@@ -2542,11 +2543,11 @@ The `Metadata` map is enriched by the application service before each append:
 
 Envelope enrichment is performed by a single function, `Envelope.withExecutionContext`, called consistently by every application service.
 
-### 11.5 Decision Traceability Chain
+## 11.5 Decision Traceability Chain
 
 Every domain decision produces a traceability chain that links the specific command to the ARS identifiers of the rules and policies that governed it.
 
-#### 11.5.1 Building the Trace
+### 11.5.1 Building the Trace
 
 The application service is responsible for building the `DecisionTrace` and attaching it to events:
 
@@ -2582,7 +2583,7 @@ let overrideForecast (cmd: OverrideForecastCmd) (ctx: ExecutionContext) =
     }
 ```
 
-#### 11.5.2 The Complete Traceability Chain
+### 11.5.2 The Complete Traceability Chain
 
 The ARS mandates a chain from violation back to constitution. In the running system, this chain is:
 
@@ -2607,7 +2608,7 @@ Constitution Principle (C‑EP‑001, C‑EX‑001, C‑TR‑001)
 
 This chain can be traversed at runtime by the Explain capability to generate a human‑ or AI‑readable explanation of any decision.
 
-### 11.6 AI Explainability Chains
+## 11.6 AI Explainability Chains
 
 AI agents produce explanations using the same `DecisionTrace` structure. The traceability chain is populated automatically from the agent's context.
 
@@ -2644,11 +2645,11 @@ The `Explain Knowledge Insights` capability (Knowledge Intelligence 5.10) consum
 
 This explanation is served to both human users (via the Store pattern and UI) and AI agents (via `Serve Knowledge to AI Agents`).
 
-### 11.7 Audit Logging and the Immutable Event Store
+## 11.7 Audit Logging and the Immutable Event Store
 
 The PostgreSQL `events` table is the immutable audit log. Every event, once appended, cannot be modified or deleted. The `events` table plus the envelope metadata form a complete, tamper‑evident record of every state change in the system.
 
-#### 11.7.1 What is Recorded
+### 11.7.1 What is Recorded
 
 - **Business events**: `DemandLineIngested`, `ForecastGenerated`, `SupplyPlanPublished`, `PromiseConfirmed`, etc.
 - **Decision traces**: Which rules were evaluated, which policies applied.
@@ -2656,7 +2657,7 @@ The PostgreSQL `events` table is the immutable audit log. Every event, once appe
 - **Human overrides**: Every manual change with the planner's identity and justification.
 - **Policy changes**: Every adjustment to thresholds, weights, or planning parameters, with the `PolicyGate` validation result.
 
-#### 11.7.2 Audit Queries
+### 11.7.2 Audit Queries
 
 The event store supports the following audit queries without additional infrastructure:
 
@@ -2670,7 +2671,7 @@ The event store supports the following audit queries without additional infrastr
 
 These queries use standard SQL over the `events` table and its JSONB indexes. No separate audit database is required.
 
-#### 11.7.3 Replay Safety
+### 11.7.3 Replay Safety
 
 Events can be replayed for debugging, testing, or recovery. Every replay is recorded with:
 
@@ -2679,7 +2680,7 @@ Events can be replayed for debugging, testing, or recovery. Every replay is reco
 
 Replayed events are clearly marked so that projections and subscribers can distinguish live events from replayed events and avoid double‑processing.
 
-### 11.8 Runtime Traceability Example
+## 11.8 Runtime Traceability Example
 
 The ARS defines a canonical runtime traceability example:
 
@@ -2699,7 +2700,7 @@ In the running system, this chain is traversable:
 
 This entire chain is reconstructable from the event store and the ARS identifier registry. No manual investigation is required—the Explain capability can generate this trace automatically for any violation.
 
-### 11.9 Implementation in Code
+## 11.9 Implementation in Code
 
 Traceability is not a separate service or a bolt‑on. It is embedded in the fabric of every application service.
 
@@ -2745,9 +2746,9 @@ This wrapper ensures that every command handler consistently records the decisio
 
 ---
 
-## Chapter 12 — Observability
+# Chapter 12 — Observability
 
-### 12.1 The Observability Stack
+## 12.1 The Observability Stack
 
 Medhavi’s observability is built on three pillars—**structured logging**, **metrics**, and **distributed tracing**—supplemented by **health checks** and **alerting**. These are not separate concerns bolted on after development; they are integrated into the `SharedKernel` and used uniformly by every bounded context.
 
@@ -2764,11 +2765,11 @@ The observability modules are:
 
 Together they provide complete visibility into the system’s behaviour, from a single function call to a cross‑domain business flow.
 
-### 12.2 Structured Logging
+## 12.2 Structured Logging
 
 Every log entry in Medhavi carries structured context, not just a text message. This enables precise filtering, aggregation, and correlation in log aggregation tools.
 
-#### 12.2.1 LogContext
+### 12.2.1 LogContext
 
 ```fsharp
 type LogContext = {
@@ -2787,7 +2788,7 @@ type LogContext = {
 
 The `LogContext` is built from the current `ExecutionContext` (for traceability) and enriched with domain‑specific information (the aggregate being modified, the event being processed, the operation being performed).
 
-#### 12.2.2 Logger
+### 12.2.2 Logger
 
 The `Logger` type wraps `Microsoft.Extensions.Logging.ILogger` with convenience methods that automatically merge the ambient `LogContext`:
 
@@ -2806,7 +2807,7 @@ logger.LogPerformance("GenerateForecast", "PlanningEngine", duration)
 
 The `MailboxLogger` provides asynchronous batching for high‑throughput scenarios, using the same `MailboxProcessor` pattern as projections and hotspot agents. In the MVP, logging is direct; in production, the mailbox logger can be enabled for specific high‑volume components.
 
-#### 12.2.3 Component Naming
+### 12.2.3 Component Naming
 
 All log entries carry a hierarchical component name, enforced by the `ComponentNaming` module:
 
@@ -2820,7 +2821,7 @@ ComponentNaming.Service.service "ForecastPublisher"
 
 This naming convention ensures that log entries are immediately traceable to their source, without guessing which service or module produced them.
 
-### 12.3 Metrics
+## 12.3 Metrics
 
 Quantitative measurement is provided by the `Metrics` module. Three metric types are supported:
 
@@ -2843,7 +2844,7 @@ let latency = Metrics.recordHistogram "command_latency_ms" 45.0 (Map.ofList ["co
 
 Every metric point carries tags for domain, component, and operation. These tags are used by Prometheus/Grafana for filtering and aggregation.
 
-#### 12.3.1 Domain‑Specific Telemetry
+## 12.3.1 Domain‑Specific Telemetry
 
 In addition to generic metrics, Medhavi defines domain‑specific telemetry types in `SharedKernel`. These are produced by bounded contexts and consumed by Knowledge Intelligence:
 
@@ -2875,7 +2876,7 @@ type LimiterFrequencyTelemetry = {
 
 These types are not abstract—they are concrete records emitted at specific points in the planning pipeline. Knowledge Intelligence subscribes to them via the event bus and uses them for cross‑domain pattern discovery.
 
-### 12.4 Distributed Tracing
+## 12.4 Distributed Tracing
 
 Distributed tracing follows a request across service boundaries. Medhavi uses `System.Diagnostics.Activity` (the .NET OpenTelemetry‑compatible API) wrapped by the `ActivityTracking` module.
 
@@ -2897,7 +2898,7 @@ let withActivity (logger: LogTelemetryEvent) (activityName: string) (tags: (stri
 
 Every significant operation—command handling, event processing, saga step, external API call—is wrapped in an activity. This produces a trace that can be visualised in Jaeger, Zipkin, or any OpenTelemetry‑compatible backend.
 
-#### 12.4.1 Trace Context Propagation
+### 12.4.1 Trace Context Propagation
 
 Trace context (`traceId`, `spanId`) is propagated through:
 
@@ -2907,11 +2908,11 @@ Trace context (`traceId`, `spanId`) is propagated through:
 
 This means a single trace can span an HTTP request → command handler → aggregate decision → event publication → projection update → cross‑context event handling—all visualised as a single trace.
 
-### 12.5 Performance Measurement
+## 12.5 Performance Measurement
 
 Performance measurement is automated through the `PerformanceTracker` and `Performance` module.
 
-#### 12.5.1 PerformanceTracker (IDisposable)
+### 12.5.1 PerformanceTracker (IDisposable)
 
 ```fsharp
 use tracker = new PerformanceTracker(logger, "GenerateForecast", "PlanningEngine")
@@ -2921,7 +2922,7 @@ use tracker = new PerformanceTracker(logger, "GenerateForecast", "PlanningEngine
 
 The `PerformanceTracker` records the elapsed time on disposal. If the operation exceeds warning thresholds (1 second for information, 5 seconds for warning), the log level is automatically adjusted.
 
-#### 12.5.2 Performance Measurement Functions
+### 12.5.2 Performance Measurement Functions
 
 ```fsharp
 let result, measurement = Performance.measure "ValidateDemand" (fun () -> validateDemand cmd)
@@ -2930,7 +2931,7 @@ let result, measurement = Performance.measure "ValidateDemand" (fun () -> valida
 
 These functions return both the operation result and the performance measurement, allowing the caller to decide how to handle the measurement (log it, emit it as telemetry, or both).
 
-### 12.6 Health Checks
+## 12.6 Health Checks
 
 Health checks provide a standardised way for infrastructure (Kubernetes, load balancers, monitoring tools) to assess whether a component is functioning correctly.
 
@@ -2953,11 +2954,11 @@ Every bounded context registers health checks for:
 
 Health checks are aggregated by `Medhavi.Nexus` and exposed via the ASP.NET Core health check endpoint (`/health`). Kubernetes uses this endpoint for liveness and readiness probes.
 
-### 12.7 Alerting and Notification
+## 12.7 Alerting and Notification
 
 Alerting is driven by the metrics and health check data already being collected.
 
-#### 12.7.1 Alert Rules
+### 12.7.1 Alert Rules
 
 Alert rules are defined as conditions on metrics or health status:
 
@@ -2969,7 +2970,7 @@ Alert rules are defined as conditions on metrics or health status:
 | `command_failure_rate` | Command failure rate > 5% over 5 minutes | Critical | PagerDuty |
 | `health_degraded` | Any component in Degraded state for > 5 minutes | Warning | Slack |
 
-#### 12.7.2 Alert Pipeline
+### 12.7.2 Alert Pipeline
 
 ```
 Metric emitted (e.g., projection_lag = 35s)
@@ -2988,15 +2989,15 @@ Alert Evaluator (checks against configured rules)
 
 Alert rules are configuration‑driven (JSON or environment variables), not hard‑coded. They can be adjusted without code changes.
 
-### 12.8 Export and Visualisation
+## 12.8 Export and Visualisation
 
 In the MVP, telemetry and metrics are logged to the console and to the `ILogger` output. In production, they are exported to industry‑standard observability platforms.
 
-#### 12.8.1 Prometheus Metrics Export
+### 12.8.1 Prometheus Metrics Export
 
 The `Metrics` module produces metric points that are exported to Prometheus via the ASP.NET Core `/metrics` endpoint. Each bounded context registers its own metrics, and Prometheus scrapes them on a configurable interval.
 
-#### 12.8.2 Grafana Dashboards
+### 12.8.2 Grafana Dashboards
 
 Pre‑built Grafana dashboards visualise:
 
@@ -3005,11 +3006,11 @@ Pre‑built Grafana dashboards visualise:
 - **AI performance**: AI recommendation acceptance rate, autonomy contract violations, policy gate rejection reasons.
 - **Trace explorer**: Drill‑down into individual traces for debugging.
 
-#### 12.8.3 Structured Log Export
+### 12.8.3 Structured Log Export
 
 Logs are emitted as structured JSON and can be ingested by any log aggregation platform (Elasticsearch, Splunk, Azure Monitor). The `LogContext` fields (`CorrelationId`, `Component`, `Operation`) enable precise filtering.
 
-### 12.9 Observability in the MVP
+## 12.9 Observability in the MVP
 
 In the MVP monolith, the full observability stack is active but simplified:
 
@@ -3022,9 +3023,9 @@ No external dependencies (Prometheus, Grafana, Elasticsearch) are required for t
 
 ---
 
-## Chapter 13 — Resilience & Error Handling
+# Chapter 13 — Resilience & Error Handling
 
-### 13.1 Error Taxonomy
+## 13.1 Error Taxonomy
 
 Medhavi defines a three‑tier error taxonomy that separates domain failures, infrastructure failures, and application‑level errors. Every component uses the same types, defined in `SharedKernel`.
 
@@ -3052,7 +3053,7 @@ type ApplicationError =
     | Unknown of string
 ```
 
-#### 13.1.1 Error Flow Through Layers
+### 13.1.1 Error Flow Through Layers
 
 ```
 External System / User
@@ -3083,7 +3084,7 @@ Domain Layer
 
 Domain logic **never throws exceptions** for business rule violations. It returns `Error` results. Infrastructure code (database access, HTTP calls) may throw .NET exceptions, which are caught at the application layer and mapped to `ApplicationError`.
 
-### 13.2 Exception Handling Orchestration
+## 13.2 Exception Handling Orchestration
 
 The `ExceptionHandling` module provides a unified mechanism for executing operations with configurable recovery strategies.
 
@@ -3096,7 +3097,7 @@ type RecoveryStrategy =
     | FailFast
 ```
 
-#### 13.2.1 The Core Execution Function
+### 13.2.1 The Core Execution Function
 
 ```fsharp
 let executeWithErrorHandling (ctx: ExceptionContext) (operation: unit -> Task<'T>) (contextData: Map<string, obj>) =
@@ -3122,7 +3123,7 @@ let executeWithErrorHandling (ctx: ExceptionContext) (operation: unit -> Task<'T
     }
 ```
 
-#### 13.2.2 ExceptionContext
+### 13.2.2 ExceptionContext
 
 ```fsharp
 type ExceptionContext = {
@@ -3136,11 +3137,11 @@ type ExceptionContext = {
 
 The `ExceptionContext` is populated from the ambient `ExecutionContext` at the application layer. This ensures every error record carries the `CorrelationId` of the originating request.
 
-### 13.3 Circuit Breaker
+## 13.3 Circuit Breaker
 
 The circuit breaker protects the system from cascading failures when an external dependency is unavailable. It is implemented as a `MailboxProcessor` agent, consistent with the rest of the architecture.
 
-#### 13.3.1 States
+### 13.3.1 States
 
 ```
 Closed ──(failures reach threshold)──► Open
@@ -3161,7 +3162,7 @@ Closed ──(failures reach threshold)──► Open
 | **Open** | Requests are immediately rejected with `CircuitOpen` error. No calls are made to the failing dependency. |
 | **HalfOpen** | A limited number of trial requests are allowed. If they succeed, the circuit closes. If they fail, it re‑opens. |
 
-#### 13.3.2 Configuration
+### 13.3.2 Configuration
 
 ```fsharp
 type CircuitBreakerConfig = {
@@ -3177,7 +3178,7 @@ type CircuitBreakerConfig = {
 
 Recovery timeout uses exponential backoff: each time the circuit opens, the timeout doubles (up to `MaxRecoveryTimeout`). This prevents hammering a recovering dependency.
 
-#### 13.3.3 Usage
+### 13.3.3 Usage
 
 ```fsharp
 let breaker = CircuitBreaker.create config (Some logger) None
@@ -3193,7 +3194,7 @@ match result with
 
 Circuit breakers are created per external dependency (e.g., one for the ERP adapter, one for the MES adapter). They are registered in the bounded context's composition root and injected into application services.
 
-#### 13.3.4 Observability
+### 13.3.4 Observability
 
 Every state transition emits a `CircuitBreakerEvent`:
 
@@ -3208,7 +3209,7 @@ type CircuitBreakerEvent =
 
 These events are published to the `DomainEventBus` and consumed by the observability layer. Dashboards display real‑time circuit breaker status. Alerts are triggered when a circuit stays open beyond a threshold.
 
-### 13.4 Retry Policies
+## 13.4 Retry Policies
 
 Retry policies are used for transient failures—temporary network issues, brief database unavailability, rate limiting.
 
@@ -3240,7 +3241,7 @@ Retry policies are applied selectively:
 | Domain validation error | No retry | Validation errors won't resolve with retries |
 | Optimistic concurrency conflict | Retry × 3, 100ms backoff | Other writer may have completed |
 
-### 13.5 Dead Letter Queues
+## 13.5 Dead Letter Queues
 
 When an event cannot be processed after all retries are exhausted, it is moved to a **dead letter queue (DLQ)** for manual investigation.
 
@@ -3263,7 +3264,7 @@ let moveToDlq (envelope: Envelope) (error: exn) (retryCount: int) =
 
 A dedicated dashboard displays DLQ contents, and alerts are triggered when new messages appear in the DLQ. Operators can inspect the failed event, correct the underlying issue, and replay the event if appropriate.
 
-### 13.6 Error → Telemetry Bridge
+## 13.6 Error → Telemetry Bridge
 
 Every error is routed to the telemetry system for observability and learning.
 
@@ -3288,7 +3289,7 @@ The bridge ensures that:
 3. Knowledge Intelligence can analyse error patterns across domains (e.g., a supplier failure in Supply causing promise breaches in Promise).
 4. Alerts are triggered when error rates exceed thresholds.
 
-### 13.7 Resilience in the MVP
+## 13.7 Resilience in the MVP
 
 In the MVP monolith:
 
@@ -3299,7 +3300,7 @@ In the MVP monolith:
 
 As external dependencies are added (ERP integration, MES integration), circuit breakers are activated for those specific dependencies. The resilience infrastructure is in place from day one.
 
-### 13.8 Graceful Degradation
+## 13.8 Graceful Degradation
 
 When a downstream capability is unavailable, Medhavi degrades gracefully rather than failing completely.
 
@@ -3316,9 +3317,9 @@ The system never blocks a write because a read model is behind. The event store 
 ---
 
 
-## Chapter 14 — Presentation Architecture & Store Pattern
+# Chapter 14 — Presentation Architecture & Store Pattern
 
-### 14.1 Technology Stack
+## 14.1 Technology Stack
 
 The Medhavi front end is built entirely in F# using **Bolero** (F# on Blazor), with **Radzen Blazor** for UI components. State management follows the **Elmish MVU** pattern, extended with a **Store layer** for shared, reactive, read‑only state. The same F# types that define backend commands and queries are used in the front end, giving end‑to‑end type safety.
 
@@ -3330,7 +3331,7 @@ The Medhavi front end is built entirely in F# using **Bolero** (F# on Blazor), w
 | **State** | Elmish + WorkspaceStore | Predictable one‑way data flow; shared state with freshness and reactive updates |
 | **AI Copilot** | Elmish Actions + Command Palette | AI uses identical Workspace Actions; no separate UI path |
 
-### 14.2 Shell Architecture
+## 14.2 Shell Architecture
 
 The UI is composed of two nested shells, a composition root, and multiple workspaces. Dependency injection flows top‑down; actions flow bottom‑up via `MsgOut`.
 
@@ -3357,11 +3358,11 @@ SystemShell
 - **Workspaces** are initialised lazily. Their state is held as `option` fields in `AppShellModel`, so navigating away preserves state without re‑render of siblings.
 - **MsgOut** is the only mechanism for a workspace to communicate upward. The parent uses `updateChildWithOutput` to process child messages, preventing unnecessary re‑renders of the whole shell.
 
-### 14.3 The Store Layer — Reactive Read Models
+## 14.3 The Store Layer — Reactive Read Models
 
 Stores are the bridge between the backend event‑driven architecture and the UI. They cache projection data, track freshness, and push updates to subscribers. A Store is **never mutated directly** by the UI or by AI agents. All changes flow through the backend; Stores refresh from backend query services or are updated by projection subscriptions.
 
-#### 14.3.1 WorkspaceStore<'TState>
+### 14.3.1 WorkspaceStore<'TState>
 
 The generic `WorkspaceStore` provides:
 
@@ -3402,7 +3403,7 @@ type PlanningContextStore =
       Unsubscribe: SubscriptionId -> unit }
 ```
 
-#### 14.3.3 WorkspaceStoreRegistry
+### 14.3.3 WorkspaceStoreRegistry
 
 The registry holds all WorkspaceStores, keyed by `WorkspaceKind`. It provides `Register`, `TryGet`, `MarkAllStale`, and `ClearAll`. During creation, it subscribes to the `PlanningContextStore` so that any context change automatically marks every store stale. Workspaces then refresh on next activation or in response to the `StoreUpdated` event.
 
@@ -3415,7 +3416,7 @@ type WorkspaceStoreRegistry =
       ClearAll: unit -> unit }
 ```
 
-### 14.4 Projection Subscription Layer — Event‑Driven Store Updates
+## 14.4 Projection Subscription Layer — Event‑Driven Store Updates
 
 Instead of polling, the UI receives near‑real‑time updates from the backend via the existing `DomainEventBus`. The `ProjectionSubscription` module subscribes to domain event notifications (e.g., `DemandCreatedNotification`) and calls the corresponding handler on the appropriate store.
 
@@ -3433,7 +3434,7 @@ let create (demandHandlers: StoreNotificationHandlers) =
 
 Each handler fetches the latest state from the backend query service and calls the store’s internal `updateStore` to patch the cached snapshot. This keeps the UI eventually consistent without any polling.
 
-### 14.5 Example: DemandStore
+## 14.5 Example: DemandStore
 
 `DemandStore` wires a query service and a command API into a `WorkspaceStore<DemandData>` and exposes `StoreNotificationHandlers` for the projection subscription.
 
@@ -3460,7 +3461,7 @@ let create (commandService: DemandLineApi) (queryService: DemandLineQueries) (in
 
 During `StoreComposition`, all stores are created and registered. The `ProjectionSubscription` is started with the handlers, closing the loop from backend events to UI state.
 
-### 14.6 Workspace Actions and AI Integration
+## 14.6 Workspace Actions and AI Integration
 
 `WorkspaceAction` defines cross‑cutting actions that can be initiated by the user (via navigation or command palette) or by AI agents.
 
@@ -3477,7 +3478,7 @@ type WorkspaceAction =
 
 AI‑generated actions follow the exact same path. The `CommandTrace` records `Origin = Ai` to distinguish AI from human commands in the session history.
 
-### 14.7 One‑Way Data Flow
+## 14.7 One‑Way Data Flow
 
 All data flows in one direction:
 
@@ -3491,7 +3492,7 @@ All data flows in one direction:
 
 The UI never directly mutates business data. It always goes through the backend.
 
-### 14.8 Admin Center
+## 14.8 Admin Center
 
 The Admin Center is a workspace within the Bolero UI that provides administrators with full visibility into traceability, audit trails, AI decisions, system configuration, health, and the event store. It consumes data already produced by the existing capabilities and requires no new backend services. Access is restricted to users with the `Administrator` role.
 
@@ -3506,7 +3507,7 @@ The Admin Center is a workspace within the Bolero UI that provides administrator
 | **System Health** | Component health grid, circuit breaker status, projection lag monitor, event ingest rate. | Health check endpoints, telemetry |
 | **Event Store Browser** | Browse events by stream with position and timestamp. Full envelope detail. DLQ browser. Replay initiation (admin only). | Event store (read‑only) |
 
-### 14.9 Summary
+## 14.9 Summary
 
 The presentation architecture fully aligns with the Blueprint’s principles:
 
@@ -3517,7 +3518,7 @@ The presentation architecture fully aligns with the Blueprint’s principles:
 
 This design keeps the UI predictable, testable, and ready for both human planners and AI copilots.
 
-## Chapter 15 — Data & Persistence Management  
+# Chapter 15 — Data & Persistence Management  
 
 ### 15.1 Persistence Architecture Overview  
 
@@ -3753,9 +3754,9 @@ The in‑memory store does not persist across restarts. For the MVP, this is acc
 
 ---
 
-## Chapter 16 — Configuration & Feature Management  
+# Chapter 16 — Configuration & Feature Management  
 
-### 16.1 Configuration Philosophy  
+## 16.1 Configuration Philosophy  
 
 Medhavi configuration is **typed, validated, and versioned**. There are no magic strings, no untyped dictionaries, and no runtime surprises from missing or malformed settings. Configuration is loaded at startup, validated against a schema, and exposed to the application as immutable F# records.
 
@@ -3767,13 +3768,13 @@ Configuration is divided into three categories:
 | **Feature Flags** | Environment variables or JSON | AI autonomy level, planning mode availability |
 | **Environment Settings** | Environment variables or JSON | Connection strings, timeouts, thresholds, circuit breaker parameters |
 
-### 16.2 ARS Identifier Registry  
+## 16.2 ARS Identifier Registry  
 
-Every ARS identifier defined in the Intelligence Specifications is a compile‑time constant in the `Medhavi.Configuration` project. This ensures they are safe from typos, searchable across the codebase, and validated at build time.
+Every ARS identifier defined in the Intelligence Specifications is a compile‑time constant in the `Medhavi.SharedKernel.Configuration` project. This ensures they are safe from typos, searchable across the codebase, and validated at build time.
 
 ```fsharp
-// Medhavi.Configuration/ArsIdentifiers.fs
-module Medhavi.Configuration.ArsIdentifiers
+// Medhavi.SharedKernel.Configuration/ArsIdentifiers.fs
+module Medhavi.SharedKernel.Configuration.ArsIdentifiers
 
 module Demand =
     let domain = "DI"
@@ -3821,12 +3822,12 @@ module Demand =
 
 These constants are defined in the `Medhavi.SharedKernel.Configuration.ArsIdentifiers` module. They are used in `DecisionTrace` records, event envelope metadata, telemetry events, and AI explanations. They are the single source of truth for all ARS identifiers in the running system.
 
-### 16.3 Feature Flags  
+## 16.3 Feature Flags  
 
 Feature flags enable safe, gradual rollout of new capabilities and control over AI autonomy levels. Environment settings are loaded into typed records at startup. Each bounded context and infrastructure component defines its own settings type, with validation on load.
 
 ```fsharp
-// Medhavi.Configuration/FeatureFlags.fs
+// Medhavi.SharedKernel.Configuration/FeatureFlags.fs
 type FeatureFlags = {
     // AI autonomy controls
     AiAutonomyEnabled: bool
@@ -3861,7 +3862,7 @@ if featureFlags.AiAutonomyEnabled then
     PolicyGate.registerAutonomyContract contract
 ```
 
-### 16.4 Environment‑Specific Configuration  
+## 16.4 Environment‑Specific Configuration  
 
 Environment settings are loaded into typed records at startup. Each bounded context and infrastructure component defines its own settings type, with validation on load.
 
@@ -3928,7 +3929,7 @@ let loadSettings (config: IConfiguration) : Result<AppSettings, string> =
 
 Validation ensures that numeric values are within safe ranges (e.g., `FailureThreshold >= 1`, `RecoveryTimeoutSeconds >= 5`), connection strings are non‑empty, and ports are valid.
 
-### 16.5 Configuration in the Composition Root  
+## 16.5 Configuration in the Composition Root  
 
 All settings are loaded once at startup in `Medhavi.Nexus` (or `Medhavi.Hub`) and injected into bounded contexts as part of their environment. Bounded contexts never read configuration directly from files or environment variables. They receive their settings through typed records in their composition root.
 
@@ -3962,9 +3963,9 @@ let configFingerprint = DecisionCore.Fingerprints.hash settings
 
 ---
 
-## Chapter 17 — Security & Governance  
+# Chapter 17 — Security & Governance  
 
-### 17.1 Security Architecture Overview  
+## 17.1 Security Architecture Overview  
 
 Medhavi’s security model is built on three principles:
 
@@ -3974,11 +3975,11 @@ Medhavi’s security model is built on three principles:
 
 Security is not a standalone module. It is embedded in the command pipeline, the event envelope, the API gateway, and the database access patterns.
 
-### 17.2 Authentication  
+## 17.2 Authentication  
 
 Authentication is the responsibility of the API gateway (`Medhavi.Hub`) and is enforced before any request reaches a bounded context.
 
-#### 17.2.1 Human Authentication  
+### 17.2.1 Human Authentication  
 
 Human users authenticate via **OpenID Connect / OAuth 2.0**. The identity provider (IdP) can be Azure AD, Auth0, or any OpenID‑compatible provider. On successful authentication, the gateway receives an ID token and an access token.
 
@@ -3990,7 +3991,7 @@ The access token contains:
 
 The gateway validates the token signature, expiry, and issuer. It then populates the `ExecutionContext.Principal` with the authenticated user’s identifier and injects `TenantId` from the token.
 
-#### 17.2.2 AI Agent Authentication  
+### 17.2.2 AI Agent Authentication  
 
 AI agents authenticate using **OAuth 2.0 Client Credentials** flow. Each agent has its own client ID and secret (or certificate). The token contains:
 
@@ -3999,11 +4000,11 @@ AI agents authenticate using **OAuth 2.0 Client Credentials** flow. Each agent h
 
 The gateway validates the token and populates `ExecutionContext.Principal` with the agent’s identifier and sets a flag indicating this is an AI agent. This flag is used by the `AutonomyContract` validation logic.
 
-#### 17.2.3 Service‑to‑Service Authentication  
+### 17.2.3 Service‑to‑Service Authentication  
 
 In the current MVP monolith, bounded contexts communicate in‑process and do not require authentication. When contexts are extracted into separate services, service‑to‑service communication will use **mutual TLS (mTLS)** or OAuth 2.0 Client Credentials, depending on the deployment environment.
 
-### 17.3 Authorisation  
+## 17.3 Authorisation  
 
 Authorisation is the responsibility of the application layer in each bounded context. It is performed **after** authentication and **before** the domain decision function is called.
 
@@ -4026,7 +4027,7 @@ let authorize (ctx: ExecutionContext) (policyId: string) (command: Command) : Re
 
 The authorisation function is pure. It takes the `ExecutionContext` and a `PolicyId`, and returns a result. It can be tested exhaustively.
 
-#### 17.3.1 Role‑Based Access Control (RBAC)  
+### 17.3.1 Role‑Based Access Control (RBAC)  
 
 Medhavi uses a simple RBAC model:
 
@@ -4042,11 +4043,11 @@ Medhavi uses a simple RBAC model:
 
 Roles are carried in the access token claims. They are mapped to specific ARS policy IDs in the authorisation function.
 
-#### 17.3.2 AI Agent Authorisation  
+### 17.3.2 AI Agent Authorisation  
 
 AI agents are authorised based on their `AutonomyContract`. The `DecisionCore.Autonomy.validateAction` function determines whether the agent is permitted to execute a specific action. This is separate from human role‑based authorisation and is described fully in Chapter 10.
 
-### 17.4 API Versioning  
+## 17.4 API Versioning  
 
 API versioning ensures backward compatibility as bounded contexts evolve. Medhavi uses **URL‑based versioning**:
 
@@ -4066,11 +4067,11 @@ API versioning ensures backward compatibility as bounded contexts evolve. Medhav
 
 **Contract testing** ensures that a new version does not accidentally break existing consumers. The `Medhavi.Contracts` project serves as the schema source of truth. Contract tests compare generated OpenAPI specs against known client expectations.
 
-### 17.5 Audit Logging  
+## 17.5 Audit Logging  
 
 Audit logging is a first‑class architectural requirement derived from the ARS traceability mandate. Every significant action is recorded immutably in the event store.
 
-#### 17.5.1 What is Audited  
+### 17.5.1 What is Audited  
 
 | Event | Recorded Data |
 |-------|---------------|
@@ -4081,7 +4082,7 @@ Audit logging is a first‑class architectural requirement derived from the ARS 
 | **Data access** | `Principal`, query type, filters applied, timestamp (for sensitive queries) |
 | **Authentication event** | `Principal`, login timestamp, IP address, success/failure |
 
-#### 17.5.2 Audit Trail Implementation  
+### 17.5.2 Audit Trail Implementation  
 
 The audit trail is the `events` table itself. Every audited action is appended as an event to a dedicated audit stream (`$audit-{domain}`). The `Envelope` metadata carries the `Principal`, `CorrelationId`, and the action details.
 
@@ -4097,7 +4098,7 @@ type AuditEvent =
 
 These events are appended to the audit stream and are queryable by administrators.
 
-#### 17.5.3 Replay Safety  
+### 17.5.3 Replay Safety  
 
 Events can be replayed for debugging, testing, or recovery. Every replay is itself audited:
 
@@ -4105,7 +4106,7 @@ Events can be replayed for debugging, testing, or recovery. Every replay is itse
 - Replayed events carry a `replayOrigin` metadata field so that projections can distinguish live events from replayed events.  
 - RBAC controls who can initiate a replay (Administrator role only).  
 
-### 17.6 Data Protection  
+## 17.6 Data Protection  
 
 Data protection is applied at multiple layers:
 
@@ -4116,7 +4117,7 @@ Data protection is applied at multiple layers:
 | **Application** | PII masking at the integration boundary. Sensitive fields (customer names, email addresses) are masked or tokenised in event data if required by policy. |
 | **Secrets** | Connection strings, API keys, and certificates are stored in a secrets manager (Azure Key Vault, AWS Secrets Manager, or HashiCorp Vault). They are never stored in configuration files or committed to source control. |
 
-### 17.7 API Security  
+## 17.7 API Security  
 
 All external APIs are protected by the following controls:
 
@@ -4126,11 +4127,11 @@ All external APIs are protected by the following controls:
 - **Rate limiting** — per‑user and per‑agent rate limits prevent abuse. Rate limit headers are returned in responses.  
 - **Input validation** — all inputs are validated by the ACL before reaching the domain.  
 
-### 17.8 Governance  
+## 17.8 Governance  
 
 Governance is the set of processes and controls that ensure the system remains compliant, auditable, and aligned with enterprise policies.
 
-#### 17.8.1 PolicyGate Governance  
+### 17.8.1 PolicyGate Governance  
 
 The `PolicyGate` (DecisionCore, Section 7.3.5) is the primary governance mechanism for both human and AI actions. It validates:
 
@@ -4140,7 +4141,7 @@ The `PolicyGate` (DecisionCore, Section 7.3.5) is the primary governance mechani
 
 No policy change—whether from a human planner, an administrator, or an AI agent—can take effect without passing through the `PolicyGate`.
 
-#### 17.8.2 Change Management  
+### 17.8.2 Change Management  
 
 Configuration changes that affect system behaviour (feature flags, environment settings, autonomy contracts) follow a standard change management process:
 
@@ -4151,7 +4152,7 @@ Configuration changes that affect system behaviour (feature flags, environment s
 
 All changes are recorded in the audit trail with the previous and new configuration fingerprints.
 
-#### 17.8.3 Compliance Reporting  
+### 17.8.3 Compliance Reporting  
 
 The audit trail supports automated compliance reporting:
 
@@ -4165,15 +4166,15 @@ These reports are generated from the event store using standard SQL queries. The
 
 
 
-## Chapter 18 — Deployment & Evolution Path  
+# Chapter 18 — Deployment & Evolution Path  
 
-### 18.1 The Evolution Strategy  
+## 18.1 The Evolution Strategy  
 
 Medhavi is designed to evolve gracefully from a single‑process monolith to a distributed, independently deployable service mesh. The key principle is that **business logic never changes during this evolution**—only deployment topology, infrastructure, and configuration change.
 
 The evolution is staged so that each stage delivers value and can be sustained indefinitely. There is no forced migration; each stage is optional until its benefits outweigh its costs.
 
-### 18.2 Stage 1 — Modular Monolith (Current MVP)  
+## 18.2 Stage 1 — Modular Monolith (Current MVP)  
 
 All bounded contexts run in a single process within `Medhavi.Nexus`. Communication is in‑process via `DomainEventBus`. Persistence is in‑memory (backed by event sourcing abstractions). The UI is served from the same process.
 
@@ -4208,7 +4209,7 @@ All bounded contexts run in a single process within `Medhavi.Nexus`. Communicati
 - Small‑scale deployments with low event volume.  
 - Demonstrations and proofs of concept.  
 
-### 18.3 Stage 2 — Persistent Event Store  
+## 18.3 Stage 2 — Persistent Event Store  
 
 The in‑memory repository is replaced with the PostgreSQL `events` table. The same `Repository` and `EnvelopeStoreOps` interfaces are used; only the implementation changes.
 
@@ -4241,7 +4242,7 @@ The in‑memory repository is replaced with the PostgreSQL `events` table. The s
 - When event history needs to survive process restarts.  
 - When audit trail is required.  
 
-### 18.4 Stage 3 — External Event Bus  
+## 18.4 Stage 3 — External Event Bus  
 
 The in‑process `DomainEventBus` is replaced with a PostgreSQL `LISTEN`/`NOTIFY` implementation. Bounded contexts still run in the same process but communicate through the database, enabling future extraction.
 
@@ -4273,7 +4274,7 @@ The in‑process `DomainEventBus` is replaced with a PostgreSQL `LISTEN`/`NOTIFY
 - When multiple instances of the monolith are needed for scaling or high availability.  
 - Before extracting any bounded context into its own service.  
 
-### 18.5 Stage 4 — Extracted Services  
+## 18.5 Stage 4 — Extracted Services  
 
 Individual bounded contexts are extracted into independently deployable services. Each service has its own process, its own database connection, and its own API surface. Communication between services uses the same PostgreSQL‑backed event bus (or RabbitMQ/Kafka if higher throughput is needed).
 
@@ -4316,7 +4317,7 @@ Individual bounded contexts are extracted into independently deployable services
 - When independent deployment cycles are needed (different teams own different contexts).  
 - When fault isolation is critical (a failure in one context must not affect others).  
 
-### 18.6 Stage 5 — Containerised Cluster  
+## 18.6 Stage 5 — Containerised Cluster  
 
 All services are containerised and deployed on Kubernetes. Auto‑scaling, rolling updates, and infrastructure‑as‑code are fully adopted.
 
@@ -4347,7 +4348,7 @@ All services are containerised and deployed on Kubernetes. Auto‑scaling, rolli
 - Infrastructure defined as code (Terraform, Helm, or similar).  
 - Centralised logging (Elasticsearch / Splunk), metrics (Prometheus), and tracing (Jaeger / Zipkin).  
 
-### 18.7 Evolution Decision Matrix  
+## 18.7 Evolution Decision Matrix  
 
 Not every bounded context needs to be extracted. The decision to move from Stage 3 to Stage 4 for a specific context depends on:
 
@@ -4361,7 +4362,7 @@ Not every bounded context needs to be extracted. The decision to move from Stage
 
 The architecture supports a **mixed mode**: some contexts extracted as services, others remaining in a shared process. The event bus abstraction makes the physical deployment transparent to the business logic.
 
-### 18.8 Deployment Environments  
+## 18.8 Deployment Environments  
 
 | Environment | Purpose | Database | Event Bus | Scaling |
 |-------------|---------|----------|-----------|---------|
@@ -4370,7 +4371,7 @@ The architecture supports a **mixed mode**: some contexts extracted as services,
 | **Staging** | Pre‑production validation | PostgreSQL (Stage 2/3) | LISTEN/NOTIFY | Single instance, production‑like config |
 | **Production** | Live system | PostgreSQL HA (Stage 4/5) | RabbitMQ or Kafka | Auto‑scaled |
 
-### 18.9 Rollback Strategy  
+## 18.9 Rollback Strategy  
 
 Every deployment must be reversible. The evolution path supports rollback at every stage:
 
@@ -4382,9 +4383,9 @@ Rollback is a configuration change, not a code change.
 
 ---
 
-## Chapter 19 — Testing Strategy  
+# Chapter 19 — Testing Strategy  
 
-### 19.1 Testing Philosophy  
+## 19.1 Testing Philosophy  
 
 Medhavi’s testing strategy is built on three principles:  
 
@@ -4394,11 +4395,11 @@ Medhavi’s testing strategy is built on three principles:
 
 Every bounded context follows the same testing patterns. The test suite is written in F# using **Expecto** as the test framework, **FsCheck** for property‑based testing, and **Testcontainers** for PostgreSQL integration tests.
 
-### 19.2 Unit Tests — Domain Logic  
+## 19.2 Unit Tests — Domain Logic  
 
 Domain unit tests verify that decision functions, validation rules, and evolution functions behave correctly in isolation. These tests are fast, deterministic, and run in memory with no external dependencies.
 
-#### 19.2.1 Decision Function Tests  
+### 19.2.1 Decision Function Tests  
 
 Every decision function is tested with valid inputs, invalid inputs, and edge cases.  
 
@@ -4420,7 +4421,7 @@ testCase "Override forecast fails without justification" <| fun () ->
     | _ -> failwith "Expected validation error"
 ```
 
-#### 19.2.2 Rule Validation Tests  
+### 19.2.2 Rule Validation Tests  
 
 Each rule from the Intelligence Specifications is tested independently. The ARS rule identifier is included in the test name for traceability.  
 
@@ -4431,7 +4432,7 @@ testCase "BR-DI-028: Override exceeds 50% deviation limit" <| fun () ->
     Expect.isError result "Override exceeding 50% should be rejected"
 ```
 
-#### 19.2.3 Projection Evolution Tests  
+### 19.2.3 Projection Evolution Tests  
 
 Projection evolution functions are tested by applying sequences of events and verifying the resulting read model.  
 
@@ -4444,7 +4445,7 @@ testCase "Demand projection: ingest then promise updates correctly" <| fun () ->
     Expect.equal dto.ConfirmedQty 50m "Confirmed quantity should be updated"
 ```
 
-#### 19.2.4 Property‑Based Testing with FsCheck  
+### 19.2.4 Property‑Based Testing with FsCheck  
 
 For functions with complex input spaces, property‑based tests verify invariants across randomly generated inputs.  
 
@@ -4457,7 +4458,7 @@ testProperty "Safety stock calculation is never negative" <| fun (demand: Normal
     Expect.isGreaterThanOrEqual ss 0.0m "Safety stock must be non-negative"
 ```
 
-### 19.3 Integration Tests — Command to Event to Projection  
+## 19.3 Integration Tests — Command to Event to Projection  
 
 Integration tests verify that the full command‑to‑query cycle works correctly. They use the real repository, real application services, and real projection agents, but with an in‑memory event store for speed.
 
@@ -4481,7 +4482,7 @@ testCase "Full demand ingest → query cycle" <| fun () ->
     }
 ```
 
-#### 19.3.1 PostgreSQL Integration Tests  
+### 19.3.1 PostgreSQL Integration Tests  
 
 Tests that require the real PostgreSQL event store use **Testcontainers**. A fresh PostgreSQL container is spun up for each test run, ensuring isolation and repeatability.
 
@@ -4508,7 +4509,7 @@ testCase "PostgreSQL event store append and read" <| fun () ->
     }
 ```
 
-### 19.4 End‑to‑End Tests  
+## 19.4 End‑to‑End Tests  
 
 End‑to‑end tests verify complete business scenarios through the public API. They run against a fully wired‑up test host that includes all bounded contexts, the event bus, and (optionally) PostgreSQL.
 
@@ -4536,11 +4537,11 @@ testCase "Order promising scenario: create demand → promise → verify" <| fun
     }
 ```
 
-### 19.5 Contract Testing  
+## 19.5 Contract Testing  
 
 Contract tests ensure that event schemas and API contracts remain backward‑compatible. They verify that producers and consumers agree on the shape of data.
 
-#### 19.5.1 Event Schema Contract Tests  
+### 19.5.1 Event Schema Contract Tests  
 
 ```fsharp
 testCase "DemandLineIngested event is backward compatible with v1 consumers" <| fun () ->
@@ -4549,15 +4550,15 @@ testCase "DemandLineIngested event is backward compatible with v1 consumers" <| 
     Expect.isOk result "V1 event should deserialize successfully"
 ```
 
-#### 19.5.2 API Contract Tests  
+### 19.5.2 API Contract Tests  
 
 OpenAPI specs are generated from the `Medhavi.Contracts` types and validated against known client expectations. The test fails if a breaking change is introduced.
 
-### 19.6 AI Behaviour Testing  
+## 19.6 AI Behaviour Testing  
 
 AI‑specific tests verify that autonomy contracts, PolicyGate validation, and AI recommendation flows work correctly.
 
-#### 19.6.1 Autonomy Contract Validation Tests  
+### 19.6.1 Autonomy Contract Validation Tests  
 
 ```fsharp
 testCase "Guardrailed agent can execute permitted action" <| fun () ->
@@ -4576,7 +4577,7 @@ testCase "Advisory agent cannot execute any action" <| fun () ->
     Expect.isError result "Advisory agent should not execute actions"
 ```
 
-#### 19.6.2 PolicyGate Tests  
+### 19.6.2 PolicyGate Tests  
 
 ```fsharp
 testCase "PolicyGate rejects safety stock below minimum" <| fun () ->
@@ -4589,7 +4590,7 @@ testCase "PolicyGate rejects safety stock below minimum" <| fun () ->
     | _ -> failwith "Expected rejection"
 ```
 
-#### 19.6.3 AI Agent Simulation Tests  
+### 19.6.3 AI Agent Simulation Tests  
 
 Simulation tests replay historical scenarios through AI agents and verify that their recommendations are consistent, safe, and explainable.
 
@@ -4608,7 +4609,7 @@ testCase "AI forecast agent produces explainable override recommendations" <| fu
     }
 ```
 
-### 19.7 Performance Tests  
+## 19.7 Performance Tests  
 
 Performance tests verify that critical paths meet their latency and throughput targets.
 
@@ -4621,7 +4622,7 @@ Performance tests verify that critical paths meet their latency and throughput t
 
 Performance tests are run in CI on every commit that modifies the critical path. Regressions are flagged before merge.
 
-### 19.8 Test Data Management  
+## 19.8 Test Data Management  
 
 Tests use a combination of:
 
@@ -4640,7 +4641,7 @@ let aDemandLine = DemandLineBuilder().WithSku("SKU-123").WithQuantity(100m).Buil
 
 All test data is self‑contained within each test. Tests do not depend on shared state or a pre‑seeded database.
 
-### 19.9 Continuous Integration  
+## 19.9 Continuous Integration  
 
 Tests are organised into tiers for efficient CI execution:
 
@@ -4656,9 +4657,7 @@ Tiers 0 and 1 must pass before a PR can be merged. Tiers 2‑4 are advisory but 
 
 ---
 
----
-
-## Appendices  
+# Appendices  
 
 ## Appendix A — DecisionCore Library Reference  
 

@@ -6,15 +6,19 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="ArsIdentifiers.fs" />
+    <Compile Include="ExceptionHandling.fs" />
     <Compile Include="Logging.fs" />
     <Compile Include="Logger.fs" />
     <Compile Include="ErrorHandling.fs" />
     <Compile Include="Types.fs" />
+    <Compile Include="DomainEventBus.fs" />
+    <Compile Include="Configuration\FeatureFlags.fs" />
+    <Compile Include="Configuration\EnvironmentSettings.fs" />
     <Compile Include="ExecutionContext.fs" />
     <Compile Include="Observability.fs" />
     <Compile Include="IdsFactory.fs" />
     <Compile Include="Ids.fs" />
-    <Compile Include="BoundedContexts.fs" />
     <Compile Include="Validations.fs" />
     <Compile Include="Repository.fs" />
     <Compile Include="Aggregate.fs" />

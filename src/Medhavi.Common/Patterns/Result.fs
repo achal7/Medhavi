@@ -122,14 +122,43 @@ let (>=>) f g x =
     | Error e -> Error e
 
 /// Traverse a list with a result-returning function
-let traverse (f: 'a -> Result<'b, 'e>) (list: 'a list) : Result<'b list, 'e> = sequence (List.map f list)
+let traverse (f: 'a -> Result<'b, 'e>) (list: 'a list) : Result<'b list, 'e> = sequence(List.map f list)
 
 /// Traverse with error accumulation
-let traverseAcc (f: 'a -> Result<'b, 'e list>) (list: 'a list) : Result<'b list, 'e list> =
-    sequenceAcc (List.map f list)
+let traverseAcc (f: 'a -> Result<'b, 'e list>) (list: 'a list) : Result<'b list, 'e list> = sequenceAcc(List.map f list)
 
 /// Lift a function to work on Results
 let lift2 f xR yR = apply (apply (succeed f) xR) yR
+
+/// Safe parallel execution - partitions results without unsafe pattern matching
+/// This replaces the unsafe `failwith "Impossible"` patterns
+let partitionResultsSafe (results: Result<'T, 'E> array) : Result<'T list, 'E list> =
+    let oks, errors =
+        results
+        |> Array.fold
+            (fun (okAcc, errAcc) result ->
+                match result with
+                | Ok value -> (value :: okAcc, errAcc)
+                | Error err -> (okAcc, err :: errAcc))
+            ([], [])
+
+    if List.isEmpty errors then Ok(List.rev oks) else Error(List.rev errors)
+
+/// Extract Ok values from array (safe - uses Array.choose with exhaustive matching)
+let extractOkValues (results: Result<'T, 'E> array) : 'T list =
+    results
+    |> Array.choose (function
+        | Ok x -> Some x
+        | Error _ -> None)
+    |> Array.toList
+
+/// Extract Error values from array (safe - uses Array.choose with exhaustive matching)
+let extractErrorValues (results: Result<'T, 'E> array) : 'E list =
+    results
+    |> Array.choose (function
+        | Ok _ -> None
+        | Error e -> Some e)
+    |> Array.toList
 
 /// Computation expression builder for Result
 type ResultBuilder() =
@@ -138,15 +167,15 @@ type ResultBuilder() =
     member __.Bind(x, f) = Result.bind f x
     member __.Zero() = Ok()
     member __.Delay(f) = f
-    member __.Run(f) = f ()
+    member __.Run(f) = f()
 
     // member _.Combine(x, f) =
     //     match x with
     //     | Ok _ -> f ()
     //     | Error e -> Error e
-    member this.Combine(a, b) = this.Bind(a, fun () -> b ())
+    member this.Combine(a, b) = this.Bind(a, (fun () -> b()))
 
-    member this.IfThenElse(condition, ifBody, elseBody) = if condition then ifBody () else elseBody ()
+    member this.IfThenElse(condition, ifBody, elseBody) = if condition then ifBody() else elseBody()
 
     member __.For(xs: seq<'a>, body: 'a -> Result<unit, 'b>) =
         let folder state x =
@@ -157,28 +186,28 @@ type ResultBuilder() =
         Seq.fold folder (Ok()) xs
 
     member __.While(guard, body) =
-        if not (guard ()) then
+        if not(guard()) then
             Ok()
         else
-            Result.bind (fun () -> __.While(guard, body)) (body ())
+            Result.bind (fun () -> __.While(guard, body)) (body())
 
     member __.TryWith(body, handler) =
         try
-            body ()
+            body()
         with e ->
             handler e
 
     member __.TryFinally(body, compensation) =
         try
-            body ()
+            body()
         finally
-            compensation ()
+            compensation()
 
     member this.Using(resource: #System.IDisposable, body) =
         try
             body resource
         finally
-            if not (isNull (box resource)) then
+            if not(isNull(box resource)) then
                 resource.Dispose()
 
 // Additional utilities for common patterns

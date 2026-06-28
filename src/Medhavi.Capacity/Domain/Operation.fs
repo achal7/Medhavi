@@ -18,7 +18,7 @@ type Operation =
       IsFixed: bool
       //CampaignTypeAssignment: CampaignTypeAssignmentId option
       // Capacity-related fields (mandatory when Scheduled/InProgress)
-      Window: DateRange
+      Window: TimeWindow
       ResourceId: PhysicalResourceId option // Mandatory when State = Scheduled or InProgress
       Duration: TimeSpan option // Mandatory when State = Scheduled or InProgress
       CreatedDate: Timestamp
@@ -28,7 +28,7 @@ type Operation =
 type ScheduleOperationCmd =
     { Id: OperationId
       SequenceNumber: int
-      Window: DateRange // Mandatory: when operation is scheduled, it must have a time window
+      Window: TimeWindow // Mandatory: when operation is scheduled, it must have a time window
       RoutingStepId: RoutingStepId
       ResourceId: PhysicalResourceId // Mandatory: which resource will perform this operation
       Duration: TimeSpan // Mandatory: how long the operation will take
@@ -57,7 +57,7 @@ type OperationScheduledEvt =
     { Id: OperationId
       SequenceNumber: int
       RoutingStepId: RoutingStepId
-      Window: DateRange // Time window when operation is scheduled
+      Window: TimeWindow // Time window when operation is scheduled
       ResourceId: PhysicalResourceId // Resource that will perform the operation
       Duration: TimeSpan } // Duration of the operation
 
@@ -157,7 +157,7 @@ let decide: DecideOperation =
             match state.State with
             | Scheduled ->
                 { Start = cmd.StartedDate
-                  End = Some Timestamp.minValue }
+                  End = Timestamp.minValue }
                 |> fun win ->
                     { state with
                         State = InProgress

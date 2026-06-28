@@ -1,4 +1,4 @@
-module Medhavi.Common.ExceptionHandling
+module Medhavi.SharedKernel.ExceptionHandling
 
 open System
 open System.Threading

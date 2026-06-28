@@ -5,47 +5,57 @@ open System.Threading
 open System.Threading.Tasks
 open Microsoft.Extensions.Logging
 
-// --------------------------------------------------------------------------
-// Configuration and pure functions
-// --------------------------------------------------------------------------
-
 type RetryConfig =
     { MaxAttempts: int
       BaseDelayMs: int
       MaxDelayMs: int
       BackoffMultiplier: float }
 
-    static member Default =
+    static member Default() =
         { MaxAttempts = 3
-          MaxDelayMs = 30000
-          BackoffMultiplier = 10
+          MaxDelayMs = 10000
+          BackoffMultiplier = 2
           BaseDelayMs = 100 }
 
-/// Pure function to calculate retry delay with exponential backoff
-let calculateRetryDelay (attemptNumber: int) (config: RetryConfig) : int =
+    static member DefaultWithAttempts attempts =
+        { RetryConfig.Default() with
+            MaxAttempts = attempts }
+
+    static member ForExternalApi() =
+        { MaxAttempts = 3
+          MaxDelayMs = 30000
+          BackoffMultiplier = 2.0
+          BaseDelayMs = 1000 }
+
+    static member ForDatabase() =
+        { MaxAttempts = 5
+          MaxDelayMs = 30000
+          BackoffMultiplier = 1.5
+          BaseDelayMs = 500 }
+
+let calculateRetryDelay (attemptNumber: int) (config: RetryConfig) (jitter: float option) : int =
     let delay = float config.BaseDelayMs * Math.Pow(config.BackoffMultiplier, float(attemptNumber - 1))
-
     let clampedDelay = min delay (float config.MaxDelayMs)
-    int clampedDelay
+    let jitterFactor = defaultArg jitter 1.0
+    int(clampedDelay * jitterFactor)
 
-/// Pure function to determine if retry should be attempted
 let shouldRetry (attemptNumber: int) (config: RetryConfig) : bool = attemptNumber < config.MaxAttempts
 
-// --------------------------------------------------------------------------
-// Functional retry with result semantics
-// --------------------------------------------------------------------------
-
 let executeWithRetry
-    (operation: int -> Task<Result<'T, 'TError>>)
-    (config: RetryConfig)
+    (operation: CancellationToken -> int -> Task<Result<'T, 'TError>>)
     (logger: ILogger)
+    (config: RetryConfig option)
+    (ct: CancellationToken)
+    (cancellationError: unit -> 'TError)
     : Task<Result<'T, 'TError>> =
     task {
         let mutable attemptNumber = 1
         let mutable finalResult = None
+        let config = defaultArg config (RetryConfig.Default())
 
-        while finalResult.IsNone do
-            let! result = operation attemptNumber
+        while finalResult.IsNone && not ct.IsCancellationRequested do
+            ct.ThrowIfCancellationRequested()
+            let! result = operation ct attemptNumber
 
             match result with
             | Ok _ ->
@@ -55,105 +65,18 @@ let executeWithRetry
                     logger.LogInformation("✅ Operation succeeded after {AttemptNumber} attempts", attemptNumber)
 
             | Error _ when shouldRetry attemptNumber config ->
-                let delay = calculateRetryDelay attemptNumber config
+                let delay = calculateRetryDelay attemptNumber config None
                 logger.LogWarning("⚠️ Attempt {AttemptNumber} failed, retrying in {DelayMs}ms", attemptNumber, delay)
-                do! Task.Delay delay
+                do! Task.Delay(delay, ct)
                 attemptNumber <- attemptNumber + 1
 
             | Error _ ->
                 logger.LogError("❌ Operation failed after {MaxAttempts} attempts", config.MaxAttempts)
                 finalResult <- Some result
 
-        return finalResult.Value
+        if ct.IsCancellationRequested then
+            logger.LogError("❌ Operation cancelled after {AttemptNumber} attempts", attemptNumber)
+            return Error(cancellationError())
+        else
+            return finalResult.Value
     }
-
-// --------------------------------------------------------------------------
-// General-purpose retry policy class (OOP friendly)
-// --------------------------------------------------------------------------
-
-type RetryPolicy(maxRetries: int, initialDelayMs: int, backoffMultiplier: float) =
-
-    let calculateDelay attempt =
-        let delay = float initialDelayMs * Math.Pow(backoffMultiplier, float attempt)
-
-        Math.Min(float delay, 30000) |> TimeSpan.FromMilliseconds
-
-    member _.ExecuteWithRetryAsync<'T>
-        (
-            operation: CancellationToken -> Task<'T>,
-            cancellationToken: CancellationToken,
-            ?onRetry: (int -> exn option -> TimeSpan -> unit)
-        ) : Task<'T> =
-        let rec execute attempt =
-            task {
-                try
-                    let! result = operation cancellationToken
-                    return result
-                with ex ->
-                    if attempt >= maxRetries then
-                        printfn "❌ RETRY: Max retries (%d) exceeded: %s" maxRetries ex.Message
-                        return raise ex
-                    else
-                        let delay = calculateDelay attempt
-
-                        printfn
-                            "🔄 RETRY: Attempt %d/%d failed, retrying in %.0f ms: %s"
-                            (attempt + 1)
-                            (maxRetries + 1)
-                            delay.TotalMilliseconds
-                            ex.Message
-
-                        // 🔧 FIXED: Correct call syntax for optional callback
-                        match onRetry with
-                        | Some cb -> cb attempt (Some ex) delay
-                        | None -> ()
-
-                        do! Task.Delay(delay, cancellationToken)
-                        return! execute(attempt + 1)
-            }
-
-        execute 0
-
-// --------------------------------------------------------------------------
-// Factory for standard retry policies
-// --------------------------------------------------------------------------
-
-type RetryPolicyFactory =
-    static member CreateForExternalApi() = RetryPolicy(3, 1000, 2.0)
-    static member CreateForDatabase() = RetryPolicy(5, 500, 1.5)
-
-    static member CreateCustom(maxRetries, initialDelayMs, backoffMultiplier) =
-        RetryPolicy(maxRetries, initialDelayMs, backoffMultiplier)
-
-// -------------------- Examples --------------------
-(*
-open System.Net.Http
-
-// Example 1: Result-based operation that returns Task<Result<'T,string>>
-let exampleResultOperation () =
-    let cfg = { RetryConfig.Default with MaxAttempts = 4; BaseDelay = TimeSpan.FromMilliseconds(300.0) }
-    let logger: ILogger option = None
-
-    let op (attempt: int) (ct: CancellationToken) : Task<Result<int,string>> =
-        task {
-            if attempt < 3 then
-                return Error(sprintf "simulated fail at attempt %d" attempt)
-            else
-                return Ok 42
-        }
-
-    let! res = executeWithRetryResult op cfg (CancellationToken.None) (logger)
-    match res with
-    | Ok v -> printfn "Succeeded: %d" v
-    | Error e -> printfn "Failed: %s" e
-
-// Example 2: Plain Task<'T> operation (e.g., HttpClient)
-let examplePlainOperation () =
-    let policy = RetryPolicyFactory.ForExternalApi()
-    use http = new HttpClient()
-    let op (ct: CancellationToken) = http.GetStringAsync("https://httpbin.org/status/500", ct)
-    let! res = policy.ExecuteAsync(op)
-    match res with
-    | Ok body -> printfn "Got body of length %d" (body.Length)
-    | Error ex -> printfn "Request failed: %s" ex.Message
-*)

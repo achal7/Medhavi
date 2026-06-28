@@ -24,6 +24,7 @@ type AsyncResult<'T, 'E> = Async<Result<'T, 'E>>
 
 [<RequireQualifiedAccess>]
 module AsyncResult =
+    open System.Threading
 
     /// Convert a result to an async result
     let ofResult (result: Result<'T, 'E>) : AsyncResult<'T, 'E> = async.Return result
@@ -62,7 +63,7 @@ module AsyncResult =
             | Ok value -> return value
             | Error err ->
                 // Explicitly handle error case - throw with clear message
-                return raise (InvalidOperationException($"AsyncResult failed with error: %A{err}"))
+                return raise(InvalidOperationException($"AsyncResult failed with error: %A{err}"))
         }
         |> Async.StartAsTask
 
@@ -130,15 +131,15 @@ module AsyncResult =
 
     /// Execute AsyncResults in sequence, keeping only the last result
     let sequence_ (asyncResults: AsyncResult<'T, 'E> list) : AsyncResult<unit, 'E> =
-        let folder _ acc = bind (fun _ -> acc) (return_ ())
-        List.foldBack folder asyncResults (return_ ())
+        let folder _ acc = bind (fun _ -> acc) (return_())
+        List.foldBack folder asyncResults (return_())
 
     /// Filter AsyncResults based on a predicate
     let filterM (pred: 'T -> AsyncResult<bool, 'E>) (xs: 'T list) : AsyncResult<'T list, 'E> =
         let folder x acc =
             bind
                 (fun boolList ->
-                    bind (fun predResult -> return_ (if predResult then x :: boolList else boolList)) (pred x))
+                    bind (fun predResult -> return_(if predResult then x :: boolList else boolList)) (pred x))
                 acc
 
         List.foldBack folder xs (return_ [])
@@ -163,25 +164,17 @@ module AsyncResult =
                 return Error(sprintf "Operation timed out after %dms" timeoutMs :> obj :?> 'E)
         }
 
-    /// Retry AsyncResult computation with exponential backoff
-    /// Uses the shared Retry module to avoid duplication
-    /// Note: The asyncResult is a value, not a function, so it will be evaluated once per attempt
-    let retry (retries: int) (delayMs: int) (asyncResult: AsyncResult<'T, 'E>) : AsyncResult<'T, 'E> =
+    let retry (retries: int) (asyncResult: AsyncResult<'T, 'E>) (ct: CancellationToken) handleCancellationError : AsyncResult<'T, 'E> =
         let logger = NullLogger.Instance
 
-        let config =
-            { RetryConfig.Default with
-                MaxAttempts = retries
-                BaseDelayMs = delayMs }
+        let config = Some <| RetryConfig.DefaultWithAttempts retries
 
         async {
             // Operation function that will be called on each retry attempt
             // Each call will re-execute the asyncResult computation
-            let operation (_attempt: int) = asyncResult |> Async.StartAsTask
+            let operation ct (_attempt: int) = asyncResult |> Async.StartAsTask
 
-            let! result =
-                ResultAsyncRetry.retryAsyncResult config operation logger
-                |> Async.AwaitTask
+            let! result = executeWithRetry operation logger config ct handleCancellationError |> Async.AwaitTask
 
             return result
         }
@@ -192,7 +185,7 @@ module AsyncResult =
         async {
             let! results =
                 asyncResults
-                |> List.map (fun ar ->
+                |> List.map(fun ar ->
                     async {
                         let! r = ar
                         return r
@@ -200,7 +193,7 @@ module AsyncResult =
                 |> Async.Parallel
 
             // Use safe partition function from ResultAsyncCommon
-            return ResultAsyncCommon.partitionResultsSafe results
+            return Medhavi.Common.Result.partitionResultsSafe results
         }
 
     let (>=>) f g x = f x |> bind g
@@ -217,31 +210,31 @@ type AsyncResultBuilder() =
     member _.Return(x) = AsyncResult.return_ x
     member _.Bind(x, f) = AsyncResult.bind f x
     member _.ReturnFrom(x) = x
-    member _.Zero() = AsyncResult.return_ ()
+    member _.Zero() = AsyncResult.return_()
     member _.Delay(f) = f
-    member _.Run(f) = f ()
+    member _.Run(f) = f()
 
     // Sequential composition
-    member this.Combine(a, b) = this.Bind(a, fun () -> b ())
+    member this.Combine(a, b) = this.Bind(a, (fun () -> b()))
 
     // Control flow
-    member this.IfThenElse(condition, ifBody, elseBody) = if condition then ifBody () else elseBody ()
+    member this.IfThenElse(condition, ifBody, elseBody) = if condition then ifBody() else elseBody()
 
     // Loops
     member this.For(xs: seq<'a>, body: 'a -> AsyncResult<unit, 'b>) =
-        let folder acc x = this.Bind(acc, fun () -> body x)
+        let folder acc x = this.Bind(acc, (fun () -> body x))
         Seq.fold folder (this.Return()) xs
 
     // Try-with
-    member __.TryWith(body, handler) = AsyncResult.catch (fun ex -> handler ex) (body ())
+    member __.TryWith(body, handler) = AsyncResult.catch (fun ex -> handler ex) (body())
 
     // Try-finally
     member __.TryFinally(body, compensation) =
         async {
             try
-                return! body ()
+                return! body()
             finally
-                compensation ()
+                compensation()
         }
         |> AsyncResult.ofAsync
 

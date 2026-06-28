@@ -83,7 +83,7 @@ module Aggregate =
             |> TaskResult.mapError mapRepositoryErrorToApplicationError
             |> TaskResult.map (fun _ ->
                 for ev in decision.Events do
-                    BoundedContexts.DomainEventBus.Publish(ev)
+                    DomainEventBus.Publish(ev)
 
                 decision)
 

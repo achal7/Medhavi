@@ -2,16 +2,16 @@ namespace Medhavi.SharedKernel
 
 open System
 open Medhavi.SharedKernel.Logging
-
+open Medhavi.SharedKernel.ExceptionHandling
 /// Execution context for distributed tracing and command correlation
 /// Enables tracking of operations across aggregates, services, and boundaries
 type ExecutionContext =
     {
         /// Unique identifier for tracking requests across aggregates and services
-        CorrelationId: Guid
+        CorrelationId: CorrelationId
 
         /// ID of the command/event that caused this operation (for causality tracking)
-        CausationId: Guid option
+        CausationId: CorrelationId option
 
         /// User/system that initiated the operation
         Principal: string option
@@ -30,7 +30,7 @@ module ExecutionContext =
 
     /// Create new execution context with fresh correlation ID
     let create () : ExecutionContext =
-        { CorrelationId = Guid.NewGuid()
+        { CorrelationId = CorrelationId.create()
           CausationId = None
           Principal = None
           Timestamp = DateTimeOffset.UtcNow
@@ -38,7 +38,7 @@ module ExecutionContext =
           MessageId = None }
 
     /// Create context with specific correlation ID
-    let withCorrelationId (correlationId: Guid) (ctx: ExecutionContext) : ExecutionContext =
+    let withCorrelationId (correlationId: CorrelationId) (ctx: ExecutionContext) : ExecutionContext =
         { ctx with
             CorrelationId = correlationId }
 
@@ -57,7 +57,7 @@ module ExecutionContext =
     /// Create child context (causation = parent's correlation)
     /// Useful for saga orchestration and multi-step workflows
     let asCausation (ctx: ExecutionContext) : ExecutionContext =
-        { CorrelationId = Guid.NewGuid()
+        { CorrelationId = CorrelationId.create()
           CausationId = Some ctx.CorrelationId
           Principal = ctx.Principal
           Timestamp = DateTimeOffset.UtcNow
@@ -66,7 +66,7 @@ module ExecutionContext =
         }
 
     /// Create context from correlation and causation IDs (for integration scenarios)
-    let fromIds (correlationId: Guid) (causationId: Guid option) : ExecutionContext =
+    let fromIds (correlationId: CorrelationId) (causationId: CorrelationId option) : ExecutionContext =
         { CorrelationId = correlationId
           CausationId = causationId
           Principal = None
@@ -78,18 +78,10 @@ module ExecutionContext =
     let fromMetadataMap (metadata: Map<string, string>) (createdUtc: DateTimeOffset) : ExecutionContext =
         let correlationId =
             metadata.TryFind "correlationId"
-            |> Option.bind (fun s ->
-                match Guid.TryParse s with
-                | true, g -> Some g
-                | false, _ -> None)
-            |> Option.defaultValue Guid.Empty
+            |> Option.bind CorrelationId.fromString
+            |> Option.defaultValue(CorrelationId.create())
 
-        let causationId =
-            metadata.TryFind "causationId"
-            |> Option.bind (fun s ->
-                match Guid.TryParse s with
-                | true, g -> Some g
-                | false, _ -> None)
+        let causationId = metadata.TryFind "causationId" |> Option.bind CorrelationId.fromString
 
         let principal = metadata.TryFind "principal"
         let tenantId = metadata.TryFind "tenantId"
@@ -110,8 +102,8 @@ module ExecutionContext =
             |> Map.add
                 "causationId"
                 (ctx.CausationId
-                 |> Option.map (fun id -> id.ToString())
-                 |> Option.defaultValue (ctx.CorrelationId.ToString()))
+                 |> Option.map(fun id -> id.ToString())
+                 |> Option.defaultValue(ctx.CorrelationId.ToString()))
             |> Map.add "timestamp" (ctx.Timestamp.ToString("O"))
 
         let withPrincipal =
@@ -157,37 +149,27 @@ module ExecutionContext =
     /// Extract ExecutionContext from LogContext (pure function)
     let toExecutionContext (logCtx: LogContext) : ExecutionContext option =
         logCtx.CorrelationId
-        |> Option.map (fun correlationId ->
+        |> Option.map(fun correlationId ->
             let causationId =
                 logCtx.AdditionalData
-                |> Option.bind (fun data ->
-                    data.TryFind "CausationId"
-                    |> Option.map (fun v -> v :?> Guid))
+                |> Option.bind(fun data -> data.TryFind "CausationId" |> Option.map(fun v -> v :?> CorrelationId))
 
             let messageId =
                 logCtx.AdditionalData
-                |> Option.bind (fun data ->
-                    data.TryFind "MessageId"
-                    |> Option.map (fun v -> v :?> string))
+                |> Option.bind(fun data -> data.TryFind "MessageId" |> Option.map(fun v -> v :?> string))
 
             let principal =
                 logCtx.AdditionalData
-                |> Option.bind (fun data ->
-                    data.TryFind "Principal"
-                    |> Option.map (fun v -> v :?> string))
+                |> Option.bind(fun data -> data.TryFind "Principal" |> Option.map(fun v -> v :?> string))
 
             let tenantId =
                 logCtx.AdditionalData
-                |> Option.bind (fun data ->
-                    data.TryFind "TenantId"
-                    |> Option.map (fun v -> v :?> string))
+                |> Option.bind(fun data -> data.TryFind "TenantId" |> Option.map(fun v -> v :?> string))
 
             let timestamp =
                 logCtx.AdditionalData
-                |> Option.bind (fun data ->
-                    data.TryFind "Timestamp"
-                    |> Option.map (fun v -> v :?> DateTimeOffset))
-                |> Option.map (fun t -> t.ToUniversalTime())
+                |> Option.bind(fun data -> data.TryFind "Timestamp" |> Option.map(fun v -> v :?> DateTimeOffset))
+                |> Option.map(fun t -> t.ToUniversalTime())
                 |> Option.defaultValue DateTimeOffset.UtcNow
 
             { CorrelationId = correlationId
@@ -197,51 +179,24 @@ module ExecutionContext =
               TenantId = tenantId
               Timestamp = timestamp })
 
-// TODO - Open item (Moved from Envelope to here)
-/// Apply ExecutionContext metadata to envelope (for distributed tracing)
-// let withExecutionContext (ctx: ExecutionContext) (envelope: Envelope) : Envelope =
-//     let metadataMap = ExecutionContext.toMetadataMap ctx
-
-//     { envelope with
-//         Metadata =
-//             metadataMap
-//             |> Map.fold (fun acc key value -> Map.add key value acc) envelope.Metadata }
-
-// TODO - Open item (Moved from Envelope to here)
-/// Build typed ExecutionContext from envelope (uses CreatedUtc as timestamp)
-// let executionContextOf (env: Envelope) : ExecutionContext =
-//     ExecutionContext.fromMetadataMap env.Metadata env.CreatedUtc
-
-// type EnvelopeRuntime =
-//     { Envelope: Envelope
-//         ExecutionContext: ExecutionContext }
-
-// let toRuntime (env: Envelope) : EnvelopeRuntime =
-//     { Envelope = env
-//         ExecutionContext = executionContextOf env }
-
 type ContextWrapper<'Payload> =
     { Context: ExecutionContext
       Payload: 'Payload }
 
 type ExecutionContextHolder =
-    static member val private CurrentContext = System.Threading.AsyncLocal<ExecutionContext>() with get
+    static member val private CurrentContext = Threading.AsyncLocal<ExecutionContext>() with get
 
     static member Set(ctx: ExecutionContext) = ExecutionContextHolder.CurrentContext.Value <- ctx
 
     static member TryGet() =
         let value = ExecutionContextHolder.CurrentContext.Value
 
-        if obj.ReferenceEquals(value, null) then
-            None
-        else
-            Some value
+        if obj.ReferenceEquals(value, null) then None else Some value
 
-    static member Clear() =
-        ExecutionContextHolder.CurrentContext.Value <- Unchecked.defaultof<ExecutionContext>
+    static member Clear() = ExecutionContextHolder.CurrentContext.Value <- Unchecked.defaultof<ExecutionContext>
 
 module ExecutionContextValidation =
     let requireTenant (ctx: ExecutionContext) : Result<string, DomainError> =
         match ctx.TenantId with
-        | Some tenantId when not (String.IsNullOrWhiteSpace tenantId) -> Ok tenantId
-        | _ -> Error(DomainError.validation "TenantId is required but was missing or empty")
+        | Some tenantId when not(String.IsNullOrWhiteSpace tenantId) -> Ok tenantId
+        | _ -> Result.Error(DomainError.validation "TenantId is required but was missing or empty")

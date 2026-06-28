@@ -140,7 +140,7 @@ module BoundedContext =
 
                                 let endDt = startDt.AddDays(1.0)
 
-                                match Window.createFromTime startDt endDt with
+                                match TimeWindow.createFromTime startDt endDt with
                                 | Error _ -> ()
                                 | Ok win ->
                                     match DurationMinutes.create 480.0m with // Default 8 hours per day capacity

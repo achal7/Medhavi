@@ -8,16 +8,21 @@ open Microsoft.FSharp.Control
 open Medhavi.Common.Result
 open LogContext
 
+type IngestionLogger =
+    { LogInfo: string -> unit
+      LogSuccess: string -> unit
+      LogError: string -> unit }
+
 type NullLogger() =
     interface ILogger with
-        member _.BeginScope<'TState when 'TState: not null>(state: 'TState) : IDisposable =
+        member _.BeginScope<'TState when 'TState: not null>(_: 'TState) : IDisposable =
             { new IDisposable with
                 member _.Dispose() = () }
 
-        member _.IsEnabled(logLevel: LogLevel) = false
+        member _.IsEnabled(_: LogLevel) = false
 
         member _.Log<'TState>
-            (logLevel: LogLevel, eventId: EventId, state: 'TState, ex: exn, formatter: Func<'TState, exn, string>)
+            (_: LogLevel, _: EventId, _: 'TState, _: exn, _: Func<'TState, exn, string>)
             =
             // Do nothing
             ()
@@ -47,7 +52,7 @@ type MailboxLogger(innerLogger: ILogger, batchSize: int, timeoutMs: int) =
 
                         if newBatch.Length >= batchSize then
                             // Flush batch
-                            for (l, m, c, _) in newBatch do
+                            for l, m, c, _ in newBatch do
                                 let state = contextToState c |> Seq.toArray
                                 innerLogger.Log(l, m, state)
 
@@ -60,7 +65,7 @@ type MailboxLogger(innerLogger: ILogger, batchSize: int, timeoutMs: int) =
 
                         if newBatch.Length >= batchSize then
                             // Flush batch
-                            for (l, m, c, e) in newBatch do
+                            for l, m, c, e in newBatch do
                                 let state = contextToState c |> Seq.toArray
 
                                 match e with
@@ -73,7 +78,7 @@ type MailboxLogger(innerLogger: ILogger, batchSize: int, timeoutMs: int) =
 
                     | Some(Flush replyChannel) ->
                         // Flush current batch
-                        for (l, m, c, e) in batch do
+                        for l, m, c, e in batch do
                             let state = contextToState c |> Seq.toArray
 
                             match e with
@@ -85,7 +90,7 @@ type MailboxLogger(innerLogger: ILogger, batchSize: int, timeoutMs: int) =
 
                     | Some Shutdown ->
                         // Flush before shutdown
-                        for (l, m, c, e) in batch do
+                        for l, m, c, e in batch do
                             let state = contextToState c |> Seq.toArray
 
                             match e with
@@ -97,7 +102,7 @@ type MailboxLogger(innerLogger: ILogger, batchSize: int, timeoutMs: int) =
                     | None ->
                         // Timeout - flush batch
                         if batch.Length > 0 then
-                            for (l, m, c, e) in batch do
+                            for l, m, c, e in batch do
                                 let state = contextToState c |> Seq.toArray
 
                                 match e with
@@ -128,14 +133,14 @@ type MailboxLogger(innerLogger: ILogger, batchSize: int, timeoutMs: int) =
 /// Wrapper ILogger that uses mailbox for async logging
 type private MailboxLoggerWrapper(mailboxLogger: MailboxLogger) =
     interface ILogger with
-        member _.BeginScope<'TState when 'TState: not null>(state: 'TState) : IDisposable =
+        member _.BeginScope<'TState when 'TState: not null>(_: 'TState) : IDisposable =
             { new IDisposable with
                 member _.Dispose() = () }
 
-        member _.IsEnabled(logLevel: LogLevel) = true
+        member _.IsEnabled(_: LogLevel) = true
 
         member _.Log<'TState>
-            (logLevel: LogLevel, eventId: EventId, state: 'TState, ex: exn, formatter: Func<'TState, exn, string>)
+            (logLevel: LogLevel, _: EventId, state: 'TState, ex: exn, formatter: Func<'TState, exn, string>)
             =
             // Extract LogContext from state if available, otherwise create empty
             let logCtx =
@@ -164,7 +169,7 @@ type Logger =
 
         if useMailbox then
             let mailboxLogger = new MailboxLogger(logger, batchSize, timeoutMs)
-            let wrapper = new MailboxLoggerWrapper(mailboxLogger) :> ILogger
+            let wrapper = MailboxLoggerWrapper(mailboxLogger) :> ILogger
 
             { InnerLogger = wrapper
               Context = defaultArg context LogContext.Empty
@@ -174,7 +179,7 @@ type Logger =
               Context = defaultArg context LogContext.Empty
               MailboxLogger = None }
 
-    static member CreateWithoutLogging(?context: LogContext) = Logger.Create <| NullLogger()
+    static member CreateWithoutLogging(?_context: LogContext) = Logger.Create <| NullLogger()
 
     /// Flush mailbox logger if using mailbox implementation
     member this.Flush() =
