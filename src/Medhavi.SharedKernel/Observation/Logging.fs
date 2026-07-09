@@ -2,7 +2,7 @@ namespace Medhavi.SharedKernel.Logging
 
 open System
 open Microsoft.Extensions.Logging
-open Medhavi.SharedKernel.ExceptionHandling
+open Medhavi.SharedKernel.Execution
 
 /// Log context for structured logging
 type LogContext =
@@ -136,6 +136,64 @@ module LogContext =
         else
             logDebug logger $"Operation '{operation}' completed in {duration.TotalMilliseconds:F2}ms" context
 
+    // =================================================================================================
+    // EXECUTION CONTEXT ↔ LOG CONTEXT BRIDGE
+    // =================================================================================================
+
+    /// Convert ExecutionContext to LogContext
+    let fromExecutionContext (execCtx: ExecutionContext) (comp: string) : LogContext =
+        { CorrelationId = Some execCtx.CorrelationId
+          Operation = None
+          Component = comp
+          EntityId = None
+          EntityType = None
+          StreamName = None
+          EventId = None
+          EventType = None
+          Duration = None
+          AdditionalData =
+            [ if execCtx.CausationId.IsSome then
+                  ("CausationId", box execCtx.CausationId.Value)
+              if execCtx.Principal.IsSome then
+                  ("Principal", box execCtx.Principal.Value)
+              if execCtx.TenantId.IsSome then
+                  ("TenantId", box execCtx.TenantId.Value)
+              ("Timestamp", box execCtx.Timestamp) ]
+            |> Map.ofList
+            |> Some }
+
+    /// Extract ExecutionContext from LogContext (pure function)
+    let toExecutionContext (logCtx: LogContext) : ExecutionContext option =
+        logCtx.CorrelationId
+        |> Option.map(fun correlationId ->
+            let causationId =
+                logCtx.AdditionalData
+                |> Option.bind(fun data -> data.TryFind "CausationId" |> Option.map(fun v -> v :?> CorrelationId))
+
+            let messageId =
+                logCtx.AdditionalData
+                |> Option.bind(fun data -> data.TryFind "MessageId" |> Option.map(fun v -> v :?> string))
+
+            let principal =
+                logCtx.AdditionalData
+                |> Option.bind(fun data -> data.TryFind "Principal" |> Option.map(fun v -> v :?> string))
+
+            let tenantId =
+                logCtx.AdditionalData
+                |> Option.bind(fun data -> data.TryFind "TenantId" |> Option.map(fun v -> v :?> string))
+
+            let timestamp =
+                logCtx.AdditionalData
+                |> Option.bind(fun data -> data.TryFind "Timestamp" |> Option.map(fun v -> v :?> DateTimeOffset))
+                |> Option.map(fun t -> t.ToUniversalTime())
+                |> Option.defaultValue DateTimeOffset.UtcNow
+
+            { CorrelationId = correlationId
+              MessageId = messageId
+              CausationId = causationId
+              Principal = principal
+              TenantId = tenantId
+              Timestamp = timestamp })
 // =================================================================================================
 // COMPONENT NAMING HELPERS (Hierarchical Component Identification)
 // =================================================================================================

@@ -1,0 +1,2 @@
+module Medhavi.Infrastructure.Observation.MailboxLoggerAdapter
+
