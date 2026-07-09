@@ -5,7 +5,7 @@ open System.Threading
 open System.Threading.Tasks
 open Microsoft.Extensions.Logging
 open Medhavi.Common.Patterns
-open Medhavi.Infrastructure
+open Medhavi.SharedKernel.Contracts
 
 type IdempotencyKey = string
 type ReservationToken = Guid

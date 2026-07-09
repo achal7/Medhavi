@@ -176,7 +176,12 @@ module TaskResult =
                 return Error(mapException ex)
         }
 
-    let retry (retries: int) (taskResult: TaskResult<'T, 'E>) (ct: CancellationToken) handleCancellationError : TaskResult<'T, 'E> =
+    let retry
+        (retries: int)
+        (taskResult: TaskResult<'T, 'E>)
+        (ct: CancellationToken)
+        handleCancellationError
+        : TaskResult<'T, 'E> =
         let logger = NullLogger.Instance
 
         let config = Some <| RetryConfig.DefaultWithAttempts retries
@@ -198,6 +203,16 @@ module TaskResult =
 
             // Use safe partition function from ResultAsyncCommon
             return Result.partitionResultsSafe results
+        }
+
+    /// Converts Task<Option<'T>> to Task<Result<'T, 'E>>, using the supplied error when None.
+    let requireSomeAsync (error: 'Error) (taskOpt: Task<Option<'T>>) : Task<Result<'T, 'Error>> =
+        task {
+            let! opt = taskOpt
+
+            match opt with
+            | Some value -> return Ok value
+            | None -> return Error error
         }
 
 /// COMPUTATION EXPRESSION BUILDER FOR TaskResult

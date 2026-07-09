@@ -1,7 +1,7 @@
 module Medhavi.SharedKernel.InMemRepository
 
 open System.Collections.Concurrent
-
+open Medhavi.SharedKernel.Contracts.Aggregate
 let createInMemoryRepository<'Aggregate, 'Id, 'Event when 'Id: not null> () =
 
     // Use versioned store for optimistic concurrency
@@ -46,6 +46,32 @@ let createInMemoryRepository<'Aggregate, 'Id, 'Event when 'Id: not null> () =
                         eventStore[id] <- existingEvents @ events
 
                         Ok())
+            }
+
+      SaveBatch =
+        fun batch ->
+            task {
+                for (id, aggregate, events) in batch do
+                    let lockObj = locks.GetOrAdd(id, fun _ -> obj ())
+                    lock lockObj (fun () ->
+                        match store.TryGetValue id with
+                        | true, existing ->
+                            let newVersioned =
+                                { Aggregate = aggregate
+                                  Version = existing.Version + 1 }
+                            store[id] <- newVersioned
+                        | false, _ ->
+                            let newVersioned = { Aggregate = aggregate; Version = 1 }
+                            store[id] <- newVersioned
+
+                        let existingEvents =
+                            match eventStore.TryGetValue id with
+                            | true, evts -> evts
+                            | false, _ -> []
+
+                        eventStore[id] <- existingEvents @ events
+                        ())
+                return Ok()
             }
 
       Delete =

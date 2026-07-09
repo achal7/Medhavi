@@ -9,6 +9,7 @@
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="10.0.9" />
     <PackageVersion Include="Microsoft.AspNetCore.Components" Version="10.0.9" />
     <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.3" />
+    <PackageVersion Include="MathNet.Numerics" Version="5.0.0" />
     <PackageVersion Include="Marten" Version="7.34.0" />
     <PackageVersion Include="Bolero" Version="0.24.36" />
     <PackageVersion Include="Bolero.Server" Version="0.24.36" />
@@ -18,6 +19,7 @@
     <PackageVersion Include="Expecto.FsCheck" Version="11.0.0-alpha8" />
     <PackageVersion Include="FsCheck" Version="3.3.2" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.9" />
     <PackageVersion Include="Unquote" Version="7.0.1" />
     <PackageVersion Include="YoloDev.Expecto.TestSdk" Version="0.15.5" />
     <PackageVersion Include="Testcontainers.PostgreSql" Version="3.8.0" />

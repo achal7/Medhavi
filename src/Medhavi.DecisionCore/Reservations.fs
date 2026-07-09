@@ -2,6 +2,7 @@
 
 open System
 open Medhavi.SharedKernel
+open Medhavi.SharedKernel.Failure
 
 type ReservationScope =
     | Atp

@@ -6,17 +6,26 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Envelope.fs" />
     <Compile Include="Stores\EnvelopeStore.fs" />
     <Compile Include="Stores\EnvelopeStoreMem.fs" />
     <Compile Include="Stores\IdempotencyStore.fs" />
     <Compile Include="Projections.fs" />
     <Compile Include="IO.fs" />
+    <Compile Include="Observation\MailboxLogger.fs" />
+    <Compile Include="Observation\LoggerAdapter.fs" />
+    <Compile Include="Observation\IngestionLogger.fs" />
+    <Compile Include="Observation\ConsoleLogger.fs" />
+    <Compile Include="Observation\TelemetryPublisher.fs" />
+    <Compile Include="Observation\PerformanceTracker.fs" />
+    <Compile Include="Observation\ActivityTrackingAdapter.fs" />
+    <Compile Include="Observation\HealthCheckPublisher.fs" />
+    <Compile Include="Observation\ObservationComposition.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Medhavi.Common\Medhavi.Common.fsproj" />
     <ProjectReference Include="..\Medhavi.Contracts\Medhavi.Contracts.fsproj" />
+    <ProjectReference Include="..\Medhavi.SharedKernel\Medhavi.SharedKernel.fsproj" />
   </ItemGroup>
 
   <ItemGroup>

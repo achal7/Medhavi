@@ -786,19 +786,21 @@ Semantic Objects are independent of software implementation.
 They describe **what exists**, not **how software represents it**.
 
 Examples include:
-
 * Demand
 * Supply
 * Inventory
 * Capacity
-* Product
 * Resource
 * Customer
-* Plant
-* Order
-* Commitment
-* Scenario
-* Constraint
+
+The ARS v2 further classifies Semantic Objects into:
+
+- Aggregate Root — the smallest business concept whose invariants must always hold together.
+- Entity — a Semantic Object with local identity, existing only within an Aggregate Root.
+- Value Object — an immutable object with no identity, defined solely by its attributes.
+- Reference Object — a Semantic Object owned by a different domain, referenced by identity only.
+
+This classification is defined in the Architecture Reference Standard and applied in each domain’s Chapter 4.
 
 ## 5.2 Characteristics
 
@@ -876,7 +878,8 @@ Every Decision evaluates Semantic Objects.
 
 Every Rule constrains Semantic Objects.
 
-Every Policy governs Semantic Objects.
+Every Policy governs Semantic Objects. The ARS v2 provides the authoritative classification rules for these objects.  
+Domain specifications (e.g., Demand Intelligence Chapter 4) instantiate these classifications with concrete enterprise objects.
 
 ```text
 Semantic Objects
@@ -1202,6 +1205,8 @@ Intelligence Capabilities
 ```
 
 Capabilities respond to enterprise behaviour rather than static enterprise data.
+The ARS v2 defines Aggregate Behaviour as the reusable unit of business logic that changes exactly one Aggregate Root.  
+Semantic Behaviour remains the broader enterprise concept; Aggregate Behaviour is its realisation within a specific aggregate consistency boundary.
 
 ## 7.6 Architectural Consequences
 
@@ -2011,22 +2016,16 @@ The mapping from Enterprise Reality to software follows a continuous derivation.
 Enterprise Reality
         │
         ▼
-Semantic Objects
+Semantic Objects (defined in Semantic Model)
         │
         ▼
-Enterprise Questions
+ARS Classifications (Aggregate Root, Entity, Value Object, Reference Object)
         │
         ▼
-Intelligence Domains
+Domain Chapter 4 (concrete objects)
         │
         ▼
-Bounded Contexts
-        │
-        ▼
-Aggregates
-        │
-        ▼
-Services
+Domain-Driven Design (implementation)
 ```
 
 Each implementation artifact derives from the preceding architectural model.
@@ -2035,22 +2034,10 @@ No implementation artifact introduces new enterprise meaning.
 
 ## 12.3 Semantic Objects to Aggregates
 
-Semantic Objects represent enterprise concepts.
-
-Aggregates manage the lifecycle and consistency of those concepts.
-
-| Semantic Object | Typical Aggregate    |
-| --------------- | -------------------- |
-| Demand          | Demand Aggregate     |
-| Supply          | Supply Aggregate     |
-| Inventory       | Inventory Aggregate  |
-| Capacity        | Capacity Aggregate   |
-| Commitment      | Commitment Aggregate |
-| Scenario        | Scenario Aggregate   |
-
-Aggregates are implementation realizations of Semantic Objects.
-
-They are not semantic definitions.
+The ARS v2 classifies Semantic Objects into Aggregate Roots, Entities, Value Objects, and Reference Objects.  
+This classification directly informs DDD implementation without requiring the Semantic Model to define DDD concepts.  
+Each domain’s Chapter 4 applies the classification to its enterprise objects.  
+The mapping from enterprise concept to DDD aggregate is thus governed by the ARS rather than being ad-hoc.
 
 ## 12.4 Intelligence Domains to Bounded Contexts
 
@@ -2066,9 +2053,9 @@ These boundaries frequently align with Bounded Contexts.
 | Scenario Intelligence  | Scenario Planning       |
 | Knowledge Intelligence | Planning Intelligence   |
 
-Implementation may refine these boundaries where necessary.
-
-Semantic ownership remains unchanged.
+The ARS v2 governs the identifier standard and traceability for these bounded contexts.  
+See the ARS for domain codes and identifier formats.
+Implementation may refine these boundaries where necessary. Semantic ownership remains unchanged.
 
 ## 12.5 Intelligence Capabilities to Services
 
@@ -2131,15 +2118,9 @@ Mapping the Semantic Model to DDD establishes several architectural principles.
 
 ## 12.8 Architectural Rules
 
-**SM-12.1 Semantic First:** Implementation shall derive from the Semantic Model.
-
-**SM-12.2 Bounded Context Ownership:** Bounded Contexts shall preserve the ownership established by Intelligence Domains.
-
-**SM-12.3 Aggregate Responsibility:** Aggregates shall manage the lifecycle of Semantic Objects without redefining their meaning.
-
-**SM-12.4 Capability Realization:** Services shall implement Intelligence Capabilities.
-
-**SM-12.5 Traceability:** Every implementation artifact shall be traceable to the Semantic Model.
+**SM-12.1 ARS Governance:** Implementation classifications shall follow the ARS v2 classification of Semantic Objects.
+**SM-12.2 Domain Traceability:** Each domain’s Chapter 4 shall instantiate the ARS classifications with its enterprise objects.
+**SM-12.3 Implementation Independence:** The Semantic Model shall not prescribe DDD implementation details; those belong to the ARS and the domain Blueprint.
 
 ## 12.9 Relationship to Subsequent Chapters
 
@@ -2316,6 +2297,14 @@ Cognitive Operations remain stable.
 
 Intelligence Capabilities specialize them.
 
+**Relationship to the ARS**
+
+The ARS v2 defines the operational structure for capabilities:
+Capability Responsibilities are realised by Business Workflows.
+Each Workflow is specified by a Functional Specification.
+Aggregate Behaviours provide the atomic business logic.
+The Capability Model described here provides the why; the ARS and domain specifications provide the how.
+
 ## 13.7 Architectural Consequences
 
 Deriving Capabilities from the Semantic Model establishes several architectural principles.
@@ -2369,6 +2358,7 @@ Intelligence Domains organize that reasoning.
 Intelligence Capabilities implement reusable enterprise abilities while preserving complete semantic consistency and architectural traceability.
 
 ---
+
 # Chapter 14 — Deriving the Decision Model
 
 ## Purpose
@@ -2560,6 +2550,7 @@ They are derived from Enterprise Understanding produced by Intelligence Capabili
 By separating enterprise semantics, enterprise reasoning, and enterprise decisions, the Medhavi Architecture preserves explainability, traceability, and implementation independence while providing a disciplined foundation for enterprise planning.
 
 ---
+
 # Chapter 15 — Semantic Governance
 
 ## Purpose
@@ -2612,7 +2603,7 @@ Semantic Governance applies to every architectural model derived from the Semant
 Constitution
         │
         ▼
-Architectural Requirement Specification
+Architecture Reference Standard (ARS)
         │
         ▼
 Semantic Model
@@ -2630,9 +2621,15 @@ Rule Model
 Policy Model
         │
         ▼
+Functional Specification
+        │
+        ▼
+Blueprint
+        │
+        ▼
 Implementation
 ```
-
+**The ARS v2 serves as the active governance contract for all specification artefacts.**
 Governance begins with enterprise meaning and extends throughout the architecture.
 
 ## 15.4 Governance Responsibilities

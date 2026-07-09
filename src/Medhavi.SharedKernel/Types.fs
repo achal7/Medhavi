@@ -2,6 +2,7 @@ namespace Medhavi.SharedKernel
 
 open System
 open System.Text.Json.Serialization
+open Medhavi.SharedKernel.Failure
 
 [<JsonFSharpConverter>]
 type Money = { Amount: decimal; Currency: string }
@@ -290,6 +291,7 @@ type Revision = Revision of int
 module Revision =
     let initial = Revision 1
     let increment (Revision r) = Revision(r + 1)
+    let next (Revision r) = Revision(r + 1)
     let value (Revision r) = r
 
     let create value =
@@ -297,3 +299,6 @@ module Revision =
             Error(DomainError.validation "Revision must be non-negative")
         else
             Ok(Revision value)
+
+    let createClamp value =
+        Revision <| Int32.Clamp(value, 0, Int32.MaxValue)

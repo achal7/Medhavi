@@ -2,11 +2,10 @@ namespace Medhavi.Demand.Domain
 
 open System
 open Medhavi.SharedKernel
-open Medhavi.Common.Validation
 
 /// Customer Order aggregate (historical/read model reference)
 type CustomerOrder =
-    { OrderId: OrderId
+    { OrderId: DemandOrderId
       LineId: string
       SkuId: SkuId
       NodeId: NodeId

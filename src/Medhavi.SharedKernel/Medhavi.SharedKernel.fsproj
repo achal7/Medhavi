@@ -7,21 +7,39 @@
 
   <ItemGroup>
     <Compile Include="ArsIdentifiers.fs" />
-    <Compile Include="ExceptionHandling.fs" />
-    <Compile Include="Logging.fs" />
-    <Compile Include="Logger.fs" />
-    <Compile Include="ErrorHandling.fs" />
+    <Compile Include="ExecutionContext\ExecutionContext.fs" />
+    <Compile Include="ExecutionContext\ExecutionContextHolder.fs" />
+    <Compile Include="Failure\ErrorHandling.fs" />
+    <Compile Include="Failure\FailureInfo.fs" />
     <Compile Include="Types.fs" />
     <Compile Include="DomainEventBus.fs" />
+    <Compile Include="Observation\ArchitecturalKnowledge.fs" />
+    <Compile Include="Observation\TelemetryTypes.fs" />
+    <Compile Include="Observation\HealthTypes.fs" />
+    <Compile Include="Observation\Metrics.fs" />
+    <Compile Include="Observation\ArchitecturalKnowledgeProvider.fs" />
+    <Compile Include="Observation\Performance.fs" />
+    <Compile Include="Observation\Logging.fs" />
+    <Compile Include="Contracts\DecisionTrace.fs" />
+    <Compile Include="Contracts\Envelope.fs" />
+    <Compile Include="Contracts\Aggregate.fs" />
+    <Compile Include="Contracts\ExecutionStore.fs" />
+    <Compile Include="Execution\ExecutionOutcome.fs" />
+    <Compile Include="Execution\ExecutionModel.fs" />
+    <Compile Include="Execution\ExecutionStage.fs" />
+    <Compile Include="Execution\ExecutionPipeline.fs" />
+    <Compile Include="Execution\ExecutionStrategy.fs" />
+    <Compile Include="Execution\ExecutionRunner.fs" />
+    <Compile Include="Execution\CommandContext.fs" />
+    <Compile Include="Execution\AggregateStages.fs" />
+    <Compile Include="Execution\CommandPipeline.fs" />
+    <Compile Include="Execution\CommandCapabilities.fs" />
+    <Compile Include="Execution\Helpers.fs" />
     <Compile Include="Configuration\FeatureFlags.fs" />
     <Compile Include="Configuration\EnvironmentSettings.fs" />
-    <Compile Include="ExecutionContext.fs" />
-    <Compile Include="Observability.fs" />
     <Compile Include="IdsFactory.fs" />
     <Compile Include="Ids.fs" />
     <Compile Include="Validations.fs" />
-    <Compile Include="Repository.fs" />
-    <Compile Include="Aggregate.fs" />
     <Compile Include="PromisePolicy.fs" />
     <Compile Include="InMemRepository.fs" />
   </ItemGroup>
@@ -34,6 +52,10 @@
   <ItemGroup>
     <PackageReference Include="FSharp.SystemTextJson" />
     <PackageReference Include="Microsoft.Extensions.Logging" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="ExecutionContext\" />
   </ItemGroup>
 
 </Project>

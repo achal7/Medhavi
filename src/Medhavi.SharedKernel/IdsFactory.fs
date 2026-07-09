@@ -3,7 +3,7 @@ module Medhavi.SharedKernel.IdsFactory
 open System
 open System.Security.Cryptography
 open System.Text
-open Medhavi.SharedKernel
+open Medhavi.SharedKernel.Failure
 
 /// External system identifier (e.g., from ERP, MES, etc.)
 type ExternalSystemId =
@@ -90,7 +90,7 @@ let generateId (strategy: IdGenerationStrategy) (name: string) : Result<string, 
     | Random -> Ok(Guid.NewGuid().ToString("N"))
     | Explicit id ->
         if String.IsNullOrWhiteSpace id then
-            Error(DomainError.validation ($"{name} cannot be empty"))
+            Error(DomainError.validation $"{name} cannot be empty")
         else
             Ok(id)
 

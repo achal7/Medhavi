@@ -1,9 +1,6 @@
-namespace Medhavi.SharedKernel
+namespace Medhavi.SharedKernel.Contracts
 
 open Medhavi.Common.Patterns
-
-/// Versioned aggregate for optimistic concurrency
-type VersionedAggregate<'Aggregate> = { Aggregate: 'Aggregate; Version: int }
 
 /// Error types for repository operations
 type RepositoryError =
@@ -15,6 +12,7 @@ type RepositoryError =
 type Repository<'Aggregate, 'Id, 'Event> =
     { Get: 'Id -> TaskResult<'Aggregate option, RepositoryError>
       Save: 'Id * 'Aggregate * 'Event list -> TaskResult<unit, RepositoryError>
+      SaveBatch: ('Id * 'Aggregate * 'Event list) list -> TaskResult<unit, RepositoryError>
       Delete: 'Id -> TaskResult<unit, RepositoryError>
       GetEvents: 'Id -> TaskResult<'Event list, RepositoryError>
       GetEventsByType: ('Event -> bool) -> TaskResult<'Event list, RepositoryError>

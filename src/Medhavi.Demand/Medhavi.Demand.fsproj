@@ -6,18 +6,144 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Domain.fs" />
-    <Compile Include="ForecastConsumption.fs" />
-    <Compile Include="Projections.fs" />
-    <Compile Include="Application.fs" />
-    <Compile Include="BoundedContext.fs" />
+    <Compile Include="ModelTypes.fs" />
+    <Compile Include="Domain\MeasurementModel.fs" />
+    
+    <Compile Include="DemandObservation\Model.fs" />
+    <Compile Include="DemandObservation\Rules.fs" />
+    <Compile Include="DemandObservation\Decisions.fs" />
+    <Compile Include="DemandObservation\ACL.fs" />
+    <Compile Include="DemandObservation\CommandHandler.fs" />
+    <Compile Include="DemandObservation\Capabilities.fs" />
+    <Compile Include="DemandObservation\Projection.fs" />
+    <Compile Include="DemandObservation\Context.fs" />
+
+    <Compile Include="PlanningScope\Model.fs" />
+    <Compile Include="PlanningScope\Rules.fs" />
+    <Compile Include="PlanningScope\Decisions.fs" />
+    <Compile Include="PlanningScope\ACL.fs" />
+    <Compile Include="PlanningScope\CommandHandler.fs" />
+    <Compile Include="PlanningScope\Capabilities.fs" />
+    <Compile Include="PlanningScope\Projection.fs" />
+    <Compile Include="PlanningScope\Context.fs" />
+
+    <Compile Include="EnterpriseDemandPicture\Model.fs" />
+    <Compile Include="EnterpriseDemandPicture\Rules.fs" />
+    <Compile Include="EnterpriseDemandPicture\Decisions.fs" />
+    <Compile Include="EnterpriseDemandPicture\ACL.fs" />
+    <Compile Include="EnterpriseDemandPicture\CommandHandler.fs" />
+    <Compile Include="EnterpriseDemandPicture\Capabilities.fs" />
+    <Compile Include="EnterpriseDemandPicture\Projection.fs" />
+    <Compile Include="EnterpriseDemandPicture\Context.fs" />
+    
+    <Compile Include="ForecastPublication\Model.fs" />
+    <Compile Include="ForecastPublication\Rules.fs" />
+    <Compile Include="ForecastPublication\Decisions.fs" />
+    <Compile Include="ForecastPublication\ACL.fs" />
+    <Compile Include="ForecastPublication\ComputationService.fs" />
+    <Compile Include="ForecastPublication\CommandHandler.fs" />
+    <Compile Include="ForecastPublication\Capabilities.fs" />
+    <Compile Include="ForecastPublication\Projection.fs" />
+    <Compile Include="ForecastPublication\Context.fs" />
+
+    <Compile Include="DemandBehaviourAssessment\Model.fs" />
+    <Compile Include="DemandBehaviourAssessment\Rules.fs" />
+    <Compile Include="DemandBehaviourAssessment\Decisions.fs" />
+    <Compile Include="DemandBehaviourAssessment\ACL.fs" />
+    <Compile Include="DemandBehaviourAssessment\CommandHandler.fs" />
+    <Compile Include="DemandBehaviourAssessment\Capabilities.fs" />
+    <Compile Include="DemandBehaviourAssessment\Projection.fs" />
+    <Compile Include="DemandBehaviourAssessment\Context.fs" />
+
+    <Compile Include="PlanningClassificationAssignment\Model.fs" />
+    <Compile Include="PlanningClassificationAssignment\Rules.fs" />
+    <Compile Include="PlanningClassificationAssignment\Decisions.fs" />
+    <Compile Include="PlanningClassificationAssignment\ACL.fs" />
+    <Compile Include="PlanningClassificationAssignment\CommandHandler.fs" />
+    <Compile Include="PlanningClassificationAssignment\Capabilities.fs" />
+    <Compile Include="PlanningClassificationAssignment\Projection.fs" />
+    <Compile Include="PlanningClassificationAssignment\Context.fs" />
+
+    <Compile Include="DemandBehaviourAssignment\Model.fs" />
+    <Compile Include="DemandBehaviourAssignment\Rules.fs" />
+    <Compile Include="DemandBehaviourAssignment\Decisions.fs" />
+    <Compile Include="DemandBehaviourAssignment\ACL.fs" />
+    <Compile Include="DemandBehaviourAssignment\CommandHandler.fs" />
+    <Compile Include="DemandBehaviourAssignment\Capabilities.fs" />
+    <Compile Include="DemandBehaviourAssignment\Projection.fs" />
+    <Compile Include="DemandBehaviourAssignment\Context.fs" />
+
+    <Compile Include="PlanningPriorityAssignment\Model.fs" />
+    <Compile Include="PlanningPriorityAssignment\Rules.fs" />
+    <Compile Include="PlanningPriorityAssignment\Decisions.fs" />
+    <Compile Include="PlanningPriorityAssignment\ACL.fs" />
+    <Compile Include="PlanningPriorityAssignment\CommandHandler.fs" />
+    <Compile Include="PlanningPriorityAssignment\Capabilities.fs" />
+    <Compile Include="PlanningPriorityAssignment\Projection.fs" />
+    <Compile Include="PlanningPriorityAssignment\Context.fs" />
+    
+    <Compile Include="Projections\UnifiedPlanningMetadataProjection.fs" />
+    
+    <Compile Include="Projections\DecisionTraceProjection.fs" />
+
+    <Compile Include="UnderstandDemandWorkflow.fs" />
+    <Compile Include="UnderstandDemandContext.fs" />
+
+    <Compile Include="ForecastQualityAssessment\Model.fs" />
+    <Compile Include="ForecastQualityAssessment\Rules.fs "/>
+    <Compile Include="ForecastQualityAssessment\Decisions.fs "/>
+    <Compile Include="ForecastQualityAssessment\ACL.fs" />
+    <Compile Include="ForecastQualityAssessment\Algorithms.fs" />
+    <Compile Include="ForecastQualityAssessment\CommandHandler.fs" />
+    <Compile Include="ForecastQualityAssessment\Projection.fs" />
+    <Compile Include="ForecastQualityAssessment\Capabilities.fs" />
+    <Compile Include="ForecastQualityAssessment\Context.fs" />
+
+    <Compile Include="DemandExplanation\Model.fs" />
+    <Compile Include="DemandExplanation\NaturalLanguageGenerator.fs" />
+    <Compile Include="DemandExplanation\Rules.fs" />
+    <Compile Include="DemandExplanation\Decisions.fs" />
+    <Compile Include="DemandExplanation\ACL.fs" />
+    <Compile Include="DemandExplanation\ReasoningGraphAlgorithms.fs" />
+    <Compile Include="DemandExplanation\TemplateRenderer.fs" />
+    <Compile Include="DemandExplanation\CommandHandler.fs" />
+    <Compile Include="DemandExplanation\Capabilities.fs" />
+    <Compile Include="DemandExplanation\Projection.fs" />
+    <Compile Include="DemandExplanation\Context.fs" />
+    <Compile Include="DemandExplanation\ExplanationModel.fs" />
+
+    <Compile Include="DemandPlanningCondition\Model.fs" />
+    <Compile Include="DemandPlanningCondition\Rules.fs" />
+    <Compile Include="DemandPlanningCondition\Decisions.fs" />
+    <Compile Include="DemandPlanningCondition\ACL.fs" />
+    <Compile Include="DemandPlanningCondition\CommandHandler.fs" />
+    <Compile Include="DemandPlanningCondition\Capabilities.fs" />
+    <Compile Include="DemandPlanningCondition\Projection.fs" />
+    <Compile Include="DemandPlanningCondition\Context.fs" />
+
+    <Compile Include="DemandLearning\Model.fs" />
+    <Compile Include="DemandLearning\Rules.fs" />
+    <Compile Include="DemandLearning\Decisions.fs" />
+    <Compile Include="DemandLearning\ACL.fs" />
+    <Compile Include="DemandLearning\DemandLearningAlgorithms.fs" />
+    <Compile Include="DemandLearning\CommandHandler.fs" />
+    <Compile Include="DemandLearning\Capabilities.fs" />
+    <Compile Include="DemandLearning\Projection.fs" />
+    <Compile Include="DemandLearning\Context.fs" />
+
+    <Compile Include="DemandIntelligenceContext.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Medhavi.Common\Medhavi.Common.fsproj" />
     <ProjectReference Include="..\Medhavi.Contracts\Medhavi.Contracts.fsproj" />
+    <ProjectReference Include="..\Medhavi.DecisionCore\Medhavi.DecisionCore.fsproj" />
     <ProjectReference Include="..\Medhavi.SharedKernel\Medhavi.SharedKernel.fsproj" />
     <ProjectReference Include="..\Medhavi.Infrastructure\Medhavi.Infrastructure.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MathNet.Numerics" />
   </ItemGroup>
 
 </Project>

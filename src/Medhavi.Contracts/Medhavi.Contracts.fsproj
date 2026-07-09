@@ -22,7 +22,21 @@
     <Compile Include="Capacity.fs" />
     <Compile Include="Supply.fs" />
     <Compile Include="Promise.fs" />
-    <Compile Include="Demand.fs" />
+    
+    <Compile Include="Demand\Demand.fs" />
+    <Compile Include="Demand\ForecastDemand.fs" />
+    <Compile Include="Demand\DemandObservation.fs" />
+    <Compile Include="Demand\PlanningScope.fs" />
+    <Compile Include="Demand\EnterpriseDemandPicture.fs" />
+    <Compile Include="Demand\ForecastPublication.fs" />
+    <Compile Include="Demand\SenseDemand.fs" />
+    <Compile Include="Demand\PlanningClassificationAssignment.fs" />
+    <Compile Include="Demand\DemandBehaviourAssignment.fs" />
+    <Compile Include="Demand\PlanningPriorityAssignment.fs" />
+    <Compile Include="Demand\UnifiedMetadata.fs" />
+    <Compile Include="Demand\ForecastQualityAssessment.fs" />
+    <Compile Include="Demand\DemandLearning.fs" />
+    
   </ItemGroup>
 
   <ItemGroup>

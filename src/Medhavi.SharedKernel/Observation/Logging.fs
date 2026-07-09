@@ -1,8 +1,8 @@
-namespace Medhavi.SharedKernel.Logging
+namespace Medhavi.SharedKernel.Observation.Logging
 
 open System
 open Microsoft.Extensions.Logging
-open Medhavi.SharedKernel.Execution
+open Medhavi.SharedKernel.ExecutionContext
 
 /// Log context for structured logging
 type LogContext =
@@ -103,38 +103,6 @@ module LogContext =
                 for kv in context.AdditionalData.Value do
                     yield (kv.Key, kv.Value)
         }
-
-    let logDebug (logger: ILogger) (message: string) (context: LogContext) =
-        logger.LogDebug(message, contextToState context |> Seq.toArray)
-
-    let logInformation (logger: ILogger) (message: string) (context: LogContext) =
-        logger.LogInformation(message, contextToState context |> Seq.toArray)
-
-    let logWarning (logger: ILogger) (message: string) (context: LogContext) =
-        logger.LogWarning(message, contextToState context |> Seq.toArray)
-
-    let logError (logger: ILogger) (message: string) (context: LogContext) =
-        logger.LogError(message, contextToState context |> Seq.toArray)
-
-    let logErrorWithException (logger: ILogger) (ex: exn) (message: string) (context: LogContext) =
-        logger.LogError(ex, message, contextToState context |> Seq.toArray)
-
-    let logCritical (logger: ILogger) (message: string) (context: LogContext) =
-        logger.LogCritical(message, contextToState context |> Seq.toArray)
-
-    let logPerformance (logger: ILogger) (operation: string) (comp: string) (duration: TimeSpan) (_: LogContext) =
-        let context =
-            { LogContext.Empty with
-                Operation = Some operation
-                Component = comp
-                Duration = Some duration }
-
-        if duration.TotalMilliseconds > 1000.0 then
-            logWarning logger $"Operation '{operation}' took {duration.TotalMilliseconds:F2}ms" context
-        elif duration.TotalMilliseconds > 100.0 then
-            logInformation logger $"Operation '{operation}' completed in {duration.TotalMilliseconds:F2}ms" context
-        else
-            logDebug logger $"Operation '{operation}' completed in {duration.TotalMilliseconds:F2}ms" context
 
     // =================================================================================================
     // EXECUTION CONTEXT ↔ LOG CONTEXT BRIDGE

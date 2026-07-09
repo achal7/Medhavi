@@ -3,7 +3,7 @@ namespace Medhavi.Infrastructure.Stores.EnvelopeStore
 open System
 open System.Threading.Tasks
 open Medhavi.Common.Patterns
-open Medhavi.Infrastructure
+open Medhavi.SharedKernel.Contracts
 
 /// Position information captured from the event store
 type Position =
@@ -129,5 +129,5 @@ type StreamType =
 module EnvelopeStore =
     let posToLong =
         function
-        | None -> System.Int64.MinValue
+        | None -> Int64.MinValue
         | Some v -> v

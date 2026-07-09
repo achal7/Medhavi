@@ -1,25 +1,15 @@
 namespace Medhavi.DecisionCore
 
-type DecisionRationale =
-    { Summary: string
-      Evidence: string list
-      Alternatives: (string * string) list } // (name, reason)
-
-type DecisionTrace =
-    { DecisionId: string
-      CapabilityId: string
-      RulesEvaluated: string list
-      PolicyId: string option
-      SemanticObjectIds: string list
-      Rationale: DecisionRationale }
+open Medhavi.SharedKernel.Contracts.DecisionTrace
 
 module Explainability =
 
     let buildTrace
         (decisionId: string)
         (capabilityId: string)
-        (rules: string list)
+        (rules: (string * int) list)
         (policy: string option)
+        (policyVersion: int option)
         (semantics: string list)
         (rationale: DecisionRationale)
         : DecisionTrace =
@@ -27,6 +17,7 @@ module Explainability =
           CapabilityId = capabilityId
           RulesEvaluated = rules
           PolicyId = policy
+          PolicyVersion = policyVersion
           SemanticObjectIds = semantics
           Rationale = rationale }
 
@@ -37,7 +28,7 @@ module Explainability =
                     Alternatives = (name, reason) :: trace.Rationale.Alternatives } }
 
     let summarizeTrace (trace: DecisionTrace) =
-        let rules = trace.RulesEvaluated |> String.concat ", "
+        let rules = trace.RulesEvaluated |> List.map (fun (r, v) -> $"{r} v{v}") |> String.concat ", "
         let policy = trace.PolicyId |> Option.defaultValue "none"
         let evidence = trace.Rationale.Evidence |> String.concat "; "
         let alternatives = trace.Rationale.Alternatives |> List.map(fun (n, r) -> $"{n}: {r}") |> String.concat "; "

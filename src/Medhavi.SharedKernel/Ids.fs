@@ -2,6 +2,7 @@ namespace Medhavi.SharedKernel
 
 open System.Text.Json.Serialization
 open Medhavi.SharedKernel
+open Medhavi.SharedKernel.Failure
 
 [<JsonFSharpConverter>]
 type UomId = private UomId of string
@@ -148,11 +149,32 @@ module InventoryId =
     let value (InventoryId id) = id
 
 [<JsonFSharpConverter>]
-type OrderId = private OrderId of string
+type CustomerId = CustomerId of string
 
-module OrderId =
-    let create = IdsFactory.createExplicitId OrderId "OrderId"
-    let value (OrderId id) = id
+module CustomerId =
+    let create = IdsFactory.createExplicitId CustomerId "CustomerId"
+    let value (CustomerId id) = id
+
+[<JsonFSharpConverter>]
+type DemandOrderId = private DemandOrderId of string
+
+module DemandOrderId =
+    let create = IdsFactory.createExplicitId DemandOrderId "DemandOrderId"
+    let value (DemandOrderId id) = id
+
+[<JsonFSharpConverter>]
+type DemandId = private DemandId of string
+
+module DemandId =
+    let create = IdsFactory.createExplicitId DemandId "DemandId"
+    let value (DemandId id) = id
+
+[<JsonFSharpConverter>]
+type ForecastId = private ForecastId of string
+
+module ForecastId =
+    let create = IdsFactory.createExplicitId ForecastId "ForecastId"
+    let value (ForecastId v) = v
 
 [<JsonFSharpConverter>]
 type PeggingId = private PeggingId of string

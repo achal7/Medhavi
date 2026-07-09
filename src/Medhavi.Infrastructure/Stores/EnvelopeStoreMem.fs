@@ -5,7 +5,7 @@ open System.Collections.Immutable
 open System.Threading
 open System.Threading.Tasks
 open Medhavi.Common.Patterns
-open Medhavi.Infrastructure
+open Medhavi.SharedKernel.Contracts
 open Medhavi.Infrastructure.Stores.EnvelopeStore
 
 [<CLIMutable>]
@@ -83,7 +83,7 @@ let createEnvelopeStoreMem () : EnvelopeStoreOps =
             if bucket.IsEmpty then
                 None
             else
-                Some(bucket.[bucket.Length - 1].StreamRevision)
+                Some(bucket[bucket.Length - 1].StreamRevision)
 
         match expected with
         | ExpectedRevision.Any -> true
@@ -109,14 +109,14 @@ let createEnvelopeStoreMem () : EnvelopeStoreOps =
             if bucket.IsEmpty then
                 -1L
             else
-                bucket.[bucket.Length - 1].StreamRevision
+                bucket[bucket.Length - 1].StreamRevision
 
         // produce StoredEvent list immutably
         let items, lastPos, nextRev =
             envelopes
             |> List.mapi (fun i env ->
                 let rev = lastRev + int64 i + 1L
-                let gp = System.Threading.Interlocked.Increment(globalCounter)
+                let gp = Interlocked.Increment(globalCounter)
 
                 let se =
                     { Envelope = env
@@ -198,7 +198,7 @@ let createEnvelopeStoreMem () : EnvelopeStoreOps =
                                             task {
                                                 try
                                                     do! sub.Handler ev
-                                                with ex ->
+                                                with _ ->
                                                     ()
                                             }
                                             :> Task)
@@ -300,7 +300,7 @@ let createEnvelopeStoreMem () : EnvelopeStoreOps =
                                 if bucket.IsEmpty || startIndex > lastIndex then
                                     []
                                 else
-                                    [ for i in startIndex..lastIndex -> bucket.[i] ]
+                                    [ for i in startIndex..lastIndex -> bucket[i] ]
 
                             let items =
                                 take
@@ -337,7 +337,7 @@ let createEnvelopeStoreMem () : EnvelopeStoreOps =
                                 if all.Length = 0 then
                                     [||]
                                 else
-                                    all.[startIdx .. min (all.Length - 1) (startIdx + maxCount - 1)]
+                                    all[startIdx .. min (all.Length - 1) (startIdx + maxCount - 1)]
 
                             let items =
                                 takeArr
@@ -362,7 +362,7 @@ let createEnvelopeStoreMem () : EnvelopeStoreOps =
                             let start = max 0 (bucket.Length - take)
 
                             let items =
-                                [ for i in start .. bucket.Length - 1 -> envelopedOf streamName bucket.[i] ]
+                                [ for i in start .. bucket.Length - 1 -> envelopedOf streamName bucket[i] ]
 
                             reply.SetResult(Ok items)
                             return! loop streams subs
@@ -381,7 +381,7 @@ let createEnvelopeStoreMem () : EnvelopeStoreOps =
                             if bucket.IsEmpty then
                                 reply.SetResult(Ok None)
                             else
-                                reply.SetResult(Ok(Some(positionOf bucket.[bucket.Length - 1])))
+                                reply.SetResult(Ok(Some(positionOf bucket[bucket.Length - 1])))
 
                             return! loop streams subs
                         with ex ->
@@ -489,7 +489,7 @@ let createEnvelopeStoreMem () : EnvelopeStoreOps =
         (streamName: string)
         (envs: Envelope list)
         (expected: ExpectedRevision)
-        (ct: CancellationToken)
+        (_: CancellationToken)
         : TaskResult<AppendResult, EnvelopeStoreError> =
         let tcs =
             TaskCompletionSource<Result<AppendResult, EnvelopeStoreError>>(
@@ -513,7 +513,7 @@ let createEnvelopeStoreMem () : EnvelopeStoreOps =
         (outboxStream: string)
         (outboxEnvelope: Envelope)
         (expected: ExpectedRevision)
-        (ct: CancellationToken)
+        (_: CancellationToken)
         : TaskResult<AppendResult, EnvelopeStoreError> =
         let tcs =
             TaskCompletionSource<Result<AppendResult, EnvelopeStoreError>>(
@@ -527,7 +527,7 @@ let createEnvelopeStoreMem () : EnvelopeStoreOps =
         (streamName: string)
         (position: Position option)
         (count: int option)
-        (ct: CancellationToken)
+        (_: CancellationToken)
         : TaskResult<EnvelopedEvent list, EnvelopeStoreError> =
         let tcs =
             TaskCompletionSource<Result<EnvelopedEvent list, EnvelopeStoreError>>(
@@ -540,7 +540,7 @@ let createEnvelopeStoreMem () : EnvelopeStoreOps =
     let readAll
         (posOpt: Position option)
         (count: int option)
-        (ct: CancellationToken)
+        (_: CancellationToken)
         : TaskResult<EnvelopedEvent list, EnvelopeStoreError> =
         let tcs =
             TaskCompletionSource<Result<EnvelopedEvent list, EnvelopeStoreError>>(
@@ -553,7 +553,7 @@ let createEnvelopeStoreMem () : EnvelopeStoreOps =
     let readLast
         (streamName: string)
         (count: int64 option)
-        (ct: CancellationToken)
+        (_: CancellationToken)
         : TaskResult<EnvelopedEvent list, EnvelopeStoreError> =
         let tcs =
             TaskCompletionSource<Result<EnvelopedEvent list, EnvelopeStoreError>>(
@@ -563,7 +563,7 @@ let createEnvelopeStoreMem () : EnvelopeStoreOps =
         agent.Post(ReadLast(streamName, count, tcs))
         tcs.Task |> TaskResult.ofTask
 
-    let getLastRevision (streamName: string) (ct: CancellationToken) : TaskResult<Position option, EnvelopeStoreError> =
+    let getLastRevision (streamName: string) (_: CancellationToken) : TaskResult<Position option, EnvelopeStoreError> =
         let tcs =
             TaskCompletionSource<Result<Position option, EnvelopeStoreError>>(
                 TaskCreationOptions.RunContinuationsAsynchronously
@@ -576,7 +576,7 @@ let createEnvelopeStoreMem () : EnvelopeStoreOps =
         (mode: SubscriptionMode)
         (startPos: Position option)
         (handler: EnvelopedEvent -> Task<unit>)
-        (ct: CancellationToken)
+        (_: CancellationToken)
         : TaskResult<SubscriptionHandle, EnvelopeStoreError> =
         let tcs =
             TaskCompletionSource<Result<SubscriptionHandle, EnvelopeStoreError>>(
@@ -586,7 +586,7 @@ let createEnvelopeStoreMem () : EnvelopeStoreOps =
         agent.Post(Subscribe(mode, startPos, handler, tcs))
         tcs.Task |> TaskResult.ofTask
 
-    let clearStream (streamName: string) (ct: CancellationToken) : TaskResult<unit, EnvelopeStoreError> =
+    let clearStream (streamName: string) (_: CancellationToken) : TaskResult<unit, EnvelopeStoreError> =
         let tcs =
             TaskCompletionSource<Result<unit, EnvelopeStoreError>>(TaskCreationOptions.RunContinuationsAsynchronously)
 

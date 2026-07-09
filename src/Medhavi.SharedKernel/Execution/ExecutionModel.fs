@@ -1,2 +1,6 @@
-module Medhavi.SharedKernel.Execution.ExecutionModel
+namespace Medhavi.SharedKernel.Execution
 
+type Execution<'State, 'Context> = {
+    State: 'State
+    Context: 'Context
+}

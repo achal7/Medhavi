@@ -705,8 +705,11 @@ Events produced by one bounded context are consumed by others according to the d
 | Promise | `PromiseBreached` | Knowledge | Cross‑domain pattern discovery and root‑cause analysis |
 | Scenario | `ScenarioRecommendationAdopted` | Demand, Supply, Promise | Updates operational plans in all affected domains |
 | Scenario | `ScenarioComparisonCompleted` | Knowledge | Cross‑domain analytics and learning |
+| Scenario | `ScenarioSimulationCompleted` | Knowledge | Cross‑domain analytics and learning |
 | Knowledge | `CrossDomainPatternDiscovered` | All domains | Alerts domains to systemic patterns |
 | Knowledge | `BestPracticePublished` | All domains | Propagates proven strategies across domains |
+| Knowledge | `CalendarExceptionRaised` | Supply | Supply Intelligence subscribes to this event for supply continuity planning. |
+| Knowledge | PatternDetected | Demand , Supply, Scenario | - |
 
 Each consumer maintains its own projection of the events it needs, built from the event store using its own checkpoint. There is no direct database access across bounded contexts—only events.
 
