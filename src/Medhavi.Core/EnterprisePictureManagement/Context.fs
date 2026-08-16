@@ -1,8 +1,6 @@
 module Medhavi.Core.EnterprisePictureManagement.Context
 
-open System
 open System.Threading
-open System.Threading.Tasks
 open Medhavi
 open Medhavi.SemanticModel
 open Medhavi.Common
@@ -12,7 +10,7 @@ open Medhavi.Foundation.Execution.AggregateStages
 open Medhavi.Foundation.Failure
 open Medhavi.Foundation.Observation
 open Medhavi.Core.ArsIdentifiers
-open Medhavi.Core.EnterprisePictureManagement.Workflows.PictureRecomposition
+open Medhavi.Core.EnterprisePictureManagement.Workflows
 open Model
 open Projection
 
@@ -22,9 +20,9 @@ type EnterprisePictureContext =
       Dispose: unit -> unit }
 
 type CrossDomainQueryPorts =
-    { GetActiveDemandReferences: PlanningScopeId -> Task<DemandId list>
-      GetAvailableSupplyReferences: PlanningScopeId -> Task<SupplyId list>
-      GetCurrentInventoryReferences: PlanningScopeId -> Task<InventoryIdentity list> }
+    { GetActiveDemandReferences: PlanningScopeId -> System.Threading.Tasks.Task<DemandId list>
+      GetAvailableSupplyReferences: PlanningScopeId -> System.Threading.Tasks.Task<SupplyId list>
+      GetCurrentInventoryReferences: PlanningScopeId -> System.Threading.Tasks.Task<InventoryIdentity list> }
 
 let create
     (repo: Repository<SemanticModel.EnterprisePicture, SemanticModel.PlanningScopeId, EnterprisePictureEvent>)
@@ -32,8 +30,6 @@ let create
     (createQueryService: CreateQueryService<EnterprisePictureEvent, Projection.EnterprisePictureDto, SemanticModel.PlanningScopeId>)
     (publishKnowledge: KnowledgeRepresentation)
     (policy: EnterprisePicturePolicy)
-    (planningScopeId: PlanningScopeId)
-    (crossDomainPorts: CrossDomainQueryPorts)
     : TaskResult<EnterprisePictureContext, ApplicationError> =
     taskResult {
 
@@ -50,33 +46,26 @@ let create
 
         let validEventTypes =
             [ EnterpriseEvents.pictureVersionComposed.Id
-              EnterpriseEvents.pictureVersionPublished.Id
-              EnterpriseEvents.pictureVersionSuperseded.Id ]
+              EnterpriseEvents.pictureVersionPublished.Id ]
             |> EnvelopeFilter.EventTypes
 
         let! queryCtx:ProjectionContext<EnterprisePictureDto, PlanningScopeId> = createQueryService Projection.evolveProjection validEventTypes state "EnterprisePicture"
 
-        // 3. Wire FS-C-019: Picture Recomposition Workflow
-        let recompositionDeps : WorkflowDependencies =
-            { Subscribe = deps.Subscribe
-              EnterprisePictureApi = commands
-              DebounceWindow = TimeSpan.FromSeconds (float policy.DebounceWindowSeconds)
-              PlanningScopeId = planningScopeId
-              GetCurrentTime = fun () -> Timestamp.now()
-              GetActiveDemandReferences = crossDomainPorts.GetActiveDemandReferences
-              GetAvailableSupplyReferences = crossDomainPorts.GetAvailableSupplyReferences
-              GetCurrentInventoryReferences = crossDomainPorts.GetCurrentInventoryReferences
-              Codec = Foundation.Codec.json<SharedKernel.BusinessNotifications.DemandUnderstandingPublishedNotification> }
+        // 3. Wire FS-C-002: Picture Publication Workflow (materiality gate)
+        let publicationDeps : PicturePublication.PublicationDependencies =
+            { EnterprisePictureApi = commands
+              Subscribe = deps.Subscribe
+              Codec = Foundation.Codec.json<SharedKernel.BusinessNotifications.PictureVersionComposedNotification> }
 
-        // 6. Create the recomposition workflow
-        let! recompositionSubscription:System.IDisposable =
-            create recompositionDeps CancellationToken.None
+        let! publicationSubscription:System.IDisposable =
+            PicturePublication.create publicationDeps CancellationToken.None
             |> TaskResult.ofTaskValue
             |> TaskResult.mapError (fun err ->
-                Infrastructure (EventStore ($"Failed to create picture recomposition workflow: {err}")))
+                Infrastructure (EventStore ($"Failed to create picture publication workflow: {err}")))
 
         let dispose () =
-            recompositionSubscription.Dispose()
+            queryCtx.Dispose()
+            publicationSubscription.Dispose()
 
         return
             { Commands = commands

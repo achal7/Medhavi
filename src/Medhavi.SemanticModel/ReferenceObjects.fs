@@ -18,9 +18,10 @@ type TimeZone =
 /// SE-C-001 Item
 type Item =
     { ItemIdentifier: ItemId
+      EnterpriseBusinessIdentifier: string option
       ItemName: string
-      ItemType: string
-      ItemRoles: string list
+      ItemType: VocabularyEntryId option
+      ItemRoles: VocabularyEntryId list
       UnitOfMeasure: UnitOfMeasureId
       LifecycleState: ReferenceLifecycleState }
 
@@ -36,7 +37,7 @@ type Location =
 type Customer =
     { CustomerIdentifier: CustomerId
       CustomerName: string
-      CustomerClass: CustomerClass
+      CustomerClass: CustomerClass option
       LifecycleState: ReferenceLifecycleState }
 
 /// SE-C-004 Supplier

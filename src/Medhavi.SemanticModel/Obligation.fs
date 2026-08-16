@@ -9,6 +9,6 @@ type Commitment =
       Customer: CustomerId option
       Supplier: SupplierId option
       Quantity: Quantity
-      CommitmentTime: Timestamp
-      DueWindow: TemporalWindow
+      RequestedDate: Timestamp
+      CommittedDate: Timestamp option
       LifecycleState: CommitmentLifecycleState }

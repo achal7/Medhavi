@@ -78,7 +78,7 @@ let toComposeCmd (req: ComposePictureVersionReq) : Validation<ComposePictureVers
           DemandReferences = demandRefs
           SupplyReferences = supplyRefs
           InventoryReferences = invReferences
-          CompositionTime = compositionTime }
+          CompositionTriggerTime = compositionTime }
 
     create <!> validateScopeId
     <*> validateDemandRefs

@@ -5,43 +5,46 @@ open System
 /// SE-C-023 Quantity
 /// Represents a measurable amount. Enforces non-negative values for physical quantities.
 [<Struct>]
-type Quantity = private Quantity of decimal
+type Quantity = private Quantity of decimal * UnitOfMeasureId
 
 module Quantity =
-    let create (value: decimal) : Result<Quantity, string> =
-        if value < 0m then Error "Quantity cannot be negative." else Ok(Quantity value)
+    let create (value: decimal) (unitOfMeasure: UnitOfMeasureId) : Result<Quantity, SemanticValidationError> =
+        if value < 0m then Error(NegativeQuantity "Quantity") else Ok(Quantity(value, unitOfMeasure))
 
-    let ofDecimal (value: decimal) = Quantity value // Use only when mathematically guaranteed non-negative
-    let value (Quantity q) = q
+    let ofDecimal (value: decimal) (unitOfMeasure: UnitOfMeasureId) = Quantity(value, unitOfMeasure)
+    let value (Quantity(q, _)) = q
+    let unitOfMeasure (Quantity(_, u)) = u
 
-    // Monoid Laws (Layer B / Layer E support)
-    let zero = Quantity 0m
-    let add (Quantity a) (Quantity b) = Quantity(a + b)
+    let zero (unitOfMeasure: UnitOfMeasureId) = Quantity(0m, unitOfMeasure)
+    let add (Quantity(a, u1)) (Quantity(b, u2)) =
+        if u1 <> u2 then Error(InvariantViolation("Quantity", "Cannot add different units"))
+        else Ok(Quantity(a + b, u1))
 
-    let subtract (Quantity a) (Quantity b) =
-        let result = a - b
-        if result < 0m then Quantity 0m else Quantity result
+    let subtract (Quantity(a, u1)) (Quantity(b, u2)) =
+        if u1 <> u2 then Error(InvariantViolation("Quantity", "Cannot subtract different units"))
+        else
+            let result = a - b
+            if result < 0m then Ok(Quantity(0m, u1)) else Ok(Quantity(result, u1))
 
 /// SE-C-024 Duration
 /// Represents a span of time.
 [<Struct>]
-type Duration = private Duration of TimeSpan
+type Duration = private Duration of decimal * UnitOfMeasureId
 
 module Duration =
-    let create (span: TimeSpan) : Result<Duration, string> =
-        if span < TimeSpan.Zero then
-            Error "Duration cannot be negative."
-        else
-            Ok(Duration span)
+    let create (value: decimal) (unitOfMeasure: UnitOfMeasureId) : Result<Duration, SemanticValidationError> =
+        if value < 0m then Error(NegativeDuration "Duration") else Ok(Duration(value, unitOfMeasure))
 
-    let fromMinutes (mins: float) = Duration(TimeSpan.FromMinutes mins)
-    let fromHours (hours: float) = Duration(TimeSpan.FromHours hours)
-    let fromDays (days: float) = Duration(TimeSpan.FromDays days)
-    let value (Duration d) = d
+    let fromMinutes (mins: float) (unitOfMeasure: UnitOfMeasureId) = Duration(decimal mins, unitOfMeasure)
+    let fromHours (hours: float) (unitOfMeasure: UnitOfMeasureId) = Duration(decimal hours, unitOfMeasure)
+    let fromDays (days: float) (unitOfMeasure: UnitOfMeasureId) = Duration(decimal days, unitOfMeasure)
+    let value (Duration(d, _)) = d
+    let unitOfMeasure (Duration(_, u)) = u
 
-    // Monoid Laws
-    let zero = Duration TimeSpan.Zero
-    let add (Duration a) (Duration b) = Duration(a.Add(b))
+    let zero (unitOfMeasure: UnitOfMeasureId) = Duration(0m, unitOfMeasure)
+    let add (Duration(a, u1)) (Duration(b, u2)) =
+        if u1 <> u2 then Error(InvariantViolation("Duration", "Cannot add different units"))
+        else Ok(Duration(a + b, u1))
 
 /// SE-C-025 Money
 [<Struct>]
@@ -58,13 +61,11 @@ module Money =
 
     let add m1 m2 =
         if m1.CurrencyCode <> m2.CurrencyCode then
-            failwith "Cannot add different currencies"
-
-        { m1 with
-            Amount = m1.Amount + m2.Amount }
+            Error(InvariantViolation("Money", "Cannot add different currencies"))
+        else
+            Ok({ m1 with Amount = m1.Amount + m2.Amount })
 
 /// SE-C-028 Temporal Window
-/// Defines a bounded period of availability or validity.
 type TemporalWindow =
     { Earliest: Timestamp option
       Latest: Timestamp }
@@ -76,23 +77,20 @@ module TemporalWindow =
         | None -> true
 
 /// SE-C-029 Need Window
-/// Defines the acceptable and preferred timeframes for fulfilling a demand.
 type NeedWindow =
     { EarliestAcceptable: Timestamp option
       Preferred: Timestamp option
       LatestAcceptable: Timestamp }
 
 /// SE-C-038 Scope Boundary Rule
-/// Defines inclusion/exclusion criteria for a Planning Scope.
 type ScopeBoundaryRule =
     { RuleIdentifier: string
-      TargetSemanticType: string
+      TargetSemanticType: VocabularyEntryId
       InclusionIndicator: bool
       TargetInstanceIdentifiers: string list
-      TargetCategoryIdentifiers: string list }
+      TargetCategoryIdentifiers: VocabularyEntryId list }
 
 /// SE-C-027 Planning Horizon
-/// A bounded planning time interval.
 type PlanningHorizon = { Start: Timestamp; End: Timestamp }
 
 module PlanningHorizon =
@@ -104,37 +102,30 @@ module PlanningHorizon =
 
     let start (horizon: PlanningHorizon) = horizon.Start
     let endTimestamp (horizon: PlanningHorizon) = horizon.End
-
     let duration (horizon: PlanningHorizon) : System.TimeSpan = Timestamp.diff horizon.End horizon.Start
 
 /// SE-C-026 Capacity
-/// Represents available capacity over a planning horizon.
 type Capacity =
-    { CapacityMeasure: string
-      AvailableQuantity: Quantity
-      Period: PlanningHorizon }
+    { CapacityMeasure: VocabularyEntryId
+      OutputQuantity: Quantity
+      TimePeriod: Duration }
 
 module Capacity =
     let create
-        (capacityMeasure: string)
-        (availableQuantity: Quantity)
-        (period: PlanningHorizon)
+        (capacityMeasure: VocabularyEntryId)
+        (outputQuantity: Quantity)
+        (timePeriod: Duration)
         : Result<Capacity, SemanticValidationError> =
-
-        if System.String.IsNullOrWhiteSpace capacityMeasure then
-            Error(EmptyIdentifier "CapacityMeasure")
-        else
-            Ok
-                { CapacityMeasure = capacityMeasure
-                  AvailableQuantity = availableQuantity
-                  Period = period }
+        Ok
+            { CapacityMeasure = capacityMeasure
+              OutputQuantity = outputQuantity
+              TimePeriod = timePeriod }
 
     let measure (capacity: Capacity) = capacity.CapacityMeasure
-    let availableQuantity (capacity: Capacity) = capacity.AvailableQuantity
-    let period (capacity: Capacity) = capacity.Period
+    let outputQuantity (capacity: Capacity) = capacity.OutputQuantity
+    let timePeriod (capacity: Capacity) = capacity.TimePeriod
 
 /// SE-C-030 Risk Assessment
-/// A point-in-time assessment of likelihood and impact.
 type RiskAssessment =
     { Likelihood: VocabularyEntryId
       Impact: VocabularyEntryId
@@ -148,45 +139,43 @@ module RiskAssessment =
         (assessmentTime: Timestamp)
         (rationale: string option)
         : RiskAssessment =
-
         { Likelihood = likelihood
           Impact = impact
           AssessmentTime = assessmentTime
           Rationale = rationale }
 
-/// Scenario adjustment value.
-/// This is intentionally modeled as a coproduct so scenario what-if adjustments
-/// remain explicit, inspectable, and interpretable by AI planners.
-type ScenarioAdjustmentValue =
-    | QuantityAdjustment of Quantity
-    | PercentageAdjustment of decimal
-    | TextualAdjustment of string
-
 /// SE-C-039 Scenario Adjustment
 type ScenarioAdjustment =
     { AdjustmentIdentifier: string
-      TargetSemanticType: string
-      Operator: AdjustmentOperator
-      Value: ScenarioAdjustmentValue
-      EffectiveWindow: TemporalWindow option }
+      TargetSemanticType: VocabularyEntryId
+      TargetInstanceIdentifiers: string list
+      TargetCategoryIdentifiers: VocabularyEntryId list
+      AdjustmentType: VocabularyEntryId
+      AdjustmentQuantity: Quantity option
+      AdjustmentText: string option }
 
 module ScenarioAdjustment =
     let create
         (adjustmentIdentifier: string)
-        (targetSemanticType: string)
-        (operator: AdjustmentOperator)
-        (value: ScenarioAdjustmentValue)
-        (effectiveWindow: TemporalWindow option)
+        (targetSemanticType: VocabularyEntryId)
+        (targetInstanceIdentifiers: string list)
+        (targetCategoryIdentifiers: VocabularyEntryId list)
+        (adjustmentType: VocabularyEntryId)
+        (adjustmentQuantity: Quantity option)
+        (adjustmentText: string option)
         : Result<ScenarioAdjustment, SemanticValidationError> =
-
         if System.String.IsNullOrWhiteSpace adjustmentIdentifier then
             Error(EmptyIdentifier "AdjustmentIdentifier")
-        elif System.String.IsNullOrWhiteSpace targetSemanticType then
-            Error(EmptyIdentifier "TargetSemanticType")
+        elif targetInstanceIdentifiers.IsEmpty && targetCategoryIdentifiers.IsEmpty then
+            Error(InvariantViolation("ScenarioAdjustment", "At least one Target Instance Identifier or Target Category Identifier must be present."))
+        elif adjustmentQuantity.IsNone && adjustmentText.IsNone then
+            Error(InvariantViolation("ScenarioAdjustment", "At least one of Adjustment Quantity or Adjustment Text must be present."))
         else
             Ok
                 { AdjustmentIdentifier = adjustmentIdentifier
                   TargetSemanticType = targetSemanticType
-                  Operator = operator
-                  Value = value
-                  EffectiveWindow = effectiveWindow }
+                  TargetInstanceIdentifiers = targetInstanceIdentifiers
+                  TargetCategoryIdentifiers = targetCategoryIdentifiers
+                  AdjustmentType = adjustmentType
+                  AdjustmentQuantity = adjustmentQuantity
+                  AdjustmentText = adjustmentText }

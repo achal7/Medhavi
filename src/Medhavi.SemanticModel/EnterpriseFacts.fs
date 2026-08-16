@@ -9,6 +9,7 @@ type Demand =
       Quantity: Quantity
       NeedWindow: NeedWindow
       DemandOrigin: DemandOrigin
+      ParentDemand: DemandId option
       LifecycleState: DemandLifecycleState }
 
 /// SE-C-014 Supply
@@ -18,11 +19,10 @@ type Supply =
       Location: LocationId
       Quantity: Quantity
       AvailabilityWindow: TemporalWindow
-      Provenance: SupplyProvenanceClassification
+      Provenance: VocabularyEntryId
       LifecycleState: SupplyLifecycleState }
 
 /// SE-C-015 Inventory
-/// Corrected identity: Item + Location + Batch Identifier.
 type Inventory =
     { Identity: InventoryIdentity
       OnHandQuantity: Quantity

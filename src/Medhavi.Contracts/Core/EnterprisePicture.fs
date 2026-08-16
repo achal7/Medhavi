@@ -10,7 +10,6 @@ type PictureVersion =
       DemandReferences: string list
       SupplyReferences: string list
       InventoryReferences: string list
-      CompositionTime: DateTimeOffset
       PublicationTime: DateTimeOffset option
       LifecycleState: string }
 
@@ -41,7 +40,7 @@ type MaterialChangeSummary =
       InventoryChanged: bool
       ChangeDetails: Map<string, string> }
 
-/// BN-C-019a: Enterprise Picture Published Notification
+/// BN-C-001: Enterprise Picture Published Notification
 type EnterprisePicturePublishedNotification =
     { PlanningScopeId: string
       Version: int

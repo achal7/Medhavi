@@ -1,8 +1,6 @@
 namespace Medhavi.SemanticModel
 
 /// Pure lifecycle transition validators.
-/// These validators define permitted semantic state transitions.
-/// They do not execute transitions. Execution belongs to domain Aggregate Behaviors.
 module Lifecycles =
 
     let private invalidTransition (fromState: obj) (toState: obj) : Result<unit, SemanticValidationError> =
@@ -13,7 +11,6 @@ module Lifecycles =
         (fromState: ReferenceLifecycleState)
         (toState: ReferenceLifecycleState)
         : Result<unit, SemanticValidationError> =
-
         match fromState, toState with
         | ReferenceLifecycleState.Active, ReferenceLifecycleState.Inactive
         | ReferenceLifecycleState.Active, ReferenceLifecycleState.Retired
@@ -26,7 +23,6 @@ module Lifecycles =
         (fromState: LocationLifecycleState)
         (toState: LocationLifecycleState)
         : Result<unit, SemanticValidationError> =
-
         match fromState, toState with
         | LocationLifecycleState.Active, LocationLifecycleState.Inactive
         | LocationLifecycleState.Active, LocationLifecycleState.Closed
@@ -34,17 +30,39 @@ module Lifecycles =
         | LocationLifecycleState.Inactive, LocationLifecycleState.Closed -> Ok()
         | _ -> invalidTransition fromState toState
 
-    /// Planning object lifecycle: Scenario, Plan.
-    let validatePlanningTransition
-        (fromState: PlanningLifecycleState)
-        (toState: PlanningLifecycleState)
+    /// Scenario lifecycle.
+    let validateScenarioTransition
+        (fromState: ScenarioLifecycleState)
+        (toState: ScenarioLifecycleState)
         : Result<unit, SemanticValidationError> =
-
         match fromState, toState with
-        | PlanningLifecycleState.Draft, PlanningLifecycleState.Active
-        | PlanningLifecycleState.Draft, PlanningLifecycleState.Archived
-        | PlanningLifecycleState.Active, PlanningLifecycleState.Archived
-        | PlanningLifecycleState.Active, PlanningLifecycleState.Superseded -> Ok()
+        | ScenarioLifecycleState.Draft, ScenarioLifecycleState.Active
+        | ScenarioLifecycleState.Draft, ScenarioLifecycleState.Archived
+        | ScenarioLifecycleState.Active, ScenarioLifecycleState.Archived -> Ok()
+        | _ -> invalidTransition fromState toState
+
+    /// Plan lifecycle.
+    let validatePlanTransition
+        (fromState: PlanLifecycleState)
+        (toState: PlanLifecycleState)
+        : Result<unit, SemanticValidationError> =
+        match fromState, toState with
+        | PlanLifecycleState.Draft, PlanLifecycleState.Approved
+        | PlanLifecycleState.Draft, PlanLifecycleState.Archived
+        | PlanLifecycleState.Approved, PlanLifecycleState.Superseded
+        | PlanLifecycleState.Approved, PlanLifecycleState.Archived -> Ok()
+        | _ -> invalidTransition fromState toState
+
+    /// BOM lifecycle.
+    let validateBomTransition
+        (fromState: BomLifecycleState)
+        (toState: BomLifecycleState)
+        : Result<unit, SemanticValidationError> =
+        match fromState, toState with
+        | BomLifecycleState.Draft, BomLifecycleState.Active
+        | BomLifecycleState.Draft, BomLifecycleState.Archived
+        | BomLifecycleState.Active, BomLifecycleState.Superseded
+        | BomLifecycleState.Active, BomLifecycleState.Archived -> Ok()
         | _ -> invalidTransition fromState toState
 
     /// Demand lifecycle.
@@ -52,7 +70,6 @@ module Lifecycles =
         (fromState: DemandLifecycleState)
         (toState: DemandLifecycleState)
         : Result<unit, SemanticValidationError> =
-
         match fromState, toState with
         | DemandLifecycleState.Active, DemandLifecycleState.Satisfied
         | DemandLifecycleState.Active, DemandLifecycleState.Cancelled -> Ok()
@@ -63,7 +80,6 @@ module Lifecycles =
         (fromState: SupplyLifecycleState)
         (toState: SupplyLifecycleState)
         : Result<unit, SemanticValidationError> =
-
         match fromState, toState with
         | Available, Consumed
         | Available, Withdrawn
@@ -75,7 +91,6 @@ module Lifecycles =
         (fromState: CommitmentLifecycleState)
         (toState: CommitmentLifecycleState)
         : Result<unit, SemanticValidationError> =
-
         match fromState, toState with
         | Committed, Fulfilled
         | Committed, Cancelled -> Ok()
@@ -86,9 +101,8 @@ module Lifecycles =
         (fromState: ExceptionLifecycleState)
         (toState: ExceptionLifecycleState)
         : Result<unit, SemanticValidationError> =
-
         match fromState, toState with
-        | Active, Resolved -> Ok()
+        | ExceptionLifecycleState.Active, Resolved -> Ok()
         | _ -> invalidTransition fromState toState
 
     /// Enterprise Picture version lifecycle.
@@ -96,10 +110,9 @@ module Lifecycles =
         (fromState: PictureVersionLifecycleState)
         (toState: PictureVersionLifecycleState)
         : Result<unit, SemanticValidationError> =
-
         match fromState, toState with
         | Draft, Published
-        | Published, Superseded -> Ok()
+        | Published, PictureVersionLifecycleState.Superseded -> Ok()
         | _ -> invalidTransition fromState toState
 
     /// Risk lifecycle.
@@ -107,24 +120,37 @@ module Lifecycles =
         (fromState: RiskLifecycleState)
         (toState: RiskLifecycleState)
         : Result<unit, SemanticValidationError> =
-
         match fromState, toState with
-        | Identified, Assessed
-        | Identified, Closed
-        | Identified, Retired
-        | Assessed, Mitigating
-        | Assessed, Closed
-        | Assessed, Retired
-        | Mitigating, Closed
-        | Mitigating, Retired -> Ok()
+        | RiskLifecycleState.Active, RiskLifecycleState.Retired -> Ok()
         | _ -> invalidTransition fromState toState
 
-    /// Governed vocabulary adoption lifecycle.
+    /// Calendar adoption lifecycle.
+    let validateCalendarTransition
+        (fromState: CalendarAdoptionState)
+        (toState: CalendarAdoptionState)
+        : Result<unit, SemanticValidationError> =
+        match fromState, toState with
+        | CalendarAdoptionState.Active, CalendarAdoptionState.Superseded
+        | CalendarAdoptionState.Active, CalendarAdoptionState.Retired
+        | CalendarAdoptionState.Superseded, CalendarAdoptionState.Retired -> Ok()
+        | _ -> invalidTransition fromState toState
+
+    /// Governed Catalog lifecycle.
+    let validateGovernedCatalogTransition
+        (fromState: GovernedCatalogState)
+        (toState: GovernedCatalogState)
+        : Result<unit, SemanticValidationError> =
+        match fromState, toState with
+        | GovernedCatalogState.Active, GovernedCatalogState.Deprecated
+        | GovernedCatalogState.Active, GovernedCatalogState.Retired
+        | GovernedCatalogState.Deprecated, GovernedCatalogState.Retired -> Ok()
+        | _ -> invalidTransition fromState toState
+
+    /// Adoption state lifecycle.
     let validateAdoptionTransition
         (fromState: AdoptionState)
         (toState: AdoptionState)
         : Result<unit, SemanticValidationError> =
-
         match fromState, toState with
         | AdoptionState.Admitted, AdoptionState.Deprecated
         | AdoptionState.Admitted, AdoptionState.Retired

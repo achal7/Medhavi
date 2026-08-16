@@ -11,7 +11,6 @@ open Medhavi.SemanticModel.Identities
 // ---------------------------------------------------------------------
 
 let private firstError (checks: Result<unit, SemanticValidationError> list) : Result<unit, SemanticValidationError> =
-
     checks
     |> List.tryPick (function
         | Error e -> Some e
@@ -21,7 +20,6 @@ let private firstError (checks: Result<unit, SemanticValidationError> list) : Re
         | None -> Ok()
 
 let private nonEmptyIdentifier (fieldName: string) (value: string) : Result<unit, SemanticValidationError> =
-
     if String.IsNullOrWhiteSpace value then
         Error(EmptyIdentifier fieldName)
     else
@@ -32,7 +30,6 @@ let private nonEmptyField
     (fieldName: string)
     (value: string)
     : Result<unit, SemanticValidationError> =
-
     if String.IsNullOrWhiteSpace value then
         Error(EmptyRequiredField(objectName, fieldName))
     else
@@ -43,7 +40,6 @@ let private noEmptyStrings
     (fieldName: string)
     (values: string list)
     : Result<unit, SemanticValidationError> =
-
     if values |> List.exists String.IsNullOrWhiteSpace then
         Error(InvariantViolation(objectName, sprintf "%s must not contain empty values." fieldName))
     else
@@ -54,32 +50,27 @@ let private nonNegativeInt
     (fieldName: string)
     (value: int)
     : Result<unit, SemanticValidationError> =
-
     if value < 0 then
         Error(InvariantViolation(objectName, sprintf "%s must be non-negative." fieldName))
     else
         Ok()
 
 let private nonNegativeQuantity (fieldName: string) (value: Quantity) : Result<unit, SemanticValidationError> =
-
     if Quantity.value value < 0m then Error(NegativeQuantity fieldName) else Ok()
 
 let private positiveQuantity (fieldName: string) (value: Quantity) : Result<unit, SemanticValidationError> =
-
     if Quantity.value value <= 0m then
         Error(NonPositiveQuantity fieldName)
     else
         Ok()
 
 let private nonNegativeDuration (fieldName: string) (value: Duration) : Result<unit, SemanticValidationError> =
-
-    if Duration.value value < TimeSpan.Zero then
+    if Duration.value value < 0m then
         Error(NegativeDuration fieldName)
     else
         Ok()
 
 let private hasDuplicatesBy (projection: 'a -> 'b) (items: 'a list) : bool =
-
     let projected = items |> List.map projection
     projected.Length <> (projected |> List.distinct |> List.length)
 
@@ -88,14 +79,12 @@ let private hasDuplicatesBy (projection: 'a -> 'b) (items: 'a list) : bool =
 // ---------------------------------------------------------------------
 
 let validateTemporalWindow (window: TemporalWindow) : Result<unit, SemanticValidationError> =
-
     match window.Earliest with
     | Some earliest when Timestamp.isAfter earliest window.Latest ->
         Error(InvalidWindow "TemporalWindow.Earliest must not be after TemporalWindow.Latest.")
     | _ -> Ok()
 
 let validateNeedWindow (window: NeedWindow) : Result<unit, SemanticValidationError> =
-
     let earliestCheck =
         match window.EarliestAcceptable with
         | Some earliest when Timestamp.isAfter earliest window.LatestAcceptable ->
@@ -123,52 +112,40 @@ let validateNeedWindow (window: NeedWindow) : Result<unit, SemanticValidationErr
     firstError [ earliestCheck; preferredCheck ]
 
 let validatePlanningHorizon (horizon: PlanningHorizon) : Result<unit, SemanticValidationError> =
-
     if Timestamp.isAfter horizon.Start horizon.End then
         Error(InvalidWindow "PlanningHorizon.Start must not be after PlanningHorizon.End.")
     else
         Ok()
 
 let validateCapacity (capacity: Capacity) : Result<unit, SemanticValidationError> =
-
     firstError
-        [ nonEmptyField "Capacity" "CapacityMeasure" capacity.CapacityMeasure
-          nonNegativeQuantity "Capacity.AvailableQuantity" capacity.AvailableQuantity
-          validatePlanningHorizon capacity.Period ]
+        [ nonEmptyIdentifier "Capacity.CapacityMeasure" (vocabularyEntryIdValue capacity.CapacityMeasure)
+          nonNegativeQuantity "Capacity.OutputQuantity" capacity.OutputQuantity
+          nonNegativeDuration "Capacity.TimePeriod" capacity.TimePeriod ]
 
 let validateScopeBoundaryRule (rule: ScopeBoundaryRule) : Result<unit, SemanticValidationError> =
-
     firstError
         [ nonEmptyIdentifier "ScopeBoundaryRule.RuleIdentifier" rule.RuleIdentifier
-          nonEmptyField "ScopeBoundaryRule" "TargetSemanticType" rule.TargetSemanticType
-          noEmptyStrings "ScopeBoundaryRule" "TargetInstanceIdentifiers" rule.TargetInstanceIdentifiers
-          noEmptyStrings "ScopeBoundaryRule" "TargetCategoryIdentifiers" rule.TargetCategoryIdentifiers ]
+          nonEmptyIdentifier "ScopeBoundaryRule.TargetSemanticType" (vocabularyEntryIdValue rule.TargetSemanticType)
+          noEmptyStrings "ScopeBoundaryRule" "TargetInstanceIdentifiers" rule.TargetInstanceIdentifiers ]
 
 let validateScenarioAdjustment (adjustment: ScenarioAdjustment) : Result<unit, SemanticValidationError> =
-
-    let windowCheck =
-        match adjustment.EffectiveWindow with
-        | Some window -> validateTemporalWindow window
-        | None -> Ok()
-
     firstError
         [ nonEmptyIdentifier "ScenarioAdjustment.AdjustmentIdentifier" adjustment.AdjustmentIdentifier
-          nonEmptyField "ScenarioAdjustment" "TargetSemanticType" adjustment.TargetSemanticType
-          windowCheck ]
+          nonEmptyIdentifier "ScenarioAdjustment.TargetSemanticType" (vocabularyEntryIdValue adjustment.TargetSemanticType)
+          nonEmptyIdentifier "ScenarioAdjustment.AdjustmentType" (vocabularyEntryIdValue adjustment.AdjustmentType) ]
 
 // ---------------------------------------------------------------------
 // Reference Object invariants
 // ---------------------------------------------------------------------
 
 let validateUnitOfMeasure (unit: UnitOfMeasure) : Result<unit, SemanticValidationError> =
-
     firstError
         [ nonEmptyIdentifier "UnitOfMeasureId" (unitOfMeasureIdValue unit.UnitIdentifier)
           nonEmptyField "UnitOfMeasure" "UnitName" unit.UnitName
           nonEmptyField "UnitOfMeasure" "UnitClassification" unit.UnitClassification ]
 
 let validateTimeZone (timeZone: Medhavi.SemanticModel.TimeZone) : Result<unit, SemanticValidationError> =
-
     let minOffset = TimeSpan.FromHours -14.0
     let maxOffset = TimeSpan.FromHours 14.0
 
@@ -184,27 +161,22 @@ let validateTimeZone (timeZone: Medhavi.SemanticModel.TimeZone) : Result<unit, S
           offsetCheck ]
 
 let validateItem (item: Item) : Result<unit, SemanticValidationError> =
-
     firstError
         [ nonEmptyIdentifier "ItemId" (itemIdValue item.ItemIdentifier)
           nonEmptyField "Item" "ItemName" item.ItemName
-          nonEmptyField "Item" "ItemType" item.ItemType
-          noEmptyStrings "Item" "ItemRoles" item.ItemRoles ]
+          nonEmptyIdentifier "Item.UnitOfMeasure" (unitOfMeasureIdValue item.UnitOfMeasure) ]
 
 let validateLocation (location: Location) : Result<unit, SemanticValidationError> =
-
     firstError
         [ nonEmptyIdentifier "LocationId" (locationIdValue location.LocationIdentifier)
           nonEmptyField "Location" "LocationName" location.LocationName ]
 
 let validateCustomer (customer: Customer) : Result<unit, SemanticValidationError> =
-
     firstError
         [ nonEmptyIdentifier "CustomerId" (customerIdValue customer.CustomerIdentifier)
           nonEmptyField "Customer" "CustomerName" customer.CustomerName ]
 
 let validateSupplier (supplier: Supplier) : Result<unit, SemanticValidationError> =
-
     firstError
         [ nonEmptyIdentifier "SupplierId" (supplierIdValue supplier.SupplierIdentifier)
           nonEmptyField "Supplier" "SupplierName" supplier.SupplierName ]
@@ -214,41 +186,40 @@ let validateSupplier (supplier: Supplier) : Result<unit, SemanticValidationError
 // ---------------------------------------------------------------------
 
 let validateResourceGroup (resourceGroup: ResourceGroup) : Result<unit, SemanticValidationError> =
-
     firstError
         [ nonEmptyIdentifier "ResourceGroupId" (resourceGroupIdValue resourceGroup.ResourceGroupIdentifier)
-          nonEmptyField "ResourceGroup" "ResourceGroupName" resourceGroup.ResourceGroupName ]
+          nonEmptyField "ResourceGroup" "ResourceGroupName" resourceGroup.ResourceGroupName
+          nonEmptyIdentifier "ResourceGroup.Calendar" (calendarIdValue resourceGroup.Calendar) ]
 
 let validateStandardResource (resource: StandardResource) : Result<unit, SemanticValidationError> =
-
-    let capacityCheck =
-        match resource.DefaultCapacity with
-        | Some capacity -> validateCapacity capacity
-        | None -> Ok()
-
     firstError
         [ nonEmptyIdentifier "StandardResourceId" (standardResourceIdValue resource.StandardResourceIdentifier)
           nonEmptyField "StandardResource" "StandardResourceName" resource.StandardResourceName
-          capacityCheck ]
+          validateCapacity resource.ReferenceCapacity
+          nonEmptyIdentifier "StandardResource.Calendar" (calendarIdValue resource.Calendar) ]
 
 let validatePhysicalResource (resource: PhysicalResource) : Result<unit, SemanticValidationError> =
-
-    firstError [ nonEmptyIdentifier "PhysicalResourceId" (physicalResourceIdValue resource.PhysicalResourceIdentifier) ]
+    firstError
+        [ nonEmptyIdentifier "PhysicalResourceId" (physicalResourceIdValue resource.PhysicalResourceIdentifier)
+          nonEmptyField "PhysicalResource" "PhysicalResourceName" resource.PhysicalResourceName
+          nonEmptyIdentifier "PhysicalResource.Location" (locationIdValue resource.Location)
+          validateCapacity resource.AssignedCapacity
+          nonEmptyIdentifier "PhysicalResource.Calendar" (calendarIdValue resource.Calendar) ]
 
 let validateTransportationLane (lane: TransportationLane) : Result<unit, SemanticValidationError> =
-
-    let capacityCheck =
-        match lane.LaneCapacity with
-        | Some capacity -> validateCapacity capacity
-        | None -> Ok()
+    let originDestCheck =
+        if lane.Origin = lane.Destination then
+            Error(InvariantViolation("TransportationLane", "Origin and Destination cannot be the same location."))
+        else
+            Ok()
 
     firstError
         [ nonEmptyIdentifier "TransportationLaneId" (transportationLaneIdValue lane.LaneIdentifier)
-          nonNegativeDuration "TransportationLane.TransitDuration" lane.TransitDuration
-          capacityCheck ]
+          nonEmptyIdentifier "TransportationLane.Origin" (locationIdValue lane.Origin)
+          nonEmptyIdentifier "TransportationLane.Destination" (locationIdValue lane.Destination)
+          originDestCheck ]
 
 let validateNetwork (network: Network) : Result<unit, SemanticValidationError> =
-
     let duplicateLaneCheck =
         if hasDuplicatesBy id network.TransportationLanes then
             Error(DuplicateValue("Network", "TransportationLanes"))
@@ -265,7 +236,6 @@ let validateNetwork (network: Network) : Result<unit, SemanticValidationError> =
 // ---------------------------------------------------------------------
 
 let validatePlanningScope (scope: PlanningScope) : Result<unit, SemanticValidationError> =
-
     let boundaryRuleChecks = scope.BoundaryRules |> List.map validateScopeBoundaryRule
 
     firstError(
@@ -275,62 +245,52 @@ let validatePlanningScope (scope: PlanningScope) : Result<unit, SemanticValidati
     )
 
 let validateScenario (scenario: Scenario) : Result<unit, SemanticValidationError> =
-
-    let baseScenarioCheck =
-        match scenario.BaseScenario with
-        | Some baseScenario when baseScenario = scenario.ScenarioIdentifier ->
-            Error(InvariantViolation("Scenario", "BaseScenario must not reference itself."))
-        | _ -> Ok()
-
     let adjustmentChecks = scenario.Adjustments |> List.map validateScenarioAdjustment
 
     firstError(
         [ nonEmptyIdentifier "ScenarioId" (scenarioIdValue scenario.ScenarioIdentifier)
-          nonEmptyField "Scenario" "ScenarioName" scenario.ScenarioName
-          baseScenarioCheck ]
+          nonEmptyField "Scenario" "ScenarioName" scenario.ScenarioName ]
         @ adjustmentChecks
     )
 
 let validatePlan (plan: Plan) : Result<unit, SemanticValidationError> =
-
     firstError
         [ nonEmptyIdentifier "PlanId" (planIdValue plan.PlanIdentifier)
           nonEmptyField "Plan" "PlanName" plan.PlanName
+          nonEmptyIdentifier "Plan.PlanningScope" (planningScopeIdValue plan.PlanningScope)
+          nonEmptyIdentifier "Plan.Scenario" (scenarioIdValue plan.Scenario)
           validatePlanningHorizon plan.PlanningHorizon ]
 
 let validateCalendar (calendar: Calendar) : Result<unit, SemanticValidationError> =
-
     firstError
         [ nonEmptyIdentifier "CalendarId" (calendarIdValue calendar.CalendarIdentifier)
-          nonEmptyField "Calendar" "CalendarName" calendar.CalendarName ]
+          nonEmptyField "Calendar" "CalendarName" calendar.CalendarName
+          nonEmptyField "Calendar" "CalendarDefinitionReference" calendar.CalendarDefinitionReference
+          nonNegativeInt "Calendar" "VersionNumber" calendar.VersionNumber ]
 
 let validatePlanningPeriod (period: PlanningPeriod) : Result<unit, SemanticValidationError> =
-
-    if Timestamp.isAfter period.Start period.End then
-        Error(InvalidWindow "PlanningPeriod.Start must not be after PlanningPeriod.End.")
-    else
-        Ok()
+    firstError
+        [ nonEmptyIdentifier "PlanningPeriodId" (planningPeriodIdValue period.PlanningPeriodIdentifier)
+          nonEmptyField "PlanningPeriod" "DisplayName" period.DisplayName ]
 
 // ---------------------------------------------------------------------
 // Enterprise Fact invariants
 // ---------------------------------------------------------------------
 
 let validateDemand (demand: Demand) : Result<unit, SemanticValidationError> =
-
     firstError
         [ nonEmptyIdentifier "DemandId" (demandIdValue demand.DemandIdentifier)
           positiveQuantity "Demand.Quantity" demand.Quantity
           validateNeedWindow demand.NeedWindow ]
 
 let validateSupply (supply: Supply) : Result<unit, SemanticValidationError> =
-
     firstError
         [ nonEmptyIdentifier "SupplyId" (supplyIdValue supply.SupplyIdentifier)
           nonNegativeQuantity "Supply.Quantity" supply.Quantity
-          validateTemporalWindow supply.AvailabilityWindow ]
+          validateTemporalWindow supply.AvailabilityWindow
+          nonEmptyIdentifier "Supply.Provenance" (vocabularyEntryIdValue supply.Provenance) ]
 
 let validateInventory (inventory: Inventory) : Result<unit, SemanticValidationError> =
-
     firstError
         [ nonEmptyIdentifier "InventoryIdentity.Batch" (batchIdentifierValue inventory.Identity.Batch)
           nonNegativeQuantity "Inventory.OnHandQuantity" inventory.OnHandQuantity ]
@@ -340,36 +300,34 @@ let validateInventory (inventory: Inventory) : Result<unit, SemanticValidationEr
 // ---------------------------------------------------------------------
 
 let validateCommitment (commitment: Commitment) : Result<unit, SemanticValidationError> =
-
     let counterpartyCheck =
         if commitment.Customer.IsNone && commitment.Supplier.IsNone then
-            Error(
-                InvariantViolation(
-                    "Commitment",
-                    "A Commitment requires at least one counterparty: Customer or Supplier."
-                )
-            )
+            Error(InvariantViolation("Commitment", "A Commitment requires at least one counterparty: Customer or Supplier."))
         else
             Ok()
+
+    let dateCheck =
+        match commitment.CommittedDate with
+        | Some committed when Timestamp.isBefore committed commitment.RequestedDate ->
+            Error(InvariantViolation("Commitment", "CommittedDate must not be before RequestedDate."))
+        | _ -> Ok()
 
     firstError
         [ nonEmptyIdentifier "CommitmentId" (commitmentIdValue commitment.CommitmentIdentifier)
           positiveQuantity "Commitment.Quantity" commitment.Quantity
-          validateTemporalWindow commitment.DueWindow
-          counterpartyCheck ]
+          counterpartyCheck
+          dateCheck ]
 
 // ---------------------------------------------------------------------
 // BOM and Risk invariants
 // ---------------------------------------------------------------------
 
 let validateBomLine (line: BomLine) : Result<unit, SemanticValidationError> =
-
     firstError
-        [ positiveQuantity "BomLine.QuantityPerParent" line.QuantityPerParent
-          nonNegativeDuration "BomLine.LeadTimeOffset" line.LeadTimeOffset ]
+        [ nonEmptyIdentifier "BomLine.LineIdentifier" (lineIdentifierValue line.LineIdentifier)
+          positiveQuantity "BomLine.QuantityPerParent" line.QuantityPerParent ]
 
 let validateBillOfMaterials (bom: BillOfMaterials) : Result<unit, SemanticValidationError> =
-
     let lineChecks = bom.Lines |> List.map validateBomLine
 
     let duplicateComponentCheck =
@@ -384,38 +342,41 @@ let validateBillOfMaterials (bom: BillOfMaterials) : Result<unit, SemanticValida
         else
             Ok()
 
+    let dateCheck =
+        match bom.EffectiveDate, bom.EndDate with
+        | Some eff, Some endD when Timestamp.isAfter eff endD ->
+            Error(InvariantViolation("BillOfMaterials", "EffectiveDate must not be after EndDate."))
+        | _ -> Ok()
+
     firstError(
         [ nonEmptyIdentifier "BomVersionId" (bomVersionIdValue bom.BomVersionIdentifier)
+          nonNegativeInt "BillOfMaterials" "VersionNumber" bom.VersionNumber
           duplicateComponentCheck
-          selfReferenceCheck ]
+          selfReferenceCheck
+          dateCheck ]
         @ lineChecks
     )
 
 let validateRisk (risk: Risk) : Result<unit, SemanticValidationError> =
-
     firstError
         [ nonEmptyIdentifier "RiskId" (riskIdValue risk.RiskIdentifier)
-          nonEmptyField "Risk" "AffectedScopeIdentifier" risk.AffectedScopeIdentifier ]
+          nonEmptyIdentifier "Risk.RiskType" (vocabularyEntryIdValue risk.RiskType)
+          nonEmptyIdentifier "Risk.RiskSubjectType" (vocabularyEntryIdValue risk.RiskSubjectType)
+          nonEmptyField "Risk" "RiskSubjectIdentifier" risk.RiskSubjectIdentifier ]
 
 // ---------------------------------------------------------------------
 // Core Intelligence invariants
 // ---------------------------------------------------------------------
 
 let validateException (exceptionObject: Medhavi.SemanticModel.Exception) : Result<unit, SemanticValidationError> =
-
     firstError
         [ nonEmptyIdentifier "ExceptionId" (exceptionIdValue exceptionObject.ExceptionIdentifier)
           nonEmptyField "Exception" "ConstraintReference" exceptionObject.ConstraintReference
+          nonEmptyIdentifier "Exception.Classification" (vocabularyEntryIdValue exceptionObject.Classification)
+          nonEmptyIdentifier "Exception.AffectedScopeType" (vocabularyEntryIdValue exceptionObject.AffectedScopeType)
           nonEmptyField "Exception" "AffectedScopeIdentifier" exceptionObject.AffectedScopeIdentifier ]
 
 let validatePictureVersion (version: PictureVersion) : Result<unit, SemanticValidationError> =
-
-    let publicationCheck =
-        match version.PublicationTime with
-        | Some publicationTime when Timestamp.isBefore publicationTime version.CompositionTime ->
-            Error(InvariantViolation("PictureVersion", "PublicationTime must not be before CompositionTime."))
-        | _ -> Ok()
-
     let duplicateDemandCheck =
         if hasDuplicatesBy id version.DemandReferences then
             Error(DuplicateValue("PictureVersion", "DemandReferences"))
@@ -435,13 +396,11 @@ let validatePictureVersion (version: PictureVersion) : Result<unit, SemanticVali
             Ok()
 
     firstError
-        [ publicationCheck
-          duplicateDemandCheck
+        [ duplicateDemandCheck
           duplicateSupplyCheck
           duplicateInventoryCheck ]
 
 let validateEnterprisePicture (picture: EnterprisePicture) : Result<unit, SemanticValidationError> =
-
     let versionChecks = picture.Versions |> List.map validatePictureVersion
 
     let duplicateVersionCheck =
@@ -471,15 +430,14 @@ let validateEnterprisePicture (picture: EnterprisePicture) : Result<unit, Semant
 // ---------------------------------------------------------------------
 
 let validateVocabularyEntry (entry: VocabularyEntry) : Result<unit, SemanticValidationError> =
-
     firstError
-        [ nonEmptyIdentifier "VocabularyEntryId" (vocabularyEntryIdValue entry.EntryIdentifier)
-          nonEmptyField "VocabularyEntry" "EntryValue" entry.EntryValue ]
+        [ nonEmptyIdentifier "VocabularyCategoryIdentifier" (vocabularyEntryIdValue entry.VocabularyCategoryIdentifier)
+          nonEmptyIdentifier "VocabularyEntryId" (vocabularyEntryIdValue entry.EntryIdentifier)
+          nonEmptyField "VocabularyEntry" "EntryName" entry.EntryName ]
 
 let validateEnterpriseGovernedVocabulary
     (vocabulary: EnterpriseGovernedVocabulary)
     : Result<unit, SemanticValidationError> =
-
     let entryChecks = vocabulary.Entries |> List.map validateVocabularyEntry
 
     let duplicateEntryIdentifierCheck =
@@ -488,32 +446,23 @@ let validateEnterpriseGovernedVocabulary
         else
             Ok()
 
-    let admittedEntries = vocabulary.Entries |> List.filter(fun entry -> entry.LifecycleState = AdoptionState.Admitted)
-
-    let duplicateAdmittedValueCheck =
-        if hasDuplicatesBy (fun entry -> entry.EntryValue) admittedEntries then
-            Error(DuplicateValue("EnterpriseGovernedVocabulary", "Admitted Entries.EntryValue"))
-        else
-            Ok()
-
     firstError(
         [ nonEmptyField "EnterpriseGovernedVocabulary" "CatalogIdentifier" vocabulary.CatalogIdentifier
           nonNegativeInt "EnterpriseGovernedVocabulary" "VersionNumber" vocabulary.VersionNumber
-          duplicateEntryIdentifierCheck
-          duplicateAdmittedValueCheck ]
+          duplicateEntryIdentifierCheck ]
         @ entryChecks
     )
 
 let validatePerformanceIndicator (indicator: PerformanceIndicator) : Result<unit, SemanticValidationError> =
-
     firstError
         [ nonEmptyIdentifier "PerformanceIndicator.IndicatorIdentifier" indicator.IndicatorIdentifier
-          nonEmptyField "PerformanceIndicator" "IndicatorName" indicator.IndicatorName
+          nonEmptyField "PerformanceIndicator" "Name" indicator.Name
+          nonEmptyIdentifier "PerformanceIndicator.MeasureCategory" (vocabularyEntryIdValue indicator.MeasureCategory)
+          nonEmptyIdentifier "PerformanceIndicator.MeasureNature" (vocabularyEntryIdValue indicator.MeasureNature)
           nonEmptyField "PerformanceIndicator" "FormulaReference" indicator.FormulaReference
           noEmptyStrings "PerformanceIndicator" "SemanticDependencies" indicator.SemanticDependencies ]
 
 let validatePerformanceIndicatorCatalog (catalog: PerformanceIndicatorCatalog) : Result<unit, SemanticValidationError> =
-
     let indicatorChecks = catalog.Indicators |> List.map validatePerformanceIndicator
 
     let duplicateIndicatorCheck =

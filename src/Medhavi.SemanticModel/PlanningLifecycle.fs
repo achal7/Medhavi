@@ -4,9 +4,9 @@ namespace Medhavi.SemanticModel
 type Scenario =
     { ScenarioIdentifier: ScenarioId
       ScenarioName: string
-      BaseScenario: ScenarioId option
+      AssumptionStatement: string option
       Adjustments: ScenarioAdjustment list
-      LifecycleState: PlanningLifecycleState }
+      LifecycleState: ScenarioLifecycleState }
 
 /// SE-C-012 Plan
 type Plan =
@@ -14,38 +14,20 @@ type Plan =
       PlanName: string
       PlanningScope: PlanningScopeId
       PlanningHorizon: PlanningHorizon
-      LifecycleState: PlanningLifecycleState }
+      Scenario: ScenarioId
+      LifecycleState: PlanLifecycleState }
 
 /// SE-C-033 Calendar
 type Calendar =
     { CalendarIdentifier: CalendarId
       CalendarName: string
       TimeZone: TimeZoneId
-      LifecycleState: ReferenceLifecycleState }
+      CalendarDefinitionReference: string
+      VersionNumber: int
+      AdoptionState: CalendarAdoptionState }
 
 /// SE-C-034 Planning Period
 type PlanningPeriod =
     { PlanningPeriodIdentifier: PlanningPeriodId
-      Calendar: CalendarId
-      PeriodType: PeriodType
-      Start: Timestamp
-      End: Timestamp }
-
-module PlanningPeriod =
-    let create
-        (planningPeriodIdentifier: PlanningPeriodId)
-        (calendar: CalendarId)
-        (periodType: PeriodType)
-        (start: Timestamp)
-        (endTimestamp: Timestamp)
-        : Result<PlanningPeriod, SemanticValidationError> =
-
-        if Timestamp.isAfter start endTimestamp then
-            Error(InvalidWindow "PlanningPeriod.Start must not be after PlanningPeriod.End.")
-        else
-            Ok
-                { PlanningPeriodIdentifier = planningPeriodIdentifier
-                  Calendar = calendar
-                  PeriodType = periodType
-                  Start = start
-                  End = endTimestamp }
+      DisplayName: string
+      AdoptionState: AdoptionState }

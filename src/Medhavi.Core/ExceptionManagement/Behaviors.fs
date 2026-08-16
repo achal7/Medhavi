@@ -1,36 +1,42 @@
-/// CA-C-020 Exception Management Aggregate Behaviors
+/// CA-C-020 Aggregate Behaviors
 module Medhavi.Core.ExceptionManagement.Behaviors
 
 open Medhavi.Common
 open Medhavi.Foundation.Contracts
 open Medhavi.Foundation.Failure
 open Medhavi.SemanticModel
-open Medhavi.Core
 open Model
 open Rules
 open Decisions
 open Policies
 
-/// AB-C-020a: Register Exception Behavior
-let register
+/// AB-C-003: Process Exception Detection Evidence (dedup via deterministic identity).
+let processEvidence
     (policy: ExceptionManagementPolicy)
-    (cmd: RegisterExceptionCmd)
+    (currentSeverity: VocabularyEntryId option)
+    (cmd: ProcessExceptionEvidenceCmd)
     (state: CoreException option)
     : Result<Decision<CoreException, ExceptionEvent>, DomainError> =
     result {
-        let input: RegisterInput =
+        let input: ProcessInput =
             { Cmd = cmd
               CurrentState = state
+              CurrentSeverity = currentSeverity
               Policy = policy }
 
-        let! decision = Decisions.decideRegistration Rules.registrationRules input
+        let! (decision: DecisionOutcome<EvidenceOutcome>) = Decisions.evaluateExceptionEvidence Rules.registrationRules input
 
         match decision.Outcome with
-        | RegistrationRejected reasons ->
+        | RejectEvidence reasons ->
             return!
-                Error(DomainError.rule((String.concat "; " reasons), ArsIdentifiers.Decisions.decideRegistration.Id))
+                Error(
+                    DomainError.rule(
+                        (String.concat "; " reasons),
+                        Medhavi.Core.ArsIdentifiers.Decisions.evaluateExceptionEvidence.Id
+                    )
+                )
 
-        | RegisteredSuccessfully ->
+        | RegisterNewException ->
             let newException: CoreException =
                 { ExceptionIdentifier = cmd.ExceptionId
                   ConstraintReference = cmd.ConstraintReference
@@ -38,33 +44,57 @@ let register
                   AffectedScopeType = cmd.AffectedScopeType
                   AffectedScopeIdentifier = cmd.AffectedScopeIdentifier
                   EvidenceReference = cmd.EvidenceReference
-                  Severity = cmd.Severity
                   LifecycleState = ExceptionLifecycleState.Active }
-
-            let events = [ ExceptionRegistered newException ]
-            let evidence = decision.Evaluations |> List.collect(fun e -> e.Evidence)
+            // EV-C-003 carries severity as evidence metadata
+            let events = [ ExceptionActivated(newException, cmd.Severity) ]
 
             let trace: DecisionTrace =
                 { DecisionId = System.Guid.NewGuid().ToString()
-                  CapabilityId = ArsIdentifiers.Capabilities.coreExceptionManagement.Id
+                  CapabilityId = Medhavi.Core.ArsIdentifiers.Capabilities.coreExceptionManagement.Id
                   CausalDecisionIds = []
-                  Outcome = "Succeeded"
+                  Outcome = "Registered"
                   PolicyId = Some policy.PolicyId
                   PolicyVersion = Some policy.Version
                   Rationale =
                     { Summary = sprintf "Registered Exception %A" cmd.ExceptionId
-                      Evidence = evidence
-                      Alternatives = [] }
+                      Evidence = decision.Evaluations |> List.collect(fun e -> e.Evidence)
+                      Alternatives = [ ("UpdateExistingException", "No existing active exception found") ] }
                   RulesEvaluated = decision.Evaluations
-                  SemanticObjectIds = [ ArsIdentifiers.SemanticObjects.exceptionObject.Id ] }
+                  SemanticObjectIds = [ Medhavi.Core.ArsIdentifiers.SemanticObjects.exceptionObject.Id ] }
 
-            // Safe state evolution without failwith
             let! newState =
                 events
                 |> List.fold evolve state
-                |> Result.ofOption(
-                    DomainError.invariant "Exception state must exist after applying registration events"
-                )
+                |> Result.ofOption(DomainError.invariant "Exception state must exist after registration")
+
+            return
+                { NewState = newState
+                  Events = events
+                  Trace = Some trace }
+
+        | UpdateExistingException effectiveSeverity ->
+            // EV-C-004 carries the effective severity; aggregate state updates EvidenceReference only
+            let events =
+                [ ExceptionUpdated(cmd.ExceptionId, cmd.EvidenceReference, effectiveSeverity, cmd.EvidenceTime) ]
+
+            let trace: DecisionTrace =
+                { DecisionId = System.Guid.NewGuid().ToString()
+                  CapabilityId = Medhavi.Core.ArsIdentifiers.Capabilities.coreExceptionManagement.Id
+                  CausalDecisionIds = []
+                  Outcome = "Updated"
+                  PolicyId = Some policy.PolicyId
+                  PolicyVersion = Some policy.Version
+                  Rationale =
+                    { Summary = sprintf "Updated Exception %A" cmd.ExceptionId
+                      Evidence = decision.Evaluations |> List.collect(fun e -> e.Evidence)
+                      Alternatives = [ ("RegisterNewException", "Existing active exception updated with latest evidence") ] }
+                  RulesEvaluated = decision.Evaluations
+                  SemanticObjectIds = [ Medhavi.Core.ArsIdentifiers.SemanticObjects.exceptionObject.Id ] }
+
+            let! newState =
+                events
+                |> List.fold evolve state
+                |> Result.ofOption(DomainError.invariant "Exception state must exist after update")
 
             return
                 { NewState = newState
@@ -72,43 +102,47 @@ let register
                   Trace = Some trace }
     }
 
-/// AB-C-020b: Resolve Exception Behavior
+/// AB-C-004: Process Exception Resolution Evidence.
 let resolve
+    (policy: ExceptionManagementPolicy)
     (cmd: ResolveExceptionCmd)
     (state: CoreException option)
-    (policy: Policies.ExceptionManagementPolicy)
     : Result<Decision<CoreException, ExceptionEvent>, DomainError> =
     result {
         let input: ResolveInput = { Cmd = cmd; CurrentState = state }
-        let! decision = Decisions.decideResolution Rules.resolutionRules input
+        let! (decision: DecisionOutcome<ResolutionOutcome>) = Decisions.evaluateExceptionResolution Rules.resolutionRules input
 
         match decision.Outcome with
-        | ResolutionRejected reasons ->
-            return! Error(DomainError.rule((String.concat "; " reasons), ArsIdentifiers.Decisions.decideResolution.Id))
-
-        | ResolvedSuccessfully ->
+        | RejectResolution reasons ->
+            return!
+                Error(
+                    DomainError.rule(
+                        (String.concat "; " reasons),
+                        Medhavi.Core.ArsIdentifiers.Decisions.evaluateExceptionResolution.Id
+                    )
+                )
+        | ResolveException ->
+            // EV-C-005
             let events = [ ExceptionResolved(cmd.ExceptionId, cmd.ResolutionTime, cmd.ResolutionEvidence) ]
-            let evidence = decision.Evaluations |> List.collect(fun e -> e.Evidence)
 
             let trace: DecisionTrace =
                 { DecisionId = System.Guid.NewGuid().ToString()
-                  CapabilityId = ArsIdentifiers.Capabilities.coreExceptionManagement.Id
+                  CapabilityId = Medhavi.Core.ArsIdentifiers.Capabilities.coreExceptionManagement.Id
                   CausalDecisionIds = []
-                  Outcome = "Succeeded"
+                  Outcome = "Resolved"
                   PolicyId = Some policy.PolicyId
                   PolicyVersion = Some policy.Version
                   Rationale =
                     { Summary = sprintf "Resolved Exception %A" cmd.ExceptionId
-                      Evidence = evidence
-                      Alternatives = [] }
+                      Evidence = decision.Evaluations |> List.collect(fun e -> e.Evidence)
+                      Alternatives = [ ("RejectResolution", "Resolution criteria met") ] }
                   RulesEvaluated = decision.Evaluations
-                  SemanticObjectIds = [ ArsIdentifiers.SemanticObjects.exceptionObject.Id ] }
+                  SemanticObjectIds = [ Medhavi.Core.ArsIdentifiers.SemanticObjects.exceptionObject.Id ] }
 
-            // Safe state evolution without failwith
             let! newState =
                 events
                 |> List.fold evolve state
-                |> Result.ofOption(DomainError.invariant "Exception state must exist after applying resolution events")
+                |> Result.ofOption(DomainError.invariant "Exception state must exist after resolution")
 
             return
                 { NewState = newState
@@ -116,12 +150,13 @@ let resolve
                   Trace = Some trace }
     }
 
-/// Unified decide function with injected policy
+/// Unified decide. currentSeverity is injected by the FS (read-model lookup).
 let decide
     (policy: ExceptionManagementPolicy)
+    (currentSeverity: VocabularyEntryId option)
     (cmd: ExceptionCmd)
     (state: CoreException option)
     : Result<Decision<CoreException, ExceptionEvent>, DomainError> =
     match cmd with
-    | Register registerCmd -> register policy registerCmd state
-    | Resolve resolveCmd -> resolve resolveCmd state policy
+    | ProcessEvidence c -> processEvidence policy currentSeverity c state
+    | Resolve c -> resolve policy c state

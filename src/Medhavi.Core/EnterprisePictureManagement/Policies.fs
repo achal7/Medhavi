@@ -1,46 +1,31 @@
 namespace Medhavi.Core.EnterprisePictureManagement
 
-/// ============================================================================
-/// CA-C-019 Policies
-/// Governed configuration for Enterprise Picture composition and publication.
-/// Policy values must originate from governed artifacts, not hardcoded.
-/// ============================================================================
-/// PO-C-019: Enterprise Picture Composition Policy.
-/// Governs the composition and publication behavior of Enterprise Pictures.
+/// PO-C-001: Enterprise Picture Composition & Publication Governance.
+/// All thresholds originate here (Rule 5.4); never hardcoded in behaviors/algorithms.
 type EnterprisePicturePolicy =
-    {
-        /// Policy identifier for traceability.
-        PolicyId: string
-
-        /// Policy version for evolution tracking.
-        Version: int
-
-        /// Maximum number of PictureVersions to retain per PlanningScope.
-        /// When exceeded, the oldest Superseded versions are candidates for archival.
-        MaxRetainedVersions: int
-
-        /// Debounce window duration for material change coalescing (in seconds)
-        DebounceWindowSeconds: int
-
-        /// Whether publishing a new version automatically supersedes
-        /// any existing Published version.
-        AutoSupersedeOnPublish: bool
-
-        /// Whether empty compositions (zero references) are allowed.
-        /// Default: false. An Enterprise Picture Version with no references
-        /// has no planning value.
-        AllowEmptyComposition: bool
-    }
+    { PolicyId: string
+      Version: int
+      /// FS-C-001 scheduled composition cadence
+      CompositionIntervalSeconds: int
+      /// BA-C-001 materiality thresholds (0.0 .. 1.0), evaluated per reference set
+      DemandMaterialityThreshold: decimal
+      SupplyMaterialityThreshold: decimal
+      InventoryMaterialityThreshold: decimal
+      /// Maximum allowed gap between Published versions
+      MaxPublicationIntervalSeconds: int
+      MaxRetainedVersions: int
+      AutoSupersedeOnPublish: bool
+      AllowEmptyComposition: bool }
 
 module EnterprisePicturePolicy =
-
-    /// Default policy instance.
-    /// In production, this MUST be loaded from a governed policy store.
-    /// This default exists only for development and testing.
-    let defaultPolicy: EnterprisePicturePolicy =
-        { PolicyId = "PO-C-019"
+    let defaultPolicy : EnterprisePicturePolicy =
+        { PolicyId = "PO-C-001"
           Version = 1
+          CompositionIntervalSeconds = 3600
+          DemandMaterialityThreshold = 0.05m
+          SupplyMaterialityThreshold = 0.05m
+          InventoryMaterialityThreshold = 0.05m
+          MaxPublicationIntervalSeconds = 86400
           MaxRetainedVersions = 50
-          DebounceWindowSeconds = 60
           AutoSupersedeOnPublish = true
           AllowEmptyComposition = false }

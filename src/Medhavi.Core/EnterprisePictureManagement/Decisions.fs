@@ -1,10 +1,10 @@
 /// CA-C-019 Decisions
-/// Evaluates rules and produces decision outcomes with full traceability.
 module Medhavi.Core.EnterprisePictureManagement.Decisions
 
 open Medhavi.Common
 open Medhavi.Foundation.Contracts
 open Medhavi.Foundation.Failure
+open Algorithms
 open Rules
 
 /// Outcome of a composition decision.
@@ -12,13 +12,11 @@ type CompositionOutcome =
     | ComposedSuccessfully
     | CompositionRejected of reasons: string list
 
-/// Outcome of a publication decision.
 type PublicationOutcome =
-    | PublishedSuccessfully
-    | PublicationRejected of reasons: string list
+    | PublishVersion
+    | RetainDraft of reason: string
 
-/// DE-C-019a: Composition Decision.
-/// Evaluates all composition rules against the input and produces an outcome.
+/// Composition Decision.
 let decideComposition
     (rules: Rule<ComposeInput> list)
     (input: ComposeInput)
@@ -39,24 +37,21 @@ let decideComposition
                   Evaluations = evaluations }
     }
 
-/// DE-C-019b: Publication Decision.
-/// Evaluates all publication rules against the input and produces an outcome.
-let decidePublication
+/// DE-C-001: Assess Picture Materiality. Consumes BA-C-001 output; determines publication.
+let assessMateriality
     (rules: Rule<PublishInput> list)
     (input: PublishInput)
+    (assessment: MaterialityAssessment)
     : Result<DecisionOutcome<PublicationOutcome>, DomainError> =
     result {
         let! evaluations = Rule.evaluateAll rules input
-        let failed = evaluations |> List.filter(fun e -> not e.Passed)
+        let failed = evaluations |> List.filter (fun e -> not e.Passed)
 
-        if failed.IsEmpty then
-            return
-                { Outcome = PublishedSuccessfully
-                  Evaluations = evaluations }
+        if not failed.IsEmpty then
+            let reasons = failed |> List.map (fun e -> sprintf "[%s] %s" e.RuleId (e.Evidence |> String.concat ", "))
+            return { Outcome = RetainDraft (String.concat "; " reasons); Evaluations = evaluations }
+        elif assessment.HasMaterialChange then
+            return { Outcome = PublishVersion; Evaluations = evaluations }
         else
-            let reasons = failed |> List.map(fun e -> sprintf "[%s] %s" e.RuleId (e.Evidence |> String.concat ", "))
-
-            return
-                { Outcome = PublicationRejected reasons
-                  Evaluations = evaluations }
+            return { Outcome = RetainDraft assessment.Reason; Evaluations = evaluations }
     }

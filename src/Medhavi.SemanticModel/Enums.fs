@@ -12,12 +12,25 @@ type LocationLifecycleState =
     | Inactive
     | Closed
 
-/// Lifecycle states for Planning Objects (Scenario, Plan)
-type PlanningLifecycleState =
+/// Lifecycle states for Scenario
+type ScenarioLifecycleState =
     | Draft
     | Active
     | Archived
+
+/// Lifecycle states for Plan
+type PlanLifecycleState =
+    | Draft
+    | Approved
     | Superseded
+    | Archived
+
+/// Lifecycle states for Bill of Materials
+type BomLifecycleState =
+    | Draft
+    | Active
+    | Superseded
+    | Archived
 
 /// Lifecycle states for Enterprise Facts (Demand, Supply, Commitment)
 type DemandLifecycleState =
@@ -72,45 +85,29 @@ type DemandOrigin =
     | Transfer
     | Other
 
-type SupplyProvenanceClassification =
-    | PurchaseOrder
-    | ProductionOrder
-    | TransferOrder
-    | InventoryAdjustment
-    | Other
-
 type ObligationDirection =
     | Inbound
     | Outbound
 
-/// Adoption states for Governed Vocabularies and Units of Measure
+/// Adoption states for Unit of Measure and Planning Period
 type AdoptionState =
     | Admitted
     | Deprecated
     | Retired
 
-/// Lifecycle states for Risk objects.
-type RiskLifecycleState =
-    | Identified
-    | Assessed
-    | Mitigating
-    | Closed
+/// Adoption states for Calendar
+type CalendarAdoptionState =
+    | Active
+    | Superseded
     | Retired
 
-/// Planning period granularity.
-type PeriodType =
-    | Day
-    | Week
-    | Month
-    | Quarter
-    | Year
-    | Custom
+/// Lifecycle states for Governed Catalogs (Vocabulary, PI Catalog)
+type GovernedCatalogState =
+    | Active
+    | Deprecated
+    | Retired
 
-/// Scenario adjustment operator.
-/// This is a coproduct, allowing what-if scenario adjustments to remain explicit
-/// and AI-interpretable without hidden mutation.
-type AdjustmentOperator =
-    | Increase
-    | Decrease
-    | Replace
-    | Constrain
+/// Lifecycle states for Risk objects.
+type RiskLifecycleState =
+    | Active
+    | Retired

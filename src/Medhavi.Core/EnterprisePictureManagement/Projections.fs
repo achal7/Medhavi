@@ -11,7 +11,6 @@ let mapVersion (v: PictureVersion) : Contracts.Core.PictureVersion =
       DemandReferences = v.DemandReferences |> List.map Identities.demandIdValue
       SupplyReferences = v.SupplyReferences |> List.map Identities.supplyIdValue
       InventoryReferences = v.InventoryReferences |> List.map Identities.InventoryIdentity.toString
-      CompositionTime = Timestamp.value v.CompositionTime
       PublicationTime = v.PublicationTime |> Option.map Timestamp.value
       LifecycleState = v.LifecycleState.ToString() }
 
@@ -36,7 +35,7 @@ let evolveProjection
     (evt: EnterprisePictureEvent)
     : Map<PlanningScopeId, Contracts.Core.EnterprisePicture> =
     match evt with
-    | PictureVersionComposed(scopeId, version) ->
+    | PictureVersionComposed(scopeId, version, _) ->
         let scopeKey = Identities.planningScopeIdValue scopeId
         let versionDto = mapVersion version
 
@@ -54,7 +53,6 @@ let evolveProjection
                       CurrentPublishedVersion = None })
 
     | PictureVersionPublished(scopeId, versionNumber, publicationTime) ->
-        let scopeKey = Identities.planningScopeIdValue scopeId
         let versionNum = Identities.pictureVersionIdValue versionNumber
 
         state
@@ -68,6 +66,8 @@ let evolveProjection
                             { v with
                                 LifecycleState = PictureVersionLifecycleState.Published.ToString()
                                 PublicationTime = Some(Timestamp.value publicationTime) }
+                        elif v.LifecycleState = PictureVersionLifecycleState.Published.ToString() then
+                            { v with LifecycleState = PictureVersionLifecycleState.Superseded.ToString() }
                         else
                             v)
 
@@ -77,32 +77,11 @@ let evolveProjection
                         CurrentPublishedVersion = Some versionNum }
             | None -> None)
 
-    | PictureVersionSuperseded(scopeId, versionNumber) ->
-        let scopeKey = Identities.planningScopeIdValue scopeId
-        let versionNum = Identities.pictureVersionIdValue versionNumber
-
-        state
-        |> Map.change scopeId (fun existing ->
-            match existing with
-            | Some dto ->
-                let updatedVersions =
-                    dto.Versions
-                    |> List.map(fun v ->
-                        if v.VersionNumber = versionNum then
-                            { v with
-                                LifecycleState = PictureVersionLifecycleState.Superseded.ToString() }
-                        else
-                            v)
-
-                Some { dto with Versions = updatedVersions }
-            | None -> None)
-
 /// Seed the projection from existing aggregates
 let seedFromAggregates (aggregates: EnterprisePicture list) : Map<PlanningScopeId, Contracts.Core.EnterprisePicture> =
     aggregates
     |> List.fold
         (fun state agg ->
             let dto = mapToDto agg
-            //let scopeKey = Identities.planningScopeIdValue agg.PlanningScopeIdentifier
             Map.add agg.PlanningScopeIdentifier dto state)
         initial

@@ -1,11 +1,14 @@
 namespace Medhavi.SemanticModel
 
 /// Performance Indicator entity.
-/// This exists inside the Performance Indicator Catalog aggregate.
 type PerformanceIndicator =
     { IndicatorIdentifier: string
-      IndicatorName: string
-      Description: string
+      Name: string
+      MeasureCategory: VocabularyEntryId
+      MeasureNature: VocabularyEntryId
+      EnterpriseQuestion: string
+      BusinessObjectivesServed: string list
+      EnterpriseMeaning: string
       FormulaReference: string
       SemanticDependencies: string list }
 
@@ -13,4 +16,5 @@ type PerformanceIndicator =
 type PerformanceIndicatorCatalog =
     { CatalogIdentifier: string
       VersionNumber: int
-      Indicators: PerformanceIndicator list }
+      Indicators: PerformanceIndicator list
+      LifecycleState: GovernedCatalogState }

@@ -8,43 +8,38 @@ open Medhavi.Core.ArsIdentifiers
 open Model
 open Policies
 
-type RegisterInput =
-    { Cmd: RegisterExceptionCmd
+type ProcessInput =
+    { Cmd: ProcessExceptionEvidenceCmd
       CurrentState: CoreException option
+      CurrentSeverity: VocabularyEntryId option
       Policy: ExceptionManagementPolicy }
 
 type ResolveInput =
     { Cmd: ResolveExceptionCmd
       CurrentState: CoreException option }
 
-let exceptionMustNotAlreadyExist: Rule<RegisterInput> =
-    Rule.create
-        Rules.exceptionMustNotAlreadyExist.Id
-        Rules.exceptionMustNotAlreadyExist.Explanation
-        (fun input -> input.Policy.AllowDuplicateRegistration || input.CurrentState.IsNone)
-        (fun input -> sprintf "Exists: %b" input.CurrentState.IsSome)
-
-let constraintReferenceRequired: Rule<RegisterInput> =
+let constraintReferenceRequired: Rule<ProcessInput> =
     Rule.create
         Rules.constraintReferenceRequired.Id
         Rules.constraintReferenceRequired.Explanation
         (fun input -> not(String.IsNullOrWhiteSpace input.Cmd.ConstraintReference))
         (fun input -> sprintf "ConstraintReference: '%s'" input.Cmd.ConstraintReference)
 
-let affectedScopeIdentifierRequired: Rule<RegisterInput> =
+let affectedScopeIdentifierRequired: Rule<ProcessInput> =
     Rule.create
         Rules.affectedScopeIdentifierRequired.Id
         Rules.affectedScopeIdentifierRequired.Explanation
         (fun input -> not(String.IsNullOrWhiteSpace input.Cmd.AffectedScopeIdentifier))
         (fun input -> sprintf "AffectedScope: '%s'" input.Cmd.AffectedScopeIdentifier)
 
-let evidenceReferenceRequired: Rule<RegisterInput> =
+let evidenceReferenceRequired: Rule<ProcessInput> =
     Rule.create
         Rules.evidenceReferenceRequired.Id
         Rules.evidenceReferenceRequired.Explanation
         (fun input ->
-            not input.Policy.RequireEvidenceReference || not(String.IsNullOrWhiteSpace input.Cmd.EvidenceReference))
-        (fun input -> sprintf "EvidenceReference: '%s'" input.Cmd.EvidenceReference)
+            not input.Policy.RequireEvidenceReference
+            || (input.Cmd.EvidenceReference |> Option.exists (not << String.IsNullOrWhiteSpace)))
+        (fun input -> sprintf "EvidenceReference: '%A'" input.Cmd.EvidenceReference)
 
 let exceptionMustExist: Rule<ResolveInput> =
     Rule.create
@@ -63,9 +58,8 @@ let exceptionMustBeActive: Rule<ResolveInput> =
             |> Option.defaultValue false)
         (fun input -> sprintf "ExceptionId: %A" input.Cmd.ExceptionId)
 
-let registrationRules: Rule<RegisterInput> list =
-    [ exceptionMustNotAlreadyExist
-      constraintReferenceRequired
+let registrationRules: Rule<ProcessInput> list =
+    [ constraintReferenceRequired
       affectedScopeIdentifierRequired
       evidenceReferenceRequired ]
 

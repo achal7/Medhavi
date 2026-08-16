@@ -144,60 +144,75 @@ let persist
             let decision = exec.Context.Decision.Value
             let id = getId exec.Context.Command
 
-            let enrichedEvents =
-                decision.Events
-                |> List.map(fun evt ->
-                    let json = deps.SerializeEvent evt |> Result.defaultValue "{}"
-                    let env = Envelope.CreateBasic(evt.GetType().Name, json)
-                    let env = Envelope.withExecutionContext exec.Context.ExecutionCtx env
-                    let env = Envelope.withAggregateContext (id.ToString()) typeof<'Agg>.Name env
-
-                    let env =
-                        match decision.Trace with
-                        | Some t -> Envelope.withDecisionTrace deps.TraceCodec t env
-                        | None -> Ok env
-
-                    evt, env)
-
-            let newState = decision.NewState
-
-            match! repo.Save(id, None, newState, decision.Events) with
-            | Error e ->
-                let knowledge =
-                    makeKnowledge(
-                        ArchitecturalKnowledge.ofError "PersistFailed" [ "AggregateId", box id; "Error", box e ]
-                    )
-
-                let appErr = Infrastructure(Database $"SAVE_FAILED - %A{e}")
-
-                return Complete(ExecutionOutcome.Failed appErr, [ knowledge ])
-
-            | Ok _ ->
-                enrichedEvents
-                |> List.iter(fun (evt, envResult) ->
-                    //DomainEventBus.Publish evt
-
-                    match envResult with
-                    | Ok envelope -> deps.DispatchEnvelope envelope |> ignore
-                    | Error serErr ->
-                        // let errorKnowledge =
-                        //     makeKnowledge(
-                        //         ArchitecturalKnowledge.ofError
-                        //             "EnvelopeSerializationFailed"
-                        //             [ "AggregateId", box id; "Error", box serErr ]
-                        //     )
-
-                        //DomainEventBus.Publish errorKnowledge
-                        ())
-
+            // GUARD: no events => no state change => skip persistence entirely.
+            if List.isEmpty decision.Events then
                 let knowledge =
                     makeKnowledge(
                         ArchitecturalKnowledge.ofBusinessEvent
-                            "EventsPersisted"
-                            [ "AggregateId", box id; "EventCount", box enrichedEvents.Length ]
+                            "BehaviorNoOp"
+                            [ "AggregateId", box id
+                              "Reason", box "No events produced (e.g., materiality gate retained draft)" ]
                     )
 
-                return Continue({ exec with State = Some newState }, [ knowledge ])
+                return
+                    Continue(
+                        { exec with
+                            State = Some decision.NewState },
+                        [ knowledge ]
+                    )
+            else
+                let enrichedEvents =
+                    decision.Events
+                    |> List.map(fun evt ->
+                        let json = deps.SerializeEvent evt |> Result.defaultValue "{}"
+                        let env = Envelope.CreateBasic(evt.GetType().Name, json)
+                        let env = Envelope.withExecutionContext exec.Context.ExecutionCtx env
+                        let env = Envelope.withAggregateContext (id.ToString()) typeof<'Agg>.Name env
+
+                        let env =
+                            match decision.Trace with
+                            | Some t -> Envelope.withDecisionTrace deps.TraceCodec t env
+                            | None -> Ok env
+
+                        evt, env)
+
+                let newState = decision.NewState
+
+                match! repo.Save(id, None, newState, decision.Events) with
+                | Error e ->
+                    let knowledge =
+                        makeKnowledge(
+                            ArchitecturalKnowledge.ofError "PersistFailed" [ "AggregateId", box id; "Error", box e ]
+                        )
+
+                    let appErr = Infrastructure(Database $"SAVE_FAILED - %A{e}")
+
+                    return Complete(ExecutionOutcome.Failed appErr, [ knowledge ])
+
+                | Ok _ ->
+                    enrichedEvents
+                    |> List.iter(fun (evt, envResult) ->
+                        //DomainEventBus.Publish evt
+
+                        match envResult with
+                        | Ok envelope -> deps.DispatchEnvelope envelope |> ignore
+                        | Error serErr ->
+                            // let errorKnowledge =
+                            //     makeKnowledge(
+                            //         ArchitecturalKnowledge.ofError
+                            //             "EnvelopeSerializationFailed"
+                            //             [ "AggregateId", box id; "Error", box serErr ]
+                            //     )
+                            ())
+
+                    let knowledge =
+                        makeKnowledge(
+                            ArchitecturalKnowledge.ofBusinessEvent
+                                "EventsPersisted"
+                                [ "AggregateId", box id; "EventCount", box enrichedEvents.Length ]
+                        )
+
+                    return Continue({ exec with State = Some newState }, [ knowledge ])
         }
 
 let publishKnowledge

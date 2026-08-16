@@ -42,6 +42,8 @@ module ApiError =
 
     let businessLogic message = create "BUSINESS_LOGIC_ERROR" message Map.empty
 
+    let businessRule message = create "BUSINESS_RULE_VIOLATION" message Map.empty
+
     let infrastructureError message = create "INFRASTRUCTURE_ERROR" message Map.empty
 
     let timeout message = create "TIMEOUT" message Map.empty
@@ -56,7 +58,7 @@ type QueryService<'Entity, 'Id> =
       SubscribeApiEvents: (obj -> unit) -> IDisposable }
 
 // =============================================================================
-// Planning Period — the fundamental time bucketing type for all projections
+// Planning Time Bucket — the fundamental time bucketing type for all projections
 // =============================================================================
 
 /// Granularity of time-axis slicing for the planning board
@@ -66,9 +68,9 @@ type PlanningGranularity =
     | Month
     | Quarter
 
-/// A typed planning period — the bucket key for all five projection planes.
+/// A typed planning time bucket — the bucket key for all projection planes.
 /// Day is the finest grain; Week/Month/Quarter roll up from Day aggregations.
-type PlanningPeriod =
+type PlanningTimeBucket =
     | PlanningDay of DateOnly
     | PlanningWeek of year: int * isoWeek: int
     | PlanningMonth of year: int * month: int

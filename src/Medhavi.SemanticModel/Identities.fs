@@ -18,11 +18,13 @@ type DemandId = private DemandId of string
 type SupplyId = private SupplyId of string
 type CommitmentId = private CommitmentId of string
 type BomVersionId = private BomVersionId of string
+type LineIdentifier = private LineIdentifier of string
 type ExceptionId = private ExceptionId of string
 type RiskId = private RiskId of string
 type PictureVersionId = private PictureVersionId of int
 type VocabularyEntryId = private VocabularyEntryId of string
 type CalendarId = private CalendarId of string
+type CalendarDefinitionId = private CalendarDefinitionId of string
 type PlanningPeriodId = private PlanningPeriodId of string
 type UnitOfMeasureId = private UnitOfMeasureId of string
 type TimeZoneId = private TimeZoneId of string
@@ -127,11 +129,11 @@ module Identities =
     let networkIdCreate = createStringId NetworkId "NetworkId"
     let networkIdValue (NetworkId id) = id
 
-    //Scenario
+    // Scenario
     let scenarioIdCreate = createStringId ScenarioId "ScenarioId"
     let scenarioIdValue (ScenarioId id) = id
 
-    // plant
+    // Plan
     let planIdCreate = createStringId PlanId "PlanId"
     let planIdValue (PlanId id) = id
 
@@ -139,13 +141,21 @@ module Identities =
     let calendarIdCreate = createStringId CalendarId "CalendarId"
     let calendarIdValue (CalendarId id) = id
 
+    // Calendar Definition
+    let calendarDefinitionIdCreate = createStringId CalendarDefinitionId "CalendarDefinitionId"
+    let calendarDefinitionIdValue (CalendarDefinitionId id) = id
+
     // Planning Period
     let planningPeriodIdCreate = createStringId PlanningPeriodId "PlanningPeriodId"
     let planningPeriodIdValue (PlanningPeriodId id) = id
 
-    //Bom Version
+    // BOM Version
     let bomVersionIdCreate = createStringId BomVersionId "BomVersionId"
     let bomVersionIdValue (BomVersionId id) = id
+
+    // Line Identifier
+    let lineIdentifierCreate = createStringId LineIdentifier "LineIdentifier"
+    let lineIdentifierValue (LineIdentifier id) = id
 
     // Risk
     let riskIdCreate = createStringId RiskId "RiskId"

@@ -1,71 +1,79 @@
-/// CA-C-020 Exception Management Anti-Corruption Layer
+/// CA-C-020 Anti-Corruption Layer
 module Medhavi.Core.ExceptionManagement.ACL
 
 open Medhavi.SemanticModel
+open Medhavi.SemanticModel.Identities
 open Medhavi.Common.Validation
 open Medhavi.Foundation.Failure
+open Medhavi.Foundation.IdsFactory
 open Medhavi.Contracts.Core.Exception
 open Model
 
-let private invalidMessage (message: string) : Validation<'T, DomainError> = Invalid [ DomainError.validation message ]
+/// BR-C-007: ExceptionId is deterministically derived from business identity.
+/// Same violation always routes to the same aggregate stream -> natural deduplication.
+let deriveExceptionId (constraintRef: string) (scopeType: string) (scopeId: string) : string =
+    generalDeterministicId "exception" [ constraintRef; scopeType; scopeId ]
 
-/// Translates external registration request to domain command
-let toRegisterCmd (req: RegisterExceptionReq) : Validation<RegisterExceptionCmd, DomainError> =
+let private invalid (message: string) : Validation<'T, DomainError> = Invalid [ DomainError.validation message ]
+
+/// Translates detection evidence into a domain command. No external ExceptionId accepted.
+let toProcessEvidenceCmd (req: ExceptionEvidenceReq) : Validation<ProcessExceptionEvidenceCmd, DomainError> =
     let validateExceptionId =
-        match Identities.exceptionIdCreate req.ExceptionId with
+        let derived = deriveExceptionId req.ConstraintReference req.AffectedScopeType req.AffectedScopeIdentifier
+        match exceptionIdCreate derived with
         | Ok id -> Valid id
-        | Error err -> invalidMessage(sprintf "ExceptionId: %A" err)
+        | Error err -> invalid (sprintf "ExceptionId: %A" err)
 
     let validateClassification =
-        match Identities.vocabularyEntryIdCreate req.Classification with
+        match vocabularyEntryIdCreate req.Classification with
         | Ok id -> Valid id
-        | Error err -> invalidMessage(sprintf "Classification: %A" err)
+        | Error err -> invalid (sprintf "Classification: %A" err)
 
-    let validateAffectedScopeType =
-        match Identities.vocabularyEntryIdCreate req.AffectedScopeType with
+    let validateScopeType =
+        match vocabularyEntryIdCreate req.AffectedScopeType with
         | Ok id -> Valid id
-        | Error err -> invalidMessage(sprintf "AffectedScopeType: %A" err)
+        | Error err -> invalid (sprintf "AffectedScopeType: %A" err)
 
     let validateSeverity =
         match req.Severity with
         | None -> Valid None
         | Some s ->
-            match Identities.vocabularyEntryIdCreate s with
-            | Ok id -> Valid(Some id)
-            | Error err -> invalidMessage(sprintf "Severity: %A" err)
+            match vocabularyEntryIdCreate s with
+            | Ok id -> Valid (Some id)
+            | Error err -> invalid (sprintf "Severity: %A" err)
 
-    let validateRegistrationTime =
-        match Timestamp.create req.RegistrationTime with
+    let validateEvidenceTime =
+        match Timestamp.create req.EvidenceTime with
         | Ok ts -> Valid ts
-        | Error err -> invalidMessage(sprintf "RegistrationTime: %s" err)
+        | Error err -> invalid (sprintf "EvidenceTime: %s" err)
 
-    let create id classif scopeType sev time =
+    let create id classification scopeType severity evidenceTime =
         { ExceptionId = id
           ConstraintReference = req.ConstraintReference
-          Classification = classif
+          Classification = classification
           AffectedScopeType = scopeType
           AffectedScopeIdentifier = req.AffectedScopeIdentifier
           EvidenceReference = req.EvidenceReference
-          Severity = sev
-          RegistrationTime = time }
+          Severity = severity
+          EvidenceTime = evidenceTime }
 
     create <!> validateExceptionId
-    <*> validateClassification
-    <*> validateAffectedScopeType
-    <*> validateSeverity
-    <*> validateRegistrationTime
+           <*> validateClassification
+           <*> validateScopeType
+           <*> validateSeverity
+           <*> validateEvidenceTime
 
-/// Translates external resolution request to domain command
 let toResolveCmd (req: ResolveExceptionReq) : Validation<ResolveExceptionCmd, DomainError> =
     let validateExceptionId =
-        match Identities.exceptionIdCreate req.ExceptionId with
+        let derived = deriveExceptionId req.ConstraintReference req.AffectedScopeType req.AffectedScopeIdentifier
+        match exceptionIdCreate derived with
         | Ok id -> Valid id
-        | Error err -> invalidMessage(sprintf "ExceptionId: %A" err)
+        | Error err -> invalid (sprintf "ExceptionId: %A" err)
 
     let validateResolutionTime =
         match Timestamp.create req.ResolutionTime with
         | Ok ts -> Valid ts
-        | Error err -> invalidMessage(sprintf "ResolutionTime: %s" err)
+        | Error err -> invalid (sprintf "ResolutionTime: %s" err)
 
     let create id time =
         { ExceptionId = id
