@@ -1049,13 +1049,11 @@ Every artifact must trace back to the Constitution (CN). Allowed downward depend
 | EV | AB |
 | BN | EV + CA |
 | KA | CA |
-| TE | BP | FS / AB / CODE |
+| TE | FS / AB / CODE |
 | VI | FS + BR |
 | AI | DE + BR + FS |
 
 **Forbidden:** Upward references, layer skipping (e.g., a Decision may not reference a Policy directly; it references Rules that are governed by Policies).
-
->BP is a retired architectural concept and shall not appear in any artifact identifier, traceability chain, runtime provenance, or implementation reference.
 
 > Telemetry shall trace to governed execution artifacts, Functional Specifications, Aggregate Behaviors, and implementation artifacts.
 

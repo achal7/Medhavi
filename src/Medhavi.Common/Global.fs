@@ -6,3 +6,4 @@ module ComputationExpression =
     let result = Result.ResultBuilder()
     let asyncResult = AsyncResultBuilder()
     let taskResult = TaskResultBuilder()
+    let validation = Validation.ValidationBuilder()

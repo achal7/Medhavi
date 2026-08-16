@@ -1,4 +1,4 @@
-# APS Constitution
+# Medehavi Constitution
 
 **Status:** Ratified 
 **Version:** 1.0  

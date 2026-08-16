@@ -90,3 +90,57 @@ let bindResult f validation =
 
 // /// Composes a non-choice type with a choice type.
 // let inline (|?>) a b = lift2 (fun z _ -> z) (Valid a) b
+
+// ============================================================================
+// COMPUTATION EXPRESSION BUILDER FOR VALIDATION (Monadic / Short-Circuiting)
+// ============================================================================
+/// Use this builder when you want to short-circuit on the FIRST error.
+/// For accumulating (applicative) semantics, continue using `Validation.apply` and `Validation.map`.
+type ValidationBuilder() =
+    member _.Return(x) = Valid x
+    member _.ReturnFrom(x: Validation<'a, 'e>) = x
+    member _.Zero() = Valid()
+
+    member _.Bind(m: Validation<'a, 'e>, f: 'a -> Validation<'b, 'e>) =
+        match m with
+        | Valid x -> f x
+        | Invalid errs -> Invalid errs
+
+    member _.Delay(f: unit -> Validation<'a, 'e>) = f
+    member _.Run(f: unit -> Validation<'a, 'e>) = f()
+
+    member _.Combine(a: Validation<unit, 'e>, b: unit -> Validation<'b, 'e>) =
+        match a with
+        | Valid _ -> b()
+        | Invalid errs -> Invalid errs
+
+    member _.For(xs: seq<'a>, body: 'a -> Validation<unit, 'e>) =
+        let rec loop (enumerator: System.Collections.Generic.IEnumerator<'a>) =
+            if enumerator.MoveNext() then
+                match body enumerator.Current with
+                | Valid _ -> loop enumerator
+                | Invalid errs -> Invalid errs
+            else
+                Valid()
+
+        use e = xs.GetEnumerator()
+        loop e
+
+    member _.TryWith(body: unit -> Validation<'a, 'e>, handler: exn -> Validation<'a, 'e>) =
+        try
+            body()
+        with ex ->
+            handler ex
+
+    member _.TryFinally(body: unit -> Validation<'a, 'e>, compensation: unit -> unit) =
+        try
+            body()
+        finally
+            compensation()
+
+    member _.Using(resource: #System.IDisposable, body: #System.IDisposable -> Validation<'a, 'e>) =
+        try
+            body resource
+        finally
+            if not(isNull(box resource)) then
+                resource.Dispose()
