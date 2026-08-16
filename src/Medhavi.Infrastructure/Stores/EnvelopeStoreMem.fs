@@ -4,8 +4,8 @@ open System
 open System.Collections.Immutable
 open System.Threading
 open System.Threading.Tasks
-open Medhavi.Common.Patterns
-open Medhavi.SharedKernel.Contracts
+open Medhavi.Common
+open Medhavi.Foundation.Contracts
 open Medhavi.Infrastructure.Stores.EnvelopeStore
 
 [<CLIMutable>]
@@ -79,11 +79,7 @@ let createEnvelopeStoreMem () : EnvelopeStoreOps =
 
     // Convert ExpectedRevision check into function
     let checkExpected (bucket: ImmutableArray<StoredEvent>) (expected: ExpectedRevision) : bool =
-        let lastRevOpt =
-            if bucket.IsEmpty then
-                None
-            else
-                Some(bucket[bucket.Length - 1].StreamRevision)
+        let lastRevOpt = if bucket.IsEmpty then None else Some(bucket[bucket.Length - 1].StreamRevision)
 
         match expected with
         | ExpectedRevision.Any -> true
@@ -105,16 +101,12 @@ let createEnvelopeStoreMem () : EnvelopeStoreOps =
                 | true, arr -> arr
                 | _ -> ImmutableArray<StoredEvent>.Empty
 
-        let lastRev =
-            if bucket.IsEmpty then
-                -1L
-            else
-                bucket[bucket.Length - 1].StreamRevision
+        let lastRev = if bucket.IsEmpty then -1L else bucket[bucket.Length - 1].StreamRevision
 
         // produce StoredEvent list immutably
         let items, lastPos, nextRev =
             envelopes
-            |> List.mapi (fun i env ->
+            |> List.mapi(fun i env ->
                 let rev = lastRev + int64 i + 1L
                 let gp = Interlocked.Increment(globalCounter)
 
@@ -166,7 +158,7 @@ let createEnvelopeStoreMem () : EnvelopeStoreOps =
                                     | true, arr -> arr
                                     | _ -> ImmutableArray<StoredEvent>.Empty
 
-                            if not (checkExpected bucket expected) then
+                            if not(checkExpected bucket expected) then
                                 reply.SetResult(
                                     Error(
                                         EnvelopeStoreError.ConcurrencyError(
@@ -218,7 +210,7 @@ let createEnvelopeStoreMem () : EnvelopeStoreOps =
                                     | true, arr -> arr
                                     | _ -> ImmutableArray<StoredEvent>.Empty
 
-                            if not (checkExpected bucket expected) then
+                            if not(checkExpected bucket expected) then
                                 reply.SetResult(
                                     Error(
                                         EnvelopeStoreError.ConcurrencyError(
@@ -232,14 +224,13 @@ let createEnvelopeStoreMem () : EnvelopeStoreOps =
                             // append primary
                             let streams', appendRes, addedPrimary = appendToStream streams streamName envelopes
                             // append outbox to outbox stream (always append)
-                            let streams'', _, addedOutbox =
-                                appendToStream streams' outboxStream [ outboxEnvelope ]
+                            let streams'', _, addedOutbox = appendToStream streams' outboxStream [ outboxEnvelope ]
 
                             // notify subscribers for both
                             for se in addedPrimary @ addedOutbox do
                                 let ev =
                                     envelopedOf
-                                        (if addedPrimary |> List.exists (fun s -> s = se) then
+                                        (if addedPrimary |> List.exists(fun s -> s = se) then
                                              streamName
                                          else
                                              outboxStream)
@@ -281,12 +272,10 @@ let createEnvelopeStoreMem () : EnvelopeStoreOps =
 
                             let startIndex =
                                 position
-                                |> Option.map (fun pos ->
+                                |> Option.map(fun pos ->
                                     match pos.StreamPosition with
                                     | Some rev ->
-                                        let idx =
-                                            bucket
-                                            |> Seq.tryFindIndex (fun e -> e.StreamRevision >= rev)
+                                        let idx = bucket |> Seq.tryFindIndex(fun e -> e.StreamRevision >= rev)
 
                                         defaultArg idx 0
                                     | _ -> 0)
@@ -302,9 +291,7 @@ let createEnvelopeStoreMem () : EnvelopeStoreOps =
                                 else
                                     [ for i in startIndex..lastIndex -> bucket[i] ]
 
-                            let items =
-                                take
-                                |> List.map (fun se -> envelopedOf streamName se)
+                            let items = take |> List.map(fun se -> envelopedOf streamName se)
 
                             reply.SetResult(Ok items)
                             return! loop streams subs
@@ -317,8 +304,8 @@ let createEnvelopeStoreMem () : EnvelopeStoreOps =
                             // flatten and sort by GlobalPosition
                             let all =
                                 streams
-                                |> Seq.collect (fun kv -> kv.Value |> Seq.map (fun se -> (kv.Key, se)))
-                                |> Seq.sortBy (fun (_, se) -> se.GlobalPosition)
+                                |> Seq.collect(fun kv -> kv.Value |> Seq.map(fun se -> (kv.Key, se)))
+                                |> Seq.sortBy(fun (_, se) -> se.GlobalPosition)
                                 |> Seq.toArray
 
                             let startIdx =
@@ -339,10 +326,7 @@ let createEnvelopeStoreMem () : EnvelopeStoreOps =
                                 else
                                     all[startIdx .. min (all.Length - 1) (startIdx + maxCount - 1)]
 
-                            let items =
-                                takeArr
-                                |> Array.map (fun (s, se) -> envelopedOf s se)
-                                |> Array.toList
+                            let items = takeArr |> Array.map(fun (s, se) -> envelopedOf s se) |> Array.toList
 
                             reply.SetResult(Ok items)
                             return! loop streams subs
@@ -361,8 +345,7 @@ let createEnvelopeStoreMem () : EnvelopeStoreOps =
                             let take = defaultArg (Option.map int countOpt) (min 50 bucket.Length)
                             let start = max 0 (bucket.Length - take)
 
-                            let items =
-                                [ for i in start .. bucket.Length - 1 -> envelopedOf streamName bucket[i] ]
+                            let items = [ for i in start .. bucket.Length - 1 -> envelopedOf streamName bucket[i] ]
 
                             reply.SetResult(Ok items)
                             return! loop streams subs
@@ -464,10 +447,7 @@ let createEnvelopeStoreMem () : EnvelopeStoreOps =
                     | ClearStream(streamName, reply) ->
                         try
                             let newStreams =
-                                if streams.ContainsKey(streamName) then
-                                    streams.Remove(streamName)
-                                else
-                                    streams
+                                if streams.ContainsKey(streamName) then streams.Remove(streamName) else streams
 
                             reply.SetResult(Ok())
                             return! loop newStreams subs
@@ -480,8 +460,7 @@ let createEnvelopeStoreMem () : EnvelopeStoreOps =
 
     // Adapter functions that post messages to the agent and return Task<Result<...>>
     let postAsync f =
-        let tcs =
-            TaskCompletionSource<_>(TaskCreationOptions.RunContinuationsAsynchronously)
+        let tcs = TaskCompletionSource<_>(TaskCreationOptions.RunContinuationsAsynchronously)
 
         f tcs
 

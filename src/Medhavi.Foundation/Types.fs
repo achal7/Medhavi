@@ -1,0 +1,308 @@
+namespace Medhavi.Foundation
+
+open System
+open System.Text.Json.Serialization
+
+type RuleError = { RuleId: string; Message: string }
+
+[<JsonFSharpConverter>]
+type SystemTimestamp =
+    | Timestamp of DateTimeOffset
+
+    static member (+)(Timestamp a, b: TimeSpan) = Timestamp((a + b).ToUniversalTime())
+    static member (-)(Timestamp t1, Timestamp t2) = t1 - t2
+    static member (-)(Timestamp a, b: TimeSpan) = Timestamp((a - b).ToUniversalTime())
+    static member now = Timestamp(DateTimeOffset.UtcNow)
+
+module SystemTimestamp =
+    /// Create a Timestamp, enforcing UTC normalization
+    let create (dto: DateTimeOffset) = Timestamp(dto.ToUniversalTime())
+    let minValue = Timestamp(DateTimeOffset.MinValue.ToUniversalTime())
+    let maxValue = Timestamp(DateTimeOffset.MaxValue.ToUniversalTime())
+    let value (Timestamp v) = v
+
+    let minOf (Timestamp a) (Timestamp b) = Timestamp((min a b).ToUniversalTime())
+    let maxOf (Timestamp a) (Timestamp b) = Timestamp((max a b).ToUniversalTime())
+
+    let add (Timestamp a) (span: TimeSpan) = Timestamp((a + span).ToUniversalTime())
+    let subtract (Timestamp a) (span: TimeSpan) = Timestamp((a - span).ToUniversalTime())
+
+    let isAfter (Timestamp a) (Timestamp b) = a > b
+    let isBefore (Timestamp a) (Timestamp b) = a < b
+
+[<Struct>]
+[<JsonFSharpConverter>]
+type DurationMinutes = private DurationMinutes of decimal
+
+module DurationMinutes =
+    let create value =
+        if value < 0m then
+            Error "Duration cannot be negative."
+        else
+            Ok(DurationMinutes value)
+
+    let value (DurationMinutes value) = value
+    let zero = DurationMinutes 0m
+
+(*
+[<JsonFSharpConverter>]
+type Money = { Amount: decimal; Currency: string }
+
+[<JsonFSharpConverter>]
+type Version = private Version of int
+
+module Version =
+    let initial = Version 1
+    let increment (Version v) = Version(v + 1)
+    let value (Version v) = v
+    let equals (Version v1) (Version v2) = v1 = v2
+
+    let create value = if value < 0 then Error "Version must be non-negative" else Ok(Version value)
+
+[<Struct>]
+[<JsonFSharpConverter>]
+type Quantity =
+    private
+    | Quantity of decimal
+
+    member this.IsZero = this = Quantity.Zero
+
+    static member Zero = Quantity 0m
+
+    static member (+)(Quantity a, Quantity b) = Quantity(a + b)
+
+    static member (-)(Quantity a, Quantity b) = Quantity(max 0m (a - b)) // saturating subtraction
+
+    static member (*)(Quantity a, scalar: decimal) = Quantity(max 0m (a * scalar))
+
+    static member (/)(Quantity a, scalar: decimal) = Quantity(max 0m (a / scalar))
+
+    static member op_Explicit(Quantity a) : decimal = a
+
+module Quantity =
+
+    let create (value: decimal) : Result<Quantity, DomainError> =
+        if value < 0m then
+            Error(DomainError.validation "Quantity must be non-negative")
+        else
+            Ok(Quantity value)
+
+    let value (Quantity v) = v
+
+    let abs (Quantity v) = Quantity(abs v)
+
+    let sum (items: Quantity seq) = Seq.fold (+) Quantity.Zero items
+
+    let clampToZero (value: decimal) : Quantity = Quantity(max 0m value)
+
+    // Utility functions
+    let isZero (Quantity v) = v = 0m
+    let isPositive (Quantity v) = v > 0m
+
+    let minOf (Quantity a) (Quantity b) = Quantity(min a b)
+    let maxOf (Quantity a) (Quantity b) = Quantity(max a b)
+
+    /// Safe subtraction - clamps to zero if result would be negative
+    let subtract (Quantity a) (Quantity b) = Quantity(max 0m (a - b))
+
+    /// Try subtract - returns Error if result would be negative
+    let trySubtract (Quantity a) (Quantity b) : Result<Quantity, DomainError> =
+        if a >= b then
+            Ok(Quantity(a - b))
+        else
+            Error(DomainError.validation "Subtraction would result in negative quantity")
+
+    /// Ratio between two quantities (a / b)
+    let ratio (Quantity a) (Quantity b) : Result<decimal, DomainError> =
+        if b = 0m then
+            Error(DomainError.validation "Division by zero quantity is not allowed")
+        else
+            Ok(a / b)
+
+    /// Scale by a factor
+    let scale (factor: decimal) (Quantity v) = Quantity(max 0m (v * factor))
+
+    let fromOption (opt: Option<decimal>) =
+        match opt with
+        | None -> Quantity.Zero
+        | Some v -> clampToZero v
+
+    let tryFromOption (opt: Option<decimal>) = opt |> Option.map clampToZero
+
+/// Positive decimal (>= 0m)
+[<Struct>]
+[<JsonFSharpConverter>]
+type PositiveDecimal =
+    private
+    | PositiveDecimal of decimal
+
+    member this.IsZero = this = PositiveDecimal.Zero
+
+    static member create(value: decimal) =
+        if value < 0m then
+            Error(DomainError.validation "Value must be non-negative")
+        else
+            Ok(PositiveDecimal value)
+
+    static member createSafe(value: decimal) = if value < 0m then PositiveDecimal.Zero else PositiveDecimal(value)
+
+    static member value(PositiveDecimal v) = v
+
+    /// Required by SRTP (List.sum / sumBy)
+    static member Zero = PositiveDecimal 0m
+
+    /// Arithmetic
+    static member (+)(PositiveDecimal a, PositiveDecimal b) = PositiveDecimal(a + b)
+
+    static member (-)(PositiveDecimal a, PositiveDecimal b) =
+        if a - b < 0m then
+            failwith "PositiveDecimal subtraction underflow"
+        else
+            PositiveDecimal(a - b)
+
+    static member (*)(PositiveDecimal v, scalar: decimal) = PositiveDecimal(v * scalar)
+
+    static member (*)(scalar: decimal, PositiveDecimal v) = PositiveDecimal(scalar * v)
+
+    static member (/)(PositiveDecimal v, scalar: decimal) = PositiveDecimal(v / scalar)
+
+    static member op_Multiply(PositiveDecimal a, PositiveDecimal b) = PositiveDecimal(a * b)
+
+    static member MaxValue = PositiveDecimal(Decimal.MaxValue)
+
+/// Percent in the range [0.0, 1.0]
+[<JsonFSharpConverter>]
+type Percent =
+    | Percent of decimal
+
+    static member Zero = Percent 0m
+    static member Hundred = Percent 1m
+
+module Percent =
+    let create (value: decimal) =
+        if value < 0m || value > 1m then
+            Error(DomainError.validation "Percent must be between 0.0 and 1.0")
+        else
+            Ok(Percent value)
+
+    let value (Percent v) = v
+
+module DateTimeOffset =
+    /// Normalizes a DateTimeOffset to UTC
+    let toUtc (dto: DateTimeOffset) = dto.ToUniversalTime()
+
+[<JsonFSharpConverter>]
+type TimeWindow = { Start: Timestamp; End: Timestamp }
+
+module TimeWindow =
+
+    let isOpenEnded range = Timestamp.maxValue = range.End
+
+    let overlaps (a: TimeWindow) (b: TimeWindow) = a.Start < b.End && b.Start < a.End
+
+    let contains (outer: TimeWindow) (inner: TimeWindow) = outer.Start <= inner.Start && outer.End >= inner.End
+
+    let containsTime timestamp range =
+        let afterStart = timestamp >= range.Start
+        let beforeEnd = timestamp <= range.End
+        afterStart && beforeEnd
+
+    let intersection (a: TimeWindow) (b: TimeWindow) : option<TimeWindow> =
+        if overlaps a b then
+            Some
+                { Start = max a.Start b.Start
+                  End = min a.End b.End }
+        else
+            None
+
+    let expand (window: TimeWindow) (duration: TimeSpan) =
+        { Start = window.Start - duration
+          End = window.End + duration }
+
+    let shift (window: TimeWindow) (offset: TimeSpan) =
+        { Start = window.Start + offset
+          End = window.End + offset }
+
+    let slack (a: TimeWindow) (b: TimeWindow) =
+        if a.End < b.Start then b.Start - a.End
+        elif b.End < a.Start then a.Start - b.End
+        else TimeSpan.Zero
+
+    let bucketAlign (timestamp: DateTimeOffset) (bucketSize: TimeSpan) =
+        let ticks = timestamp.Ticks
+        let bucketTicks = bucketSize.Ticks
+        let alignedTicks = (ticks / bucketTicks) * bucketTicks
+        DateTimeOffset(alignedTicks, timestamp.Offset)
+
+    let leadTimeOffset (window: TimeWindow) (leadTime: TimeSpan) =
+        { window with
+            Start = window.Start - leadTime }
+
+    let applySlack (slack: TimeSpan) (w: TimeWindow) =
+        { Start = w.Start
+          End = Timestamp.add w.End slack }
+
+    let isBefore (t: Timestamp) (w: TimeWindow) = t < w.Start
+
+    /// Validate cutoff: departure must be >= earliest and before cutoff end.
+    let meetsCutoff (earliest: DateTimeOffset) (cutoffEnd: DateTimeOffset) (departure: DateTimeOffset) =
+        let utcEarliest = earliest.ToUniversalTime()
+        let utcCutoff = cutoffEnd.ToUniversalTime()
+        let utcDeparture = departure.ToUniversalTime()
+
+        utcDeparture >= utcEarliest && utcDeparture <= utcCutoff
+
+    let startTime (window: TimeWindow) = Timestamp.value window.Start
+    let endTime (window: TimeWindow) = Timestamp.value window.End
+    let duration (window: TimeWindow) = window.End - window.Start
+
+    let createFromTime (startTime: DateTimeOffset) (endTime: DateTimeOffset) =
+        let utcStart = startTime.ToUniversalTime()
+        let utcEnd = endTime.ToUniversalTime()
+
+        match utcStart < utcEnd with
+        | true ->
+            Ok
+                { Start = Timestamp utcStart
+                  End = Timestamp utcEnd }
+        | false -> Error(DomainError.validation $"Start {utcStart} is after end time {utcEnd} ")
+
+    let create (startTime: Timestamp) (endTime: Timestamp) =
+        createFromTime (Timestamp.value startTime) (Timestamp.value endTime)
+
+type Status =
+    | Active
+    | Inactive
+
+    member this.ToBool() =
+        match this with
+        | Active -> true
+        | Inactive -> false
+
+    member this.Toogle() = if this = Active then Inactive else Active
+
+module Status =
+    let fromBool status =
+        match status with
+        | true -> Active
+        | false -> Inactive
+
+[<JsonFSharpConverter>]
+type Revision = Revision of int
+
+module Revision =
+    let initial = Revision 1
+    let increment (Revision r) = Revision(r + 1)
+    let next (Revision r) = Revision(r + 1)
+    let value (Revision r) = r
+
+    let create value =
+        if value < 0 then
+            Error(DomainError.validation "Revision must be non-negative")
+        else
+            Ok(Revision value)
+
+    let createClamp value = Revision <| Int32.Clamp(value, 0, Int32.MaxValue)
+
+type RuleError = { RuleId: string; Message: string }
+*)

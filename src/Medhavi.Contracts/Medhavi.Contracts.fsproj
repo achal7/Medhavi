@@ -7,36 +7,20 @@
 
   <ItemGroup>
     <Compile Include="Types.fs" />
-    <Compile Include="MasterData\Uom.fs" />
-    <Compile Include="MasterData\Network.fs" />
-    <Compile Include="MasterData\Sku.fs" />
-    <Compile Include="MasterData\Bom.fs" />
-    <Compile Include="MasterData\Resource.fs" />
-    <Compile Include="MasterData\Routing.fs" />
-    <Compile Include="MasterData\Config.fs" />
-    <Compile Include="MasterData\Transport.fs" />
-    <Compile Include="Scenario.fs" />
-    <Compile Include="Integration.fs" />
-    <Compile Include="IntegrationPayloads.fs" />
-    <Compile Include="Analytics.fs" />
-    <Compile Include="Capacity.fs" />
-    <Compile Include="Supply.fs" />
-    <Compile Include="Promise.fs" />
+    <Compile Include="CrossDomainEvents.fs" />
     
-    <Compile Include="Demand\Demand.fs" />
-    <Compile Include="Demand\ForecastDemand.fs" />
-    <Compile Include="Demand\DemandObservation.fs" />
-    <Compile Include="Demand\PlanningScope.fs" />
-    <Compile Include="Demand\EnterpriseDemandPicture.fs" />
-    <Compile Include="Demand\ForecastPublication.fs" />
-    <Compile Include="Demand\SenseDemand.fs" />
-    <Compile Include="Demand\PlanningClassificationAssignment.fs" />
-    <Compile Include="Demand\DemandBehaviourAssignment.fs" />
-    <Compile Include="Demand\PlanningPriorityAssignment.fs" />
-    <Compile Include="Demand\UnifiedMetadata.fs" />
-    <Compile Include="Demand\ForecastQualityAssessment.fs" />
-    <Compile Include="Demand\DemandLearning.fs" />
-    
+    <Compile Include="Core\UnitOfMeasure.fs" />
+    <Compile Include="Core\Item.fs" />
+    <Compile Include="Core\Location.fs" />
+    <Compile Include="Core\Customer.fs" />
+    <Compile Include="Core\Supplier.fs" />
+    <Compile Include="Core\PlanningScope.fs" />
+    <Compile Include="Core\Calendar.fs" />
+    <Compile Include="Core\PlanningPeriod.fs" />
+    <Compile Include="Core\EnterprisePicture.fs" />
+    <Compile Include="Core\Demand.fs" />
+    <Compile Include="Core\Exception.fs" />
+
   </ItemGroup>
 
   <ItemGroup>

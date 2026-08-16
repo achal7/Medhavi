@@ -1,9 +1,9 @@
 namespace Medhavi.Infrastructure.Observation
 
 open System
-open Medhavi.SharedKernel.Observation.Logging.LogContext
+open Medhavi.Foundation.Observation
+open Medhavi.Foundation.Observation.LogContext
 open Microsoft.Extensions.Logging
-open Medhavi.SharedKernel.Observation.Logging
 
 /// Internal log message for mailbox logger
 type private LogMessage =

@@ -1,3 +1,0 @@
-PhysicalResourceId,StandardResourceId,Name,SerialNumber,Location,EfficiencyOverride,CostRateOverrideAmount,CostRateOverrideCurrency,CalendarId,IsActive
-RES-LINE1,SR-LINE,Assembly Line 1,SN-10021,Bay 1,1.0,5.0,USD,CAL-SHIFT-A,true
-RES-LINE2,SR-LINE,Assembly Line 2,SN-10022,Bay 2,0.9,4.5,USD,CAL-SHIFT-A,true

@@ -1,2 +1,0 @@
-ResourceGroupId,PlantId,Name,Description,DefaultCalendarId,IsActive
-RG-ASSEMBLY,PLANT-01,Assembly Group,Main assembly station,CAL-SHIFT-A,true

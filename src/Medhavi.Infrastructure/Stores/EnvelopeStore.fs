@@ -2,8 +2,8 @@ namespace Medhavi.Infrastructure.Stores.EnvelopeStore
 
 open System
 open System.Threading.Tasks
-open Medhavi.Common.Patterns
-open Medhavi.SharedKernel.Contracts
+open Medhavi.Common
+open Medhavi.Foundation.Contracts
 
 /// Position information captured from the event store
 type Position =
@@ -90,10 +90,7 @@ type EnvelopeStoreOps =
                 -> TaskResult<EnvelopedEvent list, EnvelopeStoreError>
 
         ReadLast:
-            string
-                -> int64 option
-                -> Threading.CancellationToken
-                -> TaskResult<EnvelopedEvent list, EnvelopeStoreError>
+            string -> int64 option -> Threading.CancellationToken -> TaskResult<EnvelopedEvent list, EnvelopeStoreError>
         GetLastRevision: string -> Threading.CancellationToken -> TaskResult<Position option, EnvelopeStoreError>
 
         /// Subscribe to a stream or all-stream; handler receives each Envelope (positions populated).

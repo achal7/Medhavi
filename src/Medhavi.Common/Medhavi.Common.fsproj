@@ -6,37 +6,31 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Retry.fs" />
-    <Compile Include="Patterns\CategoryTheory.fs" />
-    <Compile Include="Patterns\Functor.fs" />
-    <Compile Include="Patterns\Applicative.fs" />
-    <Compile Include="Patterns\Optics.fs" />
-    <Compile Include="Patterns\Monad.fs" />
-    <Compile Include="Patterns\Comonad.fs" />
-    <Compile Include="Patterns\StateMonad.fs" />
-    <Compile Include="Patterns\WriterMonad.fs" />
-    <Compile Include="Patterns\Result.fs" />
-    <Compile Include="Task.fs" />
-    <Compile Include="Patterns\AsyncResult.fs" />
-    <Compile Include="Patterns\Validation.fs" />
-    <Compile Include="Patterns\TaskResult.fs" />
-    <Compile Include="Patterns\AsyncValidator.fs" />
-    <Compile Include="ExceptionHandling.fs" />
-    <!--<Compile Include="Enrichment\Enrichment.fs" />
-    <Compile Include="Enrichment\EnrichmentFramework.fs" />
-    <Compile Include="Enrichment\EnrichmentPipeline.fs" />
-    <Compile Include="Enrichment\EnrichmentValidation.fs" />
-    <Compile Include="Enrichment\EnrichmentRuleEngine.fs" />-->
-    <Compile Include="Serialization.fs" />
-    <Compile Include="CircuitBreaker.fs" />
-    <Compile Include="DeadLetterQueue.fs" />
-    <Compile Include="FQueue.fs" />
-    <Compile Include="Global.fs" />
-  </ItemGroup>
+    <!-- Core Category Theory & Algebraic Structures -->
+    <Compile Include="CategoryTheory.fs" />
+    <Compile Include="Functor.fs" />
+    <Compile Include="Applicative.fs" />
+    <Compile Include="Optics.fs" />
+    <Compile Include="Monad.fs" />
+    <Compile Include="Comonad.fs" />
 
-  <ItemGroup>
-      <PackageReference Include="FSharp.SystemTextJson" />
-      <PackageReference Include="Microsoft.Extensions.Logging" />
+    <!-- Effect Algebras & State -->
+    <Compile Include="StateMonad.fs" />
+    <Compile Include="WriterMonad.fs" />
+    <Compile Include="Result.fs" />
+    <Compile Include="Validation.fs" />
+    <Compile Include="Codec.fs" />
+    
+    <!-- Asynchronous Effect Algebras -->
+    <Compile Include="AsyncResult.fs" />
+    <Compile Include="TaskResult.fs" />
+    <Compile Include="AsyncValidator.fs" />
+    
+    <!-- Data Structures -->
+    <Compile Include="FQueue.fs" />
+    
+    <!-- Global Computation Expressions -->
+    <Compile Include="Global.fs" />
   </ItemGroup>
 
 </Project>

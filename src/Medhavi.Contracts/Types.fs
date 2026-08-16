@@ -22,8 +22,31 @@ type User = { Name: string; Role: Role }
 [<JsonFSharpConverter>]
 type ApiError =
     { Code: string
-      Category: string
-      Message: string }
+      Message: string
+      Details: Map<string, string> }
+
+module ApiError =
+
+    let create code message details =
+        { Code = code
+          Message = message
+          Details = details }
+
+    let notFound entityName entityId = create "NOT_FOUND" (sprintf "%s '%s' not found" entityName entityId) Map.empty
+
+    let validationFailed errors = create "VALIDATION_FAILED" "Request validation failed" errors
+
+    let validation message = create "VALIDATION_FAILED" message Map.empty
+
+    let conflict message = create "CONFLICT" message Map.empty
+
+    let businessLogic message = create "BUSINESS_LOGIC_ERROR" message Map.empty
+
+    let infrastructureError message = create "INFRASTRUCTURE_ERROR" message Map.empty
+
+    let timeout message = create "TIMEOUT" message Map.empty
+
+    let cancelled () = create "CANCELLED" "Operation was cancelled" Map.empty
 
 type QueryService<'Entity, 'Id> =
     { GetAll: unit -> Task<'Entity list>

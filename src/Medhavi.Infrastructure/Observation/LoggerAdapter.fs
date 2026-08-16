@@ -1,10 +1,9 @@
 module Medhavi.Infrastructure.Observation.Logger
 
 open System
-open Medhavi.SharedKernel.Observation
-open Medhavi.SharedKernel.Observation.Logging.LogContext
+open Medhavi.Foundation.Observation
+open Medhavi.Foundation.Observation.LogContext
 open Microsoft.Extensions.Logging
-open Medhavi.SharedKernel.Observation.Logging
 open System.Collections.Generic
 
 let logDebug (logger: ILogger) (message: string) (context: LogContext) =

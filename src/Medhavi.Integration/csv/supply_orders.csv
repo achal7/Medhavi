@@ -1,3 +1,0 @@
-SupplyOrderId,ProductId,StockingPointId,Quantity,ExpectedDeliveryUtc,Status
-PO-FRAME-001,SKU-FRAME,SP-FACTORY,50.0,2026-05-30T12:00:00Z,Firm
-WO-BIKE-001,SKU-BIKE,SP-WAREHOUSE,20.0,2026-06-01T17:00:00Z,InProgress

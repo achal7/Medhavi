@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="ArsIdentifiers.fs" />
+    <Compile Include="Helpers.fs" />
+    
+    <!-- Enterprise Picture Management (CA-C-019) -->
+    <Compile Include="EnterprisePictureManagement\Model.fs" />
+    <Compile Include="EnterprisePictureManagement\Rules.fs" />
+    <Compile Include="EnterprisePictureManagement\Policies.fs" />
+    <Compile Include="EnterprisePictureManagement\ACL.fs" />
+    <Compile Include="EnterprisePictureManagement\Decisions.fs" />
+    <Compile Include="EnterprisePictureManagement\Behaviors.fs" />
+    <Compile Include="EnterprisePictureManagement\Projections.fs" />
+    <Compile Include="EnterprisePictureManagement\WorkflowForRecomposition.fs" />
+    <Compile Include="EnterprisePictureManagement\Capabilities.fs" />
+    <Compile Include="EnterprisePictureManagement\Context.fs" />
+
+    <!-- Core Exception Management (CA-C-020) -->
+    <Compile Include="ExceptionManagement\Model.fs" />
+    <Compile Include="ExceptionManagement\Policies.fs" />
+    <Compile Include="ExceptionManagement\Rules.fs" />
+    <Compile Include="ExceptionManagement\ACL.fs" />
+    <Compile Include="ExceptionManagement\Decisions.fs" />
+    <Compile Include="ExceptionManagement\Behaviors.fs" />
+    <Compile Include="ExceptionManagement\Projections.fs" />
+    <Compile Include="ExceptionManagement\WorkflowForException.fs" />
+    <Compile Include="ExceptionManagement\WorkflowForEscalation.fs" />
+    <Compile Include="ExceptionManagement\Capabilities.fs" />
+    <Compile Include="ExceptionManagement\Context.fs" />
+
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Medhavi.Common\Medhavi.Common.fsproj" />
+    <ProjectReference Include="..\Medhavi.Foundation\Medhavi.Foundation.fsproj" />
+    <ProjectReference Include="..\Medhavi.SemanticModel\Medhavi.SemanticModel.fsproj" />
+    <ProjectReference Include="..\Medhavi.Contracts\Medhavi.Contracts.fsproj" />
+    <ProjectReference Include="..\Medhavi.SharedKernel\Medhavi.SharedKernel.fsproj" />
+  </ItemGroup>
+</Project>

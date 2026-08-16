@@ -4,8 +4,8 @@ open System
 open System.Threading
 open System.Threading.Tasks
 open Microsoft.Extensions.Logging
-open Medhavi.Common.Patterns
-open Medhavi.SharedKernel.Contracts
+open Medhavi.Common
+open Medhavi.Foundation.Contracts
 
 type IdempotencyKey = string
 type ReservationToken = Guid
@@ -119,25 +119,21 @@ let createIdempotencyRecord key token expiry =
       Origin = None
       Attempts = 0 }
 
-let serializeIdempotencyRecord (record: IdempotencyRecord) = Medhavi.Common.Serialization.serialize record
+let serializeIdempotencyRecord (codec: Codec<IdempotencyRecord>) (record: IdempotencyRecord) = codec.Encode record
 
-let createEnvelopeFrom streamName record =
-    record
-    |> serializeIdempotencyRecord
-    |> Result.map (fun cp -> Envelope.createCheckpointEnvelope streamName cp)
+let createEnvelopeFrom streamName codec record =
+    serializeIdempotencyRecord codec record |> Result.map(fun cp -> Envelope.createCheckpointEnvelope streamName cp)
 
-let createEnvelope streamName key token expiry =
-    createIdempotencyRecord key token expiry
-    |> createEnvelopeFrom streamName
+let createEnvelope streamName codec key token expiry =
+    createIdempotencyRecord key token expiry |> createEnvelopeFrom streamName codec
 
-let tryParseIdempotencyRecordJson (recordJson: string) : IdempotencyRecord option =
-    match Medhavi.Common.Serialization.deserialize<IdempotencyRecord> recordJson with
+let tryParseIdempotencyRecordJson (codec: Codec<IdempotencyRecord>) (recordJson: string) : IdempotencyRecord option =
+    match codec.Decode recordJson with
     | Ok res -> Some res
     | _ -> None
 
 let private stringContainsIgnoreCase (needle: string) (hay: string) =
-    hay.IndexOf(needle, StringComparison.OrdinalIgnoreCase)
-    >= 0
+    hay.IndexOf(needle, StringComparison.OrdinalIgnoreCase) >= 0
 
 /// Inspect whatever error object your wrapper returned and try to detect WrongExpectedVersion
 let private isWrongExpectedVersion (errObj: obj) : bool =
@@ -152,12 +148,11 @@ let private isWrongExpectedVersion (errObj: obj) : bool =
         try
             let s = sprintf "%A" errObj
 
-            stringContainsIgnoreCase "wrongexpectedversion" s
-            || stringContainsIgnoreCase "wrong expected version" s
+            stringContainsIgnoreCase "wrongexpectedversion" s || stringContainsIgnoreCase "wrong expected version" s
         with _ ->
             false
 
-let readLast (envStore: EnvelopeStore.EnvelopeStoreOps) (streamName: string) (ct: CancellationToken) =
+let readLast (envStore: EnvelopeStore.EnvelopeStoreOps) codec (streamName: string) (ct: CancellationToken) =
     task {
         let! readRes = envStore.ReadLast streamName None ct
 
@@ -168,7 +163,7 @@ let readLast (envStore: EnvelopeStore.EnvelopeStoreOps) (streamName: string) (ct
             // Use HEAD/first element depending on your envStore ordering (we expect newest first or last)
             let head = resolved.Head
 
-            match tryParseIdempotencyRecordJson head.Envelope.DataJson with
+            match tryParseIdempotencyRecordJson codec head.Envelope.DataJson with
             | None -> return Error("Parse filed for existing token")
             | Some resRec -> return Ok(resRec, head)
     }
@@ -176,6 +171,7 @@ let readLast (envStore: EnvelopeStore.EnvelopeStoreOps) (streamName: string) (ct
 let addIfNotExists
     (envStore: EnvelopeStore.EnvelopeStoreOps)
     (logger: ILogger)
+    (codec: Codec<IdempotencyRecord>)
     (streamName: string)
     (key: IdempotencyKey)
     (expiry: DateTimeOffset option)
@@ -188,7 +184,7 @@ let addIfNotExists
             return Error(Cancelled)
         else
             let token = Guid.NewGuid()
-            let evRes = createEnvelope streamName key token expiry
+            let evRes = createEnvelope streamName codec key token expiry
 
             match evRes with
             | Error _ -> return Error(ParseError(key.ToString()))
@@ -206,8 +202,8 @@ let addIfNotExists
                         logger.LogError
                             $"[AddIfNotExists] Publish returned Error for stream {streamName} key {key}: %A{e}"
 
-                        if isWrongExpectedVersion (box e) then
-                            let! lastRec = readLast envStore streamName ct
+                        if isWrongExpectedVersion(box e) then
+                            let! lastRec = readLast envStore codec streamName ct
 
                             match lastRec with
                             | Error e ->
@@ -228,6 +224,7 @@ let markProcessed
 
     (envStore: EnvelopeStore.EnvelopeStoreOps)
     (logger: ILogger)
+    (codec: Codec<IdempotencyRecord>)
     (streamName: string)
     (key: IdempotencyKey)
     (token: ReservationToken)
@@ -251,7 +248,7 @@ let markProcessed
                     return Error(AppendFailed msg)
                 | Ok resolved when resolved.Length = 0 -> return Error(NotFound key)
                 | Ok resolved ->
-                    match tryParseIdempotencyRecordJson resolved.Head.Envelope.DataJson with
+                    match tryParseIdempotencyRecordJson codec resolved.Head.Envelope.DataJson with
                     | None ->
                         let msg = errMsgPrefix + "Failed to parse reservation token"
                         logger.LogError msg
@@ -264,17 +261,10 @@ let markProcessed
                                 ResponseJson = responseJson
                                 Origin = origin
                                 Attempts = reserved.Attempts + 1 }
-                            |> serializeIdempotencyRecord
+                            |> serializeIdempotencyRecord codec
 
                         match payloadRes with
-                        | Error _ ->
-                            return
-                                Error(
-                                    ParseError(
-                                        errMsgPrefix
-                                        + "Failed to parse stored reservation token"
-                                    )
-                                )
+                        | Error _ -> return Error(ParseError(errMsgPrefix + "Failed to parse stored reservation token"))
                         | Ok payload ->
                             let env =
                                 { resolved.Head with
@@ -292,8 +282,8 @@ let markProcessed
 
                             return
                                 pubRes
-                                |> Result.map (fun _ -> ())
-                                |> Result.mapError (fun e -> IdempotencyStoreError.AppendFailed(e.ToString()))
+                                |> Result.map(fun _ -> ())
+                                |> Result.mapError(fun e -> IdempotencyStoreError.AppendFailed(e.ToString()))
         with ex ->
             logger.LogWarning(errMsgPrefix + ex.Message)
             return Error(AppendFailed(errMsgPrefix + ex.Message))
@@ -301,6 +291,7 @@ let markProcessed
 
 let getResult
     (envStore: EnvelopeStore.EnvelopeStoreOps)
+    (codec: Codec<IdempotencyRecord>)
     (_: IdempotencyKey)
     (streamName: string)
     (ct: CancellationToken)
@@ -312,18 +303,10 @@ let getResult
             match! envStore.ReadLast streamName None ct with
             | Error e -> return Error(IdempotencyStoreError.UnknownError $"[Store] Failed to read last event {e}")
             | Ok resolved when resolved.Length = 0 -> return Ok(None)
-            | Ok resolved ->
-                return
-                    Ok
-                    <| tryParseIdempotencyRecordJson resolved.Head.Envelope.DataJson
+            | Ok resolved -> return Ok <| tryParseIdempotencyRecordJson codec resolved.Head.Envelope.DataJson
     }
 
-let exists
-    (envStore: EnvelopeStore.EnvelopeStoreOps)
-    (_: IdempotencyKey)
-    (streamName: string)
-    (ct: CancellationToken)
-    =
+let exists (envStore: EnvelopeStore.EnvelopeStoreOps) (_: IdempotencyKey) (streamName: string) (ct: CancellationToken) =
     task {
         if ct.IsCancellationRequested then
             return Error(Cancelled)
@@ -393,7 +376,7 @@ let getKeys
                 // Extract stream names, filter by prefix, remove prefix and distinct
                 let keys =
                     envelopes
-                    |> Seq.choose (fun env ->
+                    |> Seq.choose(fun env ->
                         // adjust this if Envelope has a different property name for stream id
                         let streamId = env.Envelope.StreamName
 
@@ -440,7 +423,7 @@ let cleanup
                         let streamId = env.Envelope.StreamName
 
                         if streamId.StartsWith(streamPrefix, StringComparison.OrdinalIgnoreCase) then
-                            if not (dict.ContainsKey streamId) then
+                            if not(dict.ContainsKey streamId) then
                                 // determine ts from envelope metadata or created timestamp; fallback to UtcNow
                                 let tsOpt = Some env.Envelope.CreatedUtc
                                 let finalTs = defaultArg tsOpt DateTimeOffset.UtcNow
@@ -448,10 +431,7 @@ let cleanup
 
                     // Find toRemove
                     let toRemove =
-                        dict
-                        |> Seq.filter (fun kv -> kv.Value < expiration)
-                        |> Seq.map (fun kv -> kv.Key)
-                        |> Seq.toArray
+                        dict |> Seq.filter(fun kv -> kv.Value < expiration) |> Seq.map(fun kv -> kv.Key) |> Seq.toArray
 
                     let mutable removed = 0
 
@@ -473,6 +453,7 @@ let cleanup
 
 let renewReservation
     (esClient: EnvelopeStore.EnvelopeStoreOps)
+    (codec: Codec<IdempotencyRecord>)
     (streamName: string)
     (_: string)
     (token: Guid)
@@ -485,7 +466,7 @@ let renewReservation
         else
             try
                 // Read latest event to check token
-                let! lastRes = readLast esClient streamName ct
+                let! lastRes = readLast esClient codec streamName ct
 
                 match lastRes with
                 | Ok(last, env) ->
@@ -497,11 +478,11 @@ let renewReservation
                             { last with
                                 Token = token
                                 ExpireAtUtc = newExpiryOpt }
-                            |> Medhavi.Common.Serialization.serialize
+                            |> codec.Encode
 
                         match revised with
                         | Ok data ->
-                            let ev = Envelope.createEnvelope env.Envelope.EventType data 1
+                            let ev = Envelope.CreateBasic(env.Envelope.EventType, data)
                             // append with expected revision = evt.Event.EventNumber (optimistic concurrency)
                             let expectedRevision =
                                 match env.Position.StreamPosition with
@@ -516,9 +497,9 @@ let renewReservation
                                 | Some pos -> return Ok(ReservationResult.Reserved(token, pos))
                                 | None ->
                                     return Error(StorageError "Token: {token} reservation returned empty position")
-                            | Error e when isWrongExpectedVersion (box e) ->
+                            | Error e when isWrongExpectedVersion(box e) ->
                                 // someone else appended
-                                let! rec2 = readLast esClient streamName ct
+                                let! rec2 = readLast esClient codec streamName ct
 
                                 match rec2 with
                                 | Error e -> return Error(StorageError(e.ToString()))
@@ -531,13 +512,17 @@ let renewReservation
                 return Error(StorageError(ex.ToString()))
     }
 
-let create (envStore: EnvelopeStore.EnvelopeStoreOps) (logger: ILogger) : IdempotencyStoreOps =
+let create
+    (envStore: EnvelopeStore.EnvelopeStoreOps)
+    (codec: Codec<IdempotencyRecord>)
+    (logger: ILogger)
+    : IdempotencyStoreOps =
 
-    { AddIfNotExists = addIfNotExists envStore logger
-      SetResult = markProcessed envStore logger
-      GetResult = getResult envStore
+    { AddIfNotExists = addIfNotExists envStore logger codec
+      SetResult = markProcessed envStore logger codec
+      GetResult = getResult envStore codec
       Exists = exists envStore
       Remove = remove envStore logger
       GetKeys = getKeys envStore logger
       Cleanup = cleanup envStore logger
-      ReclaimReservation = renewReservation envStore }
+      ReclaimReservation = renewReservation envStore codec }

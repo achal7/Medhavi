@@ -3,7 +3,7 @@ namespace Medhavi.Infrastructure.Observation
 open System
 open System.Diagnostics
 open System.Threading.Tasks
-open Medhavi.SharedKernel.Observation
+open Medhavi.Foundation.Observation
 
 /// Distributed tracing adapter using System.Diagnostics.Activity
 /// Provides activity start/stop and a KnowledgeRepresentation

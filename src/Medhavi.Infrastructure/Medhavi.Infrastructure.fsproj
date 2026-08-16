@@ -6,6 +6,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="JsonCodec.fs" />
+    <Compile Include="CircuitBreaker.fs" />
+    <Compile Include="DeadLetterQueue.fs" />
+    <Compile Include="Retry.fs" />
     <Compile Include="Stores\EnvelopeStore.fs" />
     <Compile Include="Stores\EnvelopeStoreMem.fs" />
     <Compile Include="Stores\IdempotencyStore.fs" />
@@ -20,16 +24,17 @@
     <Compile Include="Observation\ActivityTrackingAdapter.fs" />
     <Compile Include="Observation\HealthCheckPublisher.fs" />
     <Compile Include="Observation\ObservationComposition.fs" />
+    <Compile Include="EnvelopeStoreDeps.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Medhavi.Common\Medhavi.Common.fsproj" />
-    <ProjectReference Include="..\Medhavi.Contracts\Medhavi.Contracts.fsproj" />
-    <ProjectReference Include="..\Medhavi.SharedKernel\Medhavi.SharedKernel.fsproj" />
+    <ProjectReference Include="..\Medhavi.Foundation\Medhavi.Foundation.fsproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Logging" />
+    <PackageReference Include="FSharp.SystemTextJson" />
   </ItemGroup>
 
 </Project>

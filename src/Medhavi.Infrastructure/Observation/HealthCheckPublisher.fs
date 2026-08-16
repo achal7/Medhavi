@@ -2,7 +2,7 @@ namespace Medhavi.Infrastructure.Observation
 
 open System
 open System.Threading.Tasks
-open Medhavi.SharedKernel.Observation
+open Medhavi.Foundation.Observation
 
 /// Publishes component health information.
 module HealthCheckPublisher =

@@ -1,2 +1,0 @@
-StandardResourceId,ResourceGroupId,Name,Description,DefaultEfficiency,DefaultCostRateAmount,DefaultCostRateCurrency,IsActive
-SR-LINE,RG-ASSEMBLY,Standard Assembly Line,Standard line setup,1.0,5.0,USD,true
