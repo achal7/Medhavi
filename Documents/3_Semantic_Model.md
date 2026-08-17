@@ -2587,6 +2587,114 @@ The Steward Domain manages the adoption lifecycle.
 
 ---
 
+### SE-C-040 – Item Transition
+
+**Business Intent:** Provide the single authoritative enterprise identity for a governed succession 
+relationship between two enterprise items, establishing that one item replaces another.
+
+**Enterprise Meaning:** An Item Transition is an enterprise-recognised succession relationship between two items. It answers "which item replaces which item?" The transition identity is stable; planning-specific parameters such as history mapping rules, substitution eligibility, and phase-in/phase-out curves are domain-specific extensions, not part of the core transition identity. A transition is not merely a reference; it is an enterprise authorisation that one item succeeds another.
+
+**Identity:** Transition Identifier is the immutable enterprise identity of the Item Transition.
+
+**Applied Semantic Patterns:** Aggregate Root
+
+**Semantic Ownership**
+- Item Transition owns: identity, superseded/superseding item references, 
+  transition type, effective/end dates, lifecycle.
+- Item Transition excludes: item identities (owned by SE-C-001), 
+  demand/supply/inventory records, allocation decisions, execution actions,
+  history mapping rules, substitution eligibility, phase-in/phase-out parameters.
+
+**Authority Specification Contract**
+
+| Section                      | Value                                                                                                        |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Semantic Authority           | Core Domain                                                                                                  |
+| Steward Domain               | Core                                                                                                         |
+| Mutation Authority           | External System of Record                                                                                    |
+| Authoritative Representation | The enterprise definition of recognised item succession relationships.                                       |
+| Authority Scope              | Enterprise-wide                                                                                              |
+| Intended Consumers           | Demand Intelligence, Supply Intelligence, Promise Intelligence, Scenario Intelligence, Inventory Planning.   |
+| Non-Intended Consumers       | None                                                                                                         |
+| Business Responsibility      | Preserve the authoritative enterprise meaning, identity, lifecycle integrity, and published contract of this semantic object. |
+| Supersedes                   | None                                                                                                         |
+| Superseded By                | None                                                                                                         |
+
+**Consumer Specification Contract**
+
+| Section                 | Value                                                                                                                                                                                                                          |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Business Guarantees     | Every Item Transition has a unique, immutable identifier. Its identity and direction are stable regardless of planning parameter changes. At most one Active transition exists per Superseded Item at any moment.               |
+| Required Interpretation | Consumers shall interpret the transition as the recognised enterprise succession relationship between two items. Planning-specific parameters must be obtained from domain objects that reference the transition, not inferred from the transition itself. |
+| Known Limitations       | Defines only the existence and direction of a succession. Does not specify how demand history transfers, whether substitution is permitted, or how procurement phases in/out. Those are domain-specific planning concerns.    |
+| Declared Consumers      | Governed by Chapter 5.2 Declared Consumer Matrix.                                                                                                                                                                              |
+| Consumer Responsibility | The consumer shall reference this object solely by its immutable identifier and shall not infer semantics not published in this contract.                                                                                     |
+| Required Attributes     | Immutable identifier; mandatory attributes; attributes required by declared structural relationships. Domain-specific required attributes must be declared in the consuming Domain Semantic Model.                            |
+| Authoritative Source    | SE-C-040 Item Transition.                                                                                                                                                                                                      |
+
+**Lifecycle Specification Contract**
+
+| State    | Description                                                                         |
+| -------- | ----------------------------------------------------------------------------------- |
+| Active   | Transition is recognised and governs planning behavior.                             |
+| Inactive | Transition is temporarily suspended from planning references.                       |
+| Retired  | Transition is permanently removed from enterprise use; retained for historical reference. |
+
+- Permitted Transitions: Active ↔ Inactive; Active → Retired; Inactive → Retired.
+- Terminal State: Retired.
+- History Preservation: State changes are recorded for audit.
+- Versioning Rules: Not applicable.
+
+**Transition Trigger Standard:** Transitions are triggered only by the Business Trigger associated with this object's Mutation Authority archetype (External Master Data Change Accepted), as defined in Section 2.7. Capability specifications shall map Aggregate Behaviors to these triggers.
+
+**Information Model**
+
+| Attribute              | Type                                        | Mandatory | Description                                                                                     |
+| ---------------------- | ------------------------------------------- | --------- | ----------------------------------------------------------------------------------------------- |
+| Transition Identifier  | ID (immutable)                              | Yes       | Unique enterprise identity.                                                                     |
+| Superseded Item        | Reference (SE-C-001)                        | Yes       | The item being replaced.                                                                        |
+| Superseding Item       | Reference (SE-C-001)                        | Yes       | The item that replaces it.                                                                      |
+| Transition Type        | Governed Identifier Reference (SE-C-037)    | Yes       | The category of succession (e.g., "DirectReplacement", "PhaseInPhaseOut", "Merge"). Governed by SE-C-037. |
+| Effective Date         | Timestamp (SE-C-022)                        | Yes       | When the succession becomes applicable for planning.                                            |
+| End Date               | Timestamp (SE-C-022)                        | No        | When the succession ceases to be applicable. Absent means open-ended.                           |
+| Lifecycle State        | Enum (Active, Inactive, Retired)            | Yes       | Current semantic state.                                                                         |
+
+**Relationships**
+
+| Relationship          | Target Object       | Cardinality | Description                                      |
+| --------------------- | ------------------- | ----------- | ------------------------------------------------ |
+| references superseded | Item (SE-C-001)     | Many-to-One | The item being replaced.                         |
+| references superseding| Item (SE-C-001)     | Many-to-One | The item that replaces it.                       |
+
+**Invariants:**
+- Transition Identifier is immutable.
+- Superseded Item and Superseding Item must reference distinct items.
+- Superseded Item must be in Active or Inactive state (cannot supersede a Retired item).
+- Superseding Item must be in Active state.
+- At most one Active transition exists per Superseded Item at any moment.
+- Effective Date must be a valid UTC timestamp.
+- End Date, if present, must be after Effective Date.
+- A Retired transition cannot be referenced by new planning activities.
+
+**Dependencies:**
+
+| Dependency Type       | Description                                                    |
+| --------------------- | -------------------------------------------------------------- |
+| Semantic Dependency   | SE-C-001 Item, SE-C-022 Timestamp, SE-C-037 Enterprise Governed Vocabulary. |
+| Conceptual Dependency  | None.                                                          |
+
+**Decomposition Review:** No decomposition required. The succession fact is a single enterprise concept. Planning parameters are domain-specific and belong in their respective Domain Semantic Models.
+
+**Traceability:**
+
+| Direction | Reference                                                                              |
+| --------- | -------------------------------------------------------------------------------------- |
+| Upward    | Constitution CN-003, CN-004; ARS §3, §4, §16; Enterprise Semantic Model Chapter 4.   |
+| Admission | Enterprise Vocabulary admission record.                                                |
+| Downward  | Demand Intelligence, Supply Intelligence, Promise Intelligence, Scenario Intelligence. |
+
+---
+
 ## 4.2 Entities
 - **BOMLine** (within SE-C-018)
 - **PictureVersion** (within SE-C-021)
