@@ -20,7 +20,7 @@
     <Compile Include="Core\EnterprisePicture.fs" />
     <Compile Include="Core\Demand.fs" />
     <Compile Include="Core\Exception.fs" />
-
+    <Compile Include="Core\ItemTransition.fs" />
   </ItemGroup>
 
   <ItemGroup>

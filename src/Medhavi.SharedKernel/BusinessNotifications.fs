@@ -102,3 +102,35 @@ type EnterpriseExceptionResolvedNotification =
     { ExceptionId: ExceptionId
       ResolutionTime: Timestamp
       ResolutionEvidence: string }
+
+// === ADD to Medhavi.SharedKernel.BusinessNotifications ===
+
+/// BN-C-004: Item Transition Recognized Notification
+type ItemTransitionRecognizedNotification =
+    { TransitionId: string
+      SupersededItem: string
+      SupersedingItem: string
+      TransitionType: string
+      EffectiveDate: DateTimeOffset
+      EndDate: DateTimeOffset option }
+
+/// BN-C-005: Item Transition Suspended Notification
+type ItemTransitionSuspendedNotification =
+    { TransitionId: string
+      SupersededItem: string
+      SupersedingItem: string
+      SuspensionTime: DateTimeOffset }
+
+/// BN-C-006: Item Transition Reinstated Notification
+type ItemTransitionReinstatedNotification =
+    { TransitionId: string
+      SupersededItem: string
+      SupersedingItem: string
+      ReinstatementTime: DateTimeOffset }
+
+/// BN-C-007: Item Transition Retired Notification
+type ItemTransitionRetiredNotification =
+    { TransitionId: string
+      SupersededItem: string
+      SupersedingItem: string
+      RetirementTime: DateTimeOffset }

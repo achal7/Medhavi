@@ -65,10 +65,7 @@ let private positiveQuantity (fieldName: string) (value: Quantity) : Result<unit
         Ok()
 
 let private nonNegativeDuration (fieldName: string) (value: Duration) : Result<unit, SemanticValidationError> =
-    if Duration.value value < 0m then
-        Error(NegativeDuration fieldName)
-    else
-        Ok()
+    if Duration.value value < 0m then Error(NegativeDuration fieldName) else Ok()
 
 let private hasDuplicatesBy (projection: 'a -> 'b) (items: 'a list) : bool =
     let projected = items |> List.map projection
@@ -132,7 +129,9 @@ let validateScopeBoundaryRule (rule: ScopeBoundaryRule) : Result<unit, SemanticV
 let validateScenarioAdjustment (adjustment: ScenarioAdjustment) : Result<unit, SemanticValidationError> =
     firstError
         [ nonEmptyIdentifier "ScenarioAdjustment.AdjustmentIdentifier" adjustment.AdjustmentIdentifier
-          nonEmptyIdentifier "ScenarioAdjustment.TargetSemanticType" (vocabularyEntryIdValue adjustment.TargetSemanticType)
+          nonEmptyIdentifier
+              "ScenarioAdjustment.TargetSemanticType"
+              (vocabularyEntryIdValue adjustment.TargetSemanticType)
           nonEmptyIdentifier "ScenarioAdjustment.AdjustmentType" (vocabularyEntryIdValue adjustment.AdjustmentType) ]
 
 // ---------------------------------------------------------------------
@@ -302,7 +301,12 @@ let validateInventory (inventory: Inventory) : Result<unit, SemanticValidationEr
 let validateCommitment (commitment: Commitment) : Result<unit, SemanticValidationError> =
     let counterpartyCheck =
         if commitment.Customer.IsNone && commitment.Supplier.IsNone then
-            Error(InvariantViolation("Commitment", "A Commitment requires at least one counterparty: Customer or Supplier."))
+            Error(
+                InvariantViolation(
+                    "Commitment",
+                    "A Commitment requires at least one counterparty: Customer or Supplier."
+                )
+            )
         else
             Ok()
 
@@ -395,10 +399,7 @@ let validatePictureVersion (version: PictureVersion) : Result<unit, SemanticVali
         else
             Ok()
 
-    firstError
-        [ duplicateDemandCheck
-          duplicateSupplyCheck
-          duplicateInventoryCheck ]
+    firstError [ duplicateDemandCheck; duplicateSupplyCheck; duplicateInventoryCheck ]
 
 let validateEnterprisePicture (picture: EnterprisePicture) : Result<unit, SemanticValidationError> =
     let versionChecks = picture.Versions |> List.map validatePictureVersion
@@ -477,3 +478,34 @@ let validatePerformanceIndicatorCatalog (catalog: PerformanceIndicatorCatalog) :
           duplicateIndicatorCheck ]
         @ indicatorChecks
     )
+
+/// SE-C-040 Item Transition invariants
+let validateItemTransition (transition: ItemTransition) : Result<unit, SemanticValidationError> =
+
+    let distinctItemsCheck =
+        if transition.SupersededItem = transition.SupersedingItem then
+            Error(
+                InvariantViolation(
+                    "ItemTransition",
+                    "Superseded Item and Superseding Item must reference distinct items."
+                )
+            )
+        else
+            Ok()
+
+    let effectiveDateCheck =
+        if Timestamp.value transition.EffectiveDate = DateTimeOffset.MinValue then
+            Error(InvariantViolation("ItemTransition", "Effective Date must be a valid UTC timestamp."))
+        else
+            Ok()
+
+    let endDateCheck =
+        match transition.EndDate with
+        | Some endDate ->
+            if Timestamp.isBefore endDate transition.EffectiveDate then
+                Error(InvariantViolation("ItemTransition", "End Date must be after Effective Date."))
+            else
+                Ok()
+        | None -> Ok()
+
+    firstError [ distinctItemsCheck; effectiveDateCheck; endDateCheck ]

@@ -16,7 +16,6 @@
     <Compile Include="ValueObjects.fs" />
 
     <!-- Aggregate Root Shapes -->
-    <Compile Include="ReferenceObjects.fs" />
     <Compile Include="ResourceNetwork.fs" />
     <Compile Include="Planning.fs" />
     <Compile Include="PlanningLifecycle.fs" />

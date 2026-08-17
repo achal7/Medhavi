@@ -29,6 +29,8 @@ type PlanningPeriodId = private PlanningPeriodId of string
 type UnitOfMeasureId = private UnitOfMeasureId of string
 type TimeZoneId = private TimeZoneId of string
 type BatchIdentifier = private BatchIdentifier of string
+// SE-C-040 Item Transition Identity
+type TransitionId = private TransitionId of string
 
 /// Inventory is identified by Item + Location + Batch Identifier.
 /// This is a composite identity, not a surrogate ID.
@@ -51,6 +53,10 @@ module Identities =
     // Item
     let itemIdCreate = createStringId ItemId "ItemId"
     let itemIdValue (ItemId id) = id
+
+    // Item Transition
+    let transitionIdCreate = createStringId TransitionId "TransitionId"
+    let transitionIdValue (TransitionId id) = id
 
     // Location
     let locationIdCreate = createStringId LocationId "LocationId"

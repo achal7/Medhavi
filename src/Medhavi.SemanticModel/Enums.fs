@@ -111,3 +111,9 @@ type GovernedCatalogState =
 type RiskLifecycleState =
     | Active
     | Retired
+
+/// SE-C-040 Item Transition Lifecycle State
+type ItemTransitionLifecycleState =
+    | Active
+    | Inactive
+    | Retired

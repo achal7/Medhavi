@@ -34,6 +34,16 @@
     <Compile Include="ExceptionManagement\Workflows.fs" />
     <Compile Include="ExceptionManagement\Context.fs" />
 
+    <!-- Core Item Transition Management (CA-C-021) -->
+    <Compile Include="ItemTransitionManagement\Model.fs" />
+    <Compile Include="ItemTransitionManagement\Policies.fs" />
+    <Compile Include="ItemTransitionManagement\Rules.fs" />
+    <Compile Include="ItemTransitionManagement\Decisions.fs" />
+    <Compile Include="ItemTransitionManagement\Behaviors.fs" />
+    <Compile Include="ItemTransitionManagement\Projections.fs" />
+    <Compile Include="ItemTransitionManagement\ACL.fs" />
+    <Compile Include="ItemTransitionManagement\Capabilities.fs" />
+    <Compile Include="ItemTransitionManagement\Context.fs" />
   </ItemGroup>
 
   <ItemGroup>
