@@ -2586,6 +2586,12 @@ Demand Intelligence detects demand exception evidence and publishes it to Core E
 
 Demand Intelligence shall not create, update, or resolve SE-C-019 Exception instances directly.
 
+**EV-D-022 – Demand Exception Evidence Evaluated**
+
+**Purpose:** Signal that the Demand domain has completed its evaluation of exception evidence and is ready to publish to Core Exception Management.
+**Business Intent:** Establish a workflow-level event that the Notification Node maps to BN-D-022 and BN-D-023. Because CA-D-008 owns no Aggregate Roots, it cannot publish Aggregate Events; this workflow event fulfills the ARS requirement that every Business Notification references an Enterprise Event.
+**Published By:** FS-D-015 (Detect Demand Exception Evidence) Workflow Notification Node.
+
 ---
 
 #### SE-D-010 – Demand Explanation
@@ -2760,6 +2766,150 @@ Demand Intelligence shall not create, update, or resolve SE-C-019 Exception inst
 
 **Traceability:** Owned by `SE-D-011`. Invoked by `FS-D-017`.
 
+
+
+#### SE-D-018 – Demand Intervention Impact
+
+**Business Intent:** Provide the authoritative enterprise definition of the assessed impact of a planned commercial intervention on demand for a specific item-location combination.
+
+**Enterprise Meaning:** A Demand Intervention Impact is the enterprise-recognised assessment of how a planned commercial action (promotion, price change, marketing event) will affect demand for a specific item at a specific location. It answers "what is the expected demand change from this intervention?" The impact is computed from historical elasticity data, intervention characteristics, and current demand context. It does not modify the baseline forecast; it provides a deterministic adjustment that the forecast capability consumes.
+
+**Identity:** Intervention Impact Identifier is the immutable enterprise identity of the Demand Intervention Impact.
+
+**Applied Semantic Patterns:** Published Knowledge (ARS App. A.3)
+
+**Semantic Ownership**
+- **Demand Intervention Impact owns:** identity, intervention reference, item, location, assessed lift, confidence, temporal validity, model provenance, lifecycle.
+- **Demand Intervention Impact excludes:** intervention definition (owned by SE-C-039), baseline forecast (owned by SE-D-003), allocation decisions, supply adjustments.
+
+**Authority Specification Contract**
+
+| Section                      | Value                                                                                                        |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Semantic Authority           | Demand Domain                                                                                                 |
+| Steward Domain               | Demand                                                                                                        |
+| Mutation Authority           | Enterprise-Derived Planning Fact                                                                              |
+| Authoritative Representation | The assessed demand impact of a planned commercial intervention.                                              |
+| Authority Scope              | Per intervention, per item-location.                                                                          |
+| Intended Consumers           | CA-D-002 Forecast Demand, Supply Intelligence, Scenario Intelligence.                                         |
+| Non-Intended Consumers       | None.                                                                                                         |
+| Business Responsibility      | Preserve the authoritative enterprise meaning, identity, lifecycle integrity, and published contract of this semantic object. |
+| Supersedes                   | None.                                                                                                         |
+| Superseded By                | None.                                                                                                         |
+
+**Consumer Specification Contract**
+
+| Section                 | Value                                                                                                                                                                                               |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Business Guarantees     | Every published Demand Intervention Impact is immutable and traceable to its source intervention. Every impact carries a confidence level and model provenance.                                    |
+| Required Interpretation | Consumers shall treat the Published impact as a deterministic demand adjustment. It does not replace the baseline forecast; it supplements it.                                                      |
+| Known Limitations       | Does not define the intervention itself. Does not modify the baseline forecast. Does not guarantee actual demand outcomes.                                                                          |
+| Declared Consumers      | Governed by Chapter 5.2 Declared Consumer Matrix.                                                                                                                                                   |
+| Consumer Responsibility | The consumer shall reference this object solely by its immutable identifier and shall not infer semantics not published in this contract.                                                           |
+| Required Attributes     | Immutable identifier; mandatory attributes; attributes required by declared structural relationships. Domain-specific required attributes must be declared in the consuming Domain Semantic Model. |
+| Authoritative Source    | SE-D-018 Demand Intervention Impact.                                                                                                                                                                |
+
+**Lifecycle Specification Contract**
+
+| State      | Description                                           |
+| ---------- | ----------------------------------------------------- |
+| Draft      | Impact being assessed; not authoritative.             |
+| Published  | Authoritative; previous Published becomes Superseded. |
+| Superseded | Replaced by a newer Published version.                |
+
+- Permitted Transitions: Draft → Published; Published → Superseded.
+- Terminal State: Superseded.
+- History Preservation: All versions retained permanently.
+
+**Transition Trigger Standard:** Transitions are triggered only by the Business Trigger associated with this object's Mutation Authority archetype, as defined in ESM Section 2.7. Capability specifications shall map Aggregate Behaviors to these triggers.
+
+**Information Model**
+
+| Attribute                     | Type                                    | Mandatory | Description                                                    |
+| ----------------------------- | --------------------------------------- | --------- | -------------------------------------------------------------- |
+| Intervention Impact Identifier | ID (immutable)                          | Yes       | Unique enterprise identity.                                    |
+| Intervention Reference        | Reference (SE-C-039)                    | Yes       | The Scenario Adjustment that defines the intervention.         |
+| Item                          | Reference (SE-C-001)                    | Yes       | The item whose demand is affected.                             |
+| Location                      | Reference (SE-C-002)                    | Yes       | The location where the demand impact applies.                  |
+| Assessed Demand Lift          | Quantity (SE-C-023)                     | Yes       | The expected demand change; non-negative.                      |
+| Lift Confidence               | Decimal (0–100)                         | Yes       | Enterprise confidence in the assessed lift.                    |
+| Temporal Validity             | Temporal Window (SE-C-028)              | Yes       | The time interval during which the intervention is active.     |
+| Model Provenance              | Governed Identifier Reference (SE-C-037)| Yes       | The modeling approach used to compute the lift.                |
+| Lifecycle State               | Enum (Draft, Published, Superseded)     | Yes       | Current state.                                                 |
+
+**Relationships**
+
+| Relationship       | Target Object               | Cardinality | Description                                      |
+| ------------------ | --------------------------- | ----------- | ------------------------------------------------ |
+| assesses impact of | Scenario Adjustment (SE-C-039) | Many-to-One | The intervention being assessed.                 |
+| affects            | Item (SE-C-001)             | Many-to-One | The item whose demand is affected.               |
+| affects            | Location (SE-C-002)         | Many-to-One | The location where the impact applies.           |
+| consumed by        | Forecast Publication (SE-D-003) | One-to-Many | Forecast versions that consume this impact.      |
+
+**Invariants:**
+- Intervention Impact Identifier is immutable.
+- Assessed Demand Lift must be non-negative.
+- Temporal Validity must be a valid interval.
+- Published version is immutable.
+- Intervention Reference must point to an active Scenario Adjustment.
+
+**Dependencies:** SE-C-039 Scenario Adjustment, SE-C-001 Item, SE-C-002 Location, SE-C-023 Quantity, SE-C-028 Temporal Window, SE-C-037 Enterprise Governed Vocabulary.
+
+**Traceability:** CN-003, CN-004; ARS §3, §4, §16, App. A.3.
+
+
+#### AB-D-018 – Assess Demand Intervention Impact
+
+**Purpose:** Create a Draft Demand Intervention Impact by computing the assessed demand lift.
+
+**Business Intent:** Produce a deterministic impact assessment for a planned intervention.
+
+**Trigger:** Scenario Adjustment published or updated (BN from Scenario Intelligence), or planner request.
+
+**Preconditions:** SE-C-039 Scenario Adjustment is active. SE-D-002 Demand Understanding is published for the relevant Planning Scope.
+
+**Business Behavior:** Invoke BA-D-016 (Model Intervention Lift) to compute the assessed demand lift. Create a Draft SE-D-018 with the computed lift, confidence, temporal validity, and model provenance.
+
+**State Transitions:** None → Draft.
+
+**Business Transaction:** Protects SE-D-018 aggregate. Atomic creation of Draft.
+
+**Decisions Invoked:** None.
+
+**Events Published:** None (Draft creation does not publish).
+
+**Idempotency:** Re-execution with the same intervention and context updates the existing Draft rather than creating a duplicate.
+
+**Concurrency:** Assessments for different interventions are independent. Same intervention is serialized.
+
+**Traceability:** Owned by SE-D-018. Invoked by FS-D-018.
+
+#### AB-D-019 – Publish Demand Intervention Impact
+
+**Purpose:** Publish the Draft Demand Intervention Impact, making it authoritative.
+
+**Business Intent:** Transfer the impact assessment to consuming capabilities.
+
+**Trigger:** Assessment complete and publication criteria met.
+
+**Preconditions:** Draft SE-D-018 exists. PO-D-050 publication criteria satisfied.
+
+**Business Behavior:** Execute DE-D-014 (Approve Intervention Impact Publication). If Publish: transition Draft to Published, supersede previous Published version. If Do Not Publish: Draft retained.
+
+**State Transitions:** Draft → Published; Previous Published → Superseded.
+
+**Business Transaction:** Protects SE-D-018 aggregate. Atomic publication and superseding.
+
+**Decisions Invoked:** DE-D-014.
+
+**Events Published:** EV-D-023 (Demand Intervention Impact Published).
+
+**Idempotency:** Re-execution on already-published version terminates immediately.
+
+**Concurrency:** Publication for a given intervention is serialized.
+
+**Traceability:** Owned by SE-D-018. Invoked by FS-D-019.
+
 ### 4.3.2 Entities
 
 Entities are documented within their owning Aggregate Root specification. Key entities include:
@@ -2885,7 +3035,7 @@ All Demand-owned Semantic Objects reference only ratified Enterprise Semantic Ob
 |---------------------|-----------|-------------------|---------|
 | BN-D-011 Forecast Published | Forecast Demand | Revise the Demand Understanding with the latest authoritative demand projection as forward-looking context. | FS-D-003 |
 | BN-P-001 Promise Confirmed | Promise Intelligence | Update demand line status with confirmed promise information. | FS-D-001 |
-| BN-C-001 Enterprise Picture Published | Enterprise Picture Management (CA-C-019) | Provide the authoritative snapshot of demand facts for interpretation into the Demand Understanding. | FS-D-004 |
+| BN-C-001 Enterprise Picture Published | Enterprise Picture Management (CA-C-019) | Provide the authoritative snapshot of demand facts for interpretation into the Demand Understanding. | FS-D-003 |
 
 **BN-C-001 Enterprise Picture Published**
 
@@ -2982,7 +3132,7 @@ The Demand Intelligence domain expects the Core domain to publish a notification
 
 | Role | Description |
 |------|-------------|
-| **Consumes** | Demand Understanding (SE-D-002), Demand Behavior Assessments (SE-D-004), Demand Behavior Assignments (SE-D-006). |
+| **Consumes** | Demand Understanding (SE-D-002), Demand Behavior Assessments (SE-D-004), Demand Behavior Assignments (SE-D-006), Demand Intervention Impacts (SE-D-018). |
 | **Produces** | Forecast Publication (SE-D-003). |
 | **Feeds** | Understand Demand, Supply Intelligence, Promise Intelligence, Scenario Intelligence, Evaluate Demand Quality. |
 
@@ -2995,6 +3145,7 @@ The Demand Intelligence domain expects the Core domain to publish a notification
 | Demand Understanding (SE-D-002) | Provides the authoritative interpretation of current demand — the baseline from which projections are generated. |
 | Demand Behavior Assessment (SE-D-004) | Provides current demand behavior state; Critical states may trigger out-of-cycle forecasting. |
 | Demand Behavior Assignment (SE-D-006) | Provides behavioral classifications used for forecasting model selection. |
+| Demand Intervention Impact (SE-D-018)  | Provides deterministic demand adjustments from planned commercial interventions. Consumed as forward-looking context during forecast generation. |
 
 **Enterprise Master Data**
 
@@ -3015,6 +3166,7 @@ The Demand Intelligence domain expects the Core domain to publish a notification
 | Reconciliation Policy (PO-D-029) | Governs forecast hierarchy reconciliation. |
 
 **Business Guarantees:**
+
 - Exactly one Published Forecast Publication exists for a given Planning Scope and horizon at any moment.
 - A Published forecast is immutable. Any change requires a new publication produced by a new forecast cycle.
 - All forecast lines within a publication carry model provenance.
@@ -3039,6 +3191,7 @@ The Demand Intelligence domain expects the Core domain to publish a notification
 | EV-D-011 | Forecast Projection Produced | AB-D-007 |
 | EV-D-012 | Forecast Override Applied | AB-D-008 |
 | EV-D-013 | Forecast Publication Published | AB-D-009 |
+| EV-D-016 | Critical Demand Behavior Escalated | AB-D-010 (via FS-D-010) |
 
 ### Business Notifications Published
 
@@ -3047,6 +3200,7 @@ The Demand Intelligence domain expects the Core domain to publish a notification
 | BN-D-010 | EV-D-010 | Forecast Cycle Established: Cycle ID, Reason, Horizon | At-least-once | Per cycle | Near-real-time |
 | BN-D-011 | EV-D-013 (via AB-D-009) | Forecast Published: Publication ID, Version, Planning Scope, Horizon, Confidence Index, Champion Model | At-least-once | Per publication | Near-real-time |
 | BN-D-012 | EV-D-012 | Forecast Override Applied: Publication ID, Item, Location, Bucket, Original, Override, Planner, Justification | At-least-once | Per override | Near-real-time |
+| BN-D-014 | EV-D-013 | Forecast Publication Suppressed: Publication ID, Reason | At-least-once | Per publication | Near-real-time |
 
 ### Business Notifications Consumed
 
@@ -3154,6 +3308,7 @@ The Demand Intelligence domain expects the Core domain to publish a notification
 |------------|------|
 | Demand Sensing Policy (PO-D-031) | Governs deviation thresholds, corroboration requirements, and state transition rules. |
 | Forecast Refresh Trigger Policy (PO-D-032) | Governs when Critical states trigger automatic forecast refresh evaluation. |
+| Forecast Refresh Execution Policy (PO-D-034) | Governs partial vs full refresh authorization. |
 
 **Business Guarantees:**
 - Every monitored item-location has a continuously maintained Current State reflecting the latest demand behavior.
@@ -3258,6 +3413,12 @@ The Demand Intelligence domain expects the Core domain to publish a notification
 |----|----------------|-------------------|-----|
 | CR-D-011 | Classify Planning Entity | BW-D-011 | FS-D-011 |
 
+### Enterprise Events Published
+
+| ID | Business Fact | Published By |
+|----|---------------|--------------|
+| EV-D-017 | Planning Classification Changed | AB-D-011 |
+
 ### Business Notifications Published
 
 | ID | Business Information | Delivery | Ordering | Timeliness |
@@ -3307,8 +3468,6 @@ The Demand Intelligence domain expects the Core domain to publish a notification
 | **Produces** | Demand Behavior Assignments (SE-D-006). |
 | **Feeds** | Forecast Demand (model selection), Detect Demand Exceptions (threshold setting), Explain Demand, Prioritize Demand, Inventory Planning, Supply Intelligence, Scenario Intelligence. |
 
-**Enterprise Dependencies** *(abbreviated)*
-
 **Business Guarantees:**
 - Every active planning entity has a continuously maintained current classification for each active behavior dimension.
 - Each behavior dimension is updated independently.
@@ -3320,6 +3479,12 @@ The Demand Intelligence domain expects the Core domain to publish a notification
 | ID | Responsibility | Business Workflow | FS |
 |----|----------------|-------------------|-----|
 | CR-D-012 | Classify Demand Behavior | BW-D-012 | FS-D-012 |
+
+### Enterprise Events Published
+
+| ID | Business Fact | Published By |
+|----|---------------|--------------|
+| EV-D-019 | Demand Behavior Classification Changed | AB-D-012 |
 
 ### Business Notifications Published
 
@@ -3370,8 +3535,6 @@ The Demand Intelligence domain expects the Core domain to publish a notification
 | **Produces** | Planning Priority Assignments (SE-D-007). |
 | **Feeds** | Forecast Demand (high-priority protection rules), Detect Demand Exceptions (alert prioritisation), Inventory Planning (allocation priority), Scenario Intelligence (impact assessment). |
 
-**Enterprise Dependencies** *(abbreviated)*
-
 **Business Guarantees:**
 - Every active planning entity has a continuously maintained current priority.
 - Priority is derived from the current Prioritization Policy and available business evidence.
@@ -3383,6 +3546,12 @@ The Demand Intelligence domain expects the Core domain to publish a notification
 | ID | Responsibility | Business Workflow | FS |
 |----|----------------|-------------------|-----|
 | CR-D-013 | Prioritize Planning Entity | BW-D-013 | FS-D-013 |
+
+### Enterprise Events Published
+
+| ID | Business Fact | Published By |
+|----|---------------|--------------|
+| EV-D-020 | Planning Priority Changed | AB-D-013 |
 
 ### Business Notifications Published
 
@@ -3487,15 +3656,15 @@ The Demand Intelligence domain expects the Core domain to publish a notification
 
 **Owned Semantic Objects:** None. This capability produces exception detection evidence published to Core Exception Management. The SE-C-019 Exception aggregate is owned by the Core Domain.
 
+> **Architectural Note:** CA-D-008 owns no Aggregate Roots. Therefore it has no Aggregate Behaviors. The Functional Specification (FS-D-015) orchestrates Decisions and Business Algorithms directly. This is a justified exception to the standard AB-orchestration pattern because no aggregate exists to protect.
+
 **Position in Enterprise Reasoning**
 
 | Role | Description |
 |------|-------------|
 | **Consumes** | Demand Understanding (SE-D-002), Forecast Publications (SE-D-003), Demand Behavior Assessments (SE-D-004), Forecast Quality Assessments (SE-D-008), Exception Detection Policy (PO-D-044). |
-| **Produces** | Demand Planning Conditions (SE-D-009). |
-| **Feeds** | Explain Demand, Learn From Demand, Planners and Managers. Conditions are resolved within the current operational horizon; patterns inform learning for future policy refinement. |
-
-**Enterprise Dependencies** *(abbreviated)*
+| **Produces** | Demand exception detection and resolution evidence (published as BN-D-022, BN-D-023 to Core Exception Management). |
+| **Feeds** | Core Exception Management (CA-C-020), Explain Demand, Learn From Demand, Planners and Managers. |
 
 **Cross-Domain Dependencies**
 
@@ -3508,44 +3677,50 @@ The Demand Intelligence domain expects the Core domain to publish a notification
 - Detection evidence includes the constraint reference, affected scope, severity assessment, and triggering evidence.
 - Resolution evidence is published when the underlying data returns to within governed thresholds.
 - All detection and resolution evidence is permanently preserved.
+- Demand Intelligence never directly creates, updates, or resolves SE-C-019 Exception instances.
 
 ### Capability Responsibilities
 
 | ID | Responsibility | Business Workflow | FS |
 |----|----------------|-------------------|-----|
-| CR-D-015 | Detect Demand Planning Conditions | BW-D-015 | FS-D-015 |
+| CR-D-015 | Detect Demand Exception Evidence | BW-D-015 | FS-D-015 |
+
+### Enterprise Events Published
+
+| ID | Business Fact | Published By |
+|----|---------------|--------------|
+| EV-D-022 | Demand Exception Evidence Evaluated | FS-D-015 (workflow-level event) |
+
+> **Architectural Note:** EV-D-022 is a workflow-level event emitted by FS-D-015. Since CA-D-008 owns no aggregate, no Aggregate Behavior exists to emit this event. The workflow emits it after DE-D-012 completes evaluation. This is a justified exception to satisfy ARS §14 (BN must reference at least one EV).
 
 ### Business Notifications Published
 
-| ID | Business Information | Delivery | Ordering | Timeliness |
-|----|---------------------|----------|----------|------------|
-| BN-D-022 | Demand Exception Detection Evidence: Constraint Reference, Affected Scope Type, Affected Scope Identifier, Exception Classification, Severity Assessment, Triggering Evidence | At-least-once | Per detection | Near-real-time |
-| BN-D-023 | Demand Exception Resolution Evidence: Constraint Reference, Affected Scope Type, Affected Scope Identifier, Resolution Evidence | At-least-once | Per resolution | Near-real-time |
+| ID | References EV | Business Information | Delivery | Ordering | Timeliness |
+|----|---------------|---------------------|----------|----------|------------|
+| BN-D-022 | EV-D-022 | Demand Exception Detection Evidence: Constraint Reference, Affected Scope Type, Affected Scope Identifier, Exception Classification, Severity Assessment, Triggering Evidence | At-least-once | Per detection | Near-real-time |
+| BN-D-023 | EV-D-022 | Demand Exception Resolution Evidence: Constraint Reference, Affected Scope Type, Affected Scope Identifier, Resolution Evidence | At-least-once | Per resolution | Near-real-time |
 
-**Feedback Target:** Condition patterns are consumed by Learn From Demand to improve detection policies in **subsequent planning cycles**.
+### Business Notifications Consumed
 
-**Traceability:** Business Owner: CA-D-008. Publishes BN-D-022–023. Realises BO-D-001, BO-D-003, BO-D-004.
+| Source Notification | Publisher | Business Behavior | Invokes |
+|---------------------|-----------|-------------------|---------|
+| BN-D-001 Demand Understanding Published | Understand Demand | Refresh detection context with latest demand interpretation. | FS-D-015 |
+| BN-D-021 Forecast Quality Assessment Published | Evaluate Demand Quality | Refresh detection context with latest quality metrics. | FS-D-015 |
 
 ### Capability Artifact Indexes
 
 | Artifact Type | ID | Location | Status |
 |---------------|----|----------|--------|
-| Owned Semantic Objects | SE-D-009 – Demand Planning Condition | §4.3.1 | Frozen |
-| Aggregate Behaviors | AB-D-015 – Detect Demand Planning Conditions | §4.3.1 | Frozen |
-| Decisions | DE-D-012 – Evaluate Demand Planning Condition | §6 | Aligned |
-| Rules | BR-D-009 – Demand Planning Condition Business Identity | §7 | Aligned |
-| Rules | BR-D-121 – Single Active State | §7 | Aligned |
-| Rules | BR-D-122 – Immutable Condition Change Events | §7 | Aligned |
-| Rules | BR-D-123 – Terminal Resolution | §7 | Aligned |
-| Rules | BR-D-311 – Condition Detection Evidence | §7 | Aligned |
-| Policies | PO-D-044 – Exception Detection Policy Governance | §8 | Aligned |
-| Functional Specifications | FS-D-015 – Detect Demand Planning Conditions | §9 | Aligned |
-| Business Algorithms | BA-D-010 – Evaluate Demand Planning Condition Evidence | §10 | Aligned |
-| Business Algorithms | BA-D-011 – Determine Demand Planning Condition State | §10 | Aligned |
-| Consumed Domain Objects | SE-D-002, SE-D-003, SE-D-004, SE-D-008 | §4.3.1 | Aligned |
-| Enterprise Question | “What situations in the demand picture require enterprise attention because they violate governed policies…?” | §5.8 | Frozen |
-| Business Notifications | BN-D-022 – Demand Planning Condition Detected | §5.8 | Aligned |
-| Business Notifications | BN-D-023 – Demand Planning Condition Resolved | §5.8 | Aligned |
+| Decision | DE-D-012 – Evaluate Demand Exception Evidence | §6 | Aligned |
+| Rule | BR-D-009 – Demand Exception Evidence Business Identity | §7 | Aligned |
+| Rule | BR-D-311 – Condition Detection Evidence | §7 | Aligned |
+| Policy | PO-D-044 – Exception Detection Policy Governance | §8 | Aligned |
+| Functional Specification | FS-D-015 – Detect Demand Exception Evidence | §9 | Aligned |
+| Business Algorithm | BA-D-010 – Evaluate Demand Exception Evidence | §10 | Aligned |
+| Business Algorithm | BA-D-011 – Assess Demand Exception Lifecycle Evidence | §10 | Aligned |
+| Enterprise Event | EV-D-022 – Demand Exception Evidence Evaluated | §5.8 | Aligned |
+| Business Notification | BN-D-022 – Demand Exception Detection Evidence | §5.8 | Aligned |
+| Business Notification | BN-D-023 – Demand Exception Resolution Evidence | §5.8 | Aligned |
 
 ---
 
@@ -3662,7 +3837,81 @@ The Demand Intelligence domain expects the Core domain to publish a notification
 
 ---
 
-## 5.11 Business Workflows
+## 5.11 Model Demand Interventions – CA-D-011
+
+**Business Intent:** Assess the demand impact of planned commercial interventions and publish deterministic impact assessments for consumption by the forecast capability.
+
+**Enterprise Question:** What is the expected demand change from this planned commercial intervention?
+
+**Owned Semantic Objects:** SE-D-018 (Demand Intervention Impact).
+
+**Position in Enterprise Reasoning**
+
+| Role | Description |
+|------|-------------|
+| **Consumes** | Scenario Adjustment (SE-C-039), Demand Understanding (SE-D-002), Forecast Publication (SE-D-003) for historical elasticity context. |
+| **Produces** | Demand Intervention Impact (SE-D-018). |
+| **Feeds** | Forecast Demand (CA-D-002), Supply Intelligence, Scenario Intelligence. |
+
+**Enterprise Dependencies**
+
+| Dependency | Role in Model Demand Interventions |
+|------------|--------------------------------------|
+| SE-C-039 Scenario Adjustment | Defines the intervention being assessed (type, magnitude, temporal scope). |
+| SE-D-002 Demand Understanding | Provides current demand baseline context. |
+| SE-D-003 Forecast Publication | Provides historical forecast-actual pairs for elasticity estimation. |
+| PO-D-050 Intervention Modeling Governance | Governs modeling approach selection, confidence thresholds, and publication criteria. |
+
+**Business Guarantees:**
+1. Every published Demand Intervention Impact is immutable and traceable to its source intervention.
+2. Every impact assessment carries a confidence level and model provenance.
+3. Impact assessments are computed deterministically from governed inputs.
+4. No impact assessment modifies the baseline forecast directly.
+5. Exactly one Published version exists per intervention per item-location at any moment.
+
+### Capability Responsibilities
+
+| ID | Responsibility | Business Workflow | FS |
+|----|----------------|-------------------|-----|
+| CR-D-018 | Assess Demand Intervention Impact | BW-D-018 | FS-D-018 |
+| CR-D-019 | Publish Demand Intervention Impact | BW-D-019 | FS-D-019 |
+
+### Enterprise Events Published
+
+| ID | Business Fact | Published By |
+|----|---------------|--------------|
+| EV-D-023 | Demand Intervention Impact Published | AB-D-019 |
+
+### Business Notifications Published
+
+| ID | References EV | Business Information | Delivery | Ordering | Timeliness |
+|----|---------------|---------------------|----------|----------|------------|
+| BN-D-026 | EV-D-023 | Demand Intervention Impact Published: Intervention Impact Identifier, Intervention Reference, Item, Location, Assessed Demand Lift, Lift Confidence, Temporal Validity | At-least-once | Per intervention | Near-real-time |
+
+### Business Notifications Consumed
+
+| Source Notification | Publisher | Business Behavior | Invokes |
+|---------------------|-----------|-------------------|---------|
+| BN-D-001 Demand Understanding Published | Understand Demand | Refresh baseline context for pending impact assessments. | FS-D-018 |
+
+### Capability Artifact Indexes
+
+| Artifact Type | ID | Location | Status |
+|---------------|----|----------|--------|
+| Owned Semantic Object | SE-D-018 – Demand Intervention Impact | §4.3.1 | Frozen |
+| Aggregate Behavior | AB-D-018 – Assess Demand Intervention Impact | §5.11 | Aligned |
+| Aggregate Behavior | AB-D-019 – Publish Demand Intervention Impact | §5.11 | Aligned |
+| Decision | DE-D-014 – Approve Intervention Impact Publication | §6 | Aligned |
+| Rule | BR-D-414 – Intervention Impact Non-Negativity | §7 | Aligned |
+| Rule | BR-D-415 – Intervention Reference Validity | §7 | Aligned |
+| Policy | PO-D-050 – Intervention Modeling Governance | §8 | Aligned |
+| Functional Specification | FS-D-018 – Assess Demand Intervention Impact | §9 | Aligned |
+| Functional Specification | FS-D-019 – Publish Demand Intervention Impact | §9 | Aligned |
+| Business Algorithm | BA-D-016 – Model Intervention Lift | §10 | Aligned |
+| Enterprise Event | EV-D-023 – Demand Intervention Impact Published | §5.11 | Aligned |
+| Business Notification | BN-D-026 – Demand Intervention Impact Published | §5.11 | Aligned |
+
+## 5.12 Business Workflows
 
 | ID | Business Intent | Realises | FS | Trigger |
 |----|-----------------|----------|----|---------|
@@ -3765,7 +4014,7 @@ Accept, Quarantine, Reject.
 
 | Outcome | Meaning | Criteria |
 |---------|---------|----------|
-| Accept | Record is trustworthy; eligible for incorporation. | All eligibility rules (BR-D-010–BR-D-013) pass. |
+| Accept | Record is trustworthy; eligible for incorporation. | All eligibility rules (BR-D-200–BR-D-203) pass. |
 | Quarantine | Record cannot be automatically accepted; permanently held. | One or more rules produce a marginal failure, or source reliability is borderline. |
 | Reject | Record is permanently excluded. | One or more rules produce a critical failure (e.g., duplicate, quantity out of range). |
 
@@ -3824,8 +4073,6 @@ For Quarantine or Reject outcomes, the rationale is extended with the specific f
 
 - If the record’s mandatory attributes are incomplete, Quarantine immediately with reason code `MissingMandatoryAttributes`.
 - If evaluation is attempted on a record not in Received state, the operation is rejected.
-
----
 
 ## DE-D-002 – Publish Demand Understanding
 
@@ -3924,8 +4171,6 @@ For Do Not Publish: “Publication deferred. Reason: {reason_code}. Details: {de
 
 - If the Periodic Refresh interval has elapsed but a publication cannot be completed (e.g., Enterprise Picture unavailable), the staleness is documented as a data quality flag in the next successful publication.
 
----
-
 ## DE-D-003 – Generate Forecast for Series
 
 **Outcome Type:** Selection Decision
@@ -4012,8 +4257,6 @@ Governed by PO-D-019.
 **Rationale Template:** “Series {id}: Forecastable. History length: {periods} periods (minimum {min}).”
 For Unforecastable: “Series {id}: Unforecastable. Reason: insufficient history ({periods} periods, minimum {min}).”
 
----
-
 ## DE-D-004 – Approve Forecast Publication
 
 **Outcome Type:** Authorization Decision
@@ -4045,7 +4288,7 @@ Does this forecast publication meet the completeness, confidence, and governance
 |---------|-------|
 | **Preconditions** | The Draft Forecast Publication exists with forecasts generated. The Forecast Confidence Index (KA-D-009) has been computed. All forecast assumptions have been signed off per PO-D-025. |
 | **Business Behavior** | Evaluate the Forecast Confidence Index against the auto-publication threshold defined in PO-D-020. If the index meets or exceeds the threshold and completeness is met, the outcome is Publish Automatically. If below threshold but above the minimum, the outcome is Require Planner Approval. If completeness is below the minimum threshold, the outcome is Suppress Publication. |
-| **Exceptional Conditions** | If the Forecast Confidence Index is borderline (within 2% of the threshold), the outcome is Require Planner Approval. |
+| **Exceptional Conditions** | If the Forecast Confidence Index is borderline (within the borderline tolerance defined by PO-D-020), the outcome is Require Planner Approval. |
 | **Postconditions** | If Publish Automatically: the publication is ready for release. If Require Planner Approval: the Demand Planner is notified. If Suppress: the Demand Manager is notified. |
 | **Outcome When Preconditions Are Not Satisfied** | If the Forecast Confidence Index has not been computed, the decision is deferred. If assumptions are not signed off, the outcome is Suppress Publication until sign-off is complete. |
 
@@ -4106,8 +4349,6 @@ Governed by PO-D-020, PO-D-021, PO-D-025.
 **Rationale Template:** “Forecast Publication {id}: approved for automatic publication. Confidence Index {x}% (threshold {y}%), completeness {z}%.”
 For Require Planner Approval: “Publication requires Demand Planner approval. Confidence Index {x}% below auto-publication threshold {y}%.”
 For Suppress: “Publication suppressed. Completeness {z}% below minimum threshold {t}%.”
-
----
 
 ## DE-D-005 – Evaluate Forecast Override
 
@@ -4203,8 +4444,6 @@ Governed by PO-D-022, PO-D-023.
 For Reject: “Override rejected. Reason: Justification empty.”
 For Request Revision: “Override requires revision. Deviation {deviation}% exceeds limit {limit}%.”
 
----
-
 ## DE-D-006 – Evaluate Demand Signal for State Change
 
 **Outcome Type:** Classification Decision
@@ -4277,7 +4516,7 @@ No Change, Transition to Elevated, Transition to Depressed, Transition to Critic
 
 | ID | Rule |
 |----|------|
-| BR-D-300 | Deviation thresholds are governed by PO-D-031 (default Significant 2.5σ, Critical 4σ). |
+| BR-D-300 | Deviation thresholds are governed by PO-D-031. |
 | BR-D-301 | Critical state requires corroboration by at least two independent sources. |
 | BR-D-302 | For high-priority items, the Significant threshold is lowered per PO-D-031. |
 | BR-D-303 | Signals below the noise threshold are suppressed. |
@@ -4299,8 +4538,6 @@ Governed by PO-D-031.
 ### Explainability
 
 **Rationale Template:** “Signal for {item} at {location} evaluated. Deviation {d}σ from baseline. Outcome: {state}. Confidence: {c}%.”
-
----
 
 ## DE-D-007 – Trigger Forecast Refresh on Critical State
 
@@ -4333,7 +4570,7 @@ Is the Critical demand behavior significant enough, and is the current forecast 
 |---------|-------|
 | **Preconditions** | The Demand Behavior Assessment is in Critical state. A current Forecast Publication (SE-D-003) exists. |
 | **Business Behavior** | Evaluate the forecast age against the freshness threshold defined in PO-D-032. If the forecast is older than the threshold and the expected accuracy improvement from a refresh exceeds the minimum benefit, the outcome is Trigger Refresh. Otherwise, Defer to Next Scheduled Cycle. |
-| **Exceptional Conditions** | If the current forecast is very recent (e.g., published within the last hour), the outcome is Defer regardless of other criteria. |
+| **Exceptional Conditions** | If the current forecast is within the freshness threshold defined by PO-D-032, the outcome is Defer regardless of other criteria. |
 | **Postconditions** | If Trigger Refresh: a new forecast cycle is initiated in Forecast Demand. If Defer: the Critical state is noted for the next scheduled cycle. |
 | **Outcome When Preconditions Are Not Satisfied** | If no current Forecast Publication exists, the decision is not applicable. |
 
@@ -4391,10 +4628,6 @@ Governed by PO-D-032, PO-D-034.
 
 **Rationale Template:** “Forecast refresh triggered for {item} at {location} due to Critical demand behavior. Forecast age: {hours}h.”
 For Defer: “Forecast refresh deferred. Forecast age {hours}h within freshness threshold.”
-
----
-
----
 
 ## DE-D-008 – Determine Planning Classification
 
@@ -4486,8 +4719,6 @@ Governed by PO-D-035, PO-D-036.
 
 **Rationale Template:** “Entity {id}, type {type}: classified as {class}. Evidence: {summary}. Confidence: {c}%.”
 
----
-
 ## DE-D-009 – Determine Behavior Classification
 
 **Outcome Type:** Classification Decision
@@ -4577,8 +4808,6 @@ Governed by PO-D-037, PO-D-038.
 ### Explainability
 
 **Rationale Template:** “Entity {id}, dimension {dim}: classified as {class}. Evidence: {summary}. Confidence: {c}%.”
-
----
 
 ## DE-D-010 – Determine Planning Priority
 
@@ -4673,8 +4902,6 @@ Governed by PO-D-039, PO-D-040.
 
 **Rationale Template:** “Entity {id}: priority {level}, score {score}. Rationale: {business justification}. Validity: {conditions}.”
 
----
-
 ## DE-D-011 – Publish Forecast Quality Assessment
 
 **Outcome Type:** Publication Decision
@@ -4766,7 +4993,6 @@ Governed by PO-D-041.
 **Rationale Template:** “Forecast Quality Assessment for Planning Scope {scope}, period {period}: published. Completeness {pct}%.”
 For Do Not Publish: “Publication suppressed. Reason: {reason}. Completeness {pct}%.”
 
----
 
 ## DE-D-012 – Evaluate Demand Exception Evidence
 
@@ -4780,7 +5006,7 @@ For Do Not Publish: “Publication suppressed. Reason: {reason}. Completeness {p
 | **Authoritative Representation** | The enterprise's determination of whether demand exception evidence exists and, if so, its severity. |
 | **Business Responsibility** | Apply the Exception Detection Policy to the current demand evidence and determine whether a governed policy has been breached. |
 | **Authority Scope** | Per planning entity and condition type. |
-| **Intended Consumers** | Core Exception Management (CA-C-019), Explain Demand, Learn From Demand, Planners and Managers. |
+| **Intended Consumers** | Core Exception Management (CA-C-020), Explain Demand, Learn From Demand, Planners and Managers. |
 | **Non-Intended Consumers** | None. |
 | **Supersedes** | None. |
 | **Superseded By** | None. |
@@ -4860,7 +5086,6 @@ Governed by PO-D-044.
 
 **Rationale Template:** “Condition type {type} for {entity}: {outcome}. Evidence: {summary}. Severity: {severity}. Confidence: {c}%.”
 
----
 
 ## DE-D-013 – Select Champion Model
 
@@ -4943,6 +5168,86 @@ Governed by PO-D-017.
 
 **Rationale Template:** "Champion model retained: no challenger met promotion criteria (WAPE improvement not statistically significant)." / "Champion model replaced: Challenger-X promoted due to significant WAPE improvement of 3.2pp with no bias/stability/high-priority degradation."
 
+## DE-D-014 – Approve Intervention Impact Publication
+
+**Outcome Type:** Authorization Decision
+
+### Authority Specification Contract
+
+| Section | Value |
+|---------|-------|
+| **Business Owner** | Model Demand Interventions (CA-D-011) |
+| **Authoritative Representation** | The enterprise's determination that a Demand Intervention Impact meets publication criteria. |
+| **Business Responsibility** | Verify confidence, completeness, and governance compliance before publication. |
+| **Authority Scope** | Per intervention impact. |
+| **Intended Consumers** | CA-D-002 Forecast Demand, Supply Intelligence, Scenario Intelligence. |
+
+### Purpose
+
+Determine whether the Demand Intervention Impact is eligible to become the authoritative impact assessment.
+
+### Enterprise Question
+
+Does this intervention impact meet the confidence and completeness thresholds for authoritative release?
+
+### Behavioral Specification Contract
+
+| Section | Value |
+|---------|-------|
+| **Preconditions** | Draft SE-D-018 exists. PO-D-050 is current. |
+| **Business Behavior** | Evaluate the Lift Confidence against the publication threshold defined in PO-D-050. If confidence meets or exceeds the threshold, the outcome is Publish. If below, the outcome is Do Not Publish. |
+| **Exceptional Conditions** | If the intervention reference is no longer active, the outcome is Do Not Publish. |
+| **Postconditions** | If Publish: Draft becomes Published, previous Published becomes Superseded. If Do Not Publish: Draft retained. |
+| **Outcome When Preconditions Are Not Satisfied** | If no Draft exists, the decision is not applicable. |
+
+### Decision Alternatives
+
+Publish, Do Not Publish.
+
+### Decision Outcome Contract
+
+| Outcome | Criteria |
+|---------|----------|
+| Publish | Lift Confidence ≥ publication threshold defined in PO-D-050. Intervention Reference is active. |
+| Do Not Publish | Lift Confidence below threshold, or Intervention Reference inactive. |
+
+### Evidence Contract
+
+| Input | Source | Description |
+|-------|--------|-------------|
+| Draft Demand Intervention Impact | SE-D-018 (Draft) | The computed impact assessment. |
+| Publication threshold | PO-D-050 | The minimum confidence for publication. |
+| Intervention status | SE-C-039 | Whether the intervention is still active. |
+
+**Decision Confidence:** Rule Certainty. Binary.
+
+**Decision Authority:** Automatic.
+
+### Business Rules
+
+| ID | Rule |
+|----|------|
+| BR-D-414 | Assessed Demand Lift must be non-negative. |
+| BR-D-415 | Intervention Reference must point to an active Scenario Adjustment. |
+
+### Policies
+
+Governed by PO-D-050.
+
+### Decision Trace
+
+| Attribute | Value |
+|-----------|-------|
+| Decision Owner | AB-D-019 (Publish Demand Intervention Impact) |
+| Invoked By | FS-D-019 |
+| References | BR-D-414, BR-D-415 |
+| Governed By | PO-D-050 |
+| Produces | Publication determination consumed by AB-D-019 |
+
+### Explainability
+
+**Rationale Template:** "Intervention impact for {item} at {location}: published. Confidence {x}% (threshold {y}%). Intervention: {intervention_ref}."
+
 ---
 
 # Chapter 7 — Rule Model
@@ -4979,19 +5284,6 @@ Invariant Rules and Identity Rules cannot be overridden. If a Policy appears to 
 
 Identity rules define the unique enterprise business identity of an object. They are enforced at object creation. No other rule type may override an Identity Rule. Every object also receives a permanent, system-assigned identifier for traceability; this identifier is not the business identity.
 
-| ID | Rule |
-|----|------|
-| BR-D-001 | Each Demand Observation shall have a globally unique Demand Observation Identifier assigned at creation. |
-| BR-D-002 | The business identity of a Demand Understanding aggregate shall be the Planning Scope. Exactly one aggregate may exist for a given Planning Scope. |
-| BR-D-003 | The business identity of a Forecast Publication aggregate shall be the combination of Planning Scope and Forecast Horizon. Each version receives a system-assigned, globally unique Forecast Publication Identifier. |
-| BR-D-004 | The business identity of a Demand Behavior Assessment shall be the combination of Item and Location. |
-| BR-D-005 | The business identity of a Planning Classification Assignment shall be the combination of Entity Type, Entity Identifier, and Classification Type. |
-| BR-D-006 | The business identity of a Demand Behavior Assignment shall be the combination of Entity Type, Entity Identifier, and Behavior Dimension. |
-| BR-D-007 | The business identity of a Planning Priority Assignment shall be the combination of Entity Type and Entity Identifier. |
-| BR-D-008 | The business identity of a Forecast Quality Assessment aggregate shall be the combination of Assessment Scope and Evaluation Period. |
-| BR-D-009 | The business identity of a Demand Planning Condition shall be the combination of Condition Type, Planning Entity, and Scope. The system assigns a permanent Demand Planning Condition Identifier at creation. |
-| BR-D-010 | The business identity of a Demand Explanation shall be the combination of the explained artifact reference and the historical versions of all contributing evidence, policies, and template. Identical requests shall return the same explanation. |
-| BR-D-011 | The business identity of a Demand Learning shall be the Enterprise Learning Identifier assigned at creation. Business uniqueness is governed by Learning Type, Evidence References, Analysis Period, and Target Capability or Entity Scope. |
 
 ### BR-D-002 – Demand Understanding Aggregate Identity
 
@@ -5009,59 +5301,27 @@ Identity rules define the unique enterprise business identity of an object. They
 
 **Traceability:** Owned by CA-D-001. Referenced by AB-D-003, FS-D-004.
 
-### BR-D-009 – Demand Planning Condition Business Identity
+### BR-D-009 – Demand Exception Evidence Business Identity
 
-**Rule Statement:** The business identity of a Demand Planning Condition shall be the combination of Condition Type, Planning Entity, and Scope. The system assigns a permanent Demand Planning Condition Identifier at creation.
+**Rule Statement:** The business identity of demand exception evidence published to Core Exception Management shall map to the Core SE-C-019 Exception deduplication key: the combination of Constraint Reference, Affected Scope Type, and Affected Scope Identifier.
 
-**Rule:** For a given Condition Type, Planning Entity, and Scope, at most one Demand Planning Condition may be in an Active state. When the same business identity recurs after resolution, a new condition instance is created with a new system-assigned identifier. The business identity defines what constitutes the same enterprise condition over time.
+**Rule:** The Demand domain does not assign a permanent identifier to exception conditions. It evaluates evidence and publishes it to Core. Core assigns the Exception Identifier upon creation. The Demand domain must ensure that every detection and resolution evidence payload contains the exact Constraint Reference, Affected Scope Type, and Affected Scope Identifier to allow Core to deduplicate and manage the SE-C-019 lifecycle.
 
-**Evaluation Scope:** Per condition, at creation.
+**Evaluation Scope:** Per evidence evaluation, before publication.
 
-**Enforcement Point:** AB-D-015 (Detect Demand Planning Conditions).
+**Enforcement Point:** FS-D-015 (Detect Demand Exception Evidence).
 
 **Governed Policy:** PO-D-044.
 
-**Outcome When Preconditions Are Not Satisfied:** If an Active condition already exists for the same business identity, a new condition is not created.
+**Outcome When Preconditions Are Not Satisfied:** If the evidence payload lacks any of the three deduplication key components, publication to Core is rejected.
 
-**Traceability:** Owned by CA-D-008. Referenced by AB-D-015, FS-D-020.
+**Traceability:** Owned by CA-D-008. Referenced by FS-D-015, DE-D-012.
 
 ---
 
 ## Invariant Rules
 
 Invariant rules define conditions that must always hold true for an aggregate. They are enforced at every aggregate commit boundary. No other rule type may override an Invariant Rule.
-
-| ID | Rule |
-|----|------|
-| BR-D-100 | Rejected Demand Observations shall never contribute to the Enterprise Picture. |
-| BR-D-101 | Quarantined Demand Observations shall never contribute to the Enterprise Picture. Quarantine is terminal. If corrected data arrives, it is received as a new observation. |
-| BR-D-102 | A Demand Observation shall be evaluated exactly once from the Received state. |
-| BR-D-103 | Exactly one Published Demand Understanding shall exist per Planning Scope at any moment. |
-| BR-D-104 | A Published Demand Understanding is immutable. Any change requires a new version. |
-| BR-D-105 | A Superseded Demand Understanding shall never return to Published. |
-| BR-D-106 | Every version of the Demand Understanding shall record Transaction Time and Publication Time. |
-| BR-D-107 | Exactly one Published Forecast Publication shall exist for a given Planning Scope and Forecast Horizon at any moment. |
-| BR-D-108 | A Published Forecast Publication is immutable. Any change requires a new publication produced by a new forecast cycle. |
-| BR-D-109 | The original system forecast value shall be preserved when an override is applied. |
-| BR-D-110 | At any moment, a monitored Item-Location shall have exactly one Current State in its Demand Behavior Assessment. |
-| BR-D-111 | State Change Events within a Demand Behavior Assessment are immutable. |
-| BR-D-112 | At any moment, an active entity shall have exactly one current classification per active classification type. |
-| BR-D-113 | Assignment Change Events within a Planning Classification Assignment are immutable. |
-| BR-D-114 | At any moment, an active entity shall have exactly one current classification per active behavior dimension. |
-| BR-D-115 | Behavior Change Events within a Demand Behavior Assignment are immutable. |
-| BR-D-116 | At any moment, an active entity shall have exactly one current priority. |
-| BR-D-117 | Priority Change Events within a Planning Priority Assignment are immutable. |
-| BR-D-118 | Exactly one Published Forecast Quality Assessment shall exist for a given Assessment Scope and Evaluation Period. |
-| BR-D-119 | A Published Forecast Quality Assessment is immutable. |
-| BR-D-120 | All published assessments shall be permanently retained. |
-| BR-D-121 | Demand exception evidence shall reference SE-C-019 Exception as the authoritative enterprise record. |
-| BR-D-122 | Demand exception detection evidence shall include constraint reference, affected scope, severity assessment, and triggering evidence. |
-| BR-D-123 | Demand exception resolution evidence shall be published when the underlying data returns to within governed thresholds. |
-| BR-D-124 | An explanation, once created, shall never be modified. |
-| BR-D-125 | A learning, once created, shall never be modified. |
-| BR-D-126 | Historical Demand Observations shall not be retroactively altered when Reference Objects change. |
-| BR-D-127 | The Demand Understanding shall interpret only the Enterprise Picture and published demand artifacts. It shall not duplicate raw demand data. |
-| BR-D-128 | At any moment, no more than one active Forecast Publication generation context shall exist for a given Planning Scope and Forecast Horizon. |
 
 ### BR-D-128 – Single Active Forecast Publication Generation Context per Scope and Horizon
 
@@ -5078,8 +5338,6 @@ Invariant rules define conditions that must always hold true for an aggregate. T
 **Outcome When Preconditions Are Not Satisfied:** Cycle initiation is rejected. The requesting event is logged.
 
 **Traceability:** Owned by CA-D-002. Referenced by AB-D-005, FS-D-005.
-
----
 
 ### BR-D-103 – Single Published Demand Understanding per Planning Scope
 
@@ -5134,23 +5392,6 @@ Invariant rules define conditions that must always hold true for an aggregate. T
 ## Eligibility Rules
 
 Eligibility rules govern whether an artifact meets the criteria to proceed to the next stage of processing. They are enforced at Decision evaluation.
-
-| ID | Rule |
-|----|------|
-| BR-D-200 | Demand signal timeliness must be within maximum allowed latency. |
-| BR-D-201 | Demand signal quantity must be within valid range. |
-| BR-D-202 | Source reliability must meet minimum threshold. |
-| BR-D-203 | Duplicate data within the same window is rejected. |
-| BR-D-204 | Publication of the Demand Understanding requires material change in at least one interpretation dimension, or a Periodic Refresh due per PO-D-012. |
-| BR-D-205 | Interpretation completeness must meet the threshold defined in PO-D-011 before publication. |
-| BR-D-206 | A minimum number of periods of demand history is required to generate a statistical forecast. Series with insufficient history are flagged as unforecastable. |
-| BR-D-207 | Completeness threshold must be met for a Forecast Publication to be approved for automatic publication. |
-| BR-D-208 | Every override must contain a non-empty business justification. |
-| BR-D-209 | The override value must not deviate from the system forecast beyond the configured deviation limit unless Demand Manager approval is obtained. |
-| BR-D-210 | A Demand Observation must be in Received state before evaluation can proceed. |
-| BR-D-211 | A Demand Observation must exist before evaluation can be attempted. |
-| BR-D-212 | A Forecast Quality Assessment shall only be published if actual demand data covers the full evaluation period and meets the completeness threshold. |
-| BR-D-213 | The evaluation period shall meet the minimum length defined in the Forecast Measurement Policy. |
 
 ### BR-D-200 – Demand Signal Timeliness
 
@@ -5296,8 +5537,6 @@ Eligibility rules govern whether an artifact meets the criteria to proceed to th
 
 **Traceability:** Owned by CA-D-002. Referenced by DE-D-005, AB-D-008.
 
----
-
 ### BR-D-212 – Forecast Quality Assessment Publication Completeness
 
 **Rule Statement:** A Forecast Quality Assessment shall only be published if actual demand data covers the full evaluation period and meets the completeness threshold.
@@ -5313,8 +5552,6 @@ Eligibility rules govern whether an artifact meets the criteria to proceed to th
 **Outcome When Preconditions Are Not Satisfied:** The assessment is not published; it is retained as Draft and the Demand Manager is notified.
 
 **Traceability:** Owned by CA-D-007. Referenced by DE-D-011, FS-D-014.
-
----
 
 ### BR-D-213 – Forecast Quality Assessment Evaluation Period Minimum
 
@@ -5338,21 +5575,6 @@ Eligibility rules govern whether an artifact meets the criteria to proceed to th
 
 Behavior rules govern how the enterprise evaluates situations and makes choices. They are enforced during Decision evaluation. A Behavior Rule expresses an enterprise constraint; it does not prescribe which actor or mechanism fulfils the constraint.
 
-| ID | Rule |
-|----|------|
-| BR-D-300 | A state transition to Elevated or Depressed requires the signal deviation to exceed the configured Significant threshold. A transition to Critical requires deviation to exceed the configured Critical threshold. |
-| BR-D-301 | A Critical state change shall be corroborated by at least two independent signal sources before the state is updated. |
-| BR-D-302 | For items classified as high-priority, the Significant threshold is lowered to the configured reduced value per PO-D-031. |
-| BR-D-303 | Signals with deviation below the configured noise threshold shall not trigger a state change. |
-| BR-D-304 | Every Critical demand behavior state shall be evaluated for forecast refresh eligibility before the next scheduled forecast cycle. |
-| BR-D-305 | Classification shall be determined by the rules defined for the classification type in the current Segmentation Policy. |
-| BR-D-306 | An entity shall be classified as Unclassified for a type if the minimum evidence requirements defined in the policy are not met. |
-| BR-D-307 | Behavior classification shall be determined by the rules defined for the behavior dimension in the current Classification Policy. |
-| BR-D-308 | An entity shall be classified as Unclassified for a dimension if the minimum evidence requirements defined in the policy are not met. |
-| BR-D-309 | Priority shall be determined using the scoring methodology and level thresholds defined in the current Prioritization Policy. |
-| BR-D-310 | An entity shall be assigned Unclassified priority if the mandatory business evidence defined in the policy is not available. |
-| BR-D-311 | Demand exception evidence shall only be published if the detection evidence meets the thresholds defined for that exception type in the current Exception Detection Policy. |
-
 ### BR-D-300 – Deviation Thresholds for Demand Behavior State Change
 
 **Rule Statement:** A state transition to Elevated or Depressed requires the signal deviation to exceed the configured Significant threshold. A transition to Critical requires deviation to exceed the configured Critical threshold.
@@ -5367,7 +5589,7 @@ Behavior rules govern how the enterprise evaluates situations and makes choices.
 
 **Outcome When Preconditions Are Not Satisfied:** If no threshold is exceeded, the outcome is No Change.
 
-**Traceability:** Owned by CA-D-003. Referenced by DE-D-006, FS-D-014.
+**Traceability:** Owned by CA-D-003. Referenced by DE-D-006, FS-D-009.
 
 ### BR-D-301 – Corroboration Requirement for Critical State
 
@@ -5407,14 +5629,6 @@ Behavior rules govern how the enterprise evaluates situations and makes choices.
 
 Derivation rules define how enterprise values are derived from other enterprise facts. They are enforced at algorithm execution time. A Derivation Rule constrains the enterprise outcome; it does not prescribe the specific algorithm, model, or technology used to produce it.
 
-| ID | Rule |
-|----|------|
-| BR-D-400 | The Demand Understanding shall be derived exclusively from the latest Published Enterprise Picture (SE-C-021) and the most recent Published Forecast Publication (SE-D-003), if available. |
-| BR-D-401 | The forecast for a series shall be produced using the forecasting strategy authorised for the current forecast cycle, as governed by PO-D-017. |
-| BR-D-402 | The Forecast Confidence Index shall be computed as a weighted composite of model confidence, data completeness, and signal quality. The precise weights and methodology are defined in PO-D-020. |
-| BR-D-403 | Forecast quality metrics shall be computed according to the definitions and formulas in the current Forecast Measurement Policy (PO-D-041). |
-| BR-D-410 | All published forecasts shall satisfy hierarchical consistency as defined by the reconciliation method governed by PO-D-029. |
-
 ### BR-D-400 – Demand Understanding Derivation Source [Derivation Invariant]
 
 **Rule Statement:** The Demand Understanding shall be derived exclusively from the latest Published Enterprise Picture and the most recent Published Forecast Publication, if available.
@@ -5445,9 +5659,8 @@ Derivation rules define how enterprise values are derived from other enterprise 
 
 **Outcome When Preconditions Are Not Satisfied:** The forecast cannot be produced until an authorised strategy is selected.
 
-**Traceability:** Owned by CA-D-002. Referenced by AB-D-007, FS-D-009.
+**Traceability:** Owned by CA-D-002. Referenced by AB-D-007, FS-D-006.
 
----
 
 ### BR-D-410 – Hierarchical Forecast Consistency
 
@@ -5465,8 +5678,54 @@ Derivation rules define how enterprise values are derived from other enterprise 
 
 **Traceability:** Owned by CA-D-002. Referenced by BA-D-002, DE-D-004, PO-D-029.
 
----
+### BR-D-411 – Minimum Recurrence for Learning Derivation
+**Rule Statement:** A learning shall only be derived when evidence demonstrates recurrence across the minimum number of periods defined by PO-D-048.
+**Enforcement Point:** BA-D-013 (Derive Demand Learning).
+**Governed Policy:** PO-D-048.
 
+### BR-D-412 – Minimum Horizon Window for Learning Derivation
+**Rule Statement:** The historical evidence evaluated for learning derivation must span the minimum horizon window defined by PO-D-048.
+**Enforcement Point:** BA-D-013 (Derive Demand Learning).
+**Governed Policy:** PO-D-048.
+
+### BR-D-413 – Pattern Confidence Criteria for Learning Derivation
+**Rule Statement:** Pattern Confidence and Intervention Confidence shall be assessed independently using the statistical criteria defined by PO-D-048.
+**Enforcement Point:** BA-D-013 (Derive Demand Learning).
+**Governed Policy:** PO-D-048.
+
+### BR-D-414 – Intervention Impact Non-Negativity
+
+**Rule Statement:** The Assessed Demand Lift in a Demand Intervention Impact must be non-negative.
+
+**Rule:** A negative lift has no enterprise meaning in the current model. If the intervention is expected to reduce demand, the lift is zero and the reduction is handled by the consuming forecast capability through a separate governed mechanism.
+
+**Evaluation Scope:** Per intervention impact, at creation.
+
+**Enforcement Point:** AB-D-018 (Assess Demand Intervention Impact).
+
+**Governed Policy:** PO-D-050.
+
+**Outcome When Preconditions Are Not Satisfied:** The impact assessment is rejected. The algorithm must clamp to zero.
+
+**Traceability:** Owned by CA-D-011. Referenced by AB-D-018, DE-D-014.
+
+### BR-D-415 – Intervention Reference Validity
+
+**Rule Statement:** The Intervention Reference in a Demand Intervention Impact must point to an active Scenario Adjustment.
+
+**Rule:** An impact assessment for an inactive or retired intervention has no enterprise meaning. Publication is blocked if the intervention is no longer active.
+
+**Evaluation Scope:** Per intervention impact, at publication.
+
+**Enforcement Point:** DE-D-014 (Approve Intervention Impact Publication).
+
+**Governed Policy:** PO-D-050.
+
+**Outcome When Preconditions Are Not Satisfied:** Publication is blocked. Outcome is Do Not Publish.
+
+**Traceability:** Owned by CA-D-011. Referenced by DE-D-014, FS-D-019.
+
+---
 
 # Chapter 8 — Policy Model
 
@@ -5486,37 +5745,6 @@ Every Demand Intelligence policy follows the canonical structure established for
 | **Governed Rules** | Yes | The specific Business Rules (BR-D-xxx) this policy governs. |
 | **Exceptional Conditions** | Yes | What happens when the policy cannot be applied as intended. |
 | **Traceability** | Yes | Upward traceability to owning capability, and downward to decisions and algorithms. |
-
----
-
-## Policy Summary
-
-| ID | Policy | Category | Governance Outcome | Governed Rules |
-|----|--------|----------|-------------------|----------------|
-| PO-D-001 | Demand Data Acceptance Policy | Automation | Observations are Accepted, Quarantined, or Rejected. | BR-D-200–203, BR-D-210–211 |
-| PO-D-011 | Demand Understanding Materiality Policy | Compliance | A new Demand Understanding is published only on material change or periodic refresh. | BR-D-204, BR-D-205 |
-| PO-D-012 | Demand Understanding Publication Cadence Policy | Compliance | A new Demand Understanding is published within the maximum staleness interval even without material change. | BR-D-204, BR-D-205 |
-| PO-D-017 | Forecast Model Governance Policy | Automation | Champion model is promoted automatically or escalated to Demand Manager. | BR-D-401 |
-| PO-D-019 | Unforecastable Series Policy | Exception | Series without sufficient history are assigned a fallback method or flagged for planner attention. | BR-D-206 |
-| PO-D-020 | Forecast Publication Governance Policy | Automation | Forecast is published automatically, escalated for approval, or suppressed. | BR-D-207 |
-| PO-D-021 | Demand Manager Override Policy | Authorization | Demand Manager may override publication decisions with documented reason. | BR-D-207 |
-| PO-D-022 | Forecast Override Authorization Policy | Authorization | Planner overrides are accepted, escalated, or rejected based on deviation and authority. | BR-D-208, BR-D-209 |
-| PO-D-023 | Override Audit Policy | Compliance | All overrides are logged and reviewed quarterly for planner bias. | BR-D-109 |
-| PO-D-024 | Forecast Publication Generation Governance Policy | Authorization | Forecast publication generation context initiation requests are validated and authorized. | — |
-| PO-D-025 | Forecast Assumption Sign-off Policy | Compliance | All forecast assumptions must be approved before publication. | — |
-| PO-D-028 | New Product Forecast Policy | Authorization | New product forecast methods require Demand Manager approval before publication. | — |
-| PO-D-029 | Forecast Reconciliation Policy | Automation | Reconciliation method is selected automatically if historical confidence exceeds threshold; otherwise manual. | — |
-| PO-D-031 | Demand Sensing Policy | Automation | State changes are automatic; Critical changes escalate to Demand Manager. | BR-D-300–303 |
-| PO-D-032 | Forecast Refresh Trigger Policy | Automation | Critical state automatically triggers forecast refresh evaluation. | BR-D-304 |
-| PO-D-034 | Forecast Refresh Execution Policy | Authorization | Partial refreshes are automatic; full refreshes require Demand Manager approval unless Critical. | BR-D-304 |
-| PO-D-035 | Segmentation Policy Governance | Compliance | Classification rules are governed by Planning Governance; policy changes trigger automatic reclassification. | BR-D-305–306 |
-| PO-D-036 | Segmentation Override Review Policy | Compliance | Planner overrides require justification and quarterly review. | — |
-| PO-D-037 | Classification Policy Governance | Compliance | Behavior classification rules are governed by Planning Governance; policy changes trigger automatic reclassification. | BR-D-307–308 |
-| PO-D-038 | Classification Override Review Policy | Compliance | Planner overrides require justification and quarterly review. | — |
-| PO-D-039 | Prioritization Policy Governance | Compliance | Priority scoring rules are governed by Planning Governance; policy changes trigger automatic re-evaluation. | BR-D-309–310 |
-| PO-D-040 | Priority Override Review Policy | Compliance | Planner overrides require justification and quarterly review. | — |
-| PO-D-041 | Forecast Measurement Policy | Compliance | Quality assessments are published on governed cadence; completeness and evaluation period minimums defined. | BR-D-403 |
-| PO-D-044 | Demand Exception Evidence Policy | Compliance | Demand exception evidence is detected, classified by severity, and published to Core Exception Management. | BR-D-311 |
 
 ---
 
@@ -5600,6 +5828,8 @@ Materiality is assessed independently across the four interpretation dimensions:
 - **Demand Pattern Interpretation** — the enterprise’s assessment of the structure and predictability of current demand.
 - **Demand Health Interpretation** — the enterprise’s assessment of whether the current demand understanding is reliable.
 - **Demand Volatility Interpretation** — the enterprise’s synthesis of how uncertain the current demand picture is.
+
+> **Architectural Note:** All interpretation dimension statuses (e.g., Stable, Volatile, Normal, Seasonal, Irregular, Step-Change, Healthy, At Risk, Critical, Low, Medium, High) must be formally registered as governed identifier entries in SE-C-037 (Enterprise Governed Vocabulary).
 
 ### 4. Mandatory Publication Conditions
 The following conditions shall always be considered Material:
@@ -6232,7 +6462,7 @@ BR-D-403 (Quality Metrics Derivation).
 | Parameter | Value | Description |
 |-----------|-------|-------------|
 | Condition types and triggering criteria | Defined per condition type in the Exception Detection Policy | The set of recognised condition types and their detection rules. |
-| Severity dimensions | Business Impact, Urgency, Scope, Potential Impact, Current Impact | Dimensions assessed for each condition. |
+| Severity dimensions | Business Impact, Urgency, Scope | Dimensions assessed for each condition. |
 
 ### Authority Specification Contract
 
@@ -6771,7 +7001,9 @@ Owner: Learn From Demand (CA-D-010). Scope: Enterprise-wide. Intended Consumers:
 Active $\rightarrow$ Deprecated $\rightarrow$ Retired. Terminal: Retired. History preserved.
 
 ### Governed Rules
-(Learning derivation rules are enforced by BA-D-013 per the policy parameters. No separate business rule ID is required; the algorithm contract defines the invariants.)
+- BR-D-411 (Minimum Recurrence for Learning Derivation)
+- BR-D-412 (Minimum Horizon Window for Learning Derivation)
+- BR-D-413 (Pattern Confidence Criteria for Learning Derivation)
 
 ### Exceptional Conditions
 - Single-period events cannot produce enterprise learnings.
@@ -6779,6 +7011,61 @@ Active $\rightarrow$ Deprecated $\rightarrow$ Retired. Terminal: Retired. Histor
 ### Traceability
 - **Owned By:** CA-D-010.
 - **Referenced By:** `BA-D-013`, `FS-D-017`.
+
+## PO-D-050 – Intervention Modeling Governance
+
+**Purpose:** Govern the modeling approach, confidence thresholds, and publication criteria for demand intervention impact assessments.
+
+**Governance Intent:** Ensure that intervention impact assessments are computed using governed approaches, meet minimum confidence standards, and are published only when reliable.
+
+**Governance Outcome:** Demand Intervention Impacts are computed deterministically, meet confidence thresholds, and are published as authoritative adjustments for forecast consumption.
+
+**Scope:** All Demand Intervention Impacts (SE-D-018). Applies to AB-D-018, AB-D-019, DE-D-014, BA-D-016, FS-D-018, FS-D-019.
+
+### Governed Configuration
+
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| Publication confidence threshold | Configurable (default 70%) | Minimum Lift Confidence for automatic publication. |
+| Minimum historical periods for elasticity | Configurable (default 12 periods) | Minimum forecast-actual pairs required for elasticity estimation. |
+| Modeling approach preference order | Governed list | Ordered list of approved modeling approaches (e.g., Historical Elasticity, Analog-Based, Expert Judgment). |
+| Maximum temporal validity | Configurable (default 90 days) | Maximum duration for an intervention's temporal validity window. |
+
+### Authority Specification Contract
+
+| Section | Value |
+|---------|-------|
+| **Business Owner** | Model Demand Interventions (CA-D-011) |
+| **Authoritative Representation** | The enterprise's definition of intervention modeling governance. |
+| **Business Responsibility** | Govern modeling approach selection, confidence thresholds, and publication criteria. |
+| **Authority Scope** | Enterprise-wide. |
+| **Intended Consumers** | CA-D-011, CA-D-002. |
+
+### Lifecycle Specification Contract
+
+| State | Description |
+|-------|-------------|
+| Active | Policy is in effect. |
+| Deprecated | Still valid but planned for replacement. |
+| Retired | No longer in effect. |
+
+- Terminal State: Retired.
+- History Preservation: All versions retained permanently.
+
+### Governed Rules
+
+- BR-D-414 (Intervention Impact Non-Negativity)
+- BR-D-415 (Intervention Reference Validity)
+
+### Exceptional Conditions
+
+- If historical data is insufficient for elasticity estimation, the fallback approach from the preference order is applied.
+- If no approach is viable, the impact is flagged for planner attention with confidence zero.
+
+### Traceability
+
+- **Owned By:** CA-D-011.
+- **Referenced By:** AB-D-018, AB-D-019, DE-D-014, BA-D-016, FS-D-018, FS-D-019.
 
 ---
 
@@ -6791,7 +7078,7 @@ Active $\rightarrow$ Deprecated $\rightarrow$ Retired. Terminal: Retired. Histor
 **Realises:** CR-D-001
 
 #### Business Contract
-- **Consumes:** Demand signal from a source system or internal notification (e.g., BN-D-011 Forecast Published, BN-R-xxx Promise Confirmed).
+- **Consumes:** Demand signal from a source system or internal notification (e.g., BN-D-011 Forecast Published).
 - **Produces:** Demand Observation (SE-D-001) in Received state.
 - **Transitions:** SE-D-001: (none) → Received.
 - **Publishes:** BN-D-005 Demand Observation Received.
@@ -6853,7 +7140,7 @@ A source system sends a sales order for Item P-1001 at Location DC-01, quantity 
 - **Produces:** SE-D-001 with updated Lifecycle State (Accepted, Quarantined, or Rejected) and recorded decision traceability.
 - **Transitions:** SE-D-001: Received → Accepted / Quarantined / Rejected.
 - **Publishes:** BN-D-006 (Accepted), BN-D-002 (Quarantined), BN-D-003 (Rejected).
-- **Invokes:** None. The evaluated observation contributes to the Enterprise Picture via Core capabilities, which triggers the Demand Understanding revision.
+- **Invokes:** AB-D-002.
 - **Guarantees:** Observation evaluated exactly once. Decision traceability recorded. Appropriate notification published.
 
 #### Trigger
@@ -6973,7 +7260,7 @@ Enterprise Picture v27 is published for Planning Scope PS-001. AB-D-003 creates 
 - **Produces:** SE-D-002 — Published version (authoritative). Previous Published version → Superseded.
 - **Transitions:** Draft → Published. Previous Published → Superseded.
 - **Publishes:** BN-D-001 Demand Understanding Published.
-- **Invokes:** None (terminal).
+- **Invokes:** AB-D-004. Per AB-D-004 contract. Protects the Demand Understanding aggregate. Atomic publication and previous version superseding.
 - **Guarantees:** Exactly one Published version per Planning Scope. Published version is immutable.
 
 #### Trigger
@@ -7045,7 +7332,7 @@ Scheduled forecast generation time reached, or BN-D-016 Critical Demand Behavior
 - Forecast Horizon and time bucket configuration are defined.
 
 #### Semantic Objects
-- **Read:** Forecast Configuration (governed parameters), Calendar (SE-C-033).
+- **Read:** PO-D-024 Governed Parameters, Calendar (SE-C-033).
 - **Create:** None (workflow state only).
 
 #### Behavior
@@ -7165,8 +7452,8 @@ Authorised planner submits an override for a specific forecast within a Draft Fo
 - Override value is within the configured deviation limit, or Demand Manager approval has been obtained (BR-D-209, PO-D-022).
 
 #### Semantic Objects
-- **Read:** SE-D-003 (Draft), SE-D-025 (target forecast line).
-- **Create:** SE-D-028 (Forecast Override entity).
+- **Read:** SE-D-003 (Draft), SE-D-015 (target forecast line).
+- **Create:** SE-D-017 (Forecast Override entity).
 - **Update:** None (original forecast line preserved unchanged).
 
 #### Behavior
@@ -7236,7 +7523,7 @@ Completion of FS-D-006 (Produce Forecast Projection) and after all expected over
    - AB-D-009 executes **DE-D-004 Approve Forecast Publication**.
    - If Publish Automatically: transition Draft to Published, supersede previous Published version for the same scope and horizon, record Publication Time.
    - If Require Planner Approval: pause and notify the Demand Planner.
-   - If Suppress: publish BN-D-013 Forecast Publication Failed.
+   - If Suppress: publish BN-D-014 Forecast Publication Suppressed.
 3. If published, publish **BN-D-011 Forecast Published** with Publication ID, Version, Planning Scope, Horizon, Confidence Index, and Champion Model.
 
 #### Business Transaction
@@ -7369,7 +7656,7 @@ If triggered, a new forecast cycle is initiated in Forecast Demand.
 If Forecast Demand is unavailable, an alert is logged and manual follow-up is required.
 
 #### Recovery Behavior
-Retry the invocation of FS-D-007.
+Retry the invocation of FS-D-005.
 
 #### Concurrency Guarantees
 Independent per assessment.
@@ -7628,7 +7915,7 @@ Q1 2027, enterprise scope: WAPE 8.5%, Bias +1.2%, Forecast Accuracy 91.5%. Compl
 - **Produces:** Demand Exception Detection Evidence or Demand Exception Resolution Evidence published to Core Exception Management.
 - **Transitions:** None.
 - **Publishes:** BN-D-022 (if detection evidence exists), BN-D-023 (if resolution evidence exists).
-- **Invokes:** AB-D-015.
+- **Invokes:** DE-D-012, BA-D-010, BA-D-011.
 - **Guarantees:** Exception detection and resolution evidence is published to Core Exception Management according to PO-D-044 thresholds.
 
 #### Trigger
@@ -7644,14 +7931,15 @@ Scheduled evaluation, or event-driven when new forecasts, actuals, quality asses
 
 #### Behavior
 1. For each planning entity and exception type defined in PO-D-044:
-   - Invoke **AB-D-015 Detect Demand Exception Evidence**.
-   - AB-D-015 executes **DE-D-012 Evaluate Demand Exception Evidence**.
-   - If Detection Evidence Exists: the Business Workflow Notification Node publishes **BN-D-022 Demand Exception Detection Evidence** to Core Exception Management.
-   - If Resolution Evidence Exists: the Business Workflow Notification Node publishes **BN-D-023 Demand Exception Resolution Evidence** to Core Exception Management.
-   - If No Evidence: no notification published.
+   - Invoke **BA-D-010 Evaluate Demand Exception Evidence** to assess whether detection criteria are met.
+   - Invoke **BA-D-011 Assess Demand Exception Lifecycle Evidence** to determine the lifecycle evidence (detection, resolution, or no evidence).
+   - Invoke **DE-D-012 Evaluate Demand Exception Evidence** to produce the final determination.
+   - If Detection Evidence Exists: emit **EV-D-022** and the Workflow Notification Node publishes **BN-D-022 Demand Exception Detection Evidence** to Core Exception Management.
+   - If Resolution Evidence Exists: emit **EV-D-022** and the Workflow Notification Node publishes **BN-D-023 Demand Exception Resolution Evidence** to Core Exception Management.
+   - If No Evidence: no event emitted, no notification published.
 
 #### Business Transaction
-Per AB-D-015 contract.
+No Business Transaction. CA-D-008 owns no aggregate.
 
 #### Postconditions
 Demand exception evidence is produced and published to Core Exception Management.
@@ -7757,7 +8045,7 @@ Scheduled per the Learning Analysis Policy, or event-driven when new quality ass
 - Sufficient historical evidence is available per the policy's evidence sufficiency thresholds.
 
 #### Semantic Objects
-- **Read:** SE-D-008, SE-D-009, SE-D-010, SE-D-005, SE-D-006, SE-D-007, SE-D-004, PO-D-048.
+- **Read:** SE-D-008, SE-C-019 (via Core Exception Management BNs), SE-D-010, SE-D-005, SE-D-006, SE-D-007, SE-D-004, PO-D-048.
 - **Create:** SE-D-011.
 
 #### Behavior
@@ -7791,6 +8079,117 @@ Q1–Q3 2027 analysis: planner overrides in Segment B value-destroying 68% of th
 - Invokes: AB-D-017
 - Publishes: BN-D-025
 - Referenced by: CA-D-010
+
+---
+
+## Model Demand Interventions Functional Specifications
+
+### FS-D-018 – Assess Demand Intervention Impact
+
+**Realises:** CR-D-018
+
+#### Business Contract
+- **Consumes:** SE-C-039 Scenario Adjustment, SE-D-002 Demand Understanding, SE-D-003 Forecast Publication (historical elasticity context), PO-D-050.
+- **Produces:** SE-D-018 Demand Intervention Impact in Draft state.
+- **Transitions:** SE-D-018: (none) → Draft.
+- **Publishes:** None (Draft creation does not publish).
+- **Invokes:** AB-D-018, BA-D-016.
+- **Guarantees:** Draft impact created with computed lift, confidence, and provenance.
+
+#### Trigger
+Scenario Adjustment published or updated, or authorised planner request.
+
+#### Preconditions
+- SE-C-039 Scenario Adjustment is active.
+- SE-D-002 Demand Understanding is published for the relevant Planning Scope.
+- PO-D-050 is current.
+
+#### Semantic Objects
+- **Read:** SE-C-039, SE-D-002, SE-D-003, PO-D-050.
+- **Create:** SE-D-018 (Draft).
+
+#### Behavior
+1. Load the Scenario Adjustment and validate it is active.
+2. Load the Demand Understanding for baseline context.
+3. Load historical forecast-actual pairs from Forecast Publication for elasticity estimation.
+4. Invoke **BA-D-016 Model Intervention Lift** to compute the assessed demand lift.
+5. Invoke **AB-D-018 Assess Demand Intervention Impact** to create the Draft SE-D-018.
+
+#### Business Transaction
+Per AB-D-018 contract. Protects SE-D-018 aggregate.
+
+#### Postconditions
+Draft SE-D-018 exists with computed lift, confidence, temporal validity, and model provenance.
+
+#### Failure Behavior
+- **Business Failure (intervention inactive, insufficient data):** Draft not created. Planner notified.
+- **Operational Failure (computation error):** Draft not created. Retryable.
+
+#### Recovery Behavior
+Re-execution with the same intervention updates the existing Draft.
+
+#### Concurrency Guarantees
+Assessments for different interventions are independent. Same intervention is serialized.
+
+#### Traceability
+- Realises: CR-D-018
+- Invokes: AB-D-018, BA-D-016
+- Referenced by: CA-D-011
+
+---
+
+### FS-D-019 – Publish Demand Intervention Impact
+
+**Realises:** CR-D-019
+
+#### Business Contract
+- **Consumes:** SE-D-018 (Draft), PO-D-050.
+- **Produces:** SE-D-018 Published version. Previous Published → Superseded.
+- **Transitions:** SE-D-018: Draft → Published; Previous Published → Superseded.
+- **Publishes:** BN-D-026 Demand Intervention Impact Published.
+- **Invokes:** AB-D-019, DE-D-014.
+- **Guarantees:** Exactly one Published version per intervention per item-location.
+
+#### Trigger
+Assessment complete (Draft SE-D-018 exists).
+
+#### Preconditions
+- Draft SE-D-018 exists.
+- PO-D-050 is current.
+
+#### Semantic Objects
+- **Read:** SE-D-018 (Draft), PO-D-050.
+- **Update:** SE-D-018 (current and previous).
+
+#### Behavior
+1. Load the Draft SE-D-018.
+2. Invoke **AB-D-019 Publish Demand Intervention Impact**.
+   - AB-D-019 executes **DE-D-014 Approve Intervention Impact Publication**.
+   - If Publish: transition Draft to Published, supersede previous.
+   - If Do Not Publish: Draft retained.
+3. If Published, publish **BN-D-026 Demand Intervention Impact Published**.
+
+#### Business Transaction
+Per AB-D-019 contract. Protects SE-D-018 aggregate.
+
+#### Postconditions
+If Published: exactly one Published version exists. BN-D-026 published. If Do Not Publish: Draft retained.
+
+#### Failure Behavior
+- **Business Failure (confidence below threshold, intervention inactive):** Draft retained. BN-D-026 not published.
+- **Operational Failure (notification delivery unavailable):** Publication succeeds. BN-D-026 delivery retried.
+
+#### Recovery Behavior
+Re-execution on already-published version terminates immediately.
+
+#### Concurrency Guarantees
+Publication for a given intervention occurs exactly once.
+
+#### Traceability
+- Realises: CR-D-019
+- Invokes: AB-D-019, DE-D-014
+- Publishes: BN-D-026
+- Referenced by: CA-D-011
 
 ---
 
@@ -8162,10 +8561,10 @@ Every day the enterprise receives thousands of demand signals—POS transactions
 1. Load the expected behavior baseline from the Demand Understanding for the item-location. The baseline includes the expected demand level and the standard deviation of normal variation.
 2. Compute the deviation of the incoming signal from the expected level: `deviation = (signal_quantity − expected_level) / standard_deviation`.
 3. Determine the direction: Increase (signal exceeds expected) or Decrease (signal is below expected).
-4. Classify the deviation magnitude against the thresholds in PO-D-031:
-   - Below the Noise threshold (default 1σ): classification is Noise.
-   - Between Noise and Significant (default 2.5σ): classification is Noise. Only deviations above Significant are considered meaningful.
-   - Between Significant and Critical (default 4σ): classification is Significant.
+4. Classify the deviation magnitude against the thresholds defined in PO-D-031:
+   - Below the Noise threshold: classification is Noise.
+   - Between Noise and Significant: classification is Noise. Only deviations above Significant are considered meaningful.
+   - Between Significant and Critical: classification is Significant.
    - Above Critical: classification is Critical.
 5. Count corroborating signals from other independent sources for the same item-location and time period.
 6. Assess confidence based on:
@@ -9133,7 +9532,7 @@ A condition is not simply "exists" or "does not exist." It follows a lifecycle: 
 | Input | Source | Business Meaning | Required | Handling of Missing |
 |-------|--------|------------------|----------|---------------------|
 | Condition Assessment | BA-D-010 output | Determination, type, severity, and evidence. | Yes | Algorithm not applicable. |
-| Current Condition State | SE-D-009 (if exists) | Current lifecycle state (Active, Resolved) and severity. | No | Treated as no existing condition. |
+| Current Condition State |  | Current lifecycle state (Active, Resolved) and severity. | No | Treated as no existing condition. |
 | Exception Detection Policy | PO-D-044 | Governed lifecycle transition rules. | Yes | Algorithm not applicable. |
 
 ### 8. Output Contract
@@ -9158,7 +9557,7 @@ A condition is not simply "exists" or "does not exist." It follows a lifecycle: 
    - If the condition assessment indicates a condition exists and the transition rules determine the severity has changed, the determined lifecycle state is Active, with the updated severity level.
    - If the condition assessment indicates no condition exists and the transition rules determine the condition should be resolved, the determined lifecycle state is Resolved.
 3. State Transition Occurred is true if the determined lifecycle state or severity differs from the current state.
-4. The owning Aggregate Behavior (AB-DE-001) is responsible for translating this state determination into the appropriate persistence action—creating a new condition instance, updating an existing one, or resolving an existing one. This algorithm determines only the authoritative lifecycle state.
+4. The owning Functional Specification (FS-D-015) is responsible for translating this state determination into the appropriate publication action—emitting EV-D-022 and publishing BN-D-022 or BN-D-023. This algorithm determines only the authoritative lifecycle evidence.
 5. Generate the determination rationale identifying the specific transition rule applied and the evidence that triggered it.
 
 
@@ -9625,6 +10024,142 @@ Every reconciled forecast line is traceable to its unreconciled source and the r
 
 ---
 
+## BA-D-016 – Model Intervention Lift
+
+### 1. Business Classification
+
+| Attribute | Value |
+|-----------|-------|
+| Type | Business Algorithm |
+| Nature | Constructive Reasoning |
+| Domain | Model Demand Interventions |
+| Knowledge Category | Intervention Impact Modeling |
+| Stage | Constructive |
+| Output Type | Plan |
+| Explainable | Full |
+
+> **Architectural Note (ARS §15.7.1):** This algorithm is a Constructive algorithm. It synthesises a demand impact assessment from intervention characteristics, historical elasticity data, and current demand context. It does not select the modeling approach; that selection is governed by PO-D-050.
+
+### 2. Purpose
+
+Answer the enterprise question: **"Given the planned commercial intervention and historical demand data, what is the expected demand lift for this item-location?"**
+
+### 3. Business Intent
+
+The enterprise plans commercial interventions (promotions, price changes, marketing events) that affect demand. This algorithm computes the expected demand impact from historical elasticity patterns, intervention characteristics, and current demand context. It produces a deterministic lift estimate with confidence, enabling the forecast capability to incorporate the intervention effect.
+
+### 4. Architectural Principle
+
+This algorithm applies the modeling approach governed by PO-D-050. It does not select the approach, does not modify the baseline forecast, and does not make publication decisions. It computes; governance decides.
+
+### 5. Business Explanation
+
+When the enterprise plans a promotion or price change, planners need to know: "How much additional demand will this generate?" This algorithm answers that question by examining how similar interventions affected demand historically, adjusting for current demand conditions, and producing a lift estimate with confidence. The output feeds into the forecast publication as a forward-looking adjustment.
+
+### 6. Algebraic Properties
+
+| Property | Value | Meaning |
+|----------|-------|---------|
+| Deterministic | Yes (for identical inputs and approach) | Same inputs produce identical lift. |
+| Idempotent | Yes | Repeated execution yields same result. |
+| Pure | Yes | No side effects. |
+| Order Sensitive | No | |
+| Explainable | Full | Every lift is traceable to historical evidence and approach. |
+
+### 7. Input Contract
+
+| Input | Source | Business Meaning | Required | Handling of Missing |
+|-------|--------|------------------|----------|---------------------|
+| Intervention definition | SE-C-039 (Scenario Adjustment) | Type, magnitude, temporal scope of the intervention. | Yes | Algorithm not applicable. |
+| Item and Location | SE-C-001, SE-C-002 | The affected item-location. | Yes | Algorithm not applicable. |
+| Historical forecast-actual pairs | SE-D-003 (Forecast Publication) | Past forecast vs actual for elasticity estimation. | Yes | Fallback approach per PO-D-050. |
+| Demand Understanding | SE-D-002 | Current demand baseline context. | No | Confidence reduced. |
+| Intervention Modeling Governance | PO-D-050 | Modeling approach preference, confidence thresholds. | Yes | Algorithm not applicable. |
+
+### 8. Output Contract
+
+| Component | Business Meaning |
+|-----------|------------------|
+| Assessed Demand Lift | The expected demand change (non-negative Quantity). |
+| Lift Confidence | Enterprise confidence in the estimate (0–100). |
+| Temporal Validity | The time interval during which the intervention is active. |
+| Model Provenance | The modeling approach used. |
+| Computation Evidence | Historical data points and elasticity factors used. |
+
+### 9. Behavioral Specification Contract
+
+| Section | Value |
+|---------|-------|
+| **Preconditions** | Intervention definition is active. PO-D-050 is current. |
+| **Business Behavior** | Select the modeling approach from PO-D-050 preference order. Compute the assessed demand lift. Assess confidence. Determine temporal validity from the intervention definition. |
+| **Exceptional Conditions** | If insufficient historical data, apply fallback approach. If no approach viable, produce zero lift with zero confidence. |
+| **Postconditions** | A complete impact assessment is produced with lift, confidence, validity, and provenance. |
+| **Outcome When Preconditions Are Not Satisfied** | Algorithm not applicable. |
+
+### 10. Evaluation Methodology
+
+1. Load the intervention definition from SE-C-039.
+2. Select the modeling approach from PO-D-050 preference order.
+3. Gather historical forecast-actual pairs for the item-location.
+4. Compute elasticity factor from historical data.
+5. Apply intervention characteristics (type, magnitude, duration) to the elasticity factor.
+6. Adjust for current demand context from SE-D-002.
+7. Compute the assessed demand lift (clamp to non-negative per BR-D-414).
+8. Assess confidence based on data sufficiency and approach reliability.
+9. Determine temporal validity from the intervention definition.
+10. Record model provenance and computation evidence.
+
+### 11. Business Rules
+
+| ID | Rule |
+|----|------|
+| BR-D-414 | Assessed Demand Lift must be non-negative. |
+| PO-D-050 | Governs modeling approach selection and confidence thresholds. |
+
+### 12. Assumptions
+
+- Historical forecast-actual pairs accurately reflect past intervention effects.
+- The intervention definition in SE-C-039 is complete and active.
+- PO-D-050 provides a valid modeling approach preference order.
+
+### 13. Explainability
+
+Every lift estimate is traceable to the specific historical data points, elasticity factors, intervention characteristics, and modeling approach used. The computation evidence enables full audit.
+
+### 14. Postconditions / Guarantees
+
+- A complete impact assessment is produced.
+- The lift is non-negative.
+- The confidence reflects data sufficiency.
+- No publication decision is made by this algorithm.
+
+### 15. Applicability & Exceptional Conditions
+
+| Condition | Behavior |
+|-----------|----------|
+| Intervention inactive | Algorithm not applicable. |
+| Insufficient historical data | Fallback approach per PO-D-050. |
+| No viable approach | Zero lift, zero confidence, flagged for planner. |
+
+### 16. Example
+
+**Inputs:** Intervention: "20% price reduction on Item P-1001 at DC-01 for 14 days." Historical data: 52 weeks of forecast-actual pairs. PO-D-050: Historical Elasticity approach preferred.
+**Processing:** Elasticity factor computed from historical promotions: 1.8x. Current demand baseline: 500 units/week. Intervention duration: 14 days. Assessed lift: 500 × 0.8 × 1.8 = 720 additional units over 14 days. Confidence: 82% (sufficient history, reliable approach).
+**Output:** Assessed Demand Lift: 720 units. Confidence: 82%. Temporal Validity: 14-day window. Model Provenance: Historical Elasticity.
+
+### 17. Traceability
+
+| Attribute | Value |
+|-----------|-------|
+| Owned By | Model Demand Interventions (CA-D-011) |
+| Governed By | PO-D-050 |
+| Invoked By | AB-D-018 (Assess Demand Intervention Impact) |
+| Referenced By | FS-D-018 |
+| Produces | Impact assessment for SE-D-018 |
+| Depends On | SE-C-039, SE-D-002, SE-D-003, PO-D-050 |
+
+---
+
 ## Dependency Rule Compliance Verification
 
 | Algorithm | Stage | Depends On | Stage of Dependency | Rule |
@@ -9644,6 +10179,7 @@ Every reconciled forecast line is traceable to its unreconciled source and the r
 | BA-D-013 | Discovery | (historical evidence) | — | ✓ |
 | BA-D-014 | Parameter | SE-D-002, SE-D-001, PO-D-031 | — | ✓ |
 | BA-D-015 | Constructive | BA-D-002, PO-D-029 | Constructive (same stage) | ✓ |
+| BA-D-016 | Constructive | SE-C-039, SE-D-002, SE-D-003, PO-D-050 | Constructive (same stage) | ✓ |
 
 No dependency rule violations. All State algorithms depend on Assessment algorithms (N-1). No same-stage dependencies. Constructive, Explanation, and Discovery algorithms may consume any artifact type per ARS §15.7.
 
@@ -9715,6 +10251,10 @@ No dependency rule violations. All State algorithms depend on Assessment algorit
 | Learn From Demand | BN-D-025 | Classify Demand | Refine behavior classification policies. |
 | Learn From Demand | BN-D-025 | Prioritize Demand | Adjust priority scoring parameters. |
 | Learn From Demand | BN-D-025 | Future Planning Cycles | Continuous improvement of demand planning behavior. |
+| Model Demand Interventions | BN-D-026 Demand Intervention Impact Published | Forecast Demand | Consume intervention impact as forward-looking context for forecast generation. |
+| Model Demand Interventions | BN-D-026 Demand Intervention Impact Published | Supply Intelligence | Consume intervention impact for supply planning context. |
+| Model Demand Interventions | BN-D-026 Demand Intervention Impact Published | Scenario Intelligence | Consume intervention impact for scenario evaluation. |
+| Understand Demand | BN-D-001 Demand Understanding Published | Model Demand Interventions | Refresh baseline context for pending impact assessments. |
 
 *Note: BN-P-001 (Promise Confirmed) is a future integration point with Promise Intelligence. It is listed as consumed in the Understand Demand capability until Promise Intelligence is specified.*
 
@@ -9734,6 +10274,7 @@ No dependency rule violations. All State algorithms depend on Assessment algorit
 | 8 | **Detect Demand Exceptions** | BA-D-010, BA-D-011 | DE-D-012 | What demand exception evidence requires publication to Core Exception Management, given the current Demand Understanding, Forecast Quality Assessment, and Demand Behavior patterns? |
 | 9 | **Explain Demand** | BA-D-012 | *(none – deterministic)* | Why did the enterprise reach, or deliberately not reach, this demand conclusion, and what evidence supports it? |
 | 10 | **Learn From Demand** | BA-D-013 | *(none – governance-driven)* | What has the enterprise learned about demand behavior and forecasting performance that should improve future planning? |
+| 11 | **Model Demand Interventions** | BA-D-016 | DE-D-014 | What is the expected demand change from this planned commercial intervention? |
 
 ---
 
@@ -9821,6 +10362,7 @@ All reason codes are governed entries in SE-C-037 Enterprise Governed Vocabulary
 | BN-D-023 Demand Exception Resolution Evidence | Published by CA-D-008 (Detect Demand Exceptions) via FS-D-015 | Consumed by CA-C-020 (Core Exception Management) via FS-C-004 | ✓ Aligned |
 | SE-C-019 Exception lifecycle | Not mutated by Demand Intelligence | Owned by CA-C-020 (Core Exception Management) | ✓ Aligned |
 | SE-C-021 Enterprise Picture lifecycle | Consumed by Demand Intelligence (read-only) | Owned by CA-C-019 (Enterprise Picture Management) | ✓ Aligned |
+| SE-D-018 Demand Intervention Impact lifecycle | Owned by CA-D-011 (Model Demand Interventions) | Consumed by CA-D-002 (Forecast Demand) via FS-D-006 | ✓ Aligned |
 
 ---
 
