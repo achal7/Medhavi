@@ -29,15 +29,15 @@ module PictureComposition =
             let! supplyRefs = deps.GetAvailableSupplyReferences deps.PlanningScopeId
             let! inventoryRefs = deps.GetCurrentInventoryReferences deps.PlanningScopeId
 
-            let req : ComposePictureVersionReq =
-                { PlanningScopeId = Identities.planningScopeIdValue deps.PlanningScopeId
-                  DemandReferences = demandRefs |> List.map Identities.demandIdValue
-                  SupplyReferences = supplyRefs |> List.map Identities.supplyIdValue
-                  InventoryReferences = inventoryRefs |> List.map Identities.InventoryIdentity.toString
+            let req: ComposePictureVersionReq =
+                { PlanningScopeId = PlanningScopeId.value deps.PlanningScopeId
+                  DemandReferences = demandRefs |> List.map DemandId.value
+                  SupplyReferences = supplyRefs |> List.map SupplyId.value
+                  InventoryReferences = inventoryRefs |> List.map InventoryIdentity.toString
                   CompositionTime = System.DateTimeOffset.UtcNow }
 
             let! result = deps.EnterprisePictureApi.Compose req
-            return result |> Result.map (fun _ -> ()) |> Result.mapError (sprintf "%A")
+            return result |> Result.map(fun _ -> ()) |> Result.mapError(sprintf "%A")
         }
 
 /// FS-C-002: publication pipeline. AB-C-002 internally applies BA-C-001 + DE-C-001.
@@ -55,10 +55,11 @@ module PicturePublication =
                     match deps.Codec.Decode envelope.DataJson with
                     | Ok composed ->
                         // Invoke AB-C-002 via the public API; materiality gate is inside the behavior.
-                        let pubReq : PublishPictureVersionReq =
+                        let pubReq: PublishPictureVersionReq =
                             { PlanningScopeId = composed.PlanningScopeId
                               VersionNumber = composed.VersionNumber
                               PublicationTime = System.DateTimeOffset.UtcNow }
+
                         let! _ = deps.EnterprisePictureApi.Publish pubReq
                         return ()
                     | Error _ -> return ()
@@ -69,5 +70,6 @@ module PicturePublication =
                     (EnvelopeFilter.EventTypes [ EnterpriseEvents.pictureVersionComposed.Id ])
                     handleComposed
                     ct
+
             return subscription
         }

@@ -38,12 +38,12 @@ let create
             let! existingTransition = getActiveTransitionForItem cmd.SupersededItem
 
             match supersededState with
-            | None -> return Error(ApiError.notFound "Item" (Identities.itemIdValue cmd.SupersededItem))
+            | None -> return Error(ApiError.notFound "Item" (ItemId.value cmd.SupersededItem))
             | Some ReferenceLifecycleState.Retired ->
                 return Error(ApiError.businessRule $"{Rules.supersededItemValidity.Id}: Superseded Item is Retired")
             | Some _ ->
                 match supersedingState with
-                | None -> return Error(ApiError.notFound "Item" (Identities.itemIdValue cmd.SupersedingItem))
+                | None -> return Error(ApiError.notFound "Item" (ItemId.value cmd.SupersedingItem))
                 | Some ReferenceLifecycleState.Active ->
                     match existingTransition with
                     | Some _ ->

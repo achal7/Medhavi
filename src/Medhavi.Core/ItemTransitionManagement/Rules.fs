@@ -33,8 +33,8 @@ let noSelfSupersessionRule: Rule<RecognizeInput> =
         (fun input ->
             sprintf
                 "SupersededItem: %A, SupersedingItem: %A"
-                (Identities.itemIdValue input.Cmd.SupersededItem)
-                (Identities.itemIdValue input.Cmd.SupersedingItem))
+                (ItemId.value input.Cmd.SupersededItem)
+                (ItemId.value input.Cmd.SupersedingItem))
 
 /// BR-C-014: Superseded Item must be Active or Inactive (checked via port in Capability FIRST GATE).
 /// This rule validates the state passed in the input.
@@ -46,7 +46,7 @@ let supersededItemValidityRule: Rule<RecognizeInput> =
             // State validation is performed in Capability FIRST GATE.
             // This rule confirms the command was constructed with valid pre-conditions.
             true)
-        (fun input -> sprintf "SupersededItem: %A" (Identities.itemIdValue input.Cmd.SupersededItem))
+        (fun input -> sprintf "SupersededItem: %A" (ItemId.value input.Cmd.SupersededItem))
 
 /// BR-C-015: Superseding Item must be Active (checked via port in Capability FIRST GATE).
 let supersedingItemValidityRule: Rule<RecognizeInput> =
@@ -56,7 +56,7 @@ let supersedingItemValidityRule: Rule<RecognizeInput> =
         (fun input ->
             // State validation is performed in Capability FIRST GATE.
             true)
-        (fun input -> sprintf "SupersedingItem: %A" (Identities.itemIdValue input.Cmd.SupersedingItem))
+        (fun input -> sprintf "SupersedingItem: %A" (ItemId.value input.Cmd.SupersedingItem))
 
 /// BR-C-016: At most one Active transition per Superseded Item (checked via projection in Capability FIRST GATE).
 let singleActiveTransitionRule: Rule<RecognizeInput> =
@@ -66,7 +66,7 @@ let singleActiveTransitionRule: Rule<RecognizeInput> =
         (fun input ->
             // Conflict check is performed in Capability FIRST GATE via projection query.
             true)
-        (fun input -> sprintf "SupersededItem: %A" (Identities.itemIdValue input.Cmd.SupersededItem))
+        (fun input -> sprintf "SupersededItem: %A" (ItemId.value input.Cmd.SupersededItem))
 
 /// Suspend rule: transition must be Active.
 let transitionMustBeActiveForSuspend: Rule<SuspendInput> =
@@ -77,7 +77,7 @@ let transitionMustBeActiveForSuspend: Rule<SuspendInput> =
             input.CurrentState
             |> Option.map(fun t -> t.LifecycleState = ItemTransitionLifecycleState.Active)
             |> Option.defaultValue false)
-        (fun input -> sprintf "TransitionId: %A" (Identities.transitionIdValue input.Cmd.TransitionId))
+        (fun input -> sprintf "TransitionId: %A" (TransitionId.value input.Cmd.TransitionId))
 
 /// Reinstate rule: transition must be Inactive.
 let transitionMustBeInactiveForReinstate: Rule<ReinstateInput> =
@@ -88,7 +88,7 @@ let transitionMustBeInactiveForReinstate: Rule<ReinstateInput> =
             input.CurrentState
             |> Option.map(fun t -> t.LifecycleState = ItemTransitionLifecycleState.Inactive)
             |> Option.defaultValue false)
-        (fun input -> sprintf "TransitionId: %A" (Identities.transitionIdValue input.Cmd.TransitionId))
+        (fun input -> sprintf "TransitionId: %A" (TransitionId.value input.Cmd.TransitionId))
 
 /// Retire rule: transition must be Active or Inactive.
 let transitionMustBeActiveOrInactiveForRetire: Rule<RetireInput> =
@@ -101,7 +101,7 @@ let transitionMustBeActiveOrInactiveForRetire: Rule<RetireInput> =
                 t.LifecycleState = ItemTransitionLifecycleState.Active
                 || t.LifecycleState = ItemTransitionLifecycleState.Inactive)
             |> Option.defaultValue false)
-        (fun input -> sprintf "TransitionId: %A" (Identities.transitionIdValue input.Cmd.TransitionId))
+        (fun input -> sprintf "TransitionId: %A" (TransitionId.value input.Cmd.TransitionId))
 
 /// Transition must exist (for Suspend, Reinstate, Retire).
 let transitionMustExistForSuspend: Rule<SuspendInput> =
@@ -109,21 +109,21 @@ let transitionMustExistForSuspend: Rule<SuspendInput> =
         "BR-C-013-EXISTS-SUSPEND"
         "Item Transition must exist before suspension"
         (fun input -> input.CurrentState.IsSome)
-        (fun input -> sprintf "TransitionId: %A" (Identities.transitionIdValue input.Cmd.TransitionId))
+        (fun input -> sprintf "TransitionId: %A" (TransitionId.value input.Cmd.TransitionId))
 
 let transitionMustExistForReinstate: Rule<ReinstateInput> =
     Rule.create
         "BR-C-013-EXISTS-REINSTATE"
         "Item Transition must exist before reinstatement"
         (fun input -> input.CurrentState.IsSome)
-        (fun input -> sprintf "TransitionId: %A" (Identities.transitionIdValue input.Cmd.TransitionId))
+        (fun input -> sprintf "TransitionId: %A" (TransitionId.value input.Cmd.TransitionId))
 
 let transitionMustExistForRetire: Rule<RetireInput> =
     Rule.create
         "BR-C-013-EXISTS-RETIRE"
         "Item Transition must exist before retirement"
         (fun input -> input.CurrentState.IsSome)
-        (fun input -> sprintf "TransitionId: %A" (Identities.transitionIdValue input.Cmd.TransitionId))
+        (fun input -> sprintf "TransitionId: %A" (TransitionId.value input.Cmd.TransitionId))
 
 let recognitionRules: Rule<RecognizeInput> list =
     [ noSelfSupersessionRule

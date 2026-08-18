@@ -36,7 +36,6 @@
     <Compile Include="Execution\AggregateStages.fs" />
     <Compile Include="Execution\CommandPipeline.fs" />
     <Compile Include="Execution\CommandCapabilities.fs" />
-    <Compile Include="Execution\CapabilityPrimitives.fs" />
     <Compile Include="Configuration\FeatureFlags.fs" />
     <Compile Include="Configuration\EnvironmentSettings.fs" />
     <Compile Include="Validations.fs" />

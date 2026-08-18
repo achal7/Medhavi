@@ -3,7 +3,6 @@ module Medhavi.Core.EnterprisePictureManagement.Behaviors
 
 open Medhavi.Common
 open Medhavi.SemanticModel
-open Medhavi.SemanticModel.Identities
 open Medhavi.Foundation.Contracts
 open Medhavi.Foundation.Failure
 open Model
@@ -14,9 +13,9 @@ open Algorithms
 let private nextVersionNumber (state: EnterprisePicture option) : Result<PictureVersionId, DomainError> =
     state
     |> Option.map(fun p ->
-        p.Versions |> List.map(fun v -> pictureVersionIdValue v.VersionNumber) |> List.fold max 0 |> (+) 1)
+        p.Versions |> List.map(fun v -> PictureVersionId.value v.VersionNumber) |> List.fold max 0 |> (+) 1)
     |> Option.defaultValue 1
-    |> pictureVersionIdCreate
+    |> PictureVersionId.create
     |> Result.mapError(fun e -> DomainError.validation(sprintf "Version number creation failed: %A" e))
 
 let private findPublishedVersion (state: EnterprisePicture option) : PictureVersion option =
@@ -36,7 +35,13 @@ let compose
 
         match decision.Outcome with
         | CompositionRejected reasons ->
-            return! Error(DomainError.rule((String.concat "; " reasons), Medhavi.Core.ArsIdentifiers.Decisions.assessPictureMateriality.Id))
+            return!
+                Error(
+                    DomainError.rule(
+                        (String.concat "; " reasons),
+                        Medhavi.Core.ArsIdentifiers.Decisions.assessPictureMateriality.Id
+                    )
+                )
         | ComposedSuccessfully ->
             let! versionNumber = nextVersionNumber state
 
@@ -92,7 +97,14 @@ let publish
         let publishedOpt = findPublishedVersion state
 
         match draftOpt with
-        | None -> return! Error(DomainError.rule($"Version {cmd.VersionNumber} not found", Medhavi.Core.ArsIdentifiers.Rules.versionMustExist.Id))
+        | None ->
+            return!
+                Error(
+                    DomainError.rule(
+                        $"Version {cmd.VersionNumber} not found",
+                        Medhavi.Core.ArsIdentifiers.Rules.versionMustExist.Id
+                    )
+                )
         | Some draft ->
             let! currentState =
                 state
@@ -101,7 +113,8 @@ let publish
             // BA-C-001: assess materiality
             let assessment = Algorithms.evaluatePictureMateriality policy draft publishedOpt
             // DE-C-001: decide publication
-            let! (decision: DecisionOutcome<PublicationOutcome>) = Decisions.assessMateriality Rules.publicationRules input assessment
+            let! (decision: DecisionOutcome<PublicationOutcome>) =
+                Decisions.assessMateriality Rules.publicationRules input assessment
 
             match decision.Outcome with
             | RetainDraft reason ->

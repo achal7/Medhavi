@@ -2,7 +2,6 @@
 module Medhavi.Core.ItemTransitionManagement.ACL
 
 open Medhavi.SemanticModel
-open Medhavi.SemanticModel.Identities
 open Medhavi.Common.Validation
 open Medhavi.Foundation.Failure
 open Medhavi.Foundation.IdsFactory
@@ -18,22 +17,22 @@ let toRecognizeCmd (req: RecognizeItemTransitionReq) : Validation<RecognizeItemT
     let validateTransitionId =
         let derived = deriveTransitionId req.SupersededItem req.SupersedingItem
 
-        transitionIdCreate derived
+        TransitionId.create derived
         |> Result.mapError(fun err -> DomainError.validation $"TransitionId: {err}")
         |> fromResult
 
     let validateSupersededItem =
-        itemIdCreate req.SupersededItem
+        ItemId.create req.SupersededItem
         |> Result.mapError(fun err -> DomainError.validation $"SupersededItem: {err}")
         |> fromResult
 
     let validateSupersedingItem =
-        itemIdCreate req.SupersedingItem
+        ItemId.create req.SupersedingItem
         |> Result.mapError(fun err -> DomainError.validation $"SupersedingItem: {err}")
         |> fromResult
 
     let validateTransitionType =
-        vocabularyEntryIdCreate req.TransitionType
+        VocabularyEntryId.create req.TransitionType
         |> Result.mapError(fun err -> DomainError.validation $"TransitionType: {err}")
         |> fromResult
 
@@ -69,7 +68,7 @@ let toSuspendCmd (req: SuspendItemTransitionReq) : Validation<SuspendItemTransit
     let validateTransitionId =
         let derived = deriveTransitionId req.SupersededItem req.SupersedingItem
 
-        transitionIdCreate derived
+        TransitionId.create derived
         |> Result.mapError(fun err -> DomainError.validation $"TransitionId: {err}")
         |> fromResult
 
@@ -87,7 +86,7 @@ let toReinstateCmd (req: ReinstateItemTransitionReq) : Validation<ReinstateItemT
     let validateTransitionId =
         let derived = deriveTransitionId req.SupersededItem req.SupersedingItem
 
-        transitionIdCreate derived
+        TransitionId.create derived
         |> Result.mapError(fun err -> DomainError.validation $"TransitionId: {err}")
         |> fromResult
 
@@ -105,7 +104,7 @@ let toRetireCmd (req: RetireItemTransitionReq) : Validation<RetireItemTransition
     let validateTransitionId =
         let derived = deriveTransitionId req.SupersededItem req.SupersedingItem
 
-        transitionIdCreate derived
+        TransitionId.create derived
         |> Result.mapError(fun err -> DomainError.validation $"TransitionId: {err}")
         |> fromResult
 

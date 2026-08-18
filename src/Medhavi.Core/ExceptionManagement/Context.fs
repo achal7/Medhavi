@@ -57,7 +57,7 @@ let create
                     dtoOpt
                     |> Option.bind (fun dto -> dto.Severity)
                     |> Option.bind (fun s ->
-                        match Identities.vocabularyEntryIdCreate s with
+                        match VocabularyEntryId.create s with
                         | Ok vId -> Some vId
                         | Error _ -> None)
             }

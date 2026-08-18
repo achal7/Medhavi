@@ -52,7 +52,7 @@ let create
         // 2. Helper to query active transition for a given Superseded Item (BR-C-016 FIRST GATE)
         let getActiveTransitionForItem (itemId: ItemId) : Task<ItemTransitionDto option> =
             task {
-                let itemIdStr = Identities.itemIdValue itemId
+                let itemIdStr = ItemId.value itemId
                 let! transitions =
                     queryCtx.QueryService.Filter (fun dto ->
                         dto.SupersededItem = itemIdStr && dto.LifecycleState = "Active")

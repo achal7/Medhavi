@@ -46,6 +46,14 @@ let inline greaterThan field threshold value =
 
 let inline positive field value = greaterThan field LanguagePrimitives.GenericZero value
 
+let inline greaterThanOrEqual field threshold value =
+    if value >= threshold then
+        Valid value
+    else
+        Invalid [ DomainError.validation $"{field} must be >= {threshold}" ]
+
+let inline nonNegative field value = greaterThanOrEqual field LanguagePrimitives.GenericZero value
+
 let inRange (field: string) (minValue: decimal) (maxValue: decimal) (value: decimal) =
     if value < minValue || value > maxValue then
         Invalid([ DomainError.validation $"{field} must be between {minValue} and {maxValue}" ])

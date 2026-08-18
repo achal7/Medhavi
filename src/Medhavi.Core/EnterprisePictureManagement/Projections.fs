@@ -7,10 +7,10 @@ open Model
 type EnterprisePictureDto = Contracts.Core.EnterprisePicture
 
 let mapVersion (v: PictureVersion) : Contracts.Core.PictureVersion =
-    { VersionNumber = Identities.pictureVersionIdValue v.VersionNumber
-      DemandReferences = v.DemandReferences |> List.map Identities.demandIdValue
-      SupplyReferences = v.SupplyReferences |> List.map Identities.supplyIdValue
-      InventoryReferences = v.InventoryReferences |> List.map Identities.InventoryIdentity.toString
+    { VersionNumber = PictureVersionId.value v.VersionNumber
+      DemandReferences = v.DemandReferences |> List.map DemandId.value
+      SupplyReferences = v.SupplyReferences |> List.map SupplyId.value
+      InventoryReferences = v.InventoryReferences |> List.map InventoryIdentity.toString
       PublicationTime = v.PublicationTime |> Option.map Timestamp.value
       LifecycleState = v.LifecycleState.ToString() }
 
@@ -19,9 +19,9 @@ let mapToDto (aggregate: EnterprisePicture) : Contracts.Core.EnterprisePicture =
     let currentPublished =
         aggregate.Versions
         |> List.tryFind(fun v -> v.LifecycleState = PictureVersionLifecycleState.Published)
-        |> Option.map(fun v -> Identities.pictureVersionIdValue v.VersionNumber)
+        |> Option.map(fun v -> PictureVersionId.value v.VersionNumber)
 
-    { PlanningScopeId = Identities.planningScopeIdValue aggregate.PlanningScopeIdentifier
+    { PlanningScopeId = PlanningScopeId.value aggregate.PlanningScopeIdentifier
       Versions = aggregate.Versions |> List.map mapVersion
       CurrentPublishedVersion = currentPublished }
 
@@ -36,7 +36,7 @@ let evolveProjection
     : Map<PlanningScopeId, Contracts.Core.EnterprisePicture> =
     match evt with
     | PictureVersionComposed(scopeId, version, _) ->
-        let scopeKey = Identities.planningScopeIdValue scopeId
+        let scopeKey = PlanningScopeId.value scopeId
         let versionDto = mapVersion version
 
         state
@@ -53,7 +53,7 @@ let evolveProjection
                       CurrentPublishedVersion = None })
 
     | PictureVersionPublished(scopeId, versionNumber, publicationTime) ->
-        let versionNum = Identities.pictureVersionIdValue versionNumber
+        let versionNum = PictureVersionId.value versionNumber
 
         state
         |> Map.change scopeId (fun existing ->
@@ -67,7 +67,8 @@ let evolveProjection
                                 LifecycleState = PictureVersionLifecycleState.Published.ToString()
                                 PublicationTime = Some(Timestamp.value publicationTime) }
                         elif v.LifecycleState = PictureVersionLifecycleState.Published.ToString() then
-                            { v with LifecycleState = PictureVersionLifecycleState.Superseded.ToString() }
+                            { v with
+                                LifecycleState = PictureVersionLifecycleState.Superseded.ToString() }
                         else
                             v)
 

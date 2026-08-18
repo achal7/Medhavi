@@ -7,10 +7,10 @@ open Model
 
 /// Map aggregate state to DTO.
 let mapToDto (transition: ItemTransition) : ItemTransitionDto =
-    { TransitionId = Identities.transitionIdValue transition.TransitionIdentifier
-      SupersededItem = Identities.itemIdValue transition.SupersededItem
-      SupersedingItem = Identities.itemIdValue transition.SupersedingItem
-      TransitionType = Identities.vocabularyEntryIdValue transition.TransitionType
+    { TransitionId = TransitionId.value transition.TransitionIdentifier
+      SupersededItem = ItemId.value transition.SupersededItem
+      SupersedingItem = ItemId.value transition.SupersedingItem
+      TransitionType = VocabularyEntryId.value transition.TransitionType
       EffectiveDate = Timestamp.value transition.EffectiveDate
       EndDate = transition.EndDate |> Option.map Timestamp.value
       LifecycleState =

@@ -10,7 +10,7 @@ open Model
 let toComposeCmd (req: ComposePictureVersionReq) : Validation<ComposePictureVersionCmd, DomainError> =
 
     let validateScopeId =
-        match Identities.planningScopeIdCreate req.PlanningScopeId with
+        match PlanningScopeId.create req.PlanningScopeId with
         | Ok id -> Valid id
         | Error err -> Invalid [ DomainError.validation(sprintf "PlanningScopeId: %A" err) ]
 
@@ -18,7 +18,7 @@ let toComposeCmd (req: ComposePictureVersionReq) : Validation<ComposePictureVers
         let results =
             req.DemandReferences
             |> List.map(fun id ->
-                match Identities.demandIdCreate id with
+                match DemandId.create id with
                 | Ok demandId -> Valid demandId
                 | Error err -> Invalid [ DomainError.validation(sprintf "DemandId: %A" err) ])
 
@@ -41,7 +41,7 @@ let toComposeCmd (req: ComposePictureVersionReq) : Validation<ComposePictureVers
         let results =
             req.SupplyReferences
             |> List.map(fun id ->
-                match Identities.supplyIdCreate id with
+                match SupplyId.create id with
                 | Ok supplyId -> Valid supplyId
                 | Error err -> Invalid [ DomainError.validation(sprintf "SupplyId: %A" err) ])
 
@@ -67,7 +67,7 @@ let toComposeCmd (req: ComposePictureVersionReq) : Validation<ComposePictureVers
     let validateInventoryReferences =
         req.InventoryReferences
         |> List.map(fun id ->
-            match Identities.InventoryIdentity.parse id with
+            match InventoryIdentity.parse id with
             | Ok invId -> Valid invId
             | Error err -> Invalid [ DomainError.validation(sprintf "InventoryId: %A" err) ])
         |> sequence
@@ -90,12 +90,12 @@ let toComposeCmd (req: ComposePictureVersionReq) : Validation<ComposePictureVers
 let toPublishCmd (req: PublishPictureVersionReq) : Validation<PublishPictureVersionCmd, DomainError> =
 
     let validateScopeId =
-        match Identities.planningScopeIdCreate req.PlanningScopeId with
+        match PlanningScopeId.create req.PlanningScopeId with
         | Ok id -> Valid id
         | Error err -> Invalid [ DomainError.validation(sprintf "PlanningScopeId: %A" err) ]
 
     let validateVersionNumber =
-        match Identities.pictureVersionIdCreate req.VersionNumber with
+        match PictureVersionId.create req.VersionNumber with
         | Ok id -> Valid id
         | Error err -> Invalid [ DomainError.validation(sprintf "VersionNumber: %A" err) ]
 

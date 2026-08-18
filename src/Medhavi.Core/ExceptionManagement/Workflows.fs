@@ -8,7 +8,6 @@ open System.Threading
 open System.Threading.Tasks
 open Medhavi.Common
 open Medhavi.SemanticModel
-open Medhavi.SemanticModel.Identities
 open Medhavi.Foundation.Contracts
 open Medhavi.SharedKernel.BusinessNotifications
 open Medhavi.Contracts.Core.Exception
@@ -23,29 +22,29 @@ type EvidenceWorkflowDependencies =
 
 let private toDemandEvidenceReq (n: DemandExceptionEvidenceNotification) : ExceptionEvidenceReq =
     { ConstraintReference = n.ConstraintReference
-      Classification = vocabularyEntryIdValue n.Classification
-      AffectedScopeType = vocabularyEntryIdValue n.AffectedScopeType
+      Classification = VocabularyEntryId.value n.Classification
+      AffectedScopeType = VocabularyEntryId.value n.AffectedScopeType
       AffectedScopeIdentifier = n.AffectedScopeIdentifier
       EvidenceReference = n.EvidenceReference
-      Severity = n.Severity |> Option.map vocabularyEntryIdValue
+      Severity = n.Severity |> Option.map VocabularyEntryId.value
       EvidenceTime = Timestamp.value n.EvidenceTime }
 
 let private toSupplyEvidenceReq (n: SupplyExceptionEvidenceNotification) : ExceptionEvidenceReq =
     { ConstraintReference = n.ConstraintReference
-      Classification = vocabularyEntryIdValue n.Classification
-      AffectedScopeType = vocabularyEntryIdValue n.AffectedScopeType
+      Classification = VocabularyEntryId.value n.Classification
+      AffectedScopeType = VocabularyEntryId.value n.AffectedScopeType
       AffectedScopeIdentifier = n.AffectedScopeIdentifier
       EvidenceReference = n.EvidenceReference
-      Severity = n.Severity |> Option.map vocabularyEntryIdValue
+      Severity = n.Severity |> Option.map VocabularyEntryId.value
       EvidenceTime = Timestamp.value n.EvidenceTime }
 
 let private toInventoryEvidenceReq (n: InventoryExceptionEvidenceNotification) : ExceptionEvidenceReq =
     { ConstraintReference = n.ConstraintReference
-      Classification = vocabularyEntryIdValue n.Classification
-      AffectedScopeType = vocabularyEntryIdValue n.AffectedScopeType
+      Classification = VocabularyEntryId.value n.Classification
+      AffectedScopeType = VocabularyEntryId.value n.AffectedScopeType
       AffectedScopeIdentifier = n.AffectedScopeIdentifier
       EvidenceReference = n.EvidenceReference
-      Severity = n.Severity |> Option.map vocabularyEntryIdValue
+      Severity = n.Severity |> Option.map VocabularyEntryId.value
       EvidenceTime = Timestamp.value n.EvidenceTime }
 
 /// FS-C-003: ingest detection evidence from all authorized domains.
@@ -81,7 +80,7 @@ let createEvidenceWorkflow (deps: EvidenceWorkflowDependencies) (ct: Cancellatio
 
         return
             { new IDisposable with
-                member _.Dispose () =
+                member _.Dispose() =
                     demandSub.Dispose()
                     supplySub.Dispose()
                     inventorySub.Dispose() }

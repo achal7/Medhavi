@@ -14,7 +14,7 @@ type Decision<'State, 'Event> =
 
 /// Shared decide/evolve function signatures for event-sourced aggregates.
 type Decide<'State, 'Command, 'Event> = 'Command -> 'State option -> Result<Decision<'State, 'Event>, DomainError>
-type Evolve<'State, 'Event> = 'Event -> 'State option -> 'State option
+type Evolve<'State, 'Event> = 'State option -> 'Event -> 'State option
 
 /// Validator type for aggregate commands using applicative Validation functor
 type CommandValidator<'Command> = 'Command -> Validation<'Command, DomainError>
@@ -32,14 +32,14 @@ module NotificationPublisher =
 
 module Decision =
     /// Replays a sequence of events on top of an initial state.
-    let replay (evolve: Evolve<'State, 'Event>) (events: 'Event seq) : 'State option =
-        Seq.fold (fun state ev -> evolve ev state) None events
+    let replay (evolve: Evolve<'State, 'Event>) (events: 'Event seq) : 'State option = Seq.fold evolve None events
 
     let buildDecision<'State, 'Event> (evolve: Evolve<'State, 'Event>) stateOpt events traceOpt =
-        let newState = events |> List.fold (fun s ev -> evolve ev s) stateOpt
+        let newState = events |> List.fold evolve stateOpt
 
         { NewState =
-            newState |> Option.defaultWith(fun () -> failwith "Aggregate state must exist after applying events")
+            newState
+            |> Option.defaultWith(fun () -> failwith $"{newState.GetType()} state must exist after applying events")
           Events = events
           Trace = traceOpt }
 

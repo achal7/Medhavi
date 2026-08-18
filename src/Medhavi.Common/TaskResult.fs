@@ -105,6 +105,17 @@ module TaskResult =
             return Result.toOption result
         }
 
+    /// Option to TaskResult, fail if None
+    let ofOption (error: 'E) (taskResult: TaskResult<Option<'T>, 'E>) : TaskResult<'T, 'E> =
+        task {
+            let! result = taskResult
+
+            match result with
+            | Ok(Some value) -> return Ok value
+            | Ok None -> return Error error
+            | Error err -> return Error err
+        }
+
     /// Convert TaskResult to Task<Result> with different error type
     let mapErrorTask (f: 'E -> 'F) (taskResult: TaskResult<'T, 'E>) : TaskResult<'T, 'F> = mapError f taskResult
 

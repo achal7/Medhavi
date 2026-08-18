@@ -7,5 +7,6 @@
     <Project Path="src/Medhavi.SemanticModel/Medhavi.SemanticModel.fsproj" />
     <Project Path="src/Medhavi.SharedKernel/Medhavi.SharedKernel.fsproj" />
     <Project Path="src/Medhavi.Core/Medhavi.Core.fsproj" />
+    <Project Path="src/Medhavi.Demand/Medhavi.Demand.fsproj" />
   </Folder>
 </Solution>

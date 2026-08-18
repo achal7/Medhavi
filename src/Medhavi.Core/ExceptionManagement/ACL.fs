@@ -2,7 +2,6 @@
 module Medhavi.Core.ExceptionManagement.ACL
 
 open Medhavi.SemanticModel
-open Medhavi.SemanticModel.Identities
 open Medhavi.Common.Validation
 open Medhavi.Foundation.Failure
 open Medhavi.Foundation.IdsFactory
@@ -20,32 +19,33 @@ let private invalid (message: string) : Validation<'T, DomainError> = Invalid [ 
 let toProcessEvidenceCmd (req: ExceptionEvidenceReq) : Validation<ProcessExceptionEvidenceCmd, DomainError> =
     let validateExceptionId =
         let derived = deriveExceptionId req.ConstraintReference req.AffectedScopeType req.AffectedScopeIdentifier
-        match exceptionIdCreate derived with
+
+        match ExceptionId.create derived with
         | Ok id -> Valid id
-        | Error err -> invalid (sprintf "ExceptionId: %A" err)
+        | Error err -> invalid(sprintf "ExceptionId: %A" err)
 
     let validateClassification =
-        match vocabularyEntryIdCreate req.Classification with
+        match VocabularyEntryId.create req.Classification with
         | Ok id -> Valid id
-        | Error err -> invalid (sprintf "Classification: %A" err)
+        | Error err -> invalid(sprintf "Classification: %A" err)
 
     let validateScopeType =
-        match vocabularyEntryIdCreate req.AffectedScopeType with
+        match VocabularyEntryId.create req.AffectedScopeType with
         | Ok id -> Valid id
-        | Error err -> invalid (sprintf "AffectedScopeType: %A" err)
+        | Error err -> invalid(sprintf "AffectedScopeType: %A" err)
 
     let validateSeverity =
         match req.Severity with
         | None -> Valid None
         | Some s ->
-            match vocabularyEntryIdCreate s with
-            | Ok id -> Valid (Some id)
-            | Error err -> invalid (sprintf "Severity: %A" err)
+            match VocabularyEntryId.create s with
+            | Ok id -> Valid(Some id)
+            | Error err -> invalid(sprintf "Severity: %A" err)
 
     let validateEvidenceTime =
         match Timestamp.create req.EvidenceTime with
         | Ok ts -> Valid ts
-        | Error err -> invalid (sprintf "EvidenceTime: %s" err)
+        | Error err -> invalid(sprintf "EvidenceTime: %s" err)
 
     let create id classification scopeType severity evidenceTime =
         { ExceptionId = id
@@ -58,22 +58,23 @@ let toProcessEvidenceCmd (req: ExceptionEvidenceReq) : Validation<ProcessExcepti
           EvidenceTime = evidenceTime }
 
     create <!> validateExceptionId
-           <*> validateClassification
-           <*> validateScopeType
-           <*> validateSeverity
-           <*> validateEvidenceTime
+    <*> validateClassification
+    <*> validateScopeType
+    <*> validateSeverity
+    <*> validateEvidenceTime
 
 let toResolveCmd (req: ResolveExceptionReq) : Validation<ResolveExceptionCmd, DomainError> =
     let validateExceptionId =
         let derived = deriveExceptionId req.ConstraintReference req.AffectedScopeType req.AffectedScopeIdentifier
-        match exceptionIdCreate derived with
+
+        match ExceptionId.create derived with
         | Ok id -> Valid id
-        | Error err -> invalid (sprintf "ExceptionId: %A" err)
+        | Error err -> invalid(sprintf "ExceptionId: %A" err)
 
     let validateResolutionTime =
         match Timestamp.create req.ResolutionTime with
         | Ok ts -> Valid ts
-        | Error err -> invalid (sprintf "ResolutionTime: %s" err)
+        | Error err -> invalid(sprintf "ResolutionTime: %s" err)
 
     let create id time =
         { ExceptionId = id

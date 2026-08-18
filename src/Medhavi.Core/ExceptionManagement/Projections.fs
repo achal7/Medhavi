@@ -2,19 +2,18 @@
 module Medhavi.Core.ExceptionManagement.Projections
 
 open Medhavi.SemanticModel
-open Medhavi.SemanticModel.Identities
 open Medhavi.Contracts.Core
 open Medhavi.Core.ExceptionManagement.Model
 
 /// Builds the read-model DTO. Severity is sourced from events (not aggregate state).
 let mapToDto (aggregate: CoreException) (severity: VocabularyEntryId option) : Exception.ExceptionDto =
-    { ExceptionId = exceptionIdValue aggregate.ExceptionIdentifier
+    { ExceptionId = ExceptionId.value aggregate.ExceptionIdentifier
       ConstraintReference = aggregate.ConstraintReference
-      Classification = vocabularyEntryIdValue aggregate.Classification
-      AffectedScopeType = vocabularyEntryIdValue aggregate.AffectedScopeType
+      Classification = VocabularyEntryId.value aggregate.Classification
+      AffectedScopeType = VocabularyEntryId.value aggregate.AffectedScopeType
       AffectedScopeIdentifier = aggregate.AffectedScopeIdentifier
       EvidenceReference = aggregate.EvidenceReference
-      Severity = severity |> Option.map vocabularyEntryIdValue
+      Severity = severity |> Option.map VocabularyEntryId.value
       RegistrationTime = Timestamp.value(Timestamp.now())
       ResolutionTime = None
       ResolutionEvidence = None
@@ -37,7 +36,7 @@ let apply (state: State) (event: ExceptionEvent) : State =
             (Option.map(fun existing ->
                 { existing with
                     EvidenceReference = newEvidence |> Option.orElse existing.EvidenceReference
-                    Severity = newSeverity |> Option.map vocabularyEntryIdValue |> Option.orElse existing.Severity }))
+                    Severity = newSeverity |> Option.map VocabularyEntryId.value |> Option.orElse existing.Severity }))
 
     | ExceptionResolved(exceptionId, resolutionTime, resolutionEvidence) ->
         state

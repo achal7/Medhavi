@@ -21,6 +21,20 @@
     <Compile Include="Core\Demand.fs" />
     <Compile Include="Core\Exception.fs" />
     <Compile Include="Core\ItemTransition.fs" />
+
+    <Compile Include="Demand\Demand.fs" />
+    <Compile Include="Demand\DemandObservation.fs" />
+    <Compile Include="Demand\DemandUnderstanding.fs" />
+    <Compile Include="Demand\DemandBehaviorAssessment.fs" />
+    <Compile Include="Demand\ForecastPublication.fs" />
+    <Compile Include="Demand\PlanningClassification.fs" />
+    <Compile Include="Demand\DemandBehaviorClassification.fs" />
+    <Compile Include="Demand\PlanningPriority.fs" />
+    <Compile Include="Demand\ForecastQuality.fs" />
+    <Compile Include="Demand\DemandException.fs" />
+    <Compile Include="Demand\DemandExplanation.fs" />
+    <Compile Include="Demand\DemandLearning.fs" />
+    <Compile Include="Demand\DemandIntervention.fs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -20,6 +20,7 @@ type PublishPictureVersionCmd =
 type EnterprisePictureCmd =
     | Compose of ComposePictureVersionCmd
     | Publish of PublishPictureVersionCmd
+
     member this.PlanningScopeId =
         match this with
         | Compose c -> c.PlanningScopeId
@@ -34,24 +35,34 @@ type EnterprisePictureEvent =
 /// Pure state evolution (catamorphism).
 let evolve (state: EnterprisePicture option) (event: EnterprisePictureEvent) : EnterprisePicture option =
     match event with
-    | PictureVersionComposed (scopeId, version, _) ->
+    | PictureVersionComposed(scopeId, version, _) ->
         match state with
-        | Some picture -> Some { picture with Versions = picture.Versions @ [ version ] }
-        | None -> Some { PlanningScopeIdentifier = scopeId; Versions = [ version ] }
+        | Some picture ->
+            Some
+                { picture with
+                    Versions = picture.Versions @ [ version ] }
+        | None ->
+            Some
+                { PlanningScopeIdentifier = scopeId
+                  Versions = [ version ] }
 
-    | PictureVersionPublished (_, versionNumber, publicationTime) ->
+    | PictureVersionPublished(_, versionNumber, publicationTime) ->
         state
-        |> Option.map (fun picture ->
+        |> Option.map(fun picture ->
             let updated =
                 picture.Versions
-                |> List.map (fun v ->
+                |> List.map(fun v ->
                     if v.VersionNumber = versionNumber then
-                        { v with LifecycleState = PictureVersionLifecycleState.Published
-                                 PublicationTime = Some publicationTime }
+                        { v with
+                            LifecycleState = PictureVersionLifecycleState.Published
+                            PublicationTime = Some publicationTime }
                     elif v.LifecycleState = PictureVersionLifecycleState.Published then
                         // Atomic supersede: prior Published becomes Superseded (no separate event)
-                        { v with LifecycleState = PictureVersionLifecycleState.Superseded }
-                    else v)
+                        { v with
+                            LifecycleState = PictureVersionLifecycleState.Superseded }
+                    else
+                        v)
+
             { picture with Versions = updated })
 
 let replay (events: EnterprisePictureEvent seq) : EnterprisePicture option = Seq.fold evolve None events

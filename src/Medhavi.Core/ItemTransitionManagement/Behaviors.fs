@@ -55,7 +55,7 @@ let recognize
                   PolicyId = Some policy.PolicyId
                   PolicyVersion = Some policy.Version
                   Rationale =
-                    { Summary = sprintf "Recognized Item Transition %A" (Identities.transitionIdValue cmd.TransitionId)
+                    { Summary = sprintf "Recognized Item Transition %A" (TransitionId.value cmd.TransitionId)
                       Evidence = decision.Evaluations |> List.collect(fun e -> e.Evidence)
                       Alternatives = [ ("RejectRecognition", "All recognition criteria satisfied") ] }
                   RulesEvaluated = decision.Evaluations
@@ -104,7 +104,7 @@ let suspend
                   PolicyId = Some policy.PolicyId
                   PolicyVersion = Some policy.Version
                   Rationale =
-                    { Summary = sprintf "Suspended Item Transition %A" (Identities.transitionIdValue cmd.TransitionId)
+                    { Summary = sprintf "Suspended Item Transition %A" (TransitionId.value cmd.TransitionId)
                       Evidence = decision.Evaluations |> List.collect(fun e -> e.Evidence)
                       Alternatives = [] }
                   RulesEvaluated = decision.Evaluations
@@ -154,7 +154,7 @@ let reinstate
                   PolicyId = Some policy.PolicyId
                   PolicyVersion = Some policy.Version
                   Rationale =
-                    { Summary = sprintf "Reinstated Item Transition %A" (Identities.transitionIdValue cmd.TransitionId)
+                    { Summary = sprintf "Reinstated Item Transition %A" (TransitionId.value cmd.TransitionId)
                       Evidence = decision.Evaluations |> List.collect(fun e -> e.Evidence)
                       Alternatives = [] }
                   RulesEvaluated = decision.Evaluations
@@ -203,7 +203,7 @@ let retire
                   PolicyId = Some policy.PolicyId
                   PolicyVersion = Some policy.Version
                   Rationale =
-                    { Summary = sprintf "Retired Item Transition %A" (Identities.transitionIdValue cmd.TransitionId)
+                    { Summary = sprintf "Retired Item Transition %A" (TransitionId.value cmd.TransitionId)
                       Evidence = decision.Evaluations |> List.collect(fun e -> e.Evidence)
                       Alternatives = [] }
                   RulesEvaluated = decision.Evaluations
