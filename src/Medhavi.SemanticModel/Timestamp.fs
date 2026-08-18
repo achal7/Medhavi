@@ -32,6 +32,7 @@ module Timestamp =
     /// Adds a TimeSpan to a Timestamp.
     let add (t: Timestamp) (span: TimeSpan) : Timestamp = Timestamp((value t).Add(span).ToUniversalTime())
 
+    let addDays (days: float) (t: Timestamp) : Timestamp = Timestamp((value t).AddDays(days).ToUniversalTime())
     /// Subtracts a TimeSpan from a Timestamp.
     let subtract (t: Timestamp) (span: TimeSpan) : Timestamp = Timestamp((value t).Add(span.Negate()).ToUniversalTime())
 

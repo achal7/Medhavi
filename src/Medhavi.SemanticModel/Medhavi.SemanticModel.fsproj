@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -6,26 +6,60 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Semantic Error Algebra -->
+    <!-- Semantic Error Algebra & Base Primitives -->
     <Compile Include="SemanticErrors.fs" />
-
-    <!-- Core Layer A primitives -->
-    <Compile Include="Identities.fs" />
+    <Compile Include="Invariants.fs" />
     <Compile Include="Timestamp.fs" />
-    <Compile Include="Enums.fs" />
-    <Compile Include="ValueObjects.fs" />
+    <Compile Include="Duration.fs" />
+    <Compile Include="ReferenceLifecycle.fs" />
 
-    <!-- Aggregate Root Shapes -->
-    <Compile Include="ResourceNetwork.fs" />
-    <Compile Include="Planning.fs" />
-    <Compile Include="PlanningLifecycle.fs" />
-    <Compile Include="EnterpriseFacts.fs" />
-    <Compile Include="Obligation.fs" />
-    <Compile Include="BomRisk.fs" />
-    <Compile Include="Core.fs" />
+    <!-- Core Reference Slices -->
+    <Compile Include="UnitOfMeasure.fs" />
+    <Compile Include="TimeZone.fs" />
+    <Compile Include="Vocabulary.fs" />
+    <Compile Include="Item.fs" />
+    <Compile Include="Location.fs" />
+    <Compile Include="Customer.fs" />
+    <Compile Include="Supplier.fs" />
+    <Compile Include="ItemTransition.fs" />
+
+    <!-- Value Objects & Windows -->
+    <Compile Include="ValueObjects.fs" />
+    <Compile Include="TemporalWindow.fs" />
+    <Compile Include="NeedWindow.fs" />
+    <Compile Include="Capacity.fs" />
+    <Compile Include="PlanningHorizon.fs" />
+    <Compile Include="RiskAssessment.fs" />
+    <Compile Include="ScenarioAdjustment.fs" />
+
+    <!-- Planning & Scope Slices -->
+    <Compile Include="PlanningScope.fs" />
+    <Compile Include="Calendar.fs" />
+    <Compile Include="PlanningPeriod.fs" />
+    <Compile Include="Scenario.fs" />
+    <Compile Include="Plan.fs" />
+
+    <!-- Enterprise Fact Slices -->
+    <Compile Include="Demand.fs" />
+    <Compile Include="Supply.fs" />
+    <Compile Include="Inventory.fs" />
+    <Compile Include="Commitment.fs" />
+
+    <!-- Core Intelligence & Exception Slices -->
+    <Compile Include="EnterprisePicture.fs" />
+    <Compile Include="Exception.fs" />
+
+    <!-- Resource & Network Slices -->
+    <Compile Include="ResourceGroup.fs" />
+    <Compile Include="StandardResource.fs" />
+    <Compile Include="PhysicalResource.fs" />
+    <Compile Include="TransportationLane.fs" />
+    <Compile Include="Network.fs" />
+
+    <!-- BOM, Risk, & Governance Slices -->
+    <Compile Include="BillOfMaterials.fs" />
+    <Compile Include="Risk.fs" />
     <Compile Include="PerformanceCatalog.fs" />
 
-    <Compile Include="Invariants.fs" />
-    <Compile Include="Lifecycles.fs" />
   </ItemGroup>
 </Project>
