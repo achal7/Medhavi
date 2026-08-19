@@ -18,6 +18,9 @@ module Capabilities =
             "CA-C-021"
             "Governs the lifecycle of item succession relationships ensuring all planning capabilities operate from a single authoritative transition definition"
 
+    let manageEnterpriseDemand =
+        ofCapability "CA-C-022" "Records and governs the enterprise fact ledger of historical demand signals"
+
 module Responsibilities =
     let composeEnterprisePictureVersion =
         ofResponsibility
@@ -43,6 +46,9 @@ module Responsibilities =
         ofResponsibility "CR-C-007" "Reinstates a suspended item succession relationship to active"
 
     let retireItemTransition = ofResponsibility "CR-C-008" "Retires an item succession relationship permanently"
+    let recordDemand = ofResponsibility "CR-C-009" "Records a new demand fact from an accepted demand observation"
+    let satisfyDemand = ofResponsibility "CR-C-010" "Transitions an Active demand fact to Satisfied"
+    let cancelDemand = ofResponsibility "CR-C-011" "Transitions an Active demand fact to Cancelled"
 
 module Decisions =
     let assessPictureMateriality =
@@ -60,6 +66,10 @@ module Decisions =
         ofDecision
             "DE-C-005"
             "Validates that an item transition meets all recognition criteria before becoming authoritative"
+
+    let evaluateDemandRecording = ofDecision "DE-C-006" "Determines whether a demand fact can be recorded"
+    let evaluateDemandSatisfaction = ofDecision "DE-C-007" "Determines whether a demand fact can be satisfied"
+    let evaluateDemandCancellation = ofDecision "DE-C-008" "Determines whether a demand fact can be cancelled"
 
 module Rules =
     let compositionRequiresReferences =
@@ -113,6 +123,12 @@ module Rules =
     let retiredTransitionNotReferenced =
         ofRule "BR-C-018" "A Retired Item Transition cannot be referenced by new planning activities"
 
+    let demandMustNotExist = ofRule "BR-C-019" "A demand fact with the same identity must not already exist"
+    let demandMustBeActiveForSatisfaction = ofRule "BR-C-020" "Only Active demand can transition to Satisfied"
+    let demandMustBeActiveForCancellation = ofRule "BR-C-021" "Only Active demand can transition to Cancelled"
+    let demandMustExistForSatisfaction = ofRule "BR-C-022" "Demand must exist before satisfaction"
+    let demandMustExistForCancellation = ofRule "BR-C-023" "Demand must exist before cancellation"
+
 module Policies =
     let enterprisePicturePolicy =
         ofPolicy
@@ -127,6 +143,9 @@ module Policies =
     let itemTransitionGovernance =
         ofPolicy "PO-C-003" "Governs item transition validation criteria, recognition rules, and lifecycle governance"
 
+    let demandManagementPolicy =
+        ofPolicy "PO-C-004" "Governs demand fact recording, satisfaction, and cancellation criteria"
+
 module SemanticObjects =
     let enterprisePicture =
         ofSemanticObject
@@ -134,6 +153,7 @@ module SemanticObjects =
             "The aggregate root representing the unified, point-in-time view of a Planning Scope"
 
     let exceptionObject = ofSemanticObject "SE-C-019" "The enterprise fact representing a detected constraint violation"
+    let demandObject = ofSemanticObject "SE-C-013" "The enterprise fact representing a single confirmed demand event"
 
 // Ratified Core Spec events: EV-C-001 .. EV-C-005
 module EnterpriseEvents =
@@ -155,6 +175,12 @@ module EnterpriseEvents =
         ofEnterpriseEvent "EV-C-008" "Fired when a suspended item transition is reinstated to active"
 
     let itemTransitionRetired = ofEnterpriseEvent "EV-C-009" "Fired when an item transition is permanently retired"
+
+    let demandRecorded =
+        ofEnterpriseEvent "EV-C-010" "Fired when a new demand fact is recorded in the enterprise ledger"
+
+    let demandSatisfied = ofEnterpriseEvent "EV-C-011" "Fired when a demand fact transitions to Satisfied"
+    let demandCancelled = ofEnterpriseEvent "EV-C-012" "Fired when a demand fact transitions to Cancelled"
 
 module BusinessNotifications =
     open Medhavi.Contracts

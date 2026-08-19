@@ -1,68 +1,61 @@
-// =============================================================================
-// Medhavi.Contracts.Core.Demand
-// Traceability: SE‑C‑013 Demand contracts
-// Contains: DTO, Commands, Notifications, API gateway record, Queries alias
-// =============================================================================
-namespace Medhavi.Contracts.Core
+namespace Medhavi.Contracts.Core.Demand
 
 open System
 open System.Threading.Tasks
 open Medhavi.Contracts
 
-// ---------- DTO ----------
-type DemandOrigin =
-    | CustomerOrder
-    | Forecast
-    | ProductionRequirement
-    | Transfer
-    | Other
-
-type Demand =
+/// SE-C-013 Demand Data Transfer Object
+type DemandDto =
     { Id: string
-      ItemId: string
+      Item: string
+      Location: string
+      Customer: string option
       Quantity: decimal
-      LocationId: string
-      EarliestAcceptable: DateTimeOffset option
-      Preferred: DateTimeOffset option
-      LatestAcceptable: DateTimeOffset
-      Origin: DemandOrigin
-      CustomerId: string option
-      ParentDemandId: string option
-      State: string }
+      NeedWindowLatest: DateTimeOffset
+      NeedWindowEarliest: DateTimeOffset option
+      NeedWindowPreferred: DateTimeOffset option
+      DemandOrigin: string
+      ParentDemand: string option
+      LifecycleState: string }
 
-// ---------- Command Payloads ----------
-type CreateDemandReq =
-    { Id: string
-      ItemId: string
+/// Request to record a new demand fact
+type RecordDemandReq =
+    { DemandId: string
+      Item: string
+      Location: string
+      Customer: string option
       Quantity: decimal
-      LocationId: string
-      EarliestAcceptable: DateTimeOffset option
-      Preferred: DateTimeOffset option
-      LatestAcceptable: DateTimeOffset
-      Origin: DemandOrigin
-      BusinessTime: DateTimeOffset
-      CustomerId: string option
-      ParentDemandId: string option }
+      NeedWindowLatest: DateTimeOffset
+      NeedWindowEarliest: DateTimeOffset option
+      NeedWindowPreferred: DateTimeOffset option
+      DemandOrigin: string
+      ParentDemand: string option }
 
-type SatisfyDemandReq = { Id: string }
-type CancelDemandReq = { Id: string; Reason: string }
-type ExpireDemandReq = { Id: string }
+/// Request to satisfy an existing demand fact
+type SatisfyDemandReq =
+    { DemandId: string
+      SatisfactionTime: DateTimeOffset }
 
-// ---------- Business Notifications ----------
-type DemandCreatedNotification =
-    { Id: string
-      ItemId: string
-      Quantity: decimal
-      LocationId: string }
+/// Request to cancel an existing demand fact
+type CancelDemandReq =
+    { DemandId: string
+      CancellationTime: DateTimeOffset
+      Reason: string }
 
-type DemandSatisfiedNotification = { Id: string }
-type DemandCancelledNotification = { Id: string; Reason: string }
-
-// ---------- API Record & Query Service ----------
+/// Public API for Enterprise Demand Management (CA-C-022)
 type DemandApi =
-    { Create: CreateDemandReq -> Task<Result<Demand, ApiError>>
-      Satisfy: SatisfyDemandReq -> Task<Result<Demand, ApiError>>
-      Cancel: CancelDemandReq -> Task<Result<Demand, ApiError>>
-      Expire: ExpireDemandReq -> Task<Result<Demand, ApiError>> }
+    { Record: RecordDemandReq -> Task<Result<DemandDto, ApiError>>
+      Satisfy: SatisfyDemandReq -> Task<Result<DemandDto, ApiError>>
+      Cancel: CancelDemandReq -> Task<Result<DemandDto, ApiError>> }
 
-type DemandQueries = QueryService<Demand, string>
+/// Query service for Demand read model
+type DemandQueries = QueryService<DemandDto, string>
+
+/// Data point consumed by Demand Intelligence for forecasting baselines
+/// Note: Uses NeedWindowLatest as the primary time reference for the demand event.
+type DemandDataPoint =
+    { Item: string
+      Location: string
+      Quantity: decimal
+      NeedWindowLatest: DateTimeOffset
+      DemandOrigin: string }

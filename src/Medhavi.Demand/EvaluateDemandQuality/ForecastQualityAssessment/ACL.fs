@@ -13,7 +13,7 @@ let private toObservationComparison (dto: ObservationPairDto) : Result<Observati
     result {
         let! itemId = ItemId.create dto.ItemId |> Result.mapError(fun e -> DomainError.validation $"{e}")
         let! locationId = LocationId.create dto.LocationId |> Result.mapError(fun e -> DomainError.validation $"{e}")
-        let! period = Timestamp.create dto.Period |> Result.mapError DomainError.validation
+        let! period = Timestamp.create dto.Period |> Result.mapError mapSemanticValidationToDomainError
 
         return
             { ItemId = itemId

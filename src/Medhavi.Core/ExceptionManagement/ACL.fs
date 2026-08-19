@@ -7,6 +7,7 @@ open Medhavi.Foundation.Failure
 open Medhavi.Foundation.IdsFactory
 open Medhavi.Contracts.Core.Exception
 open Model
+open Medhavi.Core
 
 /// BR-C-007: ExceptionId is deterministically derived from business identity.
 /// Same violation always routes to the same aggregate stream -> natural deduplication.
@@ -42,11 +43,6 @@ let toProcessEvidenceCmd (req: ExceptionEvidenceReq) : Validation<ProcessExcepti
             | Ok id -> Valid(Some id)
             | Error err -> invalid(sprintf "Severity: %A" err)
 
-    let validateEvidenceTime =
-        match Timestamp.create req.EvidenceTime with
-        | Ok ts -> Valid ts
-        | Error err -> invalid(sprintf "EvidenceTime: %s" err)
-
     let create id classification scopeType severity evidenceTime =
         { ExceptionId = id
           ConstraintReference = req.ConstraintReference
@@ -61,7 +57,7 @@ let toProcessEvidenceCmd (req: ExceptionEvidenceReq) : Validation<ProcessExcepti
     <*> validateClassification
     <*> validateScopeType
     <*> validateSeverity
-    <*> validateEvidenceTime
+    <*> validateTimestamp req.EvidenceTime
 
 let toResolveCmd (req: ResolveExceptionReq) : Validation<ResolveExceptionCmd, DomainError> =
     let validateExceptionId =
@@ -71,14 +67,9 @@ let toResolveCmd (req: ResolveExceptionReq) : Validation<ResolveExceptionCmd, Do
         | Ok id -> Valid id
         | Error err -> invalid(sprintf "ExceptionId: %A" err)
 
-    let validateResolutionTime =
-        match Timestamp.create req.ResolutionTime with
-        | Ok ts -> Valid ts
-        | Error err -> invalid(sprintf "ResolutionTime: %s" err)
-
     let create id time =
         { ExceptionId = id
           ResolutionTime = time
           ResolutionEvidence = req.ResolutionEvidence }
 
-    create <!> validateExceptionId <*> validateResolutionTime
+    create <!> validateExceptionId <*> validateTimestamp req.ResolutionTime

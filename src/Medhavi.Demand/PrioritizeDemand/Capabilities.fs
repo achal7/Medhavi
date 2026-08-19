@@ -13,7 +13,6 @@ open Medhavi.Demand.PrioritizeDemand.PlanningPriorityAssignment
 
 let create
     (aggregateApi: Capabilities.AggregateApi)
-    (ports: DemandPorts)
     (dispatchEnvelope: Envelope -> Task<unit>)
     : PlanningPriorityApi =
 

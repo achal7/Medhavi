@@ -22,7 +22,9 @@ let create (aggregateApi: Capabilities.AggregateApi) (dispatchEnvelope: Envelope
 
             let! ts =
                 Timestamp.create(Timestamp.value domainAgg.CreatedAt)
-                |> Result.mapError(DomainError.validation >> ApplicationError.fromDomainError >> mapAppErrorToApiError)
+                |> Result.mapError(
+                    mapSemanticValidationToDomainError >> ApplicationError.fromDomainError >> mapAppErrorToApiError
+                )
                 |> TaskResult.ofResult
 
             let notif: DemandExplanationEstablishedNotification =

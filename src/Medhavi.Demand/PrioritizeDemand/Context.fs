@@ -60,7 +60,7 @@ let create
                 ports
 
         // 4. Instantiate parent capability API
-        let commands = Capabilities.create aggregateApi ports deps.DispatchEnvelope
+        let commands = Medhavi.Demand.PrioritizeDemand.Capabilities.create aggregateApi deps.DispatchEnvelope
 
         // 5. Wire workflow
         let workflowDeps: PlanningPriorityWorkflowDependencies =

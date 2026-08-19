@@ -39,6 +39,20 @@ type InventoryExceptionEvidenceNotification =
       Severity: VocabularyEntryId option
       EvidenceTime: Timestamp }
 
+/// BN-D-006: Demand Observation Accepted Notification
+/// Published by Demand Intelligence domain when an observation passes all validation and cleansing gates
+type DemandObservationAcceptedNotification =
+    { ObservationId: string
+      Item: ItemId
+      Location: LocationId
+      Quantity: Quantity
+      BusinessTime: Timestamp
+      ObservationTime: Timestamp
+      ObservationType: VocabularyEntryId
+      SourceSystemProvenance: string
+      Customer: CustomerId option
+      Confidence: string option }
+
 /// BN-D-010: Demand Understanding Published Notification
 /// Published by Demand Intelligence domain when a new understanding version is published
 type DemandUnderstandingPublishedNotification =

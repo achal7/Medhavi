@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+  
     <Compile Include="ArsIdentifiers.fs" />
     <Compile Include="Helpers.fs" />
     
@@ -44,6 +45,19 @@
     <Compile Include="ItemTransitionManagement\ACL.fs" />
     <Compile Include="ItemTransitionManagement\Capabilities.fs" />
     <Compile Include="ItemTransitionManagement\Context.fs" />
+
+    <!-- Demand Management (CA-C-022) -->
+    <Compile Include="DemandManagement\Model.fs" />
+    <Compile Include="DemandManagement\Policies.fs" />
+    <Compile Include="DemandManagement\Rules.fs" />
+    <Compile Include="DemandManagement\Decisions.fs" />
+    <Compile Include="DemandManagement\Behaviors.fs" />
+    <Compile Include="DemandManagement\ACL.fs" />
+    <Compile Include="DemandManagement\Projections.fs" />
+    <Compile Include="DemandManagement\Capabilities.fs" />
+    <Compile Include="DemandManagement\Workflows.fs" />
+    <Compile Include="DemandManagement\Context.fs" />
+
   </ItemGroup>
 
   <ItemGroup>

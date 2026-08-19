@@ -10,7 +10,7 @@ type Timestamp = private Timestamp of DateTimeOffset
 
 module Timestamp =
     /// Creates a Timestamp, enforcing strict UTC normalization.
-    let create (dto: DateTimeOffset) : Result<Timestamp, string> =
+    let create (dto: DateTimeOffset) : Result<Timestamp, SemanticValidationError> =
         if dto.Offset = TimeSpan.Zero then
             Ok(Timestamp dto)
         else

@@ -16,7 +16,6 @@ open Medhavi.Foundation.Failure
 
 let create
     (aggregateApi: Capabilities.AggregateApi)
-    (ports: DemandPorts)
     (dispatchEnvelope: Envelope -> Task<unit>)
     : ForecastPublicationApi =
 
@@ -60,12 +59,16 @@ let create
 
             let! bucketStart =
                 Timestamp.create req.BucketStart
-                |> Result.mapError(DomainError.validation >> ApplicationError.fromDomainError >> mapAppErrorToApiError)
+                |> Result.mapError(
+                    mapSemanticValidationToDomainError >> ApplicationError.fromDomainError >> mapAppErrorToApiError
+                )
                 |> TaskResult.ofResult
 
             let! overrideTs =
                 Timestamp.create overrideDto.Timestamp
-                |> Result.mapError(DomainError.validation >> ApplicationError.fromDomainError >> mapAppErrorToApiError)
+                |> Result.mapError(
+                    mapSemanticValidationToDomainError >> ApplicationError.fromDomainError >> mapAppErrorToApiError
+                )
                 |> TaskResult.ofResult
 
             let overrideNotif: ForecastOverrideAppliedNotification =

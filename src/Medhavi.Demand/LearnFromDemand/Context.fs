@@ -58,7 +58,7 @@ let create
                 ports
 
         // 4. Instantiate parent capability API
-        let commands = Capabilities.create aggregateApi deps.DispatchEnvelope
+        let commands = Medhavi.Demand.LearnFromDemand.Capabilities.create aggregateApi deps.DispatchEnvelope
 
         // 5. Wire FS-D-017: Establish Demand Learning workflow
         let workflowDeps: DemandLearningWorkflowDependencies =

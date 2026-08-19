@@ -41,8 +41,8 @@ let toInitiateCycleCmd (req: InitiateForecastCycleReq) : Validation<InitiateFore
 
     let create scope (hStart, hEnd) reason =
         let pubId =
-            ForecastPublicationId.create (sprintf "PUB-%s-%A" (PlanningScopeId.value scope) hStart)
-            |> Result.defaultWith (fun e -> failwith $"Failed to create ForecastPublicationId: {e}")
+            ForecastPublicationId.create(sprintf "PUB-%s-%A" (PlanningScopeId.value scope) hStart)
+            |> Result.defaultWith(fun e -> failwith $"Failed to create ForecastPublicationId: {e}")
 
         { PublicationId = pubId
           PlanningScope = scope
@@ -61,8 +61,7 @@ let toSelectChampionCmd (req: SelectChampionModelReq) : Validation<SelectChampio
         { PublicationId = pubId
           ChampionModelId = modelId }
 
-    create <!> validateForecastPublicationId req.PublicationId
-    <*> required "ChampionModelId" req.ChampionModelId
+    create <!> validateForecastPublicationId req.PublicationId <*> required "ChampionModelId" req.ChampionModelId
 
 /// Translates ProduceForecastProjectionReq into ProduceForecastProjectionCmd with historical data fetching.
 let toProduceProjectionCmd
@@ -127,7 +126,7 @@ let toApplyOverrideCmd (req: ApplyPlannerOverrideReq) : Validation<ApplyPlannerO
     <*> validateQty req.NewValue
     <*> required "Justification" req.Justification
     <*> required "PlannerId" req.PlannerId
-    <*> (Timestamp.create req.BucketStart |> Result.mapError DomainError.validation |> fromResult)
+    <*> validateTimestamp req.BucketStart
 
 /// Translates PublishForecastPublicationReq into PublishForecastPublicationCmd.
 let toPublishCmd (req: PublishForecastPublicationReq) : Validation<PublishForecastPublicationCmd, DomainError> =

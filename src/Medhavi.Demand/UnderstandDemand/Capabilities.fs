@@ -28,9 +28,36 @@ let create
         |> TaskResult.mapError mapAppErrorToApiError
 
     let evaluateObservation (req: EvaluateObservationReq) : Task<Result<DemandObservationDto, ApiError>> =
-        observationAggApi.Evaluate req
-        |> TaskResult.map DemandObservation.Projections.mapToDto
-        |> TaskResult.mapError mapAppErrorToApiError
+        taskResult {
+            let! domainObs = observationAggApi.Evaluate req |> TaskResult.mapError mapAppErrorToApiError
+            let dto = DemandObservation.Projections.mapToDto domainObs
+
+            do!
+                if domainObs.LifecycleState = DemandObservation.Model.ObservationLifecycleState.Accepted then
+                    let notif: DemandObservationAcceptedNotification =
+                        { ObservationId = dto.ObservationId
+                          Item = domainObs.Item
+                          Location = domainObs.Location
+                          Quantity = domainObs.Quantity
+                          BusinessTime = domainObs.BusinessTime
+                          ObservationTime = domainObs.ObservationTime
+                          ObservationType = domainObs.ObservationType
+                          SourceSystemProvenance = domainObs.SourceSystemProvenance
+                          Customer = None
+                          Confidence = Some "High" }
+
+                    dispatchNotification
+                        dispatchEnvelope
+                        "BN-D-006"
+                        "CA-D-001"
+                        "DemandObservation"
+                        dto.ObservationId
+                        notif
+                else
+                    TaskResult.return' ()
+
+            return dto
+        }
 
     let observationApi: DemandObservationApi =
         { Receive = receiveObservation

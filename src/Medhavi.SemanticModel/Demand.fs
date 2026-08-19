@@ -20,7 +20,12 @@ module DemandLifecycleState =
         match fromState, toState with
         | DemandLifecycleState.Active, DemandLifecycleState.Satisfied
         | DemandLifecycleState.Active, DemandLifecycleState.Cancelled -> Ok()
-        | _ -> Error(InvalidLifecycleTransition(sprintf "%A -> %A is not a permitted lifecycle transition." fromState toState))
+        | _ ->
+            Error(
+                InvalidLifecycleTransition(
+                    sprintf "%A -> %A is not a permitted lifecycle transition." fromState toState
+                )
+            )
 
 type DemandOrigin =
     | CustomerOrder
@@ -31,7 +36,7 @@ type DemandOrigin =
 
 /// SE-C-013 Demand
 type Demand =
-    { DemandIdentifier: DemandId
+    { Id: DemandId
       Item: ItemId
       Location: LocationId
       Customer: CustomerId option
@@ -44,6 +49,6 @@ type Demand =
 module Demand =
     let validate (demand: Demand) : Result<unit, SemanticValidationError> =
         Invariants.firstError
-            [ Invariants.nonEmptyIdentifier "DemandId" (DemandId.value demand.DemandIdentifier)
+            [ Invariants.nonEmptyIdentifier "DemandId" (DemandId.value demand.Id)
               Quantity.positiveQuantity "Demand.Quantity" demand.Quantity
               NeedWindow.validateNeedWindow demand.NeedWindow ]

@@ -5,14 +5,10 @@ open Medhavi.Common.Validation
 open Medhavi.Contracts.Core
 open Medhavi.Foundation.Failure
 open Model
+open Medhavi.Core
 
 /// Validates and translates a ComposePictureVersionReq into a domain command.
 let toComposeCmd (req: ComposePictureVersionReq) : Validation<ComposePictureVersionCmd, DomainError> =
-
-    let validateScopeId =
-        match PlanningScopeId.create req.PlanningScopeId with
-        | Ok id -> Valid id
-        | Error err -> Invalid [ DomainError.validation(sprintf "PlanningScopeId: %A" err) ]
 
     let validateDemandRefs =
         let results =
@@ -59,11 +55,6 @@ let toComposeCmd (req: ComposePictureVersionReq) : Validation<ComposePictureVers
 
         if errors.IsEmpty then Valid values else Invalid errors
 
-    let validateCompositionTime =
-        match Timestamp.create req.CompositionTime with
-        | Ok ts -> Valid ts
-        | Error err -> Invalid [ DomainError.validation(sprintf "CompositionTime: %s" err) ]
-
     let validateInventoryReferences =
         req.InventoryReferences
         |> List.map(fun id ->
@@ -80,33 +71,23 @@ let toComposeCmd (req: ComposePictureVersionReq) : Validation<ComposePictureVers
           InventoryReferences = invReferences
           CompositionTriggerTime = compositionTime }
 
-    create <!> validateScopeId
+    create <!> validateScopeId req.PlanningScopeId
     <*> validateDemandRefs
     <*> validateSupplyRefs
-    <*> validateCompositionTime
+    <*> validateTimestamp req.CompositionTime
     <*> validateInventoryReferences
 
 /// Validates and translates a PublishPictureVersionReq into a domain command.
 let toPublishCmd (req: PublishPictureVersionReq) : Validation<PublishPictureVersionCmd, DomainError> =
-
-    let validateScopeId =
-        match PlanningScopeId.create req.PlanningScopeId with
-        | Ok id -> Valid id
-        | Error err -> Invalid [ DomainError.validation(sprintf "PlanningScopeId: %A" err) ]
 
     let validateVersionNumber =
         match PictureVersionId.create req.VersionNumber with
         | Ok id -> Valid id
         | Error err -> Invalid [ DomainError.validation(sprintf "VersionNumber: %A" err) ]
 
-    let validatePublicationTime =
-        match Timestamp.create req.PublicationTime with
-        | Ok ts -> Valid ts
-        | Error err -> Invalid [ DomainError.validation(sprintf "PublicationTime: %s" err) ]
-
     let create scopeId versionNumber publicationTime =
         { PlanningScopeId = scopeId
           VersionNumber = versionNumber
           PublicationTime = publicationTime }
 
-    create <!> validateScopeId <*> validateVersionNumber <*> validatePublicationTime
+    create <!> validateScopeId req.PlanningScopeId <*> validateVersionNumber <*> validateTimestamp req.PublicationTime

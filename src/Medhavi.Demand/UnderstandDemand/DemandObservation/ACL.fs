@@ -19,13 +19,6 @@ let toReceiveCmd (req: ReceiveObservationReq) : Validation<ReceiveObservationCmd
         |> Result.mapError(fun e -> DomainError.validation $"Invalid Quantity: {e}")
         |> fromResult
 
-    let validateObsType =
-        VocabularyEntryId.create req.ObservationType |> Result.mapError mapSemanticValidationToDomainError |> fromResult
-
-    let validateBizTime = Timestamp.create req.BusinessTime |> Result.mapError DomainError.validation |> fromResult
-
-    let validateObsTime = Timestamp.create req.ObservationTime |> Result.mapError DomainError.validation |> fromResult
-
     let create obsId item loc qty obsType bizTime obsTime source =
         { ObservationId = obsId
           Item = item
@@ -40,9 +33,9 @@ let toReceiveCmd (req: ReceiveObservationReq) : Validation<ReceiveObservationCmd
     <*> validateItemId req.Item
     <*> validateLocationId req.Location
     <*> validateQty
-    <*> validateObsType
-    <*> validateBizTime
-    <*> validateObsTime
+    <*> validateVocabularyEntryId req.ObservationType
+    <*> validateTimestamp req.BusinessTime
+    <*> validateTimestamp req.ObservationTime
     <*> (Valid req.SourceSystemProvenance)
 
 /// Translates EvaluateObservationReq into domain command.

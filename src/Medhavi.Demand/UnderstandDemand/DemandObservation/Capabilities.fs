@@ -30,7 +30,7 @@ let private ensureNoDuplicate
     (observationTime: Timestamp)
     : TaskResult<unit, ApplicationError> =
     taskResult {
-        let! windowStart: Timestamp = (Timestamp.value observationTime).AddHours(-float policy.DuplicateDetectionWindowHours) |> Timestamp.create |> Result.mapError (fun e -> ApplicationError.validation [e, ""]) |> TaskResult.ofResult
+        let! windowStart: Timestamp = (Timestamp.value observationTime).AddHours(-float policy.DuplicateDetectionWindowHours) |> Timestamp.create |> Result.mapError (mapSemanticValidationToDomainError >> ApplicationError.fromDomainError) |> TaskResult.ofResult
         let windowEnd = observationTime
         let! observations:DemandObservation list = repo.GetAll() |> TaskResult.mapError Repository.mapRepositoryErrorToApplicationError
         let recentObs = observations |> List.filter (fun o -> o.Item = item && o.Location = location && o.ObservationTime >= windowStart && o.ObservationTime <= windowEnd)

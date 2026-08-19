@@ -55,7 +55,11 @@ module Helpers =
     let validatePlanningScopeId scopeId =
         PlanningScopeId.create scopeId |> Result.mapError mapSemanticValidationToDomainError |> fromResult
 
-    let validateTimestamp timestamp = Timestamp.create timestamp |> Result.mapError DomainError.validation |> fromResult
+    let validateTimestamp timestamp =
+        Timestamp.create timestamp |> Result.mapError mapSemanticValidationToDomainError |> fromResult
+
+    let validateVocabularyEntryId vid =
+        VocabularyEntryId.create vid |> Result.mapError mapSemanticValidationToDomainError |> fromResult
 
     let validateForecastPublicationId pubId = ForecastPublicationId.create pubId |> fromResult
 
@@ -89,12 +93,15 @@ module Helpers =
         taskResult {
             let! json =
                 Medhavi.Foundation.Codec.json.Encode payload
-                |> Result.mapError (fun err -> ApiError.infrastructureError(sprintf "Notification encoding failed: %A" err))
+                |> Result.mapError(fun err ->
+                    ApiError.infrastructureError(sprintf "Notification encoding failed: %A" err))
                 |> TaskResult.ofResult
 
             let env = Envelope.Create(notificationId, "D", aggregateType, aggregateId, 1L, capabilityId, json)
+
             do!
                 dispatch env
                 |> TaskResult.ofTaskValue
-                |> TaskResult.mapError (fun ex -> ApiError.infrastructureError(sprintf "Notification dispatch failed: %A" ex))
+                |> TaskResult.mapError(fun ex ->
+                    ApiError.infrastructureError(sprintf "Notification dispatch failed: %A" ex))
         }
