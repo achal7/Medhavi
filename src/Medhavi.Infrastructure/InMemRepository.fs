@@ -1,7 +1,7 @@
-module Medhavi.Foundation.InMemRepository
+module Medhavi.Infrastructure.InMemRepository
 
 open System.Collections.Concurrent
-open Medhavi.Foundation.Contracts.Aggregate
+open Medhavi.Foundation.Contracts
 let create<'Aggregate, 'Id, 'Event when 'Id: not null> () =
 
     // Use versioned store for optimistic concurrency

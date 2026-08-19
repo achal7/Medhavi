@@ -25,6 +25,7 @@
     <Compile Include="Observation\HealthCheckPublisher.fs" />
     <Compile Include="Observation\ObservationComposition.fs" />
     <Compile Include="EnvelopeStoreDeps.fs" />
+    <Compile Include="InMemRepository.fs" />
   </ItemGroup>
 
   <ItemGroup>
