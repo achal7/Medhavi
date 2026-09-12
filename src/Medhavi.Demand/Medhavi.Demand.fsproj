@@ -10,7 +10,7 @@
     <Compile Include="Ids.fs" />
     <Compile Include="Ports.fs" />
     <Compile Include="Helpers.fs" />
-    
+
     <Compile Include="UnderstandDemand\DemandObservation\Model.fs" />
     <Compile Include="UnderstandDemand\DemandObservation\Policies.fs" />
     <Compile Include="UnderstandDemand\DemandObservation\Rules.fs" />
@@ -20,7 +20,7 @@
     <Compile Include="UnderstandDemand\DemandObservation\ACL.fs" />
     <Compile Include="UnderstandDemand\DemandObservation\Capabilities.fs" />
 
-    
+
     <Compile Include="UnderstandDemand\DemandUnderstanding\Model.fs" />
     <Compile Include="UnderstandDemand\DemandUnderstanding\Policies.fs" />
     <Compile Include="UnderstandDemand\DemandUnderstanding\Algorithms.fs" />
@@ -163,13 +163,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Medhavi.Common\Medhavi.Common.fsproj" />
     <ProjectReference Include="..\Medhavi.Foundation\Medhavi.Foundation.fsproj" />
     <ProjectReference Include="..\Medhavi.SemanticModel\Medhavi.SemanticModel.fsproj" />
     <ProjectReference Include="..\Medhavi.Contracts\Medhavi.Contracts.fsproj" />
     <ProjectReference Include="..\Medhavi.SharedKernel\Medhavi.SharedKernel.fsproj" />
   </ItemGroup>
-  
+
   <ItemGroup>
     <PackageReference Include="MathNet.Numerics" />
   </ItemGroup>

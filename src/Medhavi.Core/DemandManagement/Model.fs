@@ -2,10 +2,6 @@ module Medhavi.Core.DemandManagement.Model
 
 open Medhavi.SemanticModel
 
-// ---------------------------------------------------------------------
-// Commands
-// ---------------------------------------------------------------------
-
 type RecordDemandCmd =
     { DemandId: DemandId
       Item: ItemId
@@ -29,10 +25,6 @@ type DemandCmd =
     | Record of RecordDemandCmd
     | Satisfy of SatisfyDemandCmd
     | Cancel of CancelDemandCmd
-
-// ---------------------------------------------------------------------
-// Events
-// ---------------------------------------------------------------------
 
 type DemandEvent =
     | DemandRecorded of Demand

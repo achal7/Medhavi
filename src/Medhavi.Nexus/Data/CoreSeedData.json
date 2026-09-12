@@ -1,0 +1,127 @@
+{
+  "Demands": [
+    {
+      "DemandId": "DEM-ORD-1001",
+      "Item": "SKU-DRIVE-500GB",
+      "Location": "LOC-CENTRAL-WH",
+      "Customer": "CUST-ACME-CORP",
+      "Quantity": 250.0,
+      "NeedWindowLatest": "2026-09-19T00:00:00Z",
+      "NeedWindowEarliest": "2026-09-15T00:00:00Z",
+      "NeedWindowPreferred": "2026-09-17T00:00:00Z",
+      "DemandOrigin": "CustomerOrder",
+      "ParentDemand": null
+    },
+    {
+      "DemandId": "DEM-ORD-1002",
+      "Item": "SKU-DRIVE-1TB",
+      "Location": "LOC-WEST-PLANT",
+      "Customer": "CUST-GLOBAL-LOGISTICS",
+      "Quantity": 500.0,
+      "NeedWindowLatest": "2026-09-26T00:00:00Z",
+      "NeedWindowEarliest": "2026-09-22T00:00:00Z",
+      "NeedWindowPreferred": "2026-09-24T00:00:00Z",
+      "DemandOrigin": "CustomerOrder",
+      "ParentDemand": null
+    },
+    {
+      "DemandId": "DEM-FCST-2001",
+      "Item": "SKU-BATTERY-PACK-PRO",
+      "Location": "LOC-CENTRAL-WH",
+      "Customer": null,
+      "Quantity": 1200.0,
+      "NeedWindowLatest": "2026-10-12T00:00:00Z",
+      "NeedWindowEarliest": "2026-09-27T00:00:00Z",
+      "NeedWindowPreferred": "2026-10-02T00:00:00Z",
+      "DemandOrigin": "Forecast",
+      "ParentDemand": null
+    },
+    {
+      "DemandId": "DEM-PROD-3001",
+      "Item": "SKU-POWER-SUPPLY-850W",
+      "Location": "LOC-EAST-HUB",
+      "Customer": "CUST-NORDIC-MFG",
+      "Quantity": 75.0,
+      "NeedWindowLatest": "2026-09-17T00:00:00Z",
+      "NeedWindowEarliest": "2026-09-14T00:00:00Z",
+      "NeedWindowPreferred": "2026-09-16T00:00:00Z",
+      "DemandOrigin": "ProductionRequirement",
+      "ParentDemand": null
+    },
+    {
+      "DemandId": "DEM-TRF-4001",
+      "Item": "SKU-DRIVE-500GB",
+      "Location": "LOC-EAST-HUB",
+      "Customer": null,
+      "Quantity": 150.0,
+      "NeedWindowLatest": "2026-09-20T00:00:00Z",
+      "NeedWindowEarliest": "2026-09-16T00:00:00Z",
+      "NeedWindowPreferred": "2026-09-18T00:00:00Z",
+      "DemandOrigin": "Transfer",
+      "ParentDemand": "DEM-ORD-1001"
+    }
+  ],
+  "Exceptions": [
+    {
+      "ConstraintReference": "CR-CAP-BOTTLENECK-01",
+      "Classification": "CapacityExceeded",
+      "AffectedScopeType": "WorkCenter",
+      "AffectedScopeIdentifier": "WC-ASSEMBLY-LINE-01",
+      "EvidenceReference": "EVD-TELEMETRY-9912",
+      "Severity": "Critical",
+      "EvidenceTime": "2026-09-12T10:15:00Z"
+    },
+    {
+      "ConstraintReference": "CR-MAT-SHORTAGE-02",
+      "Classification": "MaterialShortage",
+      "AffectedScopeType": "ItemLocation",
+      "AffectedScopeIdentifier": "SKU-POWER-SUPPLY-850W@LOC-EAST-HUB",
+      "EvidenceReference": "EVD-STOCK-ALERT-403",
+      "Severity": "High",
+      "EvidenceTime": "2026-09-12T09:00:00Z"
+    },
+    {
+      "ConstraintReference": "CR-TRANS-DELAY-05",
+      "Classification": "LeadTimeBreach",
+      "AffectedScopeType": "TransportLane",
+      "AffectedScopeIdentifier": "LANE-CENTRAL-TO-EAST",
+      "EvidenceReference": "EVD-CARRIER-STATUS-882",
+      "Severity": "Medium",
+      "EvidenceTime": "2026-09-12T05:00:00Z"
+    }
+  ],
+  "ItemTransitions": [
+    {
+      "SupersededItem": "SKU-DRIVE-500GB",
+      "SupersedingItem": "SKU-DRIVE-1TB",
+      "TransitionType": "Successor",
+      "EffectiveDate": "2026-10-12T00:00:00Z",
+      "EndDate": "2026-12-11T00:00:00Z"
+    },
+    {
+      "SupersededItem": "SKU-BATTERY-PACK-LEGACY",
+      "SupersedingItem": "SKU-BATTERY-PACK-PRO",
+      "TransitionType": "DirectReplacement",
+      "EffectiveDate": "2026-09-27T00:00:00Z",
+      "EndDate": null
+    }
+  ],
+  "EnterprisePictures": [
+    {
+      "PlanningScopeId": "PS-GLOBAL-SUPPLY-CHAIN",
+      "DemandReferences": [
+        "DEM-ORD-1001",
+        "DEM-ORD-1002",
+        "DEM-FCST-2001",
+        "DEM-PROD-3001",
+        "DEM-TRF-4001"
+      ],
+      "SupplyReferences": [],
+      "InventoryReferences": [],
+      "CompositionTime": "2026-09-12T11:00:00Z",
+      "Publish": true,
+      "VersionNumber": 1,
+      "PublicationTime": "2026-09-12T11:05:00Z"
+    }
+  ]
+}

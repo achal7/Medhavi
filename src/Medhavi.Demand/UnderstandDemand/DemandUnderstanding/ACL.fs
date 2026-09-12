@@ -30,3 +30,8 @@ let toPublishCmd (req: PublishDemandUnderstandingReq) : Validation<PublishCmd, D
           // Publication Time is stamped at the ACL boundary (imperative shell).
           PublicationTime = Timestamp.now() })
     <!> validatePlanningScopeId req.PlanningScopeId
+
+/// Outbound ACL: maps domain understanding events to canonical ARS Enterprise Events (EV-D-003, EV-D-004).
+let toArsEventId = function
+    | DemandUnderstandingRevised _ -> ArsIdentifiers.EnterpriseEvents.demandUnderstandingRevised.Id
+    | DemandUnderstandingPublished _ -> ArsIdentifiers.EnterpriseEvents.demandUnderstandingPublished.Id

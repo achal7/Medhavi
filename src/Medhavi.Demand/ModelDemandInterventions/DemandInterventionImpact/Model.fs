@@ -69,9 +69,7 @@ type ModelingApproach =
         | _ -> ExpertJudgment
 
 /// Temporal interval during which the intervention applies
-type TemporalWindow =
-    { Start: Timestamp
-      End: Timestamp }
+type TemporalWindow = { Start: Timestamp; End: Timestamp }
 
 /// SE-D-018 — Demand Intervention Impact Aggregate Root
 /// Identity: Intervention Impact Identifier (immutable)
@@ -112,7 +110,9 @@ type PublishInterventionImpactCmd =
 /// Enterprise Events emitted by Demand Intervention Impact aggregate
 type DemandInterventionImpactEvent =
     | InterventionImpactAssessed of DemandInterventionImpact
-    | InterventionImpactPublished of Impact: DemandInterventionImpact * PreviousImpactId: DemandInterventionImpactId option
+    | InterventionImpactPublished of
+        Impact: DemandInterventionImpact *
+        PreviousImpactId: DemandInterventionImpactId option
 
 /// Pure evolution (Layer E: Catamorphism)
 let evolve: Medhavi.Foundation.Contracts.Evolve<DemandInterventionImpact, DemandInterventionImpactEvent> =
@@ -122,5 +122,4 @@ let evolve: Medhavi.Foundation.Contracts.Evolve<DemandInterventionImpact, Demand
         | InterventionImpactPublished(impact, _) -> Some impact
 
 /// Replay event sequence to rehydrate aggregate state
-let replay (events: DemandInterventionImpactEvent seq) : DemandInterventionImpact option =
-    Seq.fold evolve None events
+let replay (events: DemandInterventionImpactEvent seq) : DemandInterventionImpact option = Seq.fold evolve None events

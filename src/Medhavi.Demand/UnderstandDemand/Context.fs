@@ -23,7 +23,7 @@ open Capabilities
 type UnderstandDemandContext =
     { Commands: UnderstandDemandApis
       ObservationQueries: QueryService<DemandObservationDto, DemandObservationId>
-      UnderstandingQueries: QueryService<DemandUnderstandingDto, string>
+      UnderstandingQueries: QueryService<DemandUnderstandingDto, PlanningScopeId>
       Dispose: unit -> unit }
 
 /// Creates the complete Understand Demand context with all child aggregates, projections, and workflows wired
@@ -34,7 +34,7 @@ let create
     (obsPolicy: DemandDataAcceptancePolicy)
     (undRepo: Repository<DemandUnderstanding, PlanningScopeId, DemandUnderstandingEvent>)
     (undDeps: EnvelopeStoreDependencies<DemandUnderstandingEvent>)
-    (undQueryService: CreateQueryService<DemandUnderstandingEvent, DemandUnderstandingDto, string>)
+    (undQueryService: CreateQueryService<DemandUnderstandingEvent, DemandUnderstandingDto, PlanningScopeId>)
     (materialityPolicy: MaterialityPolicy)
     (cadencePolicy: CadencePolicy)
     (publishKnowledge: KnowledgeRepresentation)
@@ -44,7 +44,7 @@ let create
     taskResult {
 
         // 1. Initialize Demand Observation projection
-        let! obsAggregates =
+        let! obsAggregates:DemandObservation list =
             obsRepo.GetAll ()
             |> TaskResult.ofTask
             |> TaskResult.mapError (fun repoErr -> Infrastructure(Database(sprintf "%A" repoErr)))
@@ -60,7 +60,7 @@ let create
             obsQueryService DemandObservation.Projections.apply obsValidEvents obsInitialState "DemandObservation"
 
         // 2. Initialize Demand Understanding projection
-        let! undAggregates =
+        let! undAggregates:DemandUnderstanding list =
             undRepo.GetAll ()
             |> TaskResult.ofTask
             |> TaskResult.mapError (fun repoErr -> Infrastructure(Database(sprintf "%A" repoErr)))
@@ -72,7 +72,7 @@ let create
               ArsIdentifiers.EnterpriseEvents.demandUnderstandingPublished.Id ]
             |> EnvelopeFilter.EventTypes
 
-        let! undQueryCtx: ProjectionContext<DemandUnderstandingDto, string> =
+        let! undQueryCtx: ProjectionContext<DemandUnderstandingDto, PlanningScopeId> =
             undQueryService DemandUnderstanding.Projections.apply undValidEvents undInitialState "DemandUnderstanding"
 
         // 3. Instantiate Child Aggregate APIs

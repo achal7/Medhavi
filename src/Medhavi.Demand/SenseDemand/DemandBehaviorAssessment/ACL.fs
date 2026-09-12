@@ -61,3 +61,9 @@ let toEvaluateForecastRefreshCmd
     <*> validateLocationId req.Location
     <*> nonNegative "ForecastAgeHours" req.ForecastAgeHours
     <*> nonNegative "ExpectedAccuracyImprovementWape" req.ExpectedAccuracyImprovementWape
+
+/// Outbound ACL: maps domain events to canonical ARS Enterprise Event identifiers.
+let toArsEventId = function
+    | BaselineInitialized _ -> ArsIdentifiers.EnterpriseEvents.demandBehaviorChanged.Id
+    | DemandBehaviorStateChanged _ -> ArsIdentifiers.EnterpriseEvents.demandBehaviorChanged.Id
+    | CriticalDemandBehaviorDetected _ -> ArsIdentifiers.EnterpriseEvents.criticalDemandBehaviorDetected.Id

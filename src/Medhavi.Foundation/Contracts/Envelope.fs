@@ -171,10 +171,11 @@ module Envelope =
 
     let withTenantId (id: string) (envelope: Envelope) : Envelope = envelope |> withMetadata "tenantId" id
 
-    let withAggregateId (id: string) (envelope: Envelope) : Envelope = envelope |> withMetadata "aggregateId" id
+    let withAggregateId (id: string) (envelope: Envelope) : Envelope =
+        { envelope with AggregateId = id } |> withMetadata "aggregateId" id
 
     let withAggregateType (aggregateType: string) (envelope: Envelope) : Envelope =
-        envelope |> withMetadata "aggregateType" aggregateType
+        { envelope with AggregateType = aggregateType } |> withMetadata "aggregateType" aggregateType
 
     let withAggregateContext (aggregateId: string) (aggregateType: string) (envelope: Envelope) : Envelope =
         envelope |> withAggregateId aggregateId |> withAggregateType aggregateType
@@ -254,9 +255,13 @@ module Envelope =
 
     let tryGetMetadata (key: string) (env: Envelope) : string option = env.Metadata |> Map.tryFind key
 
-    let tryGetAggregateId (env: Envelope) = tryGetMetadata "aggregateId" env
+    let tryGetAggregateId (env: Envelope) =
+        if not (String.IsNullOrWhiteSpace env.AggregateId) then Some env.AggregateId
+        else tryGetMetadata "aggregateId" env
 
-    let tryGetAggregateType (env: Envelope) = tryGetMetadata "aggregateType" env
+    let tryGetAggregateType (env: Envelope) =
+        if not (String.IsNullOrWhiteSpace env.AggregateType) then Some env.AggregateType
+        else tryGetMetadata "aggregateType" env
 
     let tryGetCorrelationId (env: Envelope) : Guid option =
         tryGetMetadata "correlationId" env

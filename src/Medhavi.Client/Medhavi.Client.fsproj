@@ -1,0 +1,98 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+  <PropertyGroup>
+    <StaticWebAssetProjectMode>Default</StaticWebAssetProjectMode>
+  </PropertyGroup>
+
+  <ItemGroup>
+
+    <Compile Include="Primitives.fs" />
+    <Compile Include="PlanningContext.fs" />
+
+    <Compile Include="ViewComposition\Identity.fs" />
+    <Compile Include="ViewComposition\Geometry.fs" />
+    <Compile Include="ViewComposition\Context.fs" />
+    <Compile Include="ViewComposition\Component.fs" />
+    <Compile Include="ViewComposition\Schema.fs" />
+    <Compile Include="ViewComposition\Data.fs" />
+    <Compile Include="ViewComposition\DisplayRules.fs" />
+    <Compile Include="ViewComposition\Layout.fs" />
+    <Compile Include="ViewComposition\View.fs" />
+    <Compile Include="ViewComposition\Session.fs" />
+
+    <Compile Include="Rendering.fs" />
+    <Compile Include="Registries\ComponentRegistry.fs" />
+    <Compile Include="Registries\SchemaRegistry.fs" />
+    
+    <Compile Include="Controls\Rz.fs" />
+    <Compile Include="Controls\DynamicRadzenGrid.fs" />
+    <Compile Include="Controls\UniversalGridAdapter.fs" />
+    <Compile Include="Controls\CellRenderers.fs" />
+    <Compile Include="Controls\UniversalEnterpriseGrid.fs" />
+    <Compile Include="Controls\KpiCard.fs" />
+    
+    <Compile Include="Services\NotificationService.fs" />
+    <Compile Include="Services\PlanningContextService.fs" />
+    
+    <Compile Include="Formatting.fs" />
+    <Compile Include="ApplicationContext.fs" />
+
+
+    <Compile Include="Components\ProjectionCompiler.fs" />
+    <Compile Include="Components\RadzenOutlets.fs" />
+    <Compile Include="Components\KpiSchema.fs" />
+    <Compile Include="Components\KpiSummaryGrid.fs" />
+
+    <!-- Core Bounded Context (Medhavi.Core) -->
+    <Compile Include="Components\Core\Demand\DemandOrdersSchema.fs" />
+    <Compile Include="Components\Core\Demand\DemandOrdersGrid.fs" />
+    <Compile Include="Components\Core\Exceptions\ExceptionSchema.fs" />
+    <Compile Include="Components\Core\Exceptions\ExceptionGrid.fs" />
+    <Compile Include="Components\Core\ItemTransition\ItemTransitionSchema.fs" />
+    <Compile Include="Components\Core\ItemTransition\ItemTransitionGrid.fs" />
+
+    <!-- Demand Bounded Context (Medhavi.Demand) -->
+    <Compile Include="Components\Demand\Observations\DemandObservationSchema.fs" />
+    <Compile Include="Components\Demand\Observations\DemandObservationGrid.fs" />
+    <Compile Include="Components\Demand\Understanding\DomainHealthRadar.fs" />
+
+    <!-- Supply & Capacity Staged Bounded Context -->
+    <Compile Include="Components\Supply\SupplySchema.fs" />
+    <Compile Include="Components\Supply\SupplyGrid.fs" />
+    <Compile Include="Components\Supply\CapacitySchema.fs" />
+    <Compile Include="Components\Supply\CapacityGrid.fs" />
+
+    <!-- AI Layer -->
+    <Compile Include="AI\CausalExplainer.fs" />
+    <Compile Include="AI\MedhaviAssistant.fs" />
+    
+    <!-- UI & Shell -->
+    <Compile Include="Components\SettingsDialog.fs" />
+    <Compile Include="Components\ComponentCatalog.fs" />
+    <Compile Include="Shells\Utility.fs" />
+    <Compile Include="Shells\SchemaRegistration.fs" />
+    <Compile Include="Shells\ViewSurface.fs" />
+    <Compile Include="Shells\ViewSpace.fs" />
+    <Compile Include="Shells\ComponentRequest.fs" />
+    <Compile Include="Shells\Navigation.fs" />
+    <Compile Include="Shells\ApplicationBar.fs" />
+    <Compile Include="Shells\CommandPalette.fs" />
+    <Compile Include="Shells\SidePanel.fs" />
+    <Compile Include="Shells\UserShell.fs" />
+
+    <Compile Include="ViewSurfaceTests.fs" />
+    <Compile Include="Application.fs" />
+
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FSharp.Core" />
+    <PackageReference Include="FSharp.SystemTextJson" />
+    <PackageReference Include="Bolero" />
+    <PackageReference Include="Bolero.Build" PrivateAssets="all" />
+    <PackageReference Include="Radzen.Blazor" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Medhavi.Common/Medhavi.Common.fsproj" />
+    <ProjectReference Include="../Medhavi.Contracts/Medhavi.Contracts.fsproj" />
+  </ItemGroup>
+</Project>

@@ -58,3 +58,8 @@ let toOverrideCmd
     <*> (PlanningClassification.FromString req.NewClassification |> fromResult)
     <*> required "Justification" req.Justification
     <*> required "PlannerId" req.PlannerId
+
+/// Outbound ACL: maps domain events to canonical ARS Enterprise Event identifiers.
+let toArsEventId = function
+    | PlanningClassificationAssigned _ -> ArsIdentifiers.EnterpriseEvents.planningClassificationChanged.Id
+    | PlanningClassificationOverridden _ -> ArsIdentifiers.EnterpriseEvents.planningClassificationChanged.Id

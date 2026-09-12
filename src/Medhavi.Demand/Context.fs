@@ -22,7 +22,7 @@ open Medhavi.Demand.UnderstandDemand
 type DemandContext = {
     UnderstandDemand: UnderstandDemandContext
     ForecastDemand: ForecastDemandContext
-    // SenseDemand: SenseDemandContext
+    SenseDemand: SenseDemandContext
     // SegmentDemand: SegmentDemandContext
     // ClassifyDemand: ClassifyDemandContext
     // PrioritizeDemand: PrioritizeDemandContext
@@ -32,31 +32,59 @@ type DemandContext = {
     // LearnFromDemand: LearnFromDemandContext
 }
 
+type DemandPolicies = {
+    Observation: UnderstandDemand.DemandObservation.Policies
+    Materiality: UnderstandDemand.DemandUnderstanding.Policies
+    Cadence: UnderstandDemand.DemandUnderstanding.Policies
+    ForecastGovernance: ForecastDemand.Policies
+    OverrideAuthorization: ForecastDemand.Policies
+    UnforecastableSeries: ForecastDemand.Policies
+    ModelParameters: ForecastDemand.Policies
+    Sensing: SenseDemand.Policies
+    Segmentation: SegmentDemand.Policies
+    Classification: ClassifyDemand.Policies
+    Prioritization: PrioritizeDemand.Policies
+    ForecastMeasurement: EvaluateDemandQuality.Policies
+    Detection: DetectDemandExceptions.Policies
+    Learning: LearnFromDemand.Policies
+}
+
+let composeObservation
+    (store: EnvelopeStoreOps)
+    publishKnowledge
+    (telemetryPublisher: TelemetryEvent -> unit)
+    (pconfig: ProjectionConfig) = 
+
+    let repo = InMemRepository.create<DemandObservation.Model.DemandObservation, string, DemandObservation.Model.DemandObservationEvent>()
+    let codec = Codec.json<DemandObservation.Model.DemandObservationEvent>
+    let serializeEvent = codec.Encode >> Result.mapError(fun c -> c.ToString())
+    let deps = EnvelopeStoreDeps.create store serializeEvent traceCodec
+
+    let itemTransitionProjectionDeps =
+        { Config = pconfig
+          EnvelopeStore = store
+          EventCodec = itemTransitionCodec
+          TelemetryPublisher = telemetryPublisher }
+
+    let itemTransitionProjection =
+        createProjectionAgent<ItemTransitionEvent, Medhavi.Contracts.Core.ItemTransition.ItemTransitionDto, TransitionId> itemTransitionProjectionDeps
+
+    let getItemState: (ItemId -> System.Threading.Tasks.Task<option<ReferenceLifecycleState>>) = fun _ -> task { return None }
+
+    Medhavi.Demand.UnderstandDemand.DemandObservation.Context.create itemTransitionRepo itemTransitionDeps publishKnowledge itemTransitionProjection ItemTransitionPolicy.defaultPolicy getItemState
+
+
+
 module DemandContext =
     let create
-        (ports: DemandPorts) // Ports required by Medhavi.Demand to run it's capabilities
         (publishKnowledge: KnowledgeRepresentation)
-        (publishNotification: NotificationPublisher) =
+        (publishNotification: NotificationPublisher)
+        (ports: DemandPorts)
+        (policies: DemandPolicies) =
 
         let observationRepo = InMemRepository.create<DemandObservation.Model.DemandObservation, string, DemandObservation.Model.DemandObservationEvent>()
         let understandRepo = InMemRepository.create<DemandUnderstanding.Model.DemandUnderstanding, string, DemandUnderstanding.Model.DemandUnderstandingEvent>()
         let forecastRepo = InMemRepository.create<ForecastDemand.ForecastPublication.Model.ForecastPublication, string, ForecastDemand.ForecastPublication.Model.ForecastPublicationEvent>()
-
-        // ---- Policies (defaults; overridable via parameters) ----
-        let obsPolicy       = UnderstandDemand.DemandObservation.Policies.defaultPolicy
-        let matPolicy       = UnderstandDemand.DemandUnderstanding.Policies.defaultMaterialityPolicy
-        let cadencePolicy   = UnderstandDemand.DemandUnderstanding.Policies.defaultCadencePolicy
-        let govPolicy       = ForecastDemand.Policies.defaultPublicationGovernancePolicy
-        let overridePol     = ForecastDemand.Policies.defaultOverrideAuthorizationPolicy
-        let unforecastPol   = ForecastDemand.Policies.defaultUnforecastableSeriesPolicy
-        let modelParamsPol  = ForecastDemand.Policies.defaultModelParametersPolicy
-        // let sensingPol      = SenseDemand.Policies.defaultSensingPolicy
-        // let segPol          = SegmentDemand.Policies.defaultSegmentationPolicy
-        // let classPol        = ClassifyDemand.Policies.defaultClassificationPolicy
-        // let prioPol         = PrioritizeDemand.Policies.defaultPrioritizationPolicy
-        // let measPol         = EvaluateDemandQuality.Policies.defaultForecastMeasurementPolicy
-        // let detectPol       = DetectDemandExceptions.Policies.defaultDetectionPolicy
-        // let learningPol     = LearnFromDemand.Policies.defaultLearningAnalysisPolicy
 
         let understandCtx = UnderstandDemand.Context.create ports observationRepo understandRepo obsPolicy matPolicy cadencePolicy publishKnowledge publishNotification
         let forecastPorts:ForecastDemandPorts = {

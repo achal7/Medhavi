@@ -1,0 +1,56 @@
+{
+  "Observations": [
+    {
+      "ObservationId": "OBS-POS-2026-001",
+      "Item": "SKU-DRIVE-500GB",
+      "Location": "LOC-CENTRAL-WH",
+      "Quantity": 180.0,
+      "UnitOfMeasure": "EA",
+      "ObservationType": "PointOfSale",
+      "BusinessTime": "2026-09-11T11:00:00Z",
+      "ObservationTime": "2026-09-11T12:00:00Z",
+      "SourceSystemProvenance": "SAP-ERP-EMEA"
+    },
+    {
+      "ObservationId": "OBS-SHIP-2026-002",
+      "Item": "SKU-DRIVE-1TB",
+      "Location": "LOC-WEST-PLANT",
+      "Quantity": 320.0,
+      "UnitOfMeasure": "EA",
+      "ObservationType": "ShipmentActual",
+      "BusinessTime": "2026-09-11T17:00:00Z",
+      "ObservationTime": "2026-09-11T18:00:00Z",
+      "SourceSystemProvenance": "WMS-WEST"
+    },
+    {
+      "ObservationId": "OBS-EDI-2026-003",
+      "Item": "SKU-BATTERY-PACK-PRO",
+      "Location": "LOC-CENTRAL-WH",
+      "Quantity": 650.0,
+      "UnitOfMeasure": "EA",
+      "ObservationType": "CustomerEDI",
+      "BusinessTime": "2026-09-12T01:00:00Z",
+      "ObservationTime": "2026-09-12T02:00:00Z",
+      "SourceSystemProvenance": "EDI-GATEWAY-01"
+    },
+    {
+      "ObservationId": "OBS-ORDER-2026-004",
+      "Item": "SKU-POWER-SUPPLY-850W",
+      "Location": "LOC-EAST-HUB",
+      "Quantity": 40.0,
+      "UnitOfMeasure": "EA",
+      "ObservationType": "DirectOrder",
+      "BusinessTime": "2026-09-12T07:00:00Z",
+      "ObservationTime": "2026-09-12T08:00:00Z",
+      "SourceSystemProvenance": "PORTAL-B2B"
+    }
+  ],
+  "Understanding": [
+    {
+      "PlanningScopeId": "PS-GLOBAL-SUPPLY-CHAIN",
+      "EvidencePictureVersion": 1,
+      "Publish": true,
+      "IsPeriodicRefresh": false
+    }
+  ]
+}

@@ -20,9 +20,9 @@ type EnterprisePictureContext =
       Dispose: unit -> unit }
 
 type CrossDomainQueryPorts =
-    { GetActiveDemandReferences: PlanningScopeId -> System.Threading.Tasks.Task<DemandId list>
-      GetAvailableSupplyReferences: PlanningScopeId -> System.Threading.Tasks.Task<SupplyId list>
-      GetCurrentInventoryReferences: PlanningScopeId -> System.Threading.Tasks.Task<InventoryIdentity list> }
+    { GetActiveDemandReferences: PlanningScopeId -> Tasks.Task<DemandId list>
+      GetAvailableSupplyReferences: PlanningScopeId -> Tasks.Task<SupplyId list>
+      GetCurrentInventoryReferences: PlanningScopeId -> Tasks.Task<InventoryIdentity list> }
 
 let create
     (repo: Repository<SemanticModel.EnterprisePicture, SemanticModel.PlanningScopeId, EnterprisePictureEvent>)

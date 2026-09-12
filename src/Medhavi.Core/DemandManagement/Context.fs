@@ -31,9 +31,7 @@ let create
     taskResult {
         // 1. Projection
         let! aggregates =
-            repo.GetAll()
-            |> TaskResult.ofTask
-            |> TaskResult.mapError (fun e -> Infrastructure(Database(sprintf "%A" e)))
+            repo.GetAll() |> TaskResult.ofTask |> TaskResult.mapError(fun e -> Infrastructure(Database(sprintf "%A" e)))
 
         let state = seedFromAggregates aggregates
 
@@ -43,7 +41,7 @@ let create
               ArsIdentifiers.EnterpriseEvents.demandCancelled.Id ]
             |> EnvelopeFilter.EventTypes
 
-        let! (queryCtx: ProjectionContext<DemandDto, DemandId>) =
+        let! queryCtx: ProjectionContext<DemandDto, DemandId> =
             createQueryService Projections.apply validEventTypes state "Demand"
 
         // 2. Capabilities

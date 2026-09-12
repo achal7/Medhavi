@@ -135,3 +135,11 @@ let toPublishCmd (req: PublishForecastPublicationReq) : Validation<PublishForeca
           PublicationTime = Timestamp.now() }
 
     create <!> validateForecastPublicationId req.PublicationId
+
+/// Outbound ACL: maps domain events to canonical ARS Enterprise Event identifiers.
+let toArsEventId = function
+    | ForecastCycleEstablished _ -> ArsIdentifiers.EnterpriseEvents.forecastCycleEstablished.Id
+    | ChampionModelSelected _ -> ArsIdentifiers.EnterpriseEvents.championModelSelected.Id
+    | ForecastProjectionProduced _ -> ArsIdentifiers.EnterpriseEvents.forecastProjectionProduced.Id
+    | ForecastOverrideRecorded _ -> ArsIdentifiers.EnterpriseEvents.forecastOverrideRecorded.Id
+    | ForecastPublicationPublished _ -> ArsIdentifiers.EnterpriseEvents.forecastPublicationPublished.Id

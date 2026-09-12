@@ -9,7 +9,6 @@ open Medhavi.Foundation.Contracts.Decision
 open Medhavi.Foundation.Failure
 open Medhavi.SemanticModel
 open Medhavi.Demand
-open Medhavi.Demand.ArsIdentifiers
 open Model
 open Rules
 open Decisions
@@ -78,7 +77,7 @@ let private autocorrelation (series: float list) (lag: int) : float =
     if n <= lag then
         0.0
     else
-        pearson series.[0 .. n - lag - 1] series.[lag .. n - 1]
+        pearson series[0 .. n - lag - 1] series[lag .. n - 1]
 
 /// Step-change detection: relative mean shift between the first and second halves of the daily series.
 let private hasStepChange (series: float list) : bool =
@@ -88,8 +87,8 @@ let private hasStepChange (series: float list) : bool =
         false
     else
         let half = n / 2
-        let firstMean = List.average series.[0 .. half - 1]
-        let secondMean = List.average series.[half .. n - 1]
+        let firstMean = List.average series[0 .. half - 1]
+        let secondMean = List.average series[half .. n - 1]
         let combinedMean = (firstMean + secondMean) / 2.0
         combinedMean <> 0.0 && abs(secondMean - firstMean) / abs combinedMean >= 0.5
 
@@ -134,9 +133,9 @@ let private interpret (facts: DemandFact list) : Interpretation =
             elif r2 < 0.5 then
                 Stable, []
             elif slope > 0.0 then
-                Increasing, [ sprintf "Positive trend (slope %.2f, R2 %.2f)" slope r2 ]
+                Increasing, [ $"Positive trend (slope %.2f{slope}, R2 %.2f{r2})" ]
             elif slope < 0.0 then
-                Declining, [ sprintf "Negative trend (slope %.2f, R2 %.2f)" slope r2 ]
+                Declining, [ $"Negative trend (slope %.2f{slope}, R2 %.2f{r2})" ]
             else
                 Stable, []
 
@@ -231,7 +230,7 @@ let revise: Decide<DemandUnderstanding, ReviseCmd, DemandUnderstandingEvent> =
                 return
                     buildTrace
                         None
-                        (ArsIdentifiers.Capabilities.understandDemand.Id)
+                        ArsIdentifiers.Capabilities.understandDemand.Id
                         decision
                         None
                         events
@@ -278,7 +277,7 @@ let revise: Decide<DemandUnderstanding, ReviseCmd, DemandUnderstandingEvent> =
                     return
                         buildTrace
                             None
-                            (ArsIdentifiers.Capabilities.understandDemand.Id)
+                            ArsIdentifiers.Capabilities.understandDemand.Id
                             decision
                             None
                             events
@@ -313,7 +312,7 @@ let publish
 
                     let input: PublicationInput =
                         { Assessment =
-                            Algorithms.evaluateMateriality
+                            evaluateMateriality
                                 materialityPolicy
                                 { Draft = draft.Interpretation
                                   Published = published |> Option.map(fun v -> v.Interpretation)
@@ -322,7 +321,7 @@ let publish
                           Interpretation = draft.Interpretation
                           CompletenessThreshold = materialityPolicy.InterpretationCompletenessThreshold }
 
-                    let! decisionOutcome = Decisions.evaluatePublication Rules.publicationRules input
+                    let! decisionOutcome = evaluatePublication publicationRules input
 
                     match decisionOutcome.Outcome with
                     | DoNotPublish ->

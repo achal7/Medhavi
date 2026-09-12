@@ -29,3 +29,10 @@ let toEvaluateCmd (req: EvaluateDemandExceptionReq) : Validation<EvaluateDemandE
     <*> required "EntityType" req.EntityType
     <*> required "EntityId" req.EntityId
     <*> (DemandExceptionType.FromString req.ExceptionType |> fromResult)
+
+/// Maps DemandExceptionEvent to ARS enterprise event identifier
+let toArsEventId: DemandExceptionEvent -> string =
+    function
+    | DemandExceptionDetected _
+    | DemandExceptionResolved _
+    | DemandExceptionNoEvidence _ -> ArsIdentifiers.EnterpriseEvents.demandExceptionEvidenceEvaluated.Id

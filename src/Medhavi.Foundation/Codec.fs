@@ -1,20 +1,26 @@
 module Medhavi.Foundation.Codec
 
 open System.Text.Json
+open System.Text.Json.Serialization
 open Medhavi.Common
+
+let private defaultOptions =
+    let opt = JsonSerializerOptions()
+    opt.Converters.Add(JsonFSharpConverter())
+    opt
 
 /// Creates a JSON codec for any type using System.Text.Json
 let json<'T> : Codec<'T> =
     { Encode =
         fun value ->
             try
-                Ok(JsonSerializer.Serialize(value))
+                Ok(JsonSerializer.Serialize(value, defaultOptions))
             with ex ->
                 Error(EncodeError $"Failed to encode {typeof<'T>.Name}: {ex.Message}")
       Decode =
         fun json ->
             try
-                Ok(JsonSerializer.Deserialize<'T>(json))
+                Ok(JsonSerializer.Deserialize<'T>(json, defaultOptions))
             with ex ->
                 Error(DecodeError $"Failed to decode {typeof<'T>.Name}: {ex.Message}") }
 

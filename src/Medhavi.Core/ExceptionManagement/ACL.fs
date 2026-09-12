@@ -73,3 +73,9 @@ let toResolveCmd (req: ResolveExceptionReq) : Validation<ResolveExceptionCmd, Do
           ResolutionEvidence = req.ResolutionEvidence }
 
     create <!> validateExceptionId <*> validateTimestamp req.ResolutionTime
+
+/// Outbound ACL: maps domain events to canonical ARS Enterprise Event identifiers.
+let toArsEventId = function
+    | ExceptionActivated _ -> ArsIdentifiers.EnterpriseEvents.exceptionActivated.Id
+    | ExceptionUpdated _ -> ArsIdentifiers.EnterpriseEvents.exceptionUpdated.Id
+    | ExceptionResolved _ -> ArsIdentifiers.EnterpriseEvents.exceptionResolved.Id

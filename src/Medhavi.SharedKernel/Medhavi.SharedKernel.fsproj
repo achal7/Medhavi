@@ -10,7 +10,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Medhavi.Common\Medhavi.Common.fsproj" />
     <ProjectReference Include="..\Medhavi.SemanticModel\Medhavi.SemanticModel.fsproj" />
   </ItemGroup>
 

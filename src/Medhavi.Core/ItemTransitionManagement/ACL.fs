@@ -74,3 +74,10 @@ let toRetireCmd (req: RetireItemTransitionReq) : Validation<RetireItemTransition
           RetirementTime = retirementTime }
 
     create <!> validateTransitionId req.SupersededItem req.SupersedingItem <*> validateTimestamp req.RetirementTime
+
+/// Outbound ACL: maps domain events to canonical ARS Enterprise Event identifiers.
+let toArsEventId = function
+    | ItemTransitionRecognized _ -> ArsIdentifiers.EnterpriseEvents.itemTransitionRecognized.Id
+    | ItemTransitionSuspended _ -> ArsIdentifiers.EnterpriseEvents.itemTransitionSuspended.Id
+    | ItemTransitionReinstated _ -> ArsIdentifiers.EnterpriseEvents.itemTransitionReinstated.Id
+    | ItemTransitionRetired _ -> ArsIdentifiers.EnterpriseEvents.itemTransitionRetired.Id

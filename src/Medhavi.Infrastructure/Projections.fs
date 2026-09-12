@@ -69,7 +69,7 @@ type ProjectionAgent<'State, 'Event>(applyFn: 'State -> 'Event -> 'State, initia
                                 return! loop(state, stats)
                             else
                                 let newState = applyFn state ev
-                                stateRef := newState
+                                stateRef.Value <- newState
                                 eventApplied.Trigger ev
 
                                 let newStats =
@@ -87,7 +87,7 @@ type ProjectionAgent<'State, 'Event>(applyFn: 'State -> 'Event -> 'State, initia
                             return! loop(state, errorStats)
 
                     | SetState newState ->
-                        stateRef := newState
+                        stateRef.Value <- newState
                         return! loop(newState, stats)
 
                     | GetState reply ->
@@ -127,7 +127,7 @@ type ProjectionAgent<'State, 'Event>(applyFn: 'State -> 'Event -> 'State, initia
         }
 
     member _.QueryAsync<'Result>(query: 'State -> 'Result) : Task<'Result> =
-        let currentState = !stateRef
+        let currentState = stateRef.Value
         Task.FromResult(query currentState)
 
     member this.QueryPredicateAsync(predicate: 'State -> bool) : System.Threading.Tasks.Task<bool> =
@@ -184,14 +184,21 @@ module QueryServiceBase =
 let createProjectionAgent<'Event, 'Entity, 'Id when 'Id: comparison and 'Event: not null>
     (deps: ProjectionDependencies<'Event>): CreateQueryService<'Event, 'Entity, 'Id> =
 
-    let createEnvelopeHandler (agent:ProjectionAgent<Map<'Id,'Entity>,'Event>) (deps: ProjectionDependencies<'Event>) eventFilters projectionName: Envelope -> Task<unit> =
+    let createEnvelopeHandler (agent:ProjectionAgent<Map<'Id,'Entity>,'Event>) (deps: ProjectionDependencies<'Event>) eventFilters (projectionName:string): Envelope -> Task<unit> =
         fun (envelope: Envelope) ->
             task {
                 // Surface-level routing
+                let aggType =
+                    if not (String.IsNullOrWhiteSpace envelope.AggregateType) then envelope.AggregateType
+                    else Envelope.tryGetAggregateType envelope |> Option.defaultValue ""
+
                 let shouldProcess =
                     match Set.isEmpty eventFilters with
                     | true -> true  // All events
-                    | false -> Set.contains envelope.EventType eventFilters
+                    | false ->
+                        Set.contains envelope.EventType eventFilters
+                        || (not (String.IsNullOrWhiteSpace aggType) && String.Equals(aggType, projectionName, StringComparison.OrdinalIgnoreCase))
+
                 if shouldProcess then
                     // Decode the payload
                     match deps.EventCodec.Decode envelope.DataJson with
@@ -200,11 +207,10 @@ let createProjectionAgent<'Event, 'Entity, 'Id when 'Id: comparison and 'Event: 
                             let eid = EventId.value envelope.EventId
                             agent.Post( domainEvent, eid, causionId, corId, None)
                     | Error decodeErr ->
-                        //deps.DeadLetterQueue.Enqueue envelope (sprintf "%A" decodeErr)
                         deps.TelemetryPublisher {
                             EventId = EventId.value envelope.EventId
                             Severity = TelemetrySeverity.Critical
-                            Message = $"Failed to decode EnterprisePicture envelope {envelope.EventId} : {decodeErr}"
+                            Message = $"Failed to decode {projectionName} envelope {envelope.EventId} : {decodeErr}"
                             CausationId = envelope.CorrelationId
                             CorrelationId = envelope.CorrelationId
                             TraceId = None

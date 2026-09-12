@@ -78,3 +78,8 @@ let toPublishCmd
     create <!> validatePlanningScopeId req.ScopeId
     <*> validateTimestamp req.EvaluationPeriodStart
     <*> validateTimestamp req.EvaluationPeriodEnd
+
+/// Outbound ACL: maps domain events to canonical ARS Enterprise Event identifiers.
+let toArsEventId = function
+    | ForecastQualityEvaluated _ -> ArsIdentifiers.EnterpriseEvents.forecastQualityAssessmentPublished.Id
+    | ForecastQualityAssessmentPublished _ -> ArsIdentifiers.EnterpriseEvents.forecastQualityAssessmentPublished.Id

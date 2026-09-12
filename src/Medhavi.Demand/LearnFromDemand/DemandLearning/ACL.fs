@@ -2,7 +2,6 @@ module Medhavi.Demand.LearnFromDemand.DemandLearning.ACL
 
 open Medhavi.Common.Validation
 open Medhavi.Foundation.Failure
-open Medhavi.Foundation.Validations
 open Medhavi.SemanticModel
 open Medhavi.Contracts.Demand
 open Medhavi.Demand
@@ -135,3 +134,8 @@ let toEvidenceBundle (req: DeriveDemandLearningsReq) : Validation<HistoricalDema
     create <!> validatePlanningScopeId req.Scope
     <*> validateTimestamp req.WindowStart
     <*> validateTimestamp req.WindowEnd
+
+/// Maps DemandLearningEvent to ARS enterprise event identifier
+let toArsEventId: DemandLearningEvent -> string =
+    function
+    | DemandLearningEstablished _ -> ArsIdentifiers.EnterpriseEvents.demandLearningEstablished.Id

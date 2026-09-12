@@ -6,8 +6,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+  
     <Compile Include="Types.fs" />
     <Compile Include="CrossDomainEvents.fs" />
+    <Compile Include="Client.fs" />
     
     <Compile Include="Core\UnitOfMeasure.fs" />
     <Compile Include="Core\Item.fs" />

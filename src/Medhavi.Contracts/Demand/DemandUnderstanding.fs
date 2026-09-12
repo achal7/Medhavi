@@ -81,3 +81,5 @@ type DemandUnderstandingPublishedNotification =
 type DemandUnderstandingApi =
     { Revise: ReviseDemandUnderstandingReq -> Task<Result<DemandUnderstandingDto, ApiError>>
       Publish: PublishDemandUnderstandingReq -> Task<Result<DemandUnderstandingDto, ApiError>> }
+
+type DemandUnderstandingQueries = QueryService<DemandUnderstandingDto, string>

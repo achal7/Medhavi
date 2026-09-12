@@ -45,3 +45,8 @@ let toOverrideCmd (req: OverrideDemandBehaviorReq) : Validation<OverrideDemandBe
     <*> (BehaviorClass.FromString req.NewClassification |> fromResult)
     <*> required "Justification" req.Justification
     <*> required "PlannerId" req.PlannerId
+
+/// Outbound ACL: maps domain events to canonical ARS Enterprise Event identifiers.
+let toArsEventId = function
+    | DemandBehaviorClassified _ -> ArsIdentifiers.EnterpriseEvents.demandBehaviorClassificationChanged.Id
+    | DemandBehaviorOverridden _ -> ArsIdentifiers.EnterpriseEvents.demandBehaviorClassificationChanged.Id

@@ -142,8 +142,7 @@ type EstablishLearningCmd =
       Timestamp: Timestamp }
 
 /// EV-D-025 Demand Learning Established Event
-type DemandLearningEvent =
-    | DemandLearningEstablished of DemandLearning
+type DemandLearningEvent = DemandLearningEstablished of DemandLearning
 
 /// Pure evolution (Layer E: Catamorphism)
 let evolve: Medhavi.Foundation.Contracts.Evolve<DemandLearning, DemandLearningEvent> =
@@ -152,5 +151,4 @@ let evolve: Medhavi.Foundation.Contracts.Evolve<DemandLearning, DemandLearningEv
         | DemandLearningEstablished learning -> Some learning
 
 /// Replay event sequence to rehydrate aggregate state
-let replay (events: DemandLearningEvent seq) : DemandLearning option =
-    Seq.fold evolve None events
+let replay (events: DemandLearningEvent seq) : DemandLearning option = Seq.fold evolve None events

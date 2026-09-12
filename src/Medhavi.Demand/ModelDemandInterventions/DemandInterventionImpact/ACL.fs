@@ -8,15 +8,12 @@ open Medhavi.Foundation.Validations
 open Medhavi.SemanticModel
 open Medhavi.Contracts.Demand
 open Medhavi.Demand
-open Medhavi.Demand.Helpers
 open Model
 
 /// Translates AssessInterventionImpactReq into AssessInterventionImpactCmd using Applicative validation
 let toAssessImpactCmd (req: AssessInterventionImpactReq) : Validation<AssessInterventionImpactCmd, DomainError> =
     let create impactId ref item loc mag startTs endTs =
-        let window: TemporalWindow =
-            { Start = startTs
-              End = endTs }
+        let window: TemporalWindow = { Start = startTs; End = endTs }
 
         { ImpactId = impactId
           InterventionReference = ref
@@ -27,7 +24,7 @@ let toAssessImpactCmd (req: AssessInterventionImpactReq) : Validation<AssessInte
           TemporalValidity = window
           HistoricalPairs = req.HistoricalPairs
           BaselineDemand = req.BaselineDemand
-          Timestamp = Timestamp.now () }
+          Timestamp = Timestamp.now() }
 
     create <!> validateDemandInterventionImpactId req.ImpactId
     <*> validateScenarioAdjustmentId req.InterventionReference
@@ -41,6 +38,12 @@ let toAssessImpactCmd (req: AssessInterventionImpactReq) : Validation<AssessInte
 let toPublishImpactCmd (req: PublishInterventionImpactReq) : Validation<PublishInterventionImpactCmd, DomainError> =
     let create impactId =
         { ImpactId = impactId
-          Timestamp = Timestamp.now () }
+          Timestamp = Timestamp.now() }
 
     create <!> validateDemandInterventionImpactId req.ImpactId
+
+/// Maps DemandInterventionImpactEvent to ARS enterprise event identifier
+let toArsEventId: DemandInterventionImpactEvent -> string =
+    function
+    | InterventionImpactAssessed _
+    | InterventionImpactPublished _ -> ArsIdentifiers.EnterpriseEvents.demandInterventionImpactPublished.Id

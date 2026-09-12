@@ -111,7 +111,7 @@ type DemandUnderstandingEvent =
     | DemandUnderstandingPublished of DemandUnderstanding * previousPublished: int option * publicationTime: Timestamp
 
 /// Pure evolution (catamorphism). No validation.
-let evolve (state: DemandUnderstanding option) (event: DemandUnderstandingEvent) : DemandUnderstanding option =
+let evolve (_: DemandUnderstanding option) (event: DemandUnderstandingEvent) : DemandUnderstanding option =
     match event with
     | DemandUnderstandingRevised(du, _) -> Some du
     | DemandUnderstandingPublished(du, _, _) -> Some du

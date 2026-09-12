@@ -4,7 +4,6 @@ open Medhavi.Common
 open Medhavi.Foundation.Contracts
 open Medhavi.Foundation.Failure
 open Medhavi.Demand.ArsIdentifiers
-open Rules
 
 type AcceptanceOutcome =
     | Accept
@@ -13,8 +12,8 @@ type AcceptanceOutcome =
 
 /// DE-D-001: Accept Demand Observation
 let evaluateObservation
-    (rules: Rule<EvaluateInput> list)
-    (input: EvaluateInput)
+    (rules: Rule<Rules.EvaluateInput> list)
+    (input: Rules.EvaluateInput)
     : Result<DecisionOutcome<AcceptanceOutcome>, DomainError> =
     result {
         let! evaluations = Rule.evaluateAll rules input

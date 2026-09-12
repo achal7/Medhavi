@@ -91,3 +91,8 @@ let toPublishCmd (req: PublishPictureVersionReq) : Validation<PublishPictureVers
           PublicationTime = publicationTime }
 
     create <!> validateScopeId req.PlanningScopeId <*> validateVersionNumber <*> validateTimestamp req.PublicationTime
+
+/// Outbound ACL: maps domain events to canonical ARS Enterprise Event identifiers.
+let toArsEventId = function
+    | PictureVersionComposed _ -> ArsIdentifiers.EnterpriseEvents.pictureVersionComposed.Id
+    | PictureVersionPublished _ -> ArsIdentifiers.EnterpriseEvents.pictureVersionPublished.Id

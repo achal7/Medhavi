@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <RequiresAspNetWebAssets>true</RequiresAspNetWebAssets>
+    <PreserveCompilationContext>true</PreserveCompilationContext>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Configuration.fs" />
+
+    <Compile Include="Composition\ComposeCore.fs" />
+    <Compile Include="Composition\ComposeDemand.fs" />
+    <Compile Include="Composition\ComposeNexus.fs" />
+    <Compile Include="Composition\ComposeClient.fs" />
+    <Compile Include="Composition\StartupData.fs" />
+
+    <Compile Include="Api\HealthEndpoints.fs" />
+    <Compile Include="UI\Index.fs" />
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Update="Data\*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FSharp.Core" />
+    <PackageReference Include="Bolero.Server" />
+    <PackageReference Include="Radzen.Blazor" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Infra -->
+    <ProjectReference Include="../Medhavi.Infrastructure/Medhavi.Infrastructure.fsproj" />
+
+    <!-- Domain -->
+    <ProjectReference Include="../Medhavi.Core/Medhavi.Core.fsproj" />
+    <ProjectReference Include="../Medhavi.Demand/Medhavi.Demand.fsproj" />
+    <ProjectReference Include="../Medhavi.Supply/Medhavi.Supply.fsproj" />
+    <ProjectReference Include="../Medhavi.Client/Medhavi.Client.fsproj" />
+  </ItemGroup>
+</Project>

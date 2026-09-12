@@ -43,3 +43,8 @@ let toOverrideCmd (req: OverridePlanningPriorityReq) : Validation<OverridePlanni
     <*> (PriorityLevel.FromString req.NewPriority |> fromResult)
     <*> required "Justification" req.Justification
     <*> required "PlannerId" req.PlannerId
+
+/// Outbound ACL: maps domain events to canonical ARS Enterprise Event identifiers.
+let toArsEventId = function
+    | PlanningPriorityAssigned _ -> ArsIdentifiers.EnterpriseEvents.planningPriorityChanged.Id
+    | PlanningPriorityOverridden _ -> ArsIdentifiers.EnterpriseEvents.planningPriorityChanged.Id

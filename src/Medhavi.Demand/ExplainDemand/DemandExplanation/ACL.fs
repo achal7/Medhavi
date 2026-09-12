@@ -2,7 +2,6 @@
 /// Uses Applicative validation combinators and builds EstablishExplanationCmd
 module Medhavi.Demand.ExplainDemand.DemandExplanation.ACL
 
-open Medhavi.Common
 open Medhavi.Common.Validation
 open Medhavi.Foundation.Failure
 open Medhavi.Foundation.Validations
@@ -12,8 +11,6 @@ open Medhavi.Demand
 open Model
 open Policies
 open TemplateCatalog
-open ReasoningGraphAlgorithms
-open Algorithms
 
 /// Translates EstablishDemandExplanationReq into EstablishExplanationCmd
 let toEstablishCmd
@@ -95,3 +92,8 @@ let toEstablishCmd
 
     create <!> required "ExplainedArtifactType" req.ExplainedArtifactType
     <*> required "ExplainedArtifactId" req.ExplainedArtifactId
+
+/// Maps DemandExplanationEvent to ARS enterprise event identifier
+let toArsEventId: DemandExplanationEvent -> string =
+    function
+    | DemandExplanationEstablished _ -> ArsIdentifiers.EnterpriseEvents.demandExplanationEstablished.Id

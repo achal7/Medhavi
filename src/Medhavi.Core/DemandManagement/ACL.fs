@@ -64,3 +64,9 @@ let toCancelCmd (req: CancelDemandReq) : Validation<CancelDemandCmd, DomainError
           Reason = req.Reason }
 
     create <!> validateDemandId req.DemandId <*> validateTimestamp req.CancellationTime
+
+/// Outbound ACL: maps domain events to canonical ARS Enterprise Event identifiers.
+let toArsEventId = function
+    | DemandRecorded _ -> ArsIdentifiers.EnterpriseEvents.demandRecorded.Id
+    | DemandSatisfied _ -> ArsIdentifiers.EnterpriseEvents.demandSatisfied.Id
+    | DemandCancelled _ -> ArsIdentifiers.EnterpriseEvents.demandCancelled.Id

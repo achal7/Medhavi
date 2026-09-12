@@ -47,3 +47,10 @@ let toEvaluateCmd (req: EvaluateObservationReq) : Validation<EvaluateObservation
           EvaluationTime = evalTime }
 
     create <!> validateObsId <*> validateTimestamp req.EvaluationTime
+
+/// Outbound ACL: maps domain observation events to canonical ARS Enterprise Events (EV-D-001, EV-D-002).
+let toArsEventId = function
+    | ObservationReceived _ -> ArsIdentifiers.EnterpriseEvents.demandObservationReceived.Id
+    | ObservationAccepted _
+    | ObservationQuarantined _
+    | ObservationRejected _ -> ArsIdentifiers.EnterpriseEvents.demandObservationEvaluated.Id

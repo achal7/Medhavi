@@ -6,7 +6,6 @@ open Medhavi.Foundation.Contracts
 open Medhavi.Foundation.Contracts.Decision
 open Medhavi.Foundation.Failure
 open Medhavi.Demand
-open Medhavi.Demand.ArsIdentifiers
 open Model
 open Rules
 open Decisions
@@ -35,7 +34,7 @@ let receive: Decide<DemandObservation, ReceiveObservationCmd, ObservationEvent> 
         result {
             match state with
             | Some _ ->
-                return! Error(DomainError.conflict("Observation already exists", Capabilities.understandDemand.Id))
+                return! Error(DomainError.conflict("Observation already exists", ArsIdentifiers.Capabilities.understandDemand.Id))
             | None ->
                 let newObs: DemandObservation =
                     { ObservationId = cmd.ObservationId
@@ -52,7 +51,7 @@ let receive: Decide<DemandObservation, ReceiveObservationCmd, ObservationEvent> 
                 let events = [ ObservationReceived newObs ]
                 let decision = { Outcome = Receive; Evaluations = [] }
 
-                return buildTrace None Capabilities.understandDemand.Id decision None events "Observation received"
+                return buildTrace None ArsIdentifiers.Capabilities.understandDemand.Id decision None events "Observation received"
         }
 
 /// AB-D-002: Evaluate Demand Observation
@@ -70,7 +69,7 @@ let evaluate
                   SourceReliability = sourceReliability
                   HasDuplicateInWindow = hasDuplicate }
 
-            let! decision = Decisions.evaluateObservation Rules.evaluationRules input
+            let! decision = evaluateObservation evaluationRules input
 
             let traceId = Guid.NewGuid().ToString()
 

@@ -15,6 +15,9 @@ type KnowledgeEnricher<'Cmd> = 'Cmd -> ArchitecturalKnowledge -> ArchitecturalKn
 
 type EnvelopeStoreDependencies<'Event> =
     {
+        /// Provide the canonical event type (ARS ID) for an event
+        GetEventType: 'Event -> string
+
         /// Serialize domain event to JSON for persistence
         SerializeEvent: 'Event -> Result<string, string>
 
@@ -165,7 +168,8 @@ let persist
                     decision.Events
                     |> List.map(fun evt ->
                         let json = deps.SerializeEvent evt |> Result.defaultValue "{}"
-                        let env = Envelope.CreateBasic(evt.GetType().Name, json)
+                        let eventType = deps.GetEventType evt
+                        let env = Envelope.CreateBasic(eventType, json)
                         let env = Envelope.withExecutionContext exec.Context.ExecutionCtx env
                         let env = Envelope.withAggregateContext (id.ToString()) typeof<'Agg>.Name env
 

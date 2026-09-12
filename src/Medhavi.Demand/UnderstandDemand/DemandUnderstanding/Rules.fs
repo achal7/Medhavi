@@ -22,10 +22,8 @@ let materialChangeRequired: Rule<PublicationInput> =
         Rules.materialChangeRequiredForPublication.Explanation
         (fun input -> input.Assessment.HasMaterialChange || input.PeriodicRefreshDue)
         (fun input ->
-            sprintf
-                "HasMaterialChange: %b; PeriodicRefreshDue: %b"
-                input.Assessment.HasMaterialChange
-                input.PeriodicRefreshDue)
+            $"HasMaterialChange: %b{input.Assessment.HasMaterialChange}; PeriodicRefreshDue: %b{input.PeriodicRefreshDue}"
+        )
 
 /// BR-D-205 — Interpretation completeness must meet the threshold defined in PO-D-011.
 let interpretationComplete: Rule<PublicationInput> =
@@ -34,10 +32,8 @@ let interpretationComplete: Rule<PublicationInput> =
         Rules.interpretationCompletenessThreshold.Explanation
         (fun input -> Interpretation.completenessRatio input.Interpretation >= input.CompletenessThreshold)
         (fun input ->
-            sprintf
-                "Completeness: %.2f; Threshold: %.2f"
-                (Interpretation.completenessRatio input.Interpretation)
-                input.CompletenessThreshold)
+            $"Completeness: %.2f{Interpretation.completenessRatio input.Interpretation}; Threshold: %.2f{input.CompletenessThreshold}"
+        )
 
 /// DE-D-002 — the publication eligibility rule set.
 let publicationRules: Rule<PublicationInput> list = [ materialChangeRequired; interpretationComplete ]

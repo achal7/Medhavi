@@ -8,9 +8,9 @@ open Medhavi.Foundation.Contracts
 open Medhavi.Foundation.Execution.AggregateStages
 open Medhavi.Infrastructure.Stores.EnvelopeStore
 
-/// Creates EnvelopeStoreDependencies from an EnvelopeStoreOps implementation
 let create<'Event>
     (store: EnvelopeStoreOps)
+    (getEventType: 'Event -> string)
     (serializeEvent: 'Event -> Result<string, string>)
     (traceCodec: Codec<DecisionTrace>)
     : EnvelopeStoreDependencies<'Event> =
@@ -24,6 +24,7 @@ let create<'Event>
             | Ok _ -> return ()
             | Error err ->
                 // Log error but don't fail - dispatch is fire-and-forget
+                // TODO: Add logging
                 printfn $"Failed to dispatch envelope {envelope.EventId}: {err}"
         }
 
@@ -46,7 +47,13 @@ let create<'Event>
                     // Apply event type filter if specified
                     let shouldProcess =
                         match filter with
-                        | EventTypes types -> List.contains envelopedEvent.Envelope.EventType types
+                        | EventTypes types ->
+                            List.contains envelopedEvent.Envelope.EventType types
+                            || (let agg = Envelope.tryGetAggregateType envelopedEvent.Envelope |> Option.defaultValue ""
+                                not(String.IsNullOrWhiteSpace agg) && List.contains agg types)
+                        | Aggregate s ->
+                            let agg = Envelope.tryGetAggregateType envelopedEvent.Envelope |> Option.defaultValue ""
+                            agg = s || envelopedEvent.Envelope.AggregateType = s
                         | _ -> true
 
                     if shouldProcess then
@@ -67,7 +74,8 @@ let create<'Event>
                         member _.Dispose() = () }
         }
 
-    { SerializeEvent = serializeEvent
+    { GetEventType = getEventType
+      SerializeEvent = serializeEvent
       DispatchEnvelope = dispatchEnvelope
       TraceCodec = traceCodec
       Subscribe = subscribe }

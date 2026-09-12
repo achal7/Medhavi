@@ -79,7 +79,7 @@ let mapToDto (du: Model.DemandUnderstanding) : Demand.DemandUnderstandingDto =
       State = currentVersion |> Option.map(fun v -> v.State.ToString()) |> Option.defaultValue "Draft" }
 
 /// Projection state: map of Planning Scope to DTO.
-type State = Map<string, Demand.DemandUnderstandingDto>
+type State = Map<PlanningScopeId, Demand.DemandUnderstandingDto>
 
 let initial: State = Map.empty
 
@@ -87,10 +87,8 @@ let initial: State = Map.empty
 let apply (state: State) (event: Model.DemandUnderstandingEvent) : State =
     match event with
     | Model.DemandUnderstandingRevised(du, _)
-    | Model.DemandUnderstandingPublished(du, _, _) ->
-        state |> Map.add (PlanningScopeId.value du.PlanningScopeId) (mapToDto du)
+    | Model.DemandUnderstandingPublished(du, _, _) -> state |> Map.add du.PlanningScopeId (mapToDto du)
 
 /// Seed projection from existing aggregates.
 let seedFromAggregates (aggregates: Model.DemandUnderstanding list) : State =
-    aggregates
-    |> List.fold (fun state agg -> Map.add (PlanningScopeId.value agg.PlanningScopeId) (mapToDto agg) state) initial
+    aggregates |> List.fold (fun state agg -> Map.add agg.PlanningScopeId (mapToDto agg) state) initial
