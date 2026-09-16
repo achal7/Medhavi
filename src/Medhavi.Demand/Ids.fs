@@ -1,11 +1,9 @@
 namespace Medhavi.Demand
 
 open System
-open System.Text.Json.Serialization
 open Medhavi.Foundation.Failure
 open Medhavi.SemanticModel
 
-[<JsonFSharpConverter>]
 type DemandObservationId = private DemandObservationId of string
 
 module DemandObservationId =
@@ -54,7 +52,6 @@ module DemandBehaviorAssessmentId =
 
     let value (DemandBehaviorAssessmentId id) = id
 
-[<JsonFSharpConverter>]
 type PlanningClassificationAssignmentId = private PlanningClassificationAssignmentId of string
 
 module PlanningClassificationAssignmentId =
@@ -69,7 +66,6 @@ module PlanningClassificationAssignmentId =
 
     let value (PlanningClassificationAssignmentId id) = id
 
-[<JsonFSharpConverter>]
 type DemandBehaviorAssignmentId = private DemandBehaviorAssignmentId of string
 
 module DemandBehaviorAssignmentId =
@@ -89,7 +85,6 @@ module DemandBehaviorAssignmentId =
 
     let value (DemandBehaviorAssignmentId id) = id
 
-[<JsonFSharpConverter>]
 type PlanningPriorityAssignmentId = private PlanningPriorityAssignmentId of string
 
 module PlanningPriorityAssignmentId =
@@ -104,7 +99,6 @@ module PlanningPriorityAssignmentId =
 
     let value (PlanningPriorityAssignmentId id) = id
 
-[<JsonFSharpConverter>]
 type ForecastQualityAssessmentId = private ForecastQualityAssessmentId of string
 
 module ForecastQualityAssessmentId =
@@ -120,7 +114,6 @@ module ForecastQualityAssessmentId =
 
     let value (ForecastQualityAssessmentId id) = id
 
-[<JsonFSharpConverter>]
 type DemandExceptionEvidenceId = private DemandExceptionEvidenceId of string
 
 module DemandExceptionEvidenceId =
@@ -136,7 +129,6 @@ module DemandExceptionEvidenceId =
 
     let value (DemandExceptionEvidenceId id) = id
 
-[<JsonFSharpConverter>]
 type DemandExplanationId = private DemandExplanationId of string
 
 module DemandExplanationId =
@@ -151,7 +143,6 @@ module DemandExplanationId =
 
     let value (DemandExplanationId id) = id
 
-[<JsonFSharpConverter>]
 type DemandLearningId = private DemandLearningId of string
 
 module DemandLearningId =
@@ -168,7 +159,6 @@ module DemandLearningId =
 
     let value (DemandLearningId id) = id
 
-[<JsonFSharpConverter>]
 type ScenarioAdjustmentId = private ScenarioAdjustmentId of string
 
 module ScenarioAdjustmentId =
@@ -180,7 +170,6 @@ module ScenarioAdjustmentId =
 
     let value (ScenarioAdjustmentId id) = id
 
-[<JsonFSharpConverter>]
 type DemandInterventionImpactId = private DemandInterventionImpactId of string
 
 module DemandInterventionImpactId =

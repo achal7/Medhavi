@@ -517,7 +517,7 @@ type Rz =
             )
             let childContent = RenderFragment<DialogService>(fun _ ->
                 RenderFragment(fun builder ->
-                    content.Invoke(null, builder, 0) |> ignore
+                    content.Invoke(dialogService, builder, 0) |> ignore
                 )
             )
             let! _ = dialogService.OpenAsync(config.Title, childContent, options)
@@ -594,7 +594,7 @@ type Rz =
     static member toRenderFragment (nodes: Node list) : RenderFragment =
         RenderFragment(fun builder ->
             for node in nodes do
-                node.Invoke(null, builder, 0) |> ignore
+                node.Invoke(obj(), builder, 0) |> ignore
         )
 
     /// Applies CSS classes conditionally.

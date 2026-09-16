@@ -25,7 +25,10 @@ let composeAll (services: IServiceCollection) =
         let store = EnvelopeStoreMem.createEnvelopeStoreMem()
 
         let publishKnowledge = fun _ -> ()
-        let telemetryPublisher = fun _ -> ()
+        let telemetryPublisher (t: Medhavi.Foundation.Observation.TelemetryEvent) =
+            if t.Severity = Medhavi.Foundation.Observation.TelemetrySeverity.Critical
+               || t.Severity = Medhavi.Foundation.Observation.TelemetrySeverity.Errors then
+                eprintfn $"[Telemetry %A{t.Severity}] %s{t.Message}"
         let pconfig = ProjectionConfig.Default
         let traceCodec: Codec<DecisionTrace> = Codec.json<DecisionTrace>
 

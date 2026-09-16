@@ -10,7 +10,6 @@ type UIEventLogItem =
       Stream: string
       Timestamp: DateTimeOffset }
 
-[<JsonFSharpConverter>]
 type Role =
     | Planner
     | Supervisor
@@ -19,7 +18,6 @@ type Role =
 
 type User = { Name: string; Role: Role }
 
-[<JsonFSharpConverter>]
 type ApiError =
     { Code: string
       Message: string

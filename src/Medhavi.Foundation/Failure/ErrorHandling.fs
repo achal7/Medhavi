@@ -2,9 +2,7 @@ namespace Medhavi.Foundation.Failure
 
 open System
 open System.Threading.Tasks
-open System.Text.Json.Serialization
 
-[<JsonFSharpConverter>]
 type InfrastructureError =
     | Network of message: string
     | Timeout of message: string
@@ -48,7 +46,6 @@ module ErrorCodes =
     let ExternalTimeout = "EXT_TIMEOUT"
     let ExternalAuthFailed = "EXT_AUTH_FAILED"
 
-[<JsonFSharpConverter>]
 type DomainError =
     | ValidationFailed of code: string * errors: (string * string) list
     | BusinessRuleViolated of code: string * ruleId: string * message: string
@@ -107,7 +104,6 @@ type DomainError =
 
             ValidationFailed(ErrorCodes.ValidationFailed, allErrors)
 
-[<JsonFSharpConverter>]
 type ApplicationError =
     | Domain of DomainError
     | Validation of errors: (string * string) list

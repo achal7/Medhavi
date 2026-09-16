@@ -193,11 +193,11 @@ let createProjectionAgent<'Event, 'Entity, 'Id when 'Id: comparison and 'Event: 
                     else Envelope.tryGetAggregateType envelope |> Option.defaultValue ""
 
                 let shouldProcess =
-                    match Set.isEmpty eventFilters with
-                    | true -> true  // All events
-                    | false ->
+                    if Set.isEmpty eventFilters then
+                        String.IsNullOrWhiteSpace aggType
+                        || String.Equals(aggType, projectionName, StringComparison.OrdinalIgnoreCase)
+                    else
                         Set.contains envelope.EventType eventFilters
-                        || (not (String.IsNullOrWhiteSpace aggType) && String.Equals(aggType, projectionName, StringComparison.OrdinalIgnoreCase))
 
                 if shouldProcess then
                     // Decode the payload

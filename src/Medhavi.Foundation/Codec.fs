@@ -5,8 +5,12 @@ open System.Text.Json.Serialization
 open Medhavi.Common
 
 let private defaultOptions =
-    let opt = JsonSerializerOptions()
-    opt.Converters.Add(JsonFSharpConverter())
+    let opt = JsonSerializerOptions(PropertyNameCaseInsensitive = true)
+    let fsOptions =
+        JsonFSharpOptions.Default()
+            .WithUnionUnwrapSingleCaseUnions(true)
+            .WithUnionUnwrapFieldlessTags(true)
+    opt.Converters.Add(JsonFSharpConverter(fsOptions))
     opt
 
 /// Creates a JSON codec for any type using System.Text.Json
