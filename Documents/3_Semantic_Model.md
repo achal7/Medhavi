@@ -2328,7 +2328,7 @@ The Steward Domain manages the adoption lifecycle.
 | ---------------------------- | ------------------------------------------------------------- |
 | Semantic Authority           | Core Domain                                                   |
 | Steward Domain               | Core                                                          |
-| Mutation Authority           | Enterprise-Governed Maste                                     |
+| Mutation Authority           | Enterprise-Governed Master Data                               |
 | Authoritative Representation | The enterprise‑governed list of standard planning time units. |
 | Authority Scope              | Enterprise‑wide                                               |
 | Intended Consumers           | Planning Scope, Plan, Supply Plan, Demand Plan, Scenario.     |

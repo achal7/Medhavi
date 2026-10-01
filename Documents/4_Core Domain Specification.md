@@ -122,7 +122,7 @@ Publication Materiality Evaluation
         Declared consuming domains
 
 Authorized Exception Detection Evidence
-(BN-D-022)
+(BN-D-022, BN-S-101)
         |
         v
 Core Exception Management
@@ -137,7 +137,7 @@ EV-C-003 / EV-C-004
 BN-C-002 Enterprise Exception Active
 
 Authorized Exception Resolution Evidence
-(BN-D-023)
+(BN-D-023, BN-S-102)
         |
         v
 Core Exception Management
@@ -533,7 +533,7 @@ If publication does not occur:
 | Purpose | Create or update an Exception from authorized detection evidence. |
 | Business Intent | Maintain a single deduplicated Active Exception per exception business identity. |
 | Owned Aggregate | `SE-C-019 Exception`. |
-| Trigger | Authorized exception detection evidence notification. Currently declared: `BN-D-022`. |
+| Trigger | Authorized exception detection evidence notification. Currently declared: `BN-D-022`, `BN-S-101`. |
 | Required Input State | None for creation. Active Exception for update. |
 | Produced Output State | New Active Exception, or updated Active Exception. |
 | Invoked Decisions | `DE-C-002 Evaluate Exception Evidence`. |
@@ -640,7 +640,7 @@ If rejection occurs:
 | Purpose | Resolve an Active Exception from authorized resolution evidence. |
 | Business Intent | Preserve immutable resolution history for enterprise exceptions. |
 | Owned Aggregate | `SE-C-019 Exception`. |
-| Trigger | Authorized exception resolution evidence notification. Currently declared: `BN-D-023`. |
+| Trigger | Authorized exception resolution evidence notification. Currently declared: `BN-D-023`, `BN-S-102`. |
 | Required Input State | The referenced Exception is Active. |
 | Produced Output State | The referenced Exception becomes Resolved. |
 | Invoked Decisions | `DE-C-003 Evaluate Exception Resolution`. |
@@ -995,9 +995,10 @@ Which enterprise constraints are currently breached, what is their severity, and
 
 | Dependency | Role in Core Exception Management | Verification Status |
 |---|---|---|
-| Demand Intelligence `CA-D-008 Detect Demand Exceptions` | Publishes demand exception detection and resolution evidence: `BN-D-022`, `BN-D-023`. | Declared. Must be verified against the Demand Intelligence Domain Specification before implementation. |
+| Demand Intelligence `CA-D-008 Detect Demand Exceptions` | Publishes demand exception detection and resolution evidence: `BN-D-022`, `BN-D-023`. | Authorized. Ratified in the Demand Intelligence Domain Specification (`Documents/4_Demand_Intelligence_Specification.md`). |
+| Supply Intelligence `CA-S-011 Detect Supply Exceptions` | Publishes supply exception detection and resolution evidence: `BN-S-101`, `BN-S-102`. | Authorized. Ratified in the Supply Intelligence Domain Specification (`Documents/4_Supply Intelligence Specification.md`). |
 
-No Supply, Promise, Scenario, or Knowledge exception evidence notification is authorized in this specification.
+No Promise, Scenario, or Knowledge exception evidence notification is authorized in this specification.
 
 Additional evidence notifications may be added only after the owning domain publishes ratified Business Notification contracts and this Core specification is revised through governance.
 
@@ -1043,8 +1044,10 @@ Additional evidence notifications may be added only after the owning domain publ
 
 | Source Notification | Publisher | Business Behavior | Invokes | Verification Status |
 |---|---|---|---|---|
-| `BN-D-022 Demand Exception Detection Evidence` | Demand Intelligence `CA-D-008` | Processes demand exception detection evidence. Creates or updates `SE-C-019 Exception`. | `FS-C-003` | Must be verified against the Demand Intelligence Domain Specification before implementation. |
-| `BN-D-023 Demand Exception Resolution Evidence` | Demand Intelligence `CA-D-008` | Processes demand exception resolution evidence. Resolves `SE-C-019 Exception`. | `FS-C-004` | Must be verified against the Demand Intelligence Domain Specification before implementation. |
+| `BN-D-022 Demand Exception Detection Evidence` | Demand Intelligence `CA-D-008` | Processes demand exception detection evidence. Creates or updates `SE-C-019 Exception`. | `FS-C-003` | Authorized. Ratified in Demand Intelligence Domain Specification (`Documents/4_Demand_Intelligence_Specification.md`). |
+| `BN-D-023 Demand Exception Resolution Evidence` | Demand Intelligence `CA-D-008` | Processes demand exception resolution evidence. Resolves `SE-C-019 Exception`. | `FS-C-004` | Authorized. Ratified in Demand Intelligence Domain Specification (`Documents/4_Demand_Intelligence_Specification.md`). |
+| `BN-S-101 Supply Exception Detection Evidence` | Supply Intelligence `CA-S-011` | Processes supply exception detection evidence. Creates or updates `SE-C-019 Exception`. | `FS-C-003` | Authorized. Verified against Supply Intelligence Domain Specification. |
+| `BN-S-102 Supply Exception Resolution Evidence` | Supply Intelligence `CA-S-011` | Processes supply exception resolution evidence. Resolves `SE-C-019 Exception`. | `FS-C-004` | Authorized. Verified against Supply Intelligence Domain Specification. |
 
 ### Capability Artifact Indexes
 
@@ -1079,8 +1082,8 @@ Additional evidence notifications may be added only after the owning domain publ
 |---|---|---|---|---|
 | `BW-C-001` | Compose a point-in-time snapshot of enterprise reality for a governed Planning Scope. | `CR-C-001` | `FS-C-001` | Scheduled cadence governed by `PO-C-001`. |
 | `BW-C-002` | Evaluate publication materiality and publish the composed Enterprise Picture Version when warranted. | `CR-C-002` | `FS-C-002` | `EV-C-001 Enterprise Picture Version Composed`. |
-| `BW-C-003` | Process exception detection evidence and create or update the centralized exception registry. | `CR-C-003` | `FS-C-003` | `BN-D-022 Demand Exception Detection Evidence`. |
-| `BW-C-004` | Process exception resolution evidence and resolve the centralized exception. | `CR-C-004` | `FS-C-004` | `BN-D-023 Demand Exception Resolution Evidence`. |
+| `BW-C-003` | Process exception detection evidence and create or update the centralized exception registry. | `CR-C-003` | `FS-C-003` | `BN-D-022 Demand Exception Detection Evidence`, `BN-S-101 Supply Exception Detection Evidence`. |
+| `BW-C-004` | Process exception resolution evidence and resolve the centralized exception. | `CR-C-004` | `FS-C-004` | `BN-D-023 Demand Exception Resolution Evidence`, `BN-S-102 Supply Exception Resolution Evidence`. |
 
 
 ## CA-C-021 — Manage Item Transitions
@@ -1112,7 +1115,7 @@ Additional evidence notifications may be added only after the owning domain publ
 2. Every Active transition is immutable. Changes require a new transition.
 3. All transitions are traceable to their governing approval.
 4. Superseded and Superseding items are validated against SE-C-001 lifecycle states before activation.
-5. Demand Intelligence never directly creates, modifies, or retires SE-C-040 Item Transition instances.
+5. External planning domains (Demand Intelligence, Supply Intelligence, Promise Intelligence) never directly create, modify, or retire SE-C-040 Item Transition instances.
 
 ### Capability Responsibilities
 
@@ -1152,9 +1155,9 @@ Additional evidence notifications may be added only after the owning domain publ
 | Aggregate Behavior | AB-C-006 – Activate Item Transition | §5.3 | Aligned |
 | Aggregate Behavior | AB-C-007 – Retire Item Transition | §5.3 | Aligned |
 | Decision | DE-C-005 – Approve Item Transition Activation | §6 | Aligned |
-| Rule | BR-C-013 – Item Transition Identity | §7 | Aligned |
-| Rule | BR-C-014 – Superseded Item Validity | §7 | Aligned |
-| Rule | BR-C-015 – Superseding Item Validity | §7 | Aligned |
+| Rule | BR-C-018 – Item Transition Identity | §7 | Aligned |
+| Rule | BR-C-019 – Superseded Item Validity | §7 | Aligned |
+| Rule | BR-C-020 – Superseding Item Validity | §7 | Aligned |
 | Rule | BR-C-016 – Single Active Transition per Superseded Item | §7 | Aligned |
 | Rule | BR-C-017 – No Self-Supersession | §7 | Aligned |
 | Policy | PO-C-003 – Item Transition Governance | §8 | Aligned |
@@ -1335,7 +1338,7 @@ If multiple detection evidence items arrive for the same business identity, they
 
 | Input | Source | Description |
 |---|---|---|
-| Exception detection evidence | `BN-D-022` | Constraint Reference, Affected Scope Type, Affected Scope Identifier, Exception Classification, Severity, Evidence Reference. |
+| Exception detection evidence | `BN-D-022`, `BN-S-101` | Constraint Reference, Affected Scope Type, Affected Scope Identifier, Exception Classification, Severity, Evidence Reference. |
 | Existing Active exceptions | `SE-C-019 Exception` | Current Active exceptions for deduplication. |
 | Exception governance rules | `PO-C-002` | Deduplication criteria and severity assessment rules. |
 
@@ -1440,7 +1443,7 @@ Not applicable. Resolution is a single deterministic action.
 
 | Input | Source | Description |
 |---|---|---|
-| Exception resolution evidence | `BN-D-023` | Constraint Reference, Affected Scope Type, Affected Scope Identifier, Resolution Evidence. |
+| Exception resolution evidence | `BN-D-023`, `BN-S-102` | Constraint Reference, Affected Scope Type, Affected Scope Identifier, Resolution Evidence. |
 | Existing Active exception | `SE-C-019 Exception` | The exception to resolve. |
 | Exception governance rules | `PO-C-002` | Resolution criteria. |
 
@@ -1545,9 +1548,9 @@ The explanation shall identify:
 
 | ID | Rule |
 |----|------|
-| BR-C-013 | Transition Identifier is unique. |
-| BR-C-014 | Superseded Item must be Active or Inactive. |
-| BR-C-015 | Superseding Item must be Active. |
+| BR-C-018 | Transition Identifier is unique. |
+| BR-C-019 | Superseded Item must be Active or Inactive. |
+| BR-C-020 | Superseding Item must be Active. |
 | BR-C-016 | At most one Active transition per Superseded Item. |
 | BR-C-017 | Superseded Item ≠ Superseding Item. |
 
@@ -1559,7 +1562,7 @@ The explanation shall identify:
 |-----------|-------|
 | Decision Owner | AB-C-006 (Activate Item Transition) |
 | Invoked By | FS-C-006 |
-| References | BR-C-013, BR-C-014, BR-C-015, BR-C-016, BR-C-017 |
+| References | BR-C-018, BR-C-019, BR-C-020, BR-C-016, BR-C-017 |
 | Governed By | PO-C-003 |
 | Produces | Activation determination consumed by AB-C-006 |
 
@@ -1639,7 +1642,7 @@ If the composite key is incomplete, the evidence is rejected.
 
 Owned by `CA-C-020`. Referenced by `AB-C-003`, `AB-C-004`, `FS-C-003`, `FS-C-004`.
 
-### BR-C-013 – Item Transition Identity
+### BR-C-018 – Item Transition Identity
 
 **Rule Statement:** Each Item Transition shall have a globally unique Transition Identifier assigned at registration.
 
@@ -1778,7 +1781,7 @@ The operation is rejected with an invariant violation.
 Owned by `CA-C-020`. Referenced by `AB-C-003`, `AB-C-004`.
 
 
-### BR-C-014 – Superseded Item Validity
+### BR-C-019 – Superseded Item Validity
 
 **Rule Statement:** The Superseded Item must be in Active or Inactive state. A Retired item cannot be superseded.
 
@@ -1792,7 +1795,7 @@ Owned by `CA-C-020`. Referenced by `AB-C-003`, `AB-C-004`.
 
 **Traceability:** Owned by CA-C-021. Referenced by AB-C-005, AB-C-006, DE-C-005.
 
-### BR-C-015 – Superseding Item Validity
+### BR-C-020 – Superseding Item Validity
 
 **Rule Statement:** The Superseding Item must be in Active state at registration and at activation.
 
@@ -2536,7 +2539,7 @@ Draft PictureVersion `28` for `PS-001` is material. `AB-C-002` transitions versi
 
 | Section | Value |
 |---|---|
-| Consumes | Authorized exception detection evidence. Currently declared: `BN-D-022`. |
+| Consumes | Authorized exception detection evidence. Currently declared: `BN-D-022`, `BN-S-101`. |
 | Produces | New Active Exception or updated Active Exception. |
 | Transitions | `SE-C-019`: none → Active; Active → Active. |
 | Publishes | `EV-C-003` for creation; `EV-C-004` for update. |
@@ -2546,7 +2549,7 @@ Draft PictureVersion `28` for `PS-001` is material. `AB-C-002` transitions versi
 
 ### Trigger
 
-`BN-D-022 Demand Exception Detection Evidence`.
+`BN-D-022 Demand Exception Detection Evidence` or `BN-S-101 Supply Exception Detection Evidence`.
 
 No other notification is authorized.
 
@@ -2644,7 +2647,7 @@ Demand Intelligence publishes `BN-D-022` with Constraint Reference `PO-D-041`, S
 
 | Section | Value |
 |---|---|
-| Consumes | Authorized exception resolution evidence. Currently declared: `BN-D-023`. |
+| Consumes | Authorized exception resolution evidence. Currently declared: `BN-D-023`, `BN-S-102`. |
 | Produces | Resolved Exception. |
 | Transitions | `SE-C-019`: Active → Resolved. |
 | Publishes | `EV-C-005 Enterprise Exception Resolved`. |
@@ -2654,7 +2657,7 @@ Demand Intelligence publishes `BN-D-022` with Constraint Reference `PO-D-041`, S
 
 ### Trigger
 
-`BN-D-023 Demand Exception Resolution Evidence`.
+`BN-D-023 Demand Exception Resolution Evidence` or `BN-S-102 Supply Exception Resolution Evidence`.
 
 No other notification is authorized.
 
@@ -3013,15 +3016,18 @@ This matrix is a derived view. The owning contracts in Chapters 4, 5, 6, 7, 8, a
 
 | Publisher | Notification | Consumer | Behavior | Status |
 |---|---|---|---|---|
-| `CA-C-019 Enterprise Picture Management` | `BN-C-001 Enterprise Picture Published` | Declared consuming domains, as verified in their domain specifications | Consume the authoritative published Enterprise Picture. | Core contract authorized. Consumer contracts unresolved until consuming domain specifications are provided. |
-| `CA-C-020 Core Exception Management` | `BN-C-002 Enterprise Exception Active` | Declared consuming domains, as verified in their domain specifications | Cross-domain exception awareness. | Core contract authorized. Consumer declarations required. |
-| `CA-C-020 Core Exception Management` | `BN-C-003 Enterprise Exception Resolved` | Declared consuming domains, as verified in their domain specifications | Cross-domain exception resolution awareness. | Core contract authorized. Consumer declarations required. |
-| Manage Item Transitions | BN-C-004 Item Transition Activated | Demand Intelligence | Consume transition for demand history transfer and forecasting adjustment. |
-| Manage Item Transitions | BN-C-004 Item Transition Activated | Supply Intelligence | Consume transition for procurement phase-out/phase-in planning. |
-| Manage Item Transitions | BN-C-004 Item Transition Activated | Promise Intelligence | Consume transition for substitution eligibility in order promising. |
-| Manage Item Transitions | BN-C-004 Item Transition Activated | Scenario Intelligence | Consume transition for transition scenario evaluation. |
-| Manage Item Transitions | BN-C-005 Item Transition Retired | Demand Intelligence | Update forecasting to remove transition context. |
-| Manage Item Transitions | BN-C-005 Item Transition Retired | Supply Intelligence | Update procurement planning to remove transition context. |
+| `CA-C-019 Enterprise Picture Management` | `BN-C-001 Enterprise Picture Published` | Demand Intelligence (`CA-D-001`), Supply Intelligence (`CA-S-001`) | Ingest authoritative multi-tier enterprise master data to initialize/align demand and supply models. | Authorized and Ratified in Demand and Supply specifications. |
+| `CA-C-020 Core Exception Management` | `BN-C-002 Enterprise Exception Active` | Supply Intelligence (`CA-S-002`, `CA-S-011`) | Ingest active enterprise exception constraints into supply planning optimization and local exception triage. | Authorized and Ratified in Supply specification. |
+| `CA-C-020 Core Exception Management` | `BN-C-003 Enterprise Exception Resolved` | Supply Intelligence (`CA-S-002`, `CA-S-011`) | Release enterprise exception constraints from supply planning models and resolve correlated local exceptions. | Authorized and Ratified in Supply specification. |
+| `CA-C-021 Manage Item Transitions` | `BN-C-004 Item Transition Activated` | Supply Intelligence (`CA-S-002`, `CA-S-003`, `CA-S-006`, `CA-S-007`) | Apply transition ramp-up safety stocks, adjust purchase lines, switch bills of materials, and phase in new items. | Authorized and Ratified in Supply specification. |
+| `CA-C-021 Manage Item Transitions` | `BN-C-004 Item Transition Activated` | Demand Intelligence | Consume transition for demand history transfer and forecasting adjustment. | Declared in Core. Pending future Demand specification alignment. |
+| `CA-C-021 Manage Item Transitions` | `BN-C-004 Item Transition Activated` | Promise Intelligence, Scenario Intelligence | Substitution eligibility in order promising; transition scenario evaluation. | Declared in Core. Pending future domain specifications. |
+| `CA-C-021 Manage Item Transitions` | `BN-C-005 Item Transition Retired` | Supply Intelligence (`CA-S-003`, `CA-S-006`) | Decommission active safety stock buffers and cancel open draft purchase requisitions for retired items. | Authorized and Ratified in Supply specification. |
+| `CA-C-021 Manage Item Transitions` | `BN-C-005 Item Transition Retired` | Demand Intelligence | Update forecasting models to remove transition context. | Declared in Core. Pending future Demand specification alignment. |
+| Demand Intelligence (`CA-D-008`) | `BN-D-022 Demand Exception Detection Evidence` | `CA-C-020 Core Exception Management` | Create or update `SE-C-019 Exception` from verified demand breach evidence (`FS-C-003`). | Authorized and Ratified in Demand specification. |
+| Demand Intelligence (`CA-D-008`) | `BN-D-023 Demand Exception Resolution Evidence` | `CA-C-020 Core Exception Management` | Resolve `SE-C-019 Exception` from verified demand recovery evidence (`FS-C-004`). | Authorized and Ratified in Demand specification. |
+| Supply Intelligence (`CA-S-011`) | `BN-S-101 Supply Exception Detection Evidence` | `CA-C-020 Core Exception Management` | Create or update `SE-C-019 Exception` from verified supply breach evidence (`FS-C-003`). | Authorized and Ratified in Supply specification. |
+| Supply Intelligence (`CA-S-011`) | `BN-S-102 Supply Exception Resolution Evidence` | `CA-C-020 Core Exception Management` | Resolve `SE-C-019 Exception` from verified supply recovery evidence (`FS-C-004`). | Authorized and Ratified in Supply specification. |
 
 
 # Appendix B — Enterprise Capability Matrix
@@ -3030,6 +3036,7 @@ This matrix is a derived view. The owning contracts in Chapters 4, 5, 6, 7, 8, a
 |---|---|---|---|---|
 | 1 | `CA-C-019 Enterprise Picture Management` | `BA-C-001` | `DE-C-001` | What is the current, authoritative state of enterprise reality for a given Planning Scope? |
 | 2 | `CA-C-020 Core Exception Management` | None | `DE-C-002`, `DE-C-003` | Which enterprise constraints are currently breached, what is their severity, and what is their resolution state? |
+| 3 | `CA-C-021 Manage Item Transitions` | None | `DE-C-005` | Which item replaces which item, and how shall planning handle the transition? |
 
 # Appendix C — Core Intelligence Pipeline
 
@@ -3066,7 +3073,7 @@ Publication Materiality Evaluation
         Declared consuming domains
 
 Authorized Exception Detection Evidence
-(BN-D-022)
+(BN-D-022, BN-S-101)
         |
         v
 Exception Evidence Evaluation
@@ -3086,7 +3093,7 @@ Exception Evidence Evaluation
         Declared consuming domains
 
 Authorized Exception Resolution Evidence
-(BN-D-023)
+(BN-D-023, BN-S-102)
         |
         v
 Exception Resolution Evaluation
@@ -3110,8 +3117,14 @@ Exception Resolution Evaluation
 
 | Contract | Core Intelligence Reference | Status |
 |---|---|---|
-| `BN-C-001 Enterprise Picture Published` | Published by `CA-C-019` via `FS-C-002`. | Core contract authorized. Consumer contracts unresolved until consuming domain specifications are provided. |
-| `BN-D-022 Demand Exception Detection Evidence` | Consumed by `CA-C-020` via `FS-C-003`. | Declared. Publisher contract unresolved until the Demand Intelligence Domain Specification is provided. |
-| `BN-D-023 Demand Exception Resolution Evidence` | Consumed by `CA-C-020` via `FS-C-004`. | Declared. Publisher contract unresolved until the Demand Intelligence Domain Specification is provided. |
+| `BN-C-001 Enterprise Picture Published` | Published by `CA-C-019` via `FS-C-002`. | Core contract authorized. Ratified as consumed by Demand Intelligence (`CA-D-001`) and Supply Intelligence (`CA-S-001`). Consumer contracts for other domains unresolved until their specifications are provided. |
+| `BN-C-002 Enterprise Exception Active` | Published by `CA-C-020` via `FS-C-003`. | Core contract authorized. Ratified as consumed by Supply Intelligence (`CA-S-002`, `CA-S-011`). |
+| `BN-C-003 Enterprise Exception Resolved` | Published by `CA-C-020` via `FS-C-004`. | Core contract authorized. Ratified as consumed by Supply Intelligence (`CA-S-002`, `CA-S-011`). |
+| `BN-C-004 Item Transition Activated` | Published by `CA-C-021` via `FS-C-005`. | Core contract authorized. Ratified as consumed by Supply Intelligence (`CA-S-002`, `CA-S-003`, `CA-S-006`, `CA-S-007`). |
+| `BN-C-005 Item Transition Retired` | Published by `CA-C-021` via `FS-C-006`. | Core contract authorized. Ratified as consumed by Supply Intelligence (`CA-S-003`, `CA-S-006`). |
+| `BN-D-022 Demand Exception Detection Evidence` | Consumed by `CA-C-020` via `FS-C-003`. | Authorized. Publisher contract ratified in Demand Intelligence Domain Specification (`CA-D-008`, `FS-D-015`). |
+| `BN-D-023 Demand Exception Resolution Evidence` | Consumed by `CA-C-020` via `FS-C-004`. | Authorized. Publisher contract ratified in Demand Intelligence Domain Specification (`CA-D-008`, `FS-D-015`). |
+| `BN-S-101 Supply Exception Detection Evidence` | Consumed by `CA-C-020` via `FS-C-003`. | Authorized. Publisher contract ratified in Supply Intelligence Domain Specification (`CA-S-011`). |
+| `BN-S-102 Supply Exception Resolution Evidence` | Consumed by `CA-C-020` via `FS-C-004`. | Authorized. Publisher contract ratified in Supply Intelligence Domain Specification (`CA-S-011`). |
 | `SE-C-019 Exception` lifecycle | Owned by `CA-C-020`. Intelligence domains do not mutate `SE-C-019` directly. | Authorized. |
 | `SE-C-021 Enterprise Picture` lifecycle | Owned by `CA-C-019`. Consumers read published versions only. | Authorized. |

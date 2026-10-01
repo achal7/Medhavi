@@ -546,7 +546,7 @@ These Common Specification Contracts are not new artifact types. They are shared
 
 ## 17.9 Integration into Domain Specification Templates
 
-The domain specification structure defined in ARS §17 shall reference these contracts. For example, the Semantic Object chapter template becomes:
+The domain specification structure defined in ARS §18 shall reference these contracts. For example, the Semantic Object chapter template becomes:
 
 ```
 Semantic Object
@@ -911,7 +911,7 @@ Each Functional Specification contains
 - Preconditions
 - Postconditions
 - Exceptional Flows
-- Notifications — BN identifiers owned by the Capability. Each Business Notification defines business purpose, intended consumers, referenced Enterprise Events, and delivery guarantees. Publication is realised by Business Workflow Notification Nodes.
+- Notifications — BN identifiers invoked by this Functional Specification through Business Workflow Notification Nodes. The Business Notification contract, including business purpose, intended consumers, referenced Enterprise Events, delivery guarantee, ordering guarantee, and timeliness guarantee, is defined exclusively in Chapter 5 — Capability Model. Functional Specifications shall reference BN identifiers only and shall not define, restate, or modify Business Notification contracts.
 - Traceability
 
 Functional Specifications orchestrate.
@@ -1056,6 +1056,24 @@ Every artifact must trace back to the Constitution (CN). Allowed downward depend
 **Forbidden:** Upward references, layer skipping (e.g., a Decision may not reference a Policy directly; it references Rules that are governed by Policies).
 
 > Telemetry shall trace to governed execution artifacts, Functional Specifications, Aggregate Behaviors, and implementation artifacts.
+
+## Execution Reference Exception
+
+Mandatory references and invocations required by ARS contracts are execution references, not upward governance references, when all of the following are true:
+
+1. The referencing artifact does not redefine the referenced artifact.
+2. The referenced artifact remains owned by its authoritative owner.
+3. The reference is required by an ARS contract, Aggregate Behavior contract, Business Workflow contract, Functional Specification contract, Decision contract, or Business Algorithm contract.
+
+For the avoidance of doubt:
+
+- An Aggregate Behavior may invoke a Decision that it owns as Decision Owner.
+- An Aggregate Behavior may enforce or reference Rules required by its contract.
+- A Functional Specification may reference Rules, Policies, Decisions, Business Notifications, and Business Algorithms required by its contract.
+- A Business Workflow may contain Decision Nodes and Notification Nodes required by its contract.
+- A Business Algorithm may consume governed inputs required by its Output Contract and Dependency Rule.
+
+This exception does not permit a Decision to reference a Policy directly. It does not permit lifecycle ownership to be redefined outside the owning Semantic Model chapter. It does not permit a lower-order artifact to govern, redefine, or supersede a higher-order artifact.
 
 ## Runtime Traceability
 
@@ -1318,7 +1336,7 @@ A Capability shall never directly create, modify, or delete a Semantic Object ow
 
 ### Law 7 — Well‑Formedness
 
-Every domain specification must satisfy all WF‑xxx invariants defined in ARS v2 §29. A specification that violates any well‑formedness rule is invalid.
+Every domain specification must satisfy all WF‑xxx invariants defined in ARS §22. A specification that violates any well‑formedness rule is invalid.
 
 
 ## Part 4 — Evolution Process

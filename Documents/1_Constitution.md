@@ -1,4 +1,4 @@
-# Medehavi Constitution
+# Medhavi Constitution
 
 **Status:** Ratified 
 **Version:** 1.0  
