@@ -4,18 +4,18 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- Core Dependencies -->
-    <PackageVersion Include="FSharp.Core" Version="11.0.101-rc1.26425.128" />
+    <PackageVersion Include="FSharp.Core" Version="11.0.101-rc2.26504.105" />
     <PackageVersion Include="FSharp.SystemTextJson" Version="1.4.36" />
-    <PackageVersion Include="Microsoft.Extensions.Logging" Version="11.0.0-rc.1.26425.128" />
+    <PackageVersion Include="Microsoft.Extensions.Logging" Version="11.0.0-rc.2.26504.105" />
     <PackageVersion Include="MathNet.Numerics" Version="6.0.0-beta2" />
 
     <!-- UI -->
-    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="11.0.0-rc.1.26425.128" />
-    <PackageVersion Include="Microsoft.AspNetCore.Components" Version="11.0.0-rc.1.26425.128" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="11.0.0-rc.2.26504.105" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components" Version="11.0.0-rc.2.26504.105" />
     <PackageVersion Include="Bolero" Version="0.25.65" />
     <PackageVersion Include="Bolero.Server" Version="0.25.65" />
     <PackageVersion Include="Bolero.Build" Version="0.25.65" />
-    <PackageVersion Include="Radzen.Blazor" Version="11.4.0" />
+    <PackageVersion Include="Radzen.Blazor" Version="12.1.2" />
     
     <!-- Testing Stack
     <PackageVersion Include="Expecto" Version="11.1.0" />
