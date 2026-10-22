@@ -16,3 +16,10 @@ module TemporalWindow =
         |> function
             | true -> Ok()
             | false -> Error(InvalidWindow "TemporalWindow.Earliest must not be after TemporalWindow.Latest.")
+
+    let create (earliest: Timestamp) (latest: Timestamp) : Result<TemporalWindow, SemanticValidationError> =
+        let w = { Earliest = Some earliest; Latest = latest }
+        validateTemporalWindow w |> Result.map (fun () -> w)
+
+    let ofLatest (latest: Timestamp) : TemporalWindow =
+        { Earliest = None; Latest = latest }

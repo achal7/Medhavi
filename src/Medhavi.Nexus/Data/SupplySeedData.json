@@ -1,0 +1,76 @@
+{
+  "Records": [
+    {
+      "RecordId": "SREC-INV-2026-001",
+      "Item": "SKU-DRIVE-500GB",
+      "Location": "LOC-CENTRAL-WH",
+      "SupplyType": "Inventory",
+      "Quantity": 500.0,
+      "UnitOfMeasure": "EA",
+      "BatchIdentifier": "BATCH-2026-09-A",
+      "OrderIdentifier": null,
+      "CommitmentIdentifier": null,
+      "SupplierIdentifier": null,
+      "ExpectedDeliveryDate": null,
+      "BusinessTime": "2026-09-12T08:00:00Z",
+      "ObservationTime": "2026-09-12T08:30:00Z",
+      "SourceSystemProvenance": "SAP-ERP-EMEA"
+    },
+    {
+      "RecordId": "SREC-PO-2026-002",
+      "Item": "SKU-DRIVE-1TB",
+      "Location": "LOC-WEST-PLANT",
+      "SupplyType": "PurchaseOrder",
+      "Quantity": 350.0,
+      "UnitOfMeasure": "EA",
+      "BatchIdentifier": null,
+      "OrderIdentifier": "PO-GLOBAL-9012",
+      "CommitmentIdentifier": "COMM-CHIPS-441",
+      "SupplierIdentifier": "SUP-GLOBAL-CHIPS",
+      "ExpectedDeliveryDate": "2026-09-25T00:00:00Z",
+      "BusinessTime": "2026-09-12T09:00:00Z",
+      "ObservationTime": "2026-09-12T09:15:00Z",
+      "SourceSystemProvenance": "EDI-GATEWAY-01"
+    },
+    {
+      "RecordId": "SREC-WO-2026-003",
+      "Item": "SKU-BATTERY-PACK-PRO",
+      "Location": "LOC-CENTRAL-WH",
+      "SupplyType": "ProductionOrder",
+      "Quantity": 600.0,
+      "UnitOfMeasure": "EA",
+      "BatchIdentifier": "WO-BATTERY-LINE-1",
+      "OrderIdentifier": "WO-2026-W37-01",
+      "CommitmentIdentifier": null,
+      "SupplierIdentifier": null,
+      "ExpectedDeliveryDate": "2026-09-28T00:00:00Z",
+      "BusinessTime": "2026-09-12T09:30:00Z",
+      "ObservationTime": "2026-09-12T09:45:00Z",
+      "SourceSystemProvenance": "MES-ASSEMBLY-01"
+    },
+    {
+      "RecordId": "SREC-TRF-2026-004",
+      "Item": "SKU-POWER-SUPPLY-850W",
+      "Location": "LOC-EAST-HUB",
+      "SupplyType": "Transfer",
+      "Quantity": 150.0,
+      "UnitOfMeasure": "EA",
+      "BatchIdentifier": null,
+      "OrderIdentifier": "TRF-ORD-7712",
+      "CommitmentIdentifier": null,
+      "SupplierIdentifier": null,
+      "ExpectedDeliveryDate": "2026-09-18T00:00:00Z",
+      "BusinessTime": "2026-09-12T10:00:00Z",
+      "ObservationTime": "2026-09-12T10:15:00Z",
+      "SourceSystemProvenance": "WMS-WEST"
+    }
+  ],
+  "Understanding": [
+    {
+      "PlanningScopeId": "PS-GLOBAL-SUPPLY-CHAIN",
+      "EvidencePictureVersion": 1,
+      "Publish": true,
+      "IsPeriodicRefresh": false
+    }
+  ]
+}

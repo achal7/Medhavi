@@ -11,6 +11,7 @@ open Medhavi.Contracts.Core.Demand
 open Medhavi.Contracts.Core.Exception
 open Medhavi.Contracts.Core.ItemTransition
 open Medhavi.Contracts.Demand
+open Medhavi.Contracts.Supply
 open Medhavi.Nexus.Composition.ComposeNexus
 
 type EnterprisePictureSeed =
@@ -37,6 +38,10 @@ type UnderstandingSeed =
 
 type DemandSeedDocument =
     { Observations: ReceiveObservationReq list
+      Understanding: UnderstandingSeed list }
+
+type SupplySeedDocument =
+    { Records: ReceiveSupplyDataReq list
       Understanding: UnderstandingSeed list }
 
 let private jsonOptions =
@@ -165,6 +170,43 @@ let private seedDemandData
                 printfn $"  [FAIL] Demand Understanding revise error: {err.Message}"
     }
 
+let private seedSupplyData
+    (recApi: SupplyDataRecordApi)
+    (undApi: SupplyUnderstandingApi)
+    (doc: SupplySeedDocument)
+    : Task<unit> =
+    task {
+        printfn "[StartupData] Seeding Supply Data Records..."
+        for req in doc.Records do
+            let! res = recApi.Receive req
+            match res with
+            | Ok dto -> printfn $"  [OK] Supply record received: {dto.RecordId} ({dto.Item} @ {dto.Location}, Qty: {dto.Quantity} {dto.UnitOfMeasure}, Type: {dto.SupplyType})"
+            | Error err -> printfn $"  [FAIL] Supply record receive error for {req.RecordId}: {err.Message}"
+
+        printfn "[StartupData] Seeding Supply Understanding..."
+        for und in doc.Understanding do
+            let revReq: ReviseSupplyUnderstandingReq =
+                { PlanningScopeId = und.PlanningScopeId
+                  EvidencePictureVersion = und.EvidencePictureVersion }
+            let! revRes = undApi.Revise revReq
+            match revRes with
+            | Ok dto ->
+                printfn $"  [OK] Supply Understanding revised: {dto.PlanningScopeId} (Version: {dto.VersionNumber}, State: {dto.State})"
+                if und.Publish then
+                    do! Task.Delay 500
+                    let pubReq: PublishSupplyUnderstandingReq =
+                        { PlanningScopeId = und.PlanningScopeId
+                          IsPeriodicRefresh = und.IsPeriodicRefresh }
+                    let! pubRes = undApi.Publish pubReq
+                    match pubRes with
+                    | Ok pubDto ->
+                        printfn $"  [OK] Supply Understanding published: {pubDto.PlanningScopeId} (State: {pubDto.State})"
+                    | Error err ->
+                        printfn $"  [FAIL] Supply Understanding publish error: {err.Message}"
+            | Error err ->
+                printfn $"  [FAIL] Supply Understanding revise error: {err.Message}"
+    }
+
 let seed (nexusCtx: NexusContext) : Task<unit> =
     task {
         printfn "========================================================="
@@ -193,6 +235,18 @@ let seed (nexusCtx: NexusContext) : Task<unit> =
                     demandDoc
         | None ->
             printfn "[StartupData] Skipping Demand seeding due to missing or invalid DemandSeedData.json"
+
+        // Allow projection agents to process mailboxes from Demand events
+        do! Task.Delay 600
+
+        match loadJson<SupplySeedDocument> "SupplySeedData.json" with
+        | Some supplyDoc ->
+            do! seedSupplyData
+                    nexusCtx.Supply.UnderstandSupply.Commands.Records
+                    nexusCtx.Supply.UnderstandSupply.Commands.Understanding
+                    supplyDoc
+        | None ->
+            printfn "[StartupData] Skipping Supply seeding due to missing or invalid SupplySeedData.json"
 
         // Final drain of projection mailboxes
         do! Task.Delay 500

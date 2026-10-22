@@ -37,5 +37,20 @@
     <Compile Include="Demand\DemandExplanation.fs" />
     <Compile Include="Demand\DemandLearning.fs" />
     <Compile Include="Demand\DemandIntervention.fs" />
+
+    <Compile Include="Supply\SupplyDataRecord.fs" />
+    <Compile Include="Supply\SupplyUnderstanding.fs" />
+    <Compile Include="Supply\SupplyPlan.fs" />
+    <Compile Include="Supply\Inventory.fs" />
+    <Compile Include="Supply\Capacity.fs" />
+    <Compile Include="Supply\SupplierCollaboration.fs" />
+    <Compile Include="Supply\ProcureMaterials.fs" />
+    <Compile Include="Supply\ProductionSchedule.fs" />
+    <Compile Include="Supply\Distribution.fs" />
+    <Compile Include="Supply\SupplyChange.fs" />
+    <Compile Include="Supply\SupplyQuality.fs" />
+    <Compile Include="Supply\SupplyException.fs" />
+    <Compile Include="Supply\SupplyExplanation.fs" />
+    <Compile Include="Supply\SupplyLearning.fs" />
   </ItemGroup>
 </Project>

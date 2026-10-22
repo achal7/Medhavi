@@ -79,8 +79,8 @@ let main args =
     |> Async.RunSynchronously
 
     // 9. Configure HTTP Middleware Pipeline
-    // if app.Environment.IsDevelopment() then
-    //     app.UseDeveloperExceptionPage() |> ignore
+    if app.Environment.IsDevelopment() then
+        app.UseDeveloperExceptionPage() |> ignore
 
     app.UseHttpsRedirection() |> ignore
     app.UseAntiforgery() |> ignore

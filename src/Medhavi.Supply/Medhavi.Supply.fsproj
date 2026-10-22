@@ -1,8 +1,301 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net11.0</TargetFramework>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Compile Include="ArsIdentifiers.fs" />
+    <Compile Include="Ids.fs" />
+    <Compile Include="Types.fs" />
+    <Compile Include="Helpers.fs" />
+    <Compile Include="Ports.fs" />
+    <Compile Include="AclHelpers.fs" />
+
+    <Compile Include="UnderstandSupply\SupplyDataRecord\Model.fs" />
+    <Compile Include="UnderstandSupply\SupplyDataRecord\Policies.fs" />
+    <Compile Include="UnderstandSupply\SupplyDataRecord\Rules.fs" />
+    <Compile Include="UnderstandSupply\SupplyDataRecord\Decisions.fs" />
+    <Compile Include="UnderstandSupply\SupplyDataRecord\Behaviors.fs" />
+    <Compile Include="UnderstandSupply\SupplyDataRecord\Projections.fs" />
+    <Compile Include="UnderstandSupply\SupplyDataRecord\ACL.fs" />
+    <Compile Include="UnderstandSupply\SupplyDataRecord\Capabilities.fs" />
+
+    <Compile Include="UnderstandSupply\SupplyUnderstanding\Model.fs" />
+    <Compile Include="UnderstandSupply\SupplyUnderstanding\Policies.fs" />
+    <Compile Include="UnderstandSupply\SupplyUnderstanding\Algorithms.fs" />
+    <Compile Include="UnderstandSupply\SupplyUnderstanding\Rules.fs" />
+    <Compile Include="UnderstandSupply\SupplyUnderstanding\Decisions.fs" />
+    <Compile Include="UnderstandSupply\SupplyUnderstanding\Behaviors.fs" />
+    <Compile Include="UnderstandSupply\SupplyUnderstanding\Projections.fs" />
+    <Compile Include="UnderstandSupply\SupplyUnderstanding\ACL.fs" />
+    <Compile Include="UnderstandSupply\SupplyUnderstanding\Capabilities.fs" />
+
+    <Compile Include="UnderstandSupply\Capabilities.fs" />
+    <Compile Include="UnderstandSupply\Workflows.fs" />
+    <Compile Include="UnderstandSupply\Context.fs" />
+
+    <Compile Include="PlanSupply\SupplyPlan\Model.fs" />
+    <Compile Include="PlanSupply\SupplyPlan\Policies.fs" />
+    <Compile Include="PlanSupply\SupplyPlan\Algorithms.fs" />
+    <Compile Include="PlanSupply\SupplyPlan\Rules.fs" />
+    <Compile Include="PlanSupply\SupplyPlan\Decisions.fs" />
+    <Compile Include="PlanSupply\SupplyPlan\Behaviors.fs" />
+    <Compile Include="PlanSupply\SupplyPlan\Projections.fs" />
+    <Compile Include="PlanSupply\SupplyPlan\ACL.fs" />
+    <Compile Include="PlanSupply\SupplyPlan\Capabilities.fs" />
+
+    <Compile Include="PlanSupply\Capabilities.fs" />
+    <Compile Include="PlanSupply\Workflows.fs" />
+    <Compile Include="PlanSupply\Context.fs" />
+
+    <Compile Include="ManageInventory\Types.fs" />
+    <Compile Include="ManageInventory\InventoryPosition\Model.fs" />
+    <Compile Include="ManageInventory\InventoryPosition\Rules.fs" />
+    <Compile Include="ManageInventory\InventoryPosition\Decisions.fs" />
+    <Compile Include="ManageInventory\InventoryPosition\Behaviors.fs" />
+    <Compile Include="ManageInventory\InventoryPosition\Projections.fs" />
+    <Compile Include="ManageInventory\InventoryPosition\ACL.fs" />
+    <Compile Include="ManageInventory\InventoryPosition\Capabilities.fs" />
+
+    <Compile Include="ManageInventory\InventoryPolicy\Model.fs" />
+    <Compile Include="ManageInventory\InventoryPolicy\Policies.fs" />
+    <Compile Include="ManageInventory\InventoryPolicy\Algorithms.fs" />
+    <Compile Include="ManageInventory\InventoryPolicy\Rules.fs" />
+    <Compile Include="ManageInventory\InventoryPolicy\Decisions.fs" />
+    <Compile Include="ManageInventory\InventoryPolicy\Behaviors.fs" />
+    <Compile Include="ManageInventory\InventoryPolicy\Projections.fs" />
+    <Compile Include="ManageInventory\InventoryPolicy\ACL.fs" />
+    <Compile Include="ManageInventory\InventoryPolicy\Capabilities.fs" />
+
+    <Compile Include="ManageInventory\InventoryHealth\Model.fs" />
+    <Compile Include="ManageInventory\InventoryHealth\Policies.fs" />
+    <Compile Include="ManageInventory\InventoryHealth\Algorithms.fs" />
+    <Compile Include="ManageInventory\InventoryHealth\Rules.fs" />
+    <Compile Include="ManageInventory\InventoryHealth\Decisions.fs" />
+    <Compile Include="ManageInventory\InventoryHealth\Behaviors.fs" />
+    <Compile Include="ManageInventory\InventoryHealth\Projections.fs" />
+    <Compile Include="ManageInventory\InventoryHealth\ACL.fs" />
+    <Compile Include="ManageInventory\InventoryHealth\Capabilities.fs" />
+
+    <Compile Include="ManageInventory\Capabilities.fs" />
+    <Compile Include="ManageInventory\Workflows.fs" />
+    <Compile Include="ManageInventory\Context.fs" />
+
+    <Compile Include="ManageCapacity\CapacityPosition\Model.fs" />
+    <Compile Include="ManageCapacity\CapacityPosition\Policies.fs" />
+    <Compile Include="ManageCapacity\CapacityPosition\Algorithms.fs" />
+    <Compile Include="ManageCapacity\CapacityPosition\Rules.fs" />
+    <Compile Include="ManageCapacity\CapacityPosition\Decisions.fs" />
+    <Compile Include="ManageCapacity\CapacityPosition\Behaviors.fs" />
+    <Compile Include="ManageCapacity\CapacityPosition\Projections.fs" />
+    <Compile Include="ManageCapacity\CapacityPosition\ACL.fs" />
+    <Compile Include="ManageCapacity\CapacityPosition\Capabilities.fs" />
+
+    <Compile Include="ManageCapacity\CapacityHealth\Model.fs" />
+    <Compile Include="ManageCapacity\CapacityHealth\Policies.fs" />
+    <Compile Include="ManageCapacity\CapacityHealth\Algorithms.fs" />
+    <Compile Include="ManageCapacity\CapacityHealth\Rules.fs" />
+    <Compile Include="ManageCapacity\CapacityHealth\Decisions.fs" />
+    <Compile Include="ManageCapacity\CapacityHealth\Behaviors.fs" />
+    <Compile Include="ManageCapacity\CapacityHealth\Projections.fs" />
+    <Compile Include="ManageCapacity\CapacityHealth\ACL.fs" />
+    <Compile Include="ManageCapacity\CapacityHealth\Capabilities.fs" />
+
+    <Compile Include="ManageCapacity\Capabilities.fs" />
+    <Compile Include="ManageCapacity\Workflows.fs" />
+    <Compile Include="ManageCapacity\Context.fs" />
+
+    <!-- CA-S-005 Collaborate with Suppliers -->
+    <Compile Include="CollaborateWithSuppliers\SupplierCommitment\Model.fs" />
+    <Compile Include="CollaborateWithSuppliers\SupplierCommitment\Rules.fs" />
+    <Compile Include="CollaborateWithSuppliers\SupplierCommitment\Decisions.fs" />
+    <Compile Include="CollaborateWithSuppliers\SupplierCommitment\Behaviors.fs" />
+    <Compile Include="CollaborateWithSuppliers\SupplierCommitment\Projections.fs" />
+    <Compile Include="CollaborateWithSuppliers\SupplierCommitment\ACL.fs" />
+    <Compile Include="CollaborateWithSuppliers\SupplierCommitment\Capabilities.fs" />
+
+    <Compile Include="CollaborateWithSuppliers\SupplierCommitmentAssessment\Model.fs" />
+    <Compile Include="CollaborateWithSuppliers\SupplierCommitmentAssessment\Policies.fs" />
+    <Compile Include="CollaborateWithSuppliers\SupplierCommitmentAssessment\Algorithms.fs" />
+    <Compile Include="CollaborateWithSuppliers\SupplierCommitmentAssessment\Rules.fs" />
+    <Compile Include="CollaborateWithSuppliers\SupplierCommitmentAssessment\Decisions.fs" />
+    <Compile Include="CollaborateWithSuppliers\SupplierCommitmentAssessment\Behaviors.fs" />
+    <Compile Include="CollaborateWithSuppliers\SupplierCommitmentAssessment\Projections.fs" />
+    <Compile Include="CollaborateWithSuppliers\SupplierCommitmentAssessment\ACL.fs" />
+    <Compile Include="CollaborateWithSuppliers\SupplierCommitmentAssessment\Capabilities.fs" />
+
+    <Compile Include="CollaborateWithSuppliers\SupplierCollaborationHealth\Model.fs" />
+    <Compile Include="CollaborateWithSuppliers\SupplierCollaborationHealth\Policies.fs" />
+    <Compile Include="CollaborateWithSuppliers\SupplierCollaborationHealth\Rules.fs" />
+    <Compile Include="CollaborateWithSuppliers\SupplierCollaborationHealth\Decisions.fs" />
+    <Compile Include="CollaborateWithSuppliers\SupplierCollaborationHealth\Behaviors.fs" />
+    <Compile Include="CollaborateWithSuppliers\SupplierCollaborationHealth\Projections.fs" />
+    <Compile Include="CollaborateWithSuppliers\SupplierCollaborationHealth\ACL.fs" />
+    <Compile Include="CollaborateWithSuppliers\SupplierCollaborationHealth\Capabilities.fs" />
+
+    <Compile Include="CollaborateWithSuppliers\Capabilities.fs" />
+    <Compile Include="CollaborateWithSuppliers\Workflows.fs" />
+    <Compile Include="CollaborateWithSuppliers\Context.fs" />
+
+    <!-- CA-S-006 Procure Materials -->
+    <Compile Include="ProcureMaterials\ProcurementRecommendation\Model.fs" />
+    <Compile Include="ProcureMaterials\ProcurementRecommendation\Policies.fs" />
+    <Compile Include="ProcureMaterials\ProcurementRecommendation\Algorithms.fs" />
+    <Compile Include="ProcureMaterials\ProcurementRecommendation\Rules.fs" />
+    <Compile Include="ProcureMaterials\ProcurementRecommendation\Decisions.fs" />
+    <Compile Include="ProcureMaterials\ProcurementRecommendation\Behaviors.fs" />
+    <Compile Include="ProcureMaterials\ProcurementRecommendation\Projections.fs" />
+    <Compile Include="ProcureMaterials\ProcurementRecommendation\ACL.fs" />
+    <Compile Include="ProcureMaterials\ProcurementRecommendation\Capabilities.fs" />
+
+    <Compile Include="ProcureMaterials\ProcurementPlan\Model.fs" />
+    <Compile Include="ProcureMaterials\ProcurementPlan\Policies.fs" />
+    <Compile Include="ProcureMaterials\ProcurementPlan\Rules.fs" />
+    <Compile Include="ProcureMaterials\ProcurementPlan\Decisions.fs" />
+    <Compile Include="ProcureMaterials\ProcurementPlan\Behaviors.fs" />
+    <Compile Include="ProcureMaterials\ProcurementPlan\Projections.fs" />
+    <Compile Include="ProcureMaterials\ProcurementPlan\ACL.fs" />
+    <Compile Include="ProcureMaterials\ProcurementPlan\Capabilities.fs" />
+
+    <Compile Include="ProcureMaterials\Capabilities.fs" />
+    <Compile Include="ProcureMaterials\Workflows.fs" />
+    <Compile Include="ProcureMaterials\Context.fs" />
+
+    <Compile Include="ScheduleProduction\ProductionSchedule\Model.fs" />
+    <Compile Include="ScheduleProduction\ProductionSchedule\Policies.fs" />
+    <Compile Include="ScheduleProduction\ProductionSchedule\Algorithms.fs" />
+    <Compile Include="ScheduleProduction\ProductionSchedule\Rules.fs" />
+    <Compile Include="ScheduleProduction\ProductionSchedule\Decisions.fs" />
+    <Compile Include="ScheduleProduction\ProductionSchedule\Behaviors.fs" />
+    <Compile Include="ScheduleProduction\ProductionSchedule\Projections.fs" />
+    <Compile Include="ScheduleProduction\ProductionSchedule\ACL.fs" />
+    <Compile Include="ScheduleProduction\ProductionSchedule\Capabilities.fs" />
+
+    <Compile Include="ScheduleProduction\PublishedProductionSchedule\Model.fs" />
+    <Compile Include="ScheduleProduction\PublishedProductionSchedule\Policies.fs" />
+    <Compile Include="ScheduleProduction\PublishedProductionSchedule\Algorithms.fs" />
+    <Compile Include="ScheduleProduction\PublishedProductionSchedule\Rules.fs" />
+    <Compile Include="ScheduleProduction\PublishedProductionSchedule\Decisions.fs" />
+    <Compile Include="ScheduleProduction\PublishedProductionSchedule\Behaviors.fs" />
+    <Compile Include="ScheduleProduction\PublishedProductionSchedule\Projections.fs" />
+    <Compile Include="ScheduleProduction\PublishedProductionSchedule\ACL.fs" />
+    <Compile Include="ScheduleProduction\PublishedProductionSchedule\Capabilities.fs" />
+
+    <Compile Include="ScheduleProduction\Capabilities.fs" />
+    <Compile Include="ScheduleProduction\Workflows.fs" />
+    <Compile Include="ScheduleProduction\Context.fs" />
+
+    <Compile Include="ManageDistribution\DistributionRecommendation\Model.fs" />
+    <Compile Include="ManageDistribution\DistributionRecommendation\Policies.fs" />
+    <Compile Include="ManageDistribution\DistributionRecommendation\Algorithms.fs" />
+    <Compile Include="ManageDistribution\DistributionRecommendation\Rules.fs" />
+    <Compile Include="ManageDistribution\DistributionRecommendation\Decisions.fs" />
+    <Compile Include="ManageDistribution\DistributionRecommendation\Behaviors.fs" />
+    <Compile Include="ManageDistribution\DistributionRecommendation\Projections.fs" />
+    <Compile Include="ManageDistribution\DistributionRecommendation\ACL.fs" />
+    <Compile Include="ManageDistribution\DistributionRecommendation\Capabilities.fs" />
+
+    <Compile Include="ManageDistribution\DistributionPlan\Model.fs" />
+    <Compile Include="ManageDistribution\DistributionPlan\Policies.fs" />
+    <Compile Include="ManageDistribution\DistributionPlan\Algorithms.fs" />
+    <Compile Include="ManageDistribution\DistributionPlan\Rules.fs" />
+    <Compile Include="ManageDistribution\DistributionPlan\Decisions.fs" />
+    <Compile Include="ManageDistribution\DistributionPlan\Behaviors.fs" />
+    <Compile Include="ManageDistribution\DistributionPlan\Projections.fs" />
+    <Compile Include="ManageDistribution\DistributionPlan\ACL.fs" />
+    <Compile Include="ManageDistribution\DistributionPlan\Capabilities.fs" />
+
+    <Compile Include="ManageDistribution\Capabilities.fs" />
+    <Compile Include="ManageDistribution\Workflows.fs" />
+    <Compile Include="ManageDistribution\Context.fs" />
+
+    <!-- CA-S-009 Sense Supply Changes -->
+    <Compile Include="SenseSupplyChanges\SupplyChangeAssessment\Model.fs" />
+    <Compile Include="SenseSupplyChanges\SupplyChangeAssessment\Policies.fs" />
+    <Compile Include="SenseSupplyChanges\SupplyChangeAssessment\Algorithms.fs" />
+    <Compile Include="SenseSupplyChanges\SupplyChangeAssessment\Rules.fs" />
+    <Compile Include="SenseSupplyChanges\SupplyChangeAssessment\Decisions.fs" />
+    <Compile Include="SenseSupplyChanges\SupplyChangeAssessment\Behaviors.fs" />
+    <Compile Include="SenseSupplyChanges\SupplyChangeAssessment\ACL.fs" />
+    <Compile Include="SenseSupplyChanges\SupplyChangeAssessment\Projections.fs" />
+    <Compile Include="SenseSupplyChanges\SupplyChangeAssessment\Capabilities.fs" />
+    <Compile Include="SenseSupplyChanges\Capabilities.fs" />
+    <Compile Include="SenseSupplyChanges\Workflows.fs" />
+    <Compile Include="SenseSupplyChanges\Context.fs" />
+
+    <!-- CA-S-010 Evaluate Supply Quality -->
+    <Compile Include="EvaluateSupplyQuality\SupplyQualityAssessment\Model.fs" />
+    <Compile Include="EvaluateSupplyQuality\SupplyQualityAssessment\Policies.fs" />
+    <Compile Include="EvaluateSupplyQuality\SupplyQualityAssessment\Algorithms.fs" />
+    <Compile Include="EvaluateSupplyQuality\SupplyQualityAssessment\Rules.fs" />
+    <Compile Include="EvaluateSupplyQuality\SupplyQualityAssessment\Decisions.fs" />
+    <Compile Include="EvaluateSupplyQuality\SupplyQualityAssessment\Behaviors.fs" />
+    <Compile Include="EvaluateSupplyQuality\SupplyQualityAssessment\ACL.fs" />
+    <Compile Include="EvaluateSupplyQuality\SupplyQualityAssessment\Projections.fs" />
+    <Compile Include="EvaluateSupplyQuality\SupplyQualityAssessment\Capabilities.fs" />
+    <Compile Include="EvaluateSupplyQuality\Capabilities.fs" />
+    <Compile Include="EvaluateSupplyQuality\Workflows.fs" />
+    <Compile Include="EvaluateSupplyQuality\Context.fs" />
+
+    <!-- CA-S-011 Detect Supply Exceptions -->
+    <Compile Include="DetectSupplyExceptions\SupplyExceptionAssessment\Model.fs" />
+    <Compile Include="DetectSupplyExceptions\SupplyExceptionAssessment\Policies.fs" />
+    <Compile Include="DetectSupplyExceptions\SupplyExceptionAssessment\Algorithms.fs" />
+    <Compile Include="DetectSupplyExceptions\SupplyExceptionAssessment\Rules.fs" />
+    <Compile Include="DetectSupplyExceptions\SupplyExceptionAssessment\Decisions.fs" />
+    <Compile Include="DetectSupplyExceptions\SupplyExceptionAssessment\Behaviors.fs" />
+    <Compile Include="DetectSupplyExceptions\SupplyExceptionAssessment\ACL.fs" />
+    <Compile Include="DetectSupplyExceptions\SupplyExceptionAssessment\Projections.fs" />
+    <Compile Include="DetectSupplyExceptions\SupplyExceptionAssessment\Capabilities.fs" />
+    <Compile Include="DetectSupplyExceptions\Capabilities.fs" />
+    <Compile Include="DetectSupplyExceptions\Workflows.fs" />
+    <Compile Include="DetectSupplyExceptions\Context.fs" />
+
+    <!-- CA-S-012 Explain Supply Decisions -->
+    <Compile Include="ExplainSupplyDecisions\SupplyExplanation\Model.fs" />
+    <Compile Include="ExplainSupplyDecisions\SupplyExplanation\Policies.fs" />
+    <Compile Include="ExplainSupplyDecisions\SupplyExplanation\TemplateCatalog.fs" />
+    <Compile Include="ExplainSupplyDecisions\SupplyExplanation\TemplateRenderer.fs" />
+    <Compile Include="ExplainSupplyDecisions\SupplyExplanation\ReasoningGraphAlgorithms.fs" />
+    <Compile Include="ExplainSupplyDecisions\SupplyExplanation\Algorithms.fs" />
+    <Compile Include="ExplainSupplyDecisions\SupplyExplanation\Rules.fs" />
+    <Compile Include="ExplainSupplyDecisions\SupplyExplanation\Decisions.fs" />
+    <Compile Include="ExplainSupplyDecisions\SupplyExplanation\Behaviors.fs" />
+    <Compile Include="ExplainSupplyDecisions\SupplyExplanation\Projections.fs" />
+    <Compile Include="ExplainSupplyDecisions\SupplyExplanation\ACL.fs" />
+    <Compile Include="ExplainSupplyDecisions\SupplyExplanation\Capabilities.fs" />
+    <Compile Include="ExplainSupplyDecisions\Ports.fs" />
+    <Compile Include="ExplainSupplyDecisions\Capabilities.fs" />
+    <Compile Include="ExplainSupplyDecisions\Workflows.fs" />
+    <Compile Include="ExplainSupplyDecisions\Context.fs" />
+
+    <!-- CA-S-013 Learn From Supply -->
+    <Compile Include="LearnFromSupply\SupplyLearning\Model.fs" />
+    <Compile Include="LearnFromSupply\SupplyLearning\Policies.fs" />
+    <Compile Include="LearnFromSupply\SupplyLearning\Algorithms.fs" />
+    <Compile Include="LearnFromSupply\SupplyLearning\Rules.fs" />
+    <Compile Include="LearnFromSupply\SupplyLearning\Decisions.fs" />
+    <Compile Include="LearnFromSupply\SupplyLearning\Behaviors.fs" />
+    <Compile Include="LearnFromSupply\SupplyLearning\Projections.fs" />
+    <Compile Include="LearnFromSupply\SupplyLearning\ACL.fs" />
+    <Compile Include="LearnFromSupply\SupplyLearning\Capabilities.fs" />
+    <Compile Include="LearnFromSupply\Ports.fs" />
+    <Compile Include="LearnFromSupply\Capabilities.fs" />
+    <Compile Include="LearnFromSupply\Workflows.fs" />
+    <Compile Include="LearnFromSupply\Context.fs" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <ProjectReference Include="..\Medhavi.Foundation\Medhavi.Foundation.fsproj" />
+    <ProjectReference Include="..\Medhavi.SemanticModel\Medhavi.SemanticModel.fsproj" />
+    <ProjectReference Include="..\Medhavi.Contracts\Medhavi.Contracts.fsproj" />
+    <ProjectReference Include="..\Medhavi.SharedKernel\Medhavi.SharedKernel.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MathNet.Numerics" />
+  </ItemGroup>
 </Project>

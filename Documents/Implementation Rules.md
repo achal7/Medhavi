@@ -38,94 +38,79 @@ All code must trace back to a ratified artifact ID (`SE‑C‑xxx`, `SE‑D‑xx
 
 ## 1. Solution & Project Structure
 
-The solution is already defined with the following projects:
+The solution contains the following 11 projects:
 
-```
-Medhavi.Common   (Computation expressions for Result, Task,Async, Validations library, Retry, Serialization etc)
-Medhavi.Foundation   (technical infrastructure – no business meaning)
-Medhavi.Core         (enterprise semantic model + internal lifecycle capabilities)
-Medhavi.Contracts    (shared DTOs, commands, notifications, API types)
-Medhavi.Demand       (demand bounded context – vertical slices)
-Medhavi.Infrastructure (persistence, event bus, projections)
-Medhavi.Nexus        (composition root, API host)
-Medhavi.Web          (UI)
+```text
+Medhavi.Common         (Computation expressions for Result, Task, Async; Validation framework, Retry, Serialization)
+Medhavi.Foundation     (Technical primitives – repository abstractions, CommandPipeline, DomainEventBus, DecisionTrace)
+Medhavi.SemanticModel  (Enterprise semantic objects, value objects, lifecycle definitions, semantic validation)
+Medhavi.SharedKernel   (Cross-domain shared primitives and immutable value objects)
+Medhavi.Contracts      (Shared public contracts: flat DTOs, commands, notifications, query API types – zero domain logic)
+Medhavi.Core           (Enterprise master data and shared core aggregate lifecycles)
+Medhavi.Demand         (Demand intelligence bounded context – vertical slices)
+Medhavi.Supply         (Supply intelligence bounded context – vertical slices)
+Medhavi.Infrastructure (Persistence, event bus, database adapters, projection stores)
+Medhavi.Nexus          (Composition root, API host, runtime orchestration)
+Medhavi.Client         (Client/UI API integration)
 ```
 
-Reference rules:
-- `Medhavi.Core` → `Medhavi.Foundation`
-- `Medhavi.Contracts` → `Medhavi.Core`, `Medhavi.Foundation`
-- `Medhavi.Demand` → `Medhavi.Core`, `Medhavi.Contracts`, `Medhavi.Foundation`
-- `Medhavi.Infrastructure` → `Medhavi.Foundation`
-- `Medhavi.Nexus` → everything except Web
-- `Medhavi.Web` → `Medhavi.Contracts`
+### Reference Rules:
+- `Medhavi.Common` → (zero project dependencies)
+- `Medhavi.Foundation` → `Medhavi.Common`
+- `Medhavi.SemanticModel` → `Medhavi.Common`, `Medhavi.Foundation`
+- `Medhavi.SharedKernel` → `Medhavi.Common`, `Medhavi.Foundation`, `Medhavi.SemanticModel`
+- `Medhavi.Contracts` → `Medhavi.Common`, `Medhavi.Foundation` (Contracts must NEVER reference domain bounded contexts)
+- `Medhavi.Core`, `Medhavi.Demand`, `Medhavi.Supply` → `Medhavi.Common`, `Medhavi.Foundation`, `Medhavi.SemanticModel`, `Medhavi.SharedKernel`, `Medhavi.Contracts`
+  - **Critical Boundary Rule**: In all domain projects, `Medhavi.Contracts` is strictly isolated to `ACL.fs`, `Projections.fs`, `Capabilities.fs`, `Workflows.fs`, and `Context.fs`. It must NEVER be opened or referenced in pure domain files (`Model.fs`, `Policies.fs`, `Algorithms.fs`, `Rules.fs`, `Decisions.fs`, `Behaviors.fs`).
+  - **No Cross-Domain Direct References**: Domain bounded contexts must NEVER reference each other (`Medhavi.Demand` must not reference `Medhavi.Supply`, and vice-versa).
+- `Medhavi.Infrastructure` → `Medhavi.Foundation`, `Medhavi.Contracts`, domain projects
+- `Medhavi.Nexus` → everything except `Medhavi.Client`
+- `Medhavi.Client` → `Medhavi.Contracts`
 
 No circular references. Do not add new projects unless explicitly approved.
 
 ---
 
-## 2. Core Types & File Layout
+## 2. Core Types, File Layout & Compilation Order
 
-### 2.1 `Medhavi.Foundation` (DO NOT MODIFY without approval)
+Because F# compiles files strictly in top-to-bottom order within the project file, the file sequence is architectural law.
 
-Contains only technical primitives. Do **not** put any `SE‑C‑xxx` or domain concepts here. The following base types are available:
+### 2.1 Project Root Files (Domain Contexts)
 
-- `ArsIdentifier` (base type for all architectural IDs)
-- `DomainError` and `Result`/`AsyncResult` helpers
-- `Aggregate` module with `Repository<'a, 'key, 'event>`, `CommandPipeline`, `ExecutionOutcome`
-- `DomainEventBus`, `ProjectionAgent`
-- `DecisionTrace` base types
-- Execution pipeline modules (`CommandPipeline`, `CommandCapabilities`, etc.)
-- `Ids` (ID generation), `Validations` (common validators)
-- `InMemRepository` (generic in‑memory repository)
+At the root of each domain project (`Medhavi.Demand`, `Medhavi.Supply`, `Medhavi.Core`):
+1. `ArsIdentifiers.fs` — Code constants for all `CA`, `CR`, `SE`, `AB`, `DE`, `BR`, `PO`, `BA`, `EV`, `BN`, and `FS` identifiers.
+2. `Ids.fs` — Single-case discriminated union ID types wrapping `ArsIdentifier` / primitives.
+3. `Types.fs` — Domain-level shared value objects and domain enumerations (compiled before ports/helpers).
+4. `Helpers.fs` — Pure domain validation helpers. Must NEVER contain `[<AutoOpen>]` that opens `Medhavi.Contracts`.
+5. `Ports.fs` — Domain port signatures, fact types, and lookup functions.
 
-Use these as they are. Never add business logic here.
+### 2.2 Aggregate Component Folders (Canonical 9-File Order)
 
-### 2.2 `Medhavi.Core`
+Inside each aggregate sub-folder (e.g. `UnderstandSupply/SupplyDataRecord/`, `ProcureMaterials/ProcurementRecommendation/`):
 
-Flat value objects live directly at the root of the project. Aggregates with lifecycles get a component folder.
+1. **`Model.fs`** — Aggregate identity, lifecycle states (DU), aggregate record, commands (DU), events (DU), and the pure `evolve` function (`Event -> state option -> state option`). Pure domain types only; no external DTOs, no I/O.
+2. **`Policies.fs`** — Governed policy parameter records (`PO-xxx`) with default values.
+3. **`Algorithms.fs`** (if applicable) — Pure deterministic mathematical and algorithmic computations (`BA-xxx`). Consumes domain types, returns assessments/scores.
+4. **`Rules.fs`** — Pure invariant and eligibility checks (`BR-xxx`) with signature: `input -> Result<unit, DomainError>`.
+5. **`Decisions.fs`** — Evaluates rules and algorithms to produce a governed `DecisionOutcome` DU (`DE-xxx`). Records decision traces using `ArsIdentifiers`. Does not emit aggregate events.
+6. **`Behaviors.fs`** — Implements Aggregate Behaviors (`AB-xxx`). Signature: `Command -> state option -> Result<Event list, DomainError>`. Evaluates decisions, enforces lifecycle preconditions, mutates aggregate state, and produces enterprise events.
+7. **`Projections.fs`** — Read-model projection using `ProjectionAgent`. Subscribes to domain events and maps domain records to public contract DTOs (`Medhavi.Contracts`).
+8. **`ACL.fs`** — Anti-Corruption Layer. Translates external contract DTOs/requests into domain commands using applicative validation (`<!>` and `<*>`). Validates referenced entities via injected lookup ports.
+9. **`Capabilities.fs`** — Wires the aggregate's `CommandPipeline` with repositories and exposes command execution functions.
 
-**Flat files (no folder, pure immutable types):**
-- `Timestamp.fs` (SE‑C‑022)
-- `PositiveDecimal.fs`
-- `Quantity.fs` (SE‑C‑023)
-- `Duration.fs` (SE‑C‑024)
-- `TemporalWindow.fs` (SE‑C‑028)
-- `NeedWindow.fs` (SE‑C‑029)
-- `Money.fs` (SE‑C‑025) – if needed
-- `TimeZone.fs` (SE‑C‑031) – if needed
+### 2.3 Capability-Level Orchestration Files
 
-**Aggregate component folders (7 files each):** `UnitOfMeasure/`, `Item/`, `Location/`, `Customer/`, `Supplier/`, `PlanningScope/`, `Calendar/`, `PlanningPeriod/`, `EnterprisePicture/`.
+At the top of each vertical capability slice (e.g. `UnderstandSupply/`, `ProcureMaterials/`):
+- **`Capabilities.fs`** — Defines the public API record for the capability, exposing query and command methods returning `Task<Result<'a, ApiError>>`.
+- **`Workflows.fs`** — Implements Business Workflows (`BW-xxx` / `FS-xxx`). Orchestrates aggregate behaviors across nodes, persists events, and emits Business Notifications (`BN-xxx`) only after referenced enterprise events exist.
+- **`Context.fs`** — Pure composition function (`Context.create`) that wires repositories, ports, policies, and command pipelines into the capability API.
 
-Inside each aggregate folder, the files are ordered exactly as:
-1. `Model.fs`
-2. `Rules.fs`
-3. `Behaviours.fs`
-4. `Projections.fs`
-5. `ACL.fs`
-6. `CommandHandler.fs`
-7. `Capabilities.fs`
+### 2.4 Strict Aggregate Boundary Isolation (DDD Law)
 
-**ArsIdentifiers** file at project root: `ArsIdentifiers.fs` (contains `Core` module with all `SE‑C‑xxx`, `BR‑C‑xxx`, `BN‑C‑xxx` etc.).
-
-### 2.3 `Medhavi.Demand`
-
-Vertical capability slices are top‑level folders: `UnderstandDemand/`, `ForecastDemand/`, `SenseDemand/`, `SegmentDemand/`, `ClassifyDemand/`, `PrioritizeDemand/`, `EvaluateDemandQuality/`, `DetectDemandExceptions/`, `ExplainDemand/`, `LearnFromDemand/`.
-
-Inside each capability folder:
-
-- **One sub‑folder per owned aggregate** (e.g., `DemandObservation/`, `DemandUnderstanding/`), containing:
-  - `Model.fs`
-  - `Rules.fs`
-  - `Decisions.fs`
-  - `Algorithms.fs` (if needed)
-  - `Policies.fs`
-  - `Projections.fs`
-- **Capability‑level files:**
-  - `ACL.fs`
-  - `FunctionalSpecifications.fs`
-  - `Capabilities.fs`
-
-**ArsIdentifiers** file at project root: `ArsIdentifiers.fs` (contains `Demand` module with all `CA‑D‑xxx`, `DE‑D‑xxx`, `BR‑D‑xxx`, etc.).
+- **Zero Cross-Aggregate Internal Dependencies**: An aggregate's `Model.fs`, `Rules.fs`, `Decisions.fs`, and `Behaviors.fs` must NEVER open or reference another aggregate's internal namespace or record types.
+- **Identity References Only**: Aggregates reference external aggregates by Identity only (e.g., `ItemId`, `LocationId`, `ProcurementRequirementId`).
+- **Shared Value Objects**: Value objects shared across multiple aggregates in a capability must reside in a capability-level `Types.fs` or in `Medhavi.SemanticModel`, never in one specific aggregate's `Model.fs`.
+- **Facts and Ports for Read Coupling**: When an aggregate behavior requires information from another aggregate, it receives that information as a decoupled, read-only `Fact` record via an injected function/port (`FactsProvider`), never by loading or inspecting the other aggregate's entity state directly.
 
 ---
 

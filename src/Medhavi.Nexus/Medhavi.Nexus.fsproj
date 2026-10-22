@@ -9,6 +9,7 @@
 
     <Compile Include="Composition\ComposeCore.fs" />
     <Compile Include="Composition\ComposeDemand.fs" />
+    <Compile Include="Composition\ComposeSupply.fs" />
     <Compile Include="Composition\ComposeNexus.fs" />
     <Compile Include="Composition\ComposeClient.fs" />
     <Compile Include="Composition\StartupData.fs" />
