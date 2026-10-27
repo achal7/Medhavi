@@ -12,7 +12,11 @@ open Medhavi.Client.Registries
 open Medhavi.Client.Rendering
 open Medhavi.Client.Controls
 open Medhavi.Client.AI
-open Medhavi.Client.Components.Supply
+open Medhavi.Client.Supply.Capacity
+open Medhavi.Client.Supply.SupplyOrders
+
+module CapacityActions = CapacityGridSchema
+module SupplyActions = SupplyOrderGridSchema
 open Medhavi.Client.ViewComposition.Identity
 open Medhavi.Client.ViewComposition.Schema
 open Medhavi.Client.ViewComposition.Component

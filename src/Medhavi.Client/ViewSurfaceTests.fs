@@ -10,6 +10,11 @@ open Medhavi.Client.ViewComposition.Schema
 open Medhavi.Client.ViewComposition.Geometry
 open Medhavi.Client.ViewComposition.Session
 open Medhavi.Client.ViewComposition.Layout
+open Medhavi.Client.Components
+open Medhavi.Client.Supply.Inventory
+open Medhavi.Client.Supply.Capacity
+open Medhavi.Client.Supply.SupplyOrders
+open Medhavi.Client.Supply.ChangeSensing
 
 
     // ==================================================================
@@ -135,7 +140,7 @@ open Medhavi.Client.ViewComposition.Layout
 
         match ComponentResolver.resolve componentRegistry extReg testVC with
         | Ok _ -> true
-        | _ -> false
+        | Error _ -> false
 
     // ==================================================================
     // R2.3 Context Construction Tests
@@ -240,53 +245,53 @@ open Medhavi.Client.ViewComposition.Layout
     // ==================================================================
     let private testInventoryWorkbenchResolves () =
         let vc: ViewComponent =
-            { ComponentDefId = Components.Supply.InventoryGrid.definitionId
+            { ComponentDefId = InventoryGrid.definitionId
               Binding =
-                { StoreId = Components.Supply.InventoryGrid.storeId
-                  SchemaDefId = Components.Supply.InventorySchema.schemaId }
+                { StoreId = InventoryStore.storeId
+                  SchemaDefId = InventoryGridSchema.schemaId }
               Configuration = { LocalFilters = []; Parameters = Map.empty }
               Title = None
               Icon = None }
-        match ComponentResolver.resolve Components.ComponentCatalog.components Components.ComponentCatalog.schemas vc with
+        match ComponentResolver.resolve ComponentCatalog.components ComponentCatalog.schemas vc with
         | Ok _ -> true
         | Error _ -> false
 
     let private testCapacityWorkbenchResolves () =
         let vc: ViewComponent =
-            { ComponentDefId = Components.Supply.CapacityGrid.definitionId
+            { ComponentDefId = CapacityGrid.definitionId
               Binding =
-                { StoreId = Components.Supply.CapacityGrid.storeId
-                  SchemaDefId = Components.Supply.CapacitySchema.schemaId }
+                { StoreId = CapacityStore.storeId
+                  SchemaDefId = CapacityGridSchema.schemaId }
               Configuration = { LocalFilters = []; Parameters = Map.empty }
               Title = None
               Icon = None }
-        match ComponentResolver.resolve Components.ComponentCatalog.components Components.ComponentCatalog.schemas vc with
+        match ComponentResolver.resolve ComponentCatalog.components ComponentCatalog.schemas vc with
         | Ok _ -> true
         | Error _ -> false
 
     let private testSupplyWorkbenchResolves () =
         let vc: ViewComponent =
-            { ComponentDefId = Components.Supply.SupplyGrid.definitionId
+            { ComponentDefId = SupplyGrid.definitionId
               Binding =
-                { StoreId = Components.Supply.SupplyGrid.storeId
-                  SchemaDefId = Components.Supply.SupplySchema.schemaId }
+                { StoreId = SupplyOrderStore.storeId
+                  SchemaDefId = SupplyOrderGridSchema.schemaId }
               Configuration = { LocalFilters = []; Parameters = Map.empty }
               Title = None
               Icon = None }
-        match ComponentResolver.resolve Components.ComponentCatalog.components Components.ComponentCatalog.schemas vc with
+        match ComponentResolver.resolve ComponentCatalog.components ComponentCatalog.schemas vc with
         | Ok _ -> true
         | Error _ -> false
 
-    let private testSupplyUnderstandingResolves () =
+    let private testSupplyChangeSensingResolves () =
         let vc: ViewComponent =
-            { ComponentDefId = Components.Supply.SupplyUnderstandingGrid.definitionId
+            { ComponentDefId = SupplyChangeSensingGrid.definitionId
               Binding =
-                { StoreId = Components.Supply.SupplyUnderstandingGrid.storeId
-                  SchemaDefId = Components.Supply.SupplyUnderstandingSchema.schemaId }
+                { StoreId = SupplyChangeSensingStore.storeId
+                  SchemaDefId = SupplyChangeSensingGridSchema.schemaId }
               Configuration = { LocalFilters = []; Parameters = Map.empty }
               Title = None
               Icon = None }
-        match ComponentResolver.resolve Components.ComponentCatalog.components Components.ComponentCatalog.schemas vc with
+        match ComponentResolver.resolve ComponentCatalog.components ComponentCatalog.schemas vc with
         | Ok _ -> true
         | Error _ -> false
 
@@ -308,7 +313,7 @@ open Medhavi.Client.ViewComposition.Layout
           "Supply: CA-S-003 Inventory Workbench resolves", testInventoryWorkbenchResolves()
           "Supply: CA-S-004 Capacity Workbench resolves", testCapacityWorkbenchResolves()
           "Supply: CA-S-002 Planned Order Schedule resolves", testSupplyWorkbenchResolves()
-          "Supply: CA-S-001 Sensory Stream resolves", testSupplyUnderstandingResolves() ]
+          "Supply: CA-S-009 Change Sensing resolves", testSupplyChangeSensingResolves() ]
 
     let report () : unit =
         let results = run()

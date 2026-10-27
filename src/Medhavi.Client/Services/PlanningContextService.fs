@@ -27,26 +27,50 @@ type PlanningContextService =
       Subscribe: (PlanningContext -> unit) -> (unit -> unit) }
 
 module PlanningContextService =
+
+    type private ContextMsg =
+        | Get of AsyncReplyChannel<PlanningContext>
+        | Update of (PlanningContext -> PlanningContext)
+        | Subscribe of (PlanningContext -> unit) * AsyncReplyChannel<unit -> unit>
+        | Unsubscribe of Guid
+
     let create (initial: PlanningContext) : PlanningContextService =
-        let lockObj = obj()
-        let mutable current = initial
-        let listeners = System.Collections.Generic.List<PlanningContext -> unit>()
+        let agent =
+            MailboxProcessor.Start(fun inbox ->
+                let rec loop (current: PlanningContext) (subscribers: Map<Guid, PlanningContext -> unit>) =
+                    async {
+                        let! msg = inbox.Receive()
+                        match msg with
+                        | Get reply ->
+                            reply.Reply current
+                            return! loop current subscribers
+                        | Update transform ->
+                            let next = transform current
+                            for KeyValue(_, sub) in subscribers do
+                                sub next
+                            return! loop next subscribers
+                        | Subscribe(sub, reply) ->
+                            let id = Guid.NewGuid()
+                            let unsubscribe () = inbox.Post(Unsubscribe id)
+                            reply.Reply unsubscribe
+                            return! loop current (Map.add id sub subscribers)
+                        | Unsubscribe id ->
+                            return! loop current (Map.remove id subscribers)
+                    }
+                loop initial Map.empty)
 
-        { Get = fun () -> lock lockObj (fun () -> current)
-          Update =
-            fun f ->
-                let next =
-                    lock lockObj (fun () ->
-                        current <- f current
-                        current)
-
-                lock lockObj (fun () -> listeners |> Seq.iter(fun l -> l next))
-          Subscribe =
-            fun l ->
-                lock lockObj (fun () -> listeners.Add(l))
-                fun () -> lock lockObj (fun () -> listeners.Remove(l) |> ignore) }
+        { Get = fun () -> agent.PostAndReply Get
+          Update = fun f -> agent.Post(Update f)
+          Subscribe = fun sub -> agent.PostAndReply(fun reply -> Subscribe(sub, reply)) }
 
     let createDefault () : PlanningContext =
+        let defaultHorizon =
+            match Horizon.presets() with
+            | (_, r) :: _ -> r
+            | [] ->
+                let now = DateTimeOffset.Now
+                { Start = now; End = now.AddDays 30.0 }
+
         { Scenario = ScenarioId.baseline
-          Horizon = snd(List.head(Horizon.presets()))
+          Horizon = defaultHorizon
           PlantId = None }

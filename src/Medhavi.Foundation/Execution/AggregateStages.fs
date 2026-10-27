@@ -194,20 +194,20 @@ let persist
                     return Complete(ExecutionOutcome.Failed appErr, [ knowledge ])
 
                 | Ok _ ->
-                    enrichedEvents
-                    |> List.iter(fun (evt, envResult) ->
-                        //DomainEventBus.Publish evt
+                    for (_evt, envResult) in enrichedEvents do
+
+
 
                         match envResult with
-                        | Ok envelope -> deps.DispatchEnvelope envelope |> ignore
-                        | Error serErr ->
-                            // let errorKnowledge =
-                            //     makeKnowledge(
-                            //         ArchitecturalKnowledge.ofError
-                            //             "EnvelopeSerializationFailed"
-                            //             [ "AggregateId", box id; "Error", box serErr ]
-                            //     )
-                            ())
+                        | Ok envelope -> do! deps.DispatchEnvelope envelope
+                        | Error _ -> ()
+
+
+
+
+
+
+
 
                     let knowledge =
                         makeKnowledge(

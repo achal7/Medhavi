@@ -12,8 +12,12 @@ open Medhavi.Client
 open Medhavi.Client.Controls
 open Medhavi.Contracts.Client
 open Medhavi.Client.Components
-open Medhavi.Client.Components.Core.Demand
-open Medhavi.Client.Components.Supply
+open Medhavi.Client.Core.Demand
+open Medhavi.Client.Supply.Capacity
+open Medhavi.Client.Supply.SupplyOrders
+
+module SupplyActions = SupplyOrderGridSchema
+module CapacityActions = CapacityGridSchema
 open Medhavi.Client.Components.SettingsDialog
 open Medhavi.Client.ViewComposition.View
 open Medhavi.Client.ViewComposition.Identity
@@ -117,7 +121,7 @@ let private pushBreadcrumb
 
 let init ctx : Model * Cmd<Msg> =
     let planning = ctx.PlanningContextService.Get()
-    let initialViews = ComponentCatalog.defaultViews
+    let initialViews = ViewCatalog.defaultViews
 
     let applicationBarModel, applicationBarCmd = ApplicationBar.init planning
     let navigationModel, navigationCmd = NavigationBar.init ctx.ComponentRegistry initialViews
@@ -127,7 +131,7 @@ let init ctx : Model * Cmd<Msg> =
 
     let initialViewCmd =
         Cmd.ofMsg(
-            ViewSpaceMsg(ViewSpace.Msg.Request(ViewSpace.OpenViewDefinition ComponentCatalog.executiveKpiDashboardView))
+            ViewSpaceMsg(ViewSpace.Msg.Request(ViewSpace.OpenViewDefinition ViewCatalog.executiveKpiDashboardView))
         )
 
     { ApplicationBar = applicationBarModel
@@ -237,7 +241,7 @@ let private handleViewSpaceOutput (ctx: ApplicationContext) (output: ViewSpace.O
         else
             let keyDesc = targetKey |> Option.defaultValue "Selected item"
 
-            if actionId = DemandOrdersActions.explainShortage.Id then
+            if actionId = DemandGridActions.explainShortage.Id then
                 let target = targetKey |> Option.defaultValue "D-1002"
 
                 let sidePanelModel, sideCmd, _ =

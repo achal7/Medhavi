@@ -106,6 +106,9 @@ type DynamicRadzenGrid() =
     member val AllowPaging: bool = false with get, set
 
     [<Parameter>]
+    member val PageSize: int = 50 with get, set
+
+    [<Parameter>]
     member val AllowSorting: bool = true with get, set
 
     [<Parameter>]
@@ -217,10 +220,10 @@ type DynamicRadzenGrid() =
                             text String.Empty
 
                 div {
-                    attr.style "width: 100%; height: 100%; min-height: 24px; display: flex; align-items: center; cursor: pointer;"
-                    on.click (fun (e: MouseEventArgs) ->
-                        if not (isNull this.OnRowSelected) then
-                            this.OnRowSelected.Invoke(row))
+                    attr.style "width: 100%; height: 100%; min-height: 24px; display: flex; align-items: center;"
+
+
+
 
                     contentNode
                 }
@@ -236,6 +239,7 @@ type DynamicRadzenGrid() =
                 "Data" => this.Rows
                 "Count" => this.Rows.Count
                 "AllowPaging" => this.AllowPaging
+                "PageSize" => this.PageSize
                 "AllowSorting" => this.AllowSorting
                 "AllowFiltering" => this.AllowFiltering
                 "AllowGrouping" => this.AllowGrouping
@@ -278,19 +282,19 @@ type DynamicRadzenGrid() =
                     if not (isNull this.OnRowSelected) then
                         this.OnRowSelected.Invoke(row)))
 
-                "RowClick" => EventCallback.Factory.Create<DataGridRowMouseEventArgs<Value>>(this, Action<DataGridRowMouseEventArgs<Value>>(fun args ->
-                    if not (isNull (box args.Data)) && not (isNull this.OnRowSelected) then
-                        this.OnRowSelected.Invoke(args.Data)))
+                "RowClick" => EventCallback.Factory.Create<DataGridRowMouseEventArgs<Value>>(this, Action<DataGridRowMouseEventArgs<Value>>(fun _ -> ()))
 
-                "CellClick" => EventCallback.Factory.Create<DataGridCellMouseEventArgs<Value>>(this, Action<DataGridCellMouseEventArgs<Value>>(fun args ->
-                    if not (isNull (box args.Data)) && not (isNull this.OnRowSelected) then
-                        this.OnRowSelected.Invoke(args.Data)))
+
+
+                "CellClick" => EventCallback.Factory.Create<DataGridCellMouseEventArgs<Value>>(this, Action<DataGridCellMouseEventArgs<Value>>(fun _ -> ()))
+
+
 
                 "RowDeselect" => EventCallback.Factory.Create<Value>(this, Action<Value>(fun _ -> ()))
 
-                "ValueChanged" => EventCallback.Factory.Create<IList<Value>>(this, Action<IList<Value>>(fun list ->
-                    if not (isNull list) && list.Count > 0 && not (isNull this.OnRowSelected) then
-                        this.OnRowSelected.Invoke(list.[0])))
+                "ValueChanged" => EventCallback.Factory.Create<IList<Value>>(this, Action<IList<Value>>(fun _ -> ()))
+
+
 
                 "Sort" => EventCallback.Factory.Create<DataGridColumnSortEventArgs<Value>>(this, Action<DataGridColumnSortEventArgs<Value>>(fun args ->
                     if not (isNull this.OnSort) then this.OnSort.Invoke(args)))

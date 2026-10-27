@@ -1,6 +1,8 @@
 namespace Medhavi.Client.AI
 
 open System
+open System.Threading.Tasks
+open Medhavi.Contracts.Supply
 
 type ImpactSeverity =
     | Low
@@ -43,250 +45,388 @@ type CausalExplanation =
 
 module CausalExplainer =
 
-    let private explanationForD1002 : CausalExplanation =
-        { EntityId = "D-1002"
-          EntityType = "Demand Order"
-          Title = "Root-Cause Analysis for Demand D-1002"
-          Summary = "Demand order D-1002 for Siemens AG has a shortage of 450 units due to an upstream raw material delivery delay on Purchase Order PO-8802."
-          RootCauseStatement = "Texas Instruments Dallas Fab experienced a 4-day wafer packaging backlog, delaying delivery of A100 sub-modules to Berlin DC from 2026-09-04 to 2026-09-08."
-          FinancialImpact = "$342,500 Revenue at Risk"
-          Severity = Critical
-          CausalPath =
-            [ { NodeId = "D-1002"
-                NodeType = "Customer Demand"
-                Icon = "person"
-                Title = "Siemens AG · A100 Module"
-                Subtitle = "Required: 950 Units · Due: 2026-09-04"
-                Status = "Shortage (-450 Units)"
-                StatusColor = "var(--rz-danger)"
-                Metrics = [ "Contract SLA", "Tier 1 Priority"; "Penalty Clause", "€12,500/day" ] }
+    let private iconForType (nodeType: string) (isHypothetical: bool) : string =
+        if isHypothetical then
+            "alt_route"
+        else
+            match nodeType with
+            | "RootCause" -> "warning"
+            | "Disruption" -> "error_outline"
+            | "Bottleneck" -> "precision_manufacturing"
+            | "Constraint" -> "build"
+            | "Customer Demand" | "Demand" | "Demand Order" -> "person"
+            | "Purchase Order" | "Supplier" | "Pegged Supplier PO" -> "local_shipping"
+            | "Work Center" | "Production" | "Manufacturing Assembly" -> "precision_manufacturing"
+            | "PrescriptiveRecommendation" -> "bolt"
+            | _ -> "info"
 
-              { NodeId = "PL-BER"
-                NodeType = "Manufacturing Assembly"
-                Icon = "precision_manufacturing"
-                Title = "Berlin DC · SMT Line 3"
-                Subtitle = "Scheduled Build: 2026-09-03"
-                Status = "Material Starvation"
-                StatusColor = "var(--rz-warning)"
-                Metrics = [ "Current Load", "92.4% (Bottleneck)"; "Buffer Stock", "0 Units available" ] }
+    let private statusColorForType (nodeType: string) (isHypothetical: bool) : string =
+        if isHypothetical then
+            "var(--rz-series-1, var(--rz-primary))"
+        else
+            match nodeType with
+            | "RootCause" | "Disruption" -> "var(--rz-danger)"
+            | "Bottleneck" -> "var(--rz-danger)"
+            | "Constraint" -> "var(--rz-warning)"
+            | "PrescriptiveRecommendation" -> "var(--rz-success)"
+            | _ -> "var(--rz-primary)"
 
-              { NodeId = "PO-8802"
-                NodeType = "Pegged Supplier PO"
-                Icon = "local_shipping"
-                Title = "Texas Instruments · PO-8802"
-                Subtitle = "Promised: 2026-09-08 (Original: 2026-09-04)"
-                Status = "Supplier Delay (+4 Days)"
-                StatusColor = "var(--rz-danger)"
-                Metrics = [ "Shipment Mode", "Ocean Freight"; "Tracking", "In Transit (Rotterdam Port)" ] } ]
-          Recommendations =
-            [ { ResolutionId = "RES-EXPEDITE"
-                Title = "Air Freight Expedite"
-                Description = "Re-route remaining 450 units from Rotterdam via express air charter directly to Berlin DC. Recovers promised delivery to 2026-09-04."
-                ConfidencePct = 94.5
-                CostEstimate = Some "+€2,400 Freight"
-                RecoveryTime = Some "Recovers 4 Days (On-Time)"
-                ActionCode = "supply.expedite"
-                ButtonLabel = "Apply Expedite"
-                ButtonIcon = "flight_takeoff" }
+    let private statusText (node: ExplanationNodeDto) : string =
+        match Map.tryFind "Status" node.Properties with
+        | Some s -> s
+        | None ->
+            match node.NodeType with
+            | "RootCause" -> "Root Cause Identified"
+            | "Disruption" -> "Disruption Detected"
+            | "Bottleneck" -> "Capacity Bottleneck"
+            | "Constraint" -> "Active Constraint"
+            | "PrescriptiveRecommendation" -> "Recommended Action"
+            | other -> other
 
-              { ResolutionId = "RES-REALLOCATE"
-                Title = "Buffer Stock Reallocation"
-                Description = "Transfer 450 uncommitted buffer units from Munich DC inventory. Transit time is 18 hours via regional ground transport."
-                ConfidencePct = 88.0
-                CostEstimate = Some "+€650 Transfer"
-                RecoveryTime = Some "Recovers 3 Days (2026-09-05)"
-                ActionCode = "inventory.transfer"
-                ButtonLabel = "Reallocate Stock"
-                ButtonIcon = "swap_horiz" }
+    let private subtitleText (node: ExplanationNodeDto) : string =
+        match Map.tryFind "Subtitle" node.Properties with
+        | Some s -> s
+        | None ->
+            let relevant =
+                node.Properties
+                |> Map.toList
+                |> List.filter (fun (k, _) ->
+                    k <> "Status" && k <> "Subtitle" && k <> "Title" && k <> "Icon" && k <> "EntityId")
+            match relevant with
+            | [] -> node.NodeType
+            | pairs ->
+                pairs
+                |> List.map (fun (k, v) -> sprintf "%s: %s" k v)
+                |> String.concat " · "
 
-              { ResolutionId = "RES-SPLIT"
-                Title = "Split Order & Customer Waiver"
-                Description = "Ship 500 available units on 2026-09-04 and split remaining 450 units to arrive on 2026-09-09 under customer agreement."
-                ConfidencePct = 82.0
-                CostEstimate = Some "€0 Additional Cost"
-                RecoveryTime = Some "500 Units On-Time, 450 Delayed"
-                ActionCode = "demand.split"
-                ButtonLabel = "Split Order"
-                ButtonIcon = "call_split" } ]
-          GeneratedAt = DateTimeOffset.UtcNow }
+    let private nodeMetrics (node: ExplanationNodeDto) : (string * string) list =
+        node.Properties
+        |> Map.toList
+        |> List.filter (fun (k, _) ->
+            k <> "Status" && k <> "Subtitle" && k <> "Title" && k <> "Icon" && k <> "Description" && k <> "ActionCode")
 
-    let private explanationForD1003 : CausalExplanation =
-        { EntityId = "D-1003"
-          EntityType = "Demand Order"
-          Title = "Root-Cause Analysis for Demand D-1003"
-          Summary = "Demand order D-1003 for ASML Corp is at risk due to a scheduled maintenance window on Berlin Assembly Line 2."
-          RootCauseStatement = "Line 2 scheduled calibration downtime on 2026-09-02 reduces available capacity by 16 hours, causing a 1-day production slip."
-          FinancialImpact = "$180,000 Revenue at Risk"
-          Severity = Medium
-          CausalPath =
-            [ { NodeId = "D-1003"
-                NodeType = "Customer Demand"
-                Icon = "person"
-                Title = "ASML Corp · B200 Inverter"
-                Subtitle = "Required: 300 Units · Due: 2026-09-04"
-                Status = "At Risk"
-                StatusColor = "var(--rz-warning)"
-                Metrics = [ "Contract SLA", "Tier 2 Priority"; "Margin", "42.5%" ] }
+    /// Maps a single ExplanationNodeDto and the graph edge context into a CausalNode
+    let mapNode (edges: ExplanationEdgeDto list) (node: ExplanationNodeDto) : CausalNode =
+        { NodeId = node.NodeId
+          NodeType = node.NodeType
+          Icon =
+            match Map.tryFind "Icon" node.Properties with
+            | Some ic -> ic
+            | None -> iconForType node.NodeType node.IsHypothetical
+          Title = if String.IsNullOrWhiteSpace node.Label then node.NodeId else node.Label
+          Subtitle = subtitleText node
+          Status = statusText node
+          StatusColor =
+            match Map.tryFind "StatusColor" node.Properties with
+            | Some sc -> sc
+            | None -> statusColorForType node.NodeType node.IsHypothetical
+          Metrics = nodeMetrics node }
 
-              { NodeId = "PL-BER-L2"
-                NodeType = "Capacity Bottleneck"
-                Icon = "build"
-                Title = "Berlin DC · Inverter Line 2"
-                Subtitle = "Scheduled Maintenance: 2026-09-02"
-                Status = "Capacity Constrained (94.8%)"
-                StatusColor = "var(--rz-warning)"
-                Metrics = [ "Downtime", "16 Hours"; "Available Capacity", "5.2%" ] } ]
-          Recommendations =
-            [ { ResolutionId = "RES-OVERTIME"
-                Title = "Authorize Weekend Overtime Shift"
-                Description = "Authorize a 4-hour overtime shift for Line 2 technicians on 2026-09-03 to clear the production backlog."
-                ConfidencePct = 96.0
-                CostEstimate = Some "+€1,100 Overtime"
-                RecoveryTime = Some "100% On-Time (2026-09-04)"
-                ActionCode = "capacity.add_shift"
-                ButtonLabel = "Authorize Overtime"
-                ButtonIcon = "schedule" }
+    let private stagePriority (node: ExplanationNodeDto) : int =
+        match node.NodeType with
+        | "RootCause" | "Disruption" -> 0
+        | "Constraint" -> 1
+        | "Bottleneck" -> 2
+        | "PrescriptiveRecommendation" -> 4
+        | _ -> if node.IsHypothetical then 4 else 3
 
-              { ResolutionId = "RES-REROUTE"
-                Title = "Reroute Production to Hamburg DC"
-                Description = "Shift 300 units production to Hamburg DC Line 1 which has 35% available capacity."
-                ConfidencePct = 91.5
-                CostEstimate = Some "+€450 Logistics"
-                RecoveryTime = Some "100% On-Time (2026-09-04)"
-                ActionCode = "production.reroute"
-                ButtonLabel = "Reroute to Hamburg"
-                ButtonIcon = "alt_route" } ]
-          GeneratedAt = DateTimeOffset.UtcNow }
+    /// Maps ExplanationNodeDto list and ExplanationEdgeDto list dynamically into a sequenced CausalPath
+    let mapCausalPath (graph: StructuredReasoningGraphDto) : CausalNode list =
+        graph.Nodes
+        |> List.sortBy stagePriority
+        |> List.map (mapNode graph.Edges)
 
-    let private explanationForPO8802 : CausalExplanation =
-        { EntityId = "PO-8802"
-          EntityType = "Purchase Order"
-          Title = "Supplier Delay Analysis for PO-8802"
-          Summary = "PO-8802 from Texas Instruments is delayed by +4 days, impacting 2 downstream customer orders (D-1002, D-1005)."
-          RootCauseStatement = "Customs processing delay at Rotterdam Port following ocean transit from Dallas, TX."
-          FinancialImpact = "$342,500 Downstream Impact"
-          Severity = Critical
-          CausalPath =
-            [ { NodeId = "PO-8802"
-                NodeType = "Purchase Order"
-                Icon = "local_shipping"
-                Title = "Texas Instruments · PO-8802"
-                Subtitle = "Quantity: 950 Units · Promised: 2026-09-08"
-                Status = "Delayed (+4 Days)"
-                StatusColor = "var(--rz-danger)"
-                Metrics = [ "Original Date", "2026-09-04"; "Current Location", "Rotterdam Port" ] }
+    /// Dynamically derives ImpactSeverity from explanation factor contributions, graph nodes, and confidence
+    let deriveSeverity (dto: SupplyExplanationDto) : ImpactSeverity =
+        let hasBottleneckOrDisruption =
+            dto.StructuredReasoningGraph.Nodes
+            |> List.exists (fun n ->
+                n.NodeType = "Bottleneck"
+                || n.NodeType = "Disruption"
+                || (n.Properties
+                    |> Map.tryFind "Status"
+                    |> Option.map (fun s -> s.Contains("Critical") || s.Contains("Shortage"))
+                    |> Option.defaultValue false))
 
-              { NodeId = "IMPACT-DEMAND"
-                NodeType = "Impacted Demands"
-                Icon = "warning"
-                Title = "2 Downstream Demands Impacted"
-                Subtitle = "D-1002 (Siemens AG), D-1005 (Continental)"
-                Status = "Production Blocked"
-                StatusColor = "var(--rz-danger)"
-                Metrics = [ "Total Shortage", "750 Units"; "Combined Revenue", "$512,000" ] } ]
-          Recommendations =
-            [ { ResolutionId = "RES-EXPEDITE-PO"
-                Title = "Priority Port Clearance & Dedicated Trucking"
-                Description = "Authorize priority customs clearance fast-track and dedicated hotshot freight truck from Rotterdam to Berlin DC."
-                ConfidencePct = 93.0
-                CostEstimate = Some "+€1,800 Fast-Track"
-                RecoveryTime = Some "Recovers 3 Days (2026-09-05)"
-                ActionCode = "supply.expedite"
-                ButtonLabel = "Authorize Fast-Track"
-                ButtonIcon = "local_shipping" } ]
-          GeneratedAt = DateTimeOffset.UtcNow }
+        let maxUnfavorablePercentage =
+            dto.FactorContributions
+            |> List.filter (fun f -> f.Direction.Equals("Unfavorable", StringComparison.OrdinalIgnoreCase))
+            |> List.map (fun f -> f.PercentageContribution)
+            |> function
+                | [] -> 0.0m
+                | items -> List.max items
 
-    let private explanationForWCBER03 : CausalExplanation =
-        { EntityId = "WC-BER-03"
-          EntityType = "Work Center"
-          Title = "Bottleneck Analysis for Berlin Line 3 (WC-BER-03)"
-          Summary = "Work Center WC-BER-03 is running at 121.7% utilization due to concentrated customer demand orders for A100 Power Modules."
-          RootCauseStatement = "Load of 146.0 hours exceeds rated shift capacity of 120.0 hours by 26.0 hours (21.7% deficit), stalling D-1002 Siemens Health."
-          FinancialImpact = "$342,500 Revenue at Risk"
-          Severity = Critical
-          CausalPath =
-            [ { NodeId = "WC-BER-03"
-                NodeType = "Production Work Center"
-                Icon = "precision_manufacturing"
-                Title = "Berlin DC · Final Power QC & Test Line 3"
-                Subtitle = "Avail: 120.0h · Required Load: 146.0h (121.7%)"
-                Status = "Critical Overload"
-                StatusColor = "var(--rz-danger)"
-                Metrics = [ "Deficit Load", "+26.0 Hours"; "Current Shift", "2 Shifts (16h)" ] }
+        if hasBottleneckOrDisruption && maxUnfavorablePercentage >= 50.0m then
+            Critical
+        elif hasBottleneckOrDisruption || maxUnfavorablePercentage >= 30.0m then
+            High
+        elif maxUnfavorablePercentage > 0.0m || dto.Confidence.ConfidenceLevel.Equals("Medium", StringComparison.OrdinalIgnoreCase) then
+            Medium
+        else
+            match dto.Confidence.ConfidenceLevel.ToLowerInvariant() with
+            | "critical" -> Critical
+            | "high" -> High
+            | "medium" -> Medium
+            | _ -> Low
 
-              { NodeId = "D-1002"
-                NodeType = "Impacted Demand"
-                Icon = "person"
-                Title = "Siemens Health · D-1002"
-                Subtitle = "Required: 950 Units · Due: 2026-09-03"
-                Status = "Material & Capacity Starved"
-                StatusColor = "var(--rz-danger)"
-                Metrics = [ "Contract SLA", "Tier 1 Priority"; "Shortage", "450 Units" ] }
+    /// Dynamically derives RootCauseStatement from graph root-cause nodes, rationale blocks, or multi-level renderings
+    let deriveRootCauseStatement (dto: SupplyExplanationDto) : string =
+        let rootNode =
+            dto.StructuredReasoningGraph.Nodes
+            |> List.tryFind (fun n -> n.NodeType = "RootCause" || n.NodeType = "Disruption")
 
-              { NodeId = "WC-MUN-02"
-                NodeType = "Alternate Production Line"
-                Icon = "alt_route"
-                Title = "Munich DC · Sensor Packaging Cell 2"
-                Subtitle = "Current Utilization: 90.0% (Surplus: 12.0h)"
-                Status = "Reallocation Target Available"
-                StatusColor = "var(--rz-success)"
-                Metrics = [ "Surplus Capacity", "12.0 Hours"; "Tooling Compatibility", "100% Match" ] } ]
-          Recommendations =
-            [ { ResolutionId = "RES-ADD-SHIFT"
-                Title = "Authorize Weekend Overtime (+8h Shift)"
-                Description = "Authorize +8 hours Saturday overtime shift on Line 3. Reduces deficit by 8h and expedites D-1002 completion by 1 day."
-                ConfidencePct = 96.0
-                CostEstimate = Some "+€1,200 Overtime Pay"
-                RecoveryTime = Some "Recovers 8.0 Load Hours"
-                ActionCode = "capacity.add_shift"
-                ButtonLabel = "Authorize Overtime Shift"
-                ButtonIcon = "more_time" }
+        match rootNode with
+        | Some node ->
+            match Map.tryFind "Description" node.Properties with
+            | Some desc -> desc
+            | None ->
+                match Map.tryFind "Log" node.Properties with
+                | Some log -> sprintf "%s (Evidence: %s)" node.Label log
+                | None ->
+                    match Map.tryFind "Downtime" node.Properties with
+                    | Some dt -> sprintf "%s (Downtime: %s)" node.Label dt
+                    | None -> node.Label
+        | None ->
+            match dto.RationaleBlocks with
+            | rb :: _ -> rb.GovernedNarrative
+            | [] -> dto.MultiLevelRenderings.PlannerSummary
 
-              { ResolutionId = "RES-REALLOCATE-LINE"
-                Title = "Reallocate 200 Units to Munich DC Line 2"
-                Description = "Transfer 200 units of A100 sub-assembly to Munich DC Cell 2, which has 10% spare capacity."
-                ConfidencePct = 89.0
-                CostEstimate = Some "+€450 Transfer"
-                RecoveryTime = Some "Relieves 18.0 Load Hours"
-                ActionCode = "capacity.reallocate"
-                ButtonLabel = "Reallocate to Munich"
-                ButtonIcon = "alt_route" } ]
-          GeneratedAt = DateTimeOffset.UtcNow }
+    /// Dynamically derives FinancialImpact from node properties, negative explanations, or factor contributions
+    let deriveFinancialImpact (dto: SupplyExplanationDto) : string =
+        let fromNodeProps =
+            dto.StructuredReasoningGraph.Nodes
+            |> List.tryPick (fun n ->
+                Map.tryFind "FinancialImpact" n.Properties
+                |> Option.orElse (Map.tryFind "RevenueAtRisk" n.Properties)
+                |> Option.orElse (Map.tryFind "PenaltyRisk" n.Properties)
+                |> Option.orElse (Map.tryFind "CostDelta" n.Properties))
 
-    let private fallbackExplanation (entityId: string) (entityType: string) : CausalExplanation =
-        { EntityId = entityId
-          EntityType = entityType
-          Title = sprintf "AI Causal Analysis for %s" entityId
-          Summary = sprintf "Autonomous causal trace for %s (%s) generated from active planning graph." entityId entityType
-          RootCauseStatement = "Constraint satisfaction evaluation shows minor buffer variance within normal operating thresholds."
-          FinancialImpact = "Within Tolerance (< $5,000)"
-          Severity = Low
-          CausalPath =
-            [ { NodeId = entityId
-                NodeType = entityType
-                Icon = "info"
-                Title = entityId
-                Subtitle = "Active Planning Horizon"
-                Status = "Evaluated"
-                StatusColor = "var(--rz-success)"
-                Metrics = [ "Status", "Nominal"; "Feasibility", "100%" ] } ]
-          Recommendations =
-            [ { ResolutionId = "RES-MONITOR"
-                Title = "Maintain Standard Plan"
-                Description = "No corrective intervention required. Continue monitoring standard execution telemetry."
-                ConfidencePct = 99.0
-                CostEstimate = Some "€0"
-                RecoveryTime = Some "Standard Schedule"
-                ActionCode = "plan.monitor"
-                ButtonLabel = "Acknowledge"
-                ButtonIcon = "check" } ]
-          GeneratedAt = DateTimeOffset.UtcNow }
+        match fromNodeProps with
+        | Some impact -> impact
+        | None ->
+            match dto.NegativeExplanation with
+            | Some neg ->
+                match Map.tryFind "PenaltyRisk" neg.EvaluationContext with
+                | Some penalty -> sprintf "%s Penalty Risk" penalty
+                | None -> "Governed SLA risk within limits"
+            | None ->
+                let unfavorableSum =
+                    dto.FactorContributions
+                    |> List.filter (fun f -> f.Direction.Equals("Unfavorable", StringComparison.OrdinalIgnoreCase))
+                    |> List.sumBy (fun f -> f.ImpactValue)
 
+                if unfavorableSum > 0.0m then
+                    sprintf "Variance Impact: %s units/hours" (unfavorableSum.ToString("N0"))
+                else
+                    "Within Normal Operating Thresholds (< $5,000)"
+
+    /// Dynamically maps graph prescriptive nodes or rationale blocks into RecommendedResolutions
+    let mapRecommendations (dto: SupplyExplanationDto) : RecommendedResolution list =
+        let recNodes =
+            dto.StructuredReasoningGraph.Nodes
+            |> List.filter (fun n -> n.NodeType = "PrescriptiveRecommendation" || n.IsHypothetical)
+
+        if not (List.isEmpty recNodes) then
+            recNodes
+            |> List.map (fun n ->
+                let edgeRel =
+                    dto.StructuredReasoningGraph.Edges
+                    |> List.tryFind (fun e -> e.TargetNode = n.NodeId)
+                    |> Option.map (fun e -> e.Relationship)
+
+                let desc =
+                    match Map.tryFind "Description" n.Properties with
+                    | Some d -> d
+                    | None ->
+                        match edgeRel with
+                        | Some r -> r
+                        | None ->
+                            let props =
+                                n.Properties
+                                |> Map.toList
+                                |> List.filter (fun (k, _) ->
+                                    k <> "ActionCode" && k <> "ButtonLabel" && k <> "ButtonIcon" && k <> "ConfidencePct")
+                                |> List.map (fun (k, v) -> sprintf "%s: %s" k v)
+                                |> String.concat ", "
+                            if String.IsNullOrWhiteSpace props then n.Label else props
+
+                let costEst =
+                    Map.tryFind "CostDelta" n.Properties
+                    |> Option.orElse (Map.tryFind "CostEstimate" n.Properties)
+
+                let recTime =
+                    Map.tryFind "RecoveryTime" n.Properties
+                    |> Option.orElse (Map.tryFind "TransferLoad" n.Properties)
+                    |> Option.orElse (Map.tryFind "RelievedHours" n.Properties)
+
+                let actionCode =
+                    Map.tryFind "ActionCode" n.Properties
+                    |> Option.defaultValue "supply.mitigate"
+
+                let buttonLabel =
+                    Map.tryFind "ButtonLabel" n.Properties
+                    |> Option.defaultValue n.Label
+
+                let buttonIcon =
+                    match Map.tryFind "ButtonIcon" n.Properties with
+                    | Some ic -> ic
+                    | None ->
+                        match actionCode with
+                        | s when s.Contains("expedite") -> "flight_takeoff"
+                        | s when s.Contains("transfer") || s.Contains("reallocate") -> "swap_horiz"
+                        | s when s.Contains("shift") || s.Contains("overtime") -> "schedule"
+                        | s when s.Contains("split") -> "call_split"
+                        | _ -> "bolt"
+
+                let conf =
+                    match Map.tryFind "ConfidencePct" n.Properties with
+                    | Some cStr ->
+                        match Double.TryParse cStr with
+                        | true, v -> v
+                        | _ -> float (dto.Confidence.CompositeIndex * 100.0m)
+                    | None -> float (dto.Confidence.CompositeIndex * 100.0m)
+
+                { ResolutionId = n.NodeId
+                  Title = n.Label
+                  Description = desc
+                  ConfidencePct = conf
+                  CostEstimate = costEst
+                  RecoveryTime = recTime
+                  ActionCode = actionCode
+                  ButtonLabel = buttonLabel
+                  ButtonIcon = buttonIcon })
+        else
+            match dto.RationaleBlocks with
+            | rb :: _ ->
+                [ { ResolutionId = sprintf "RES-%s" rb.RationaleBlockId
+                    Title = sprintf "Enforce Governed Rule %s" rb.CausalRuleRef
+                    Description = rb.GovernedNarrative
+                    ConfidencePct = float (dto.Confidence.CompositeIndex * 100.0m)
+                    CostEstimate = None
+                    RecoveryTime = None
+                    ActionCode = "policy.enforce"
+                    ButtonLabel = "Acknowledge Rule"
+                    ButtonIcon = "gavel" } ]
+            | [] ->
+                [ { ResolutionId = "RES-MONITOR"
+                    Title = "Maintain Standard Plan"
+                    Description = "No corrective intervention required. Telemetry remains within normal operating thresholds."
+                    ConfidencePct = float (dto.Confidence.CompositeIndex * 100.0m)
+                    CostEstimate = Some "€0"
+                    RecoveryTime = Some "Standard Schedule"
+                    ActionCode = "plan.monitor"
+                    ButtonLabel = "Acknowledge"
+                    ButtonIcon = "check" } ]
+
+    /// Adapts a canonical SE-S-120 SupplyExplanationDto into a UI CausalExplanation
+    let ofDto (dto: SupplyExplanationDto) : CausalExplanation =
+        let causalPath = mapCausalPath dto.StructuredReasoningGraph
+        let severity = deriveSeverity dto
+        let rootCause = deriveRootCauseStatement dto
+        let financialImpact = deriveFinancialImpact dto
+        let recommendations = mapRecommendations dto
+
+        let title =
+            if not (String.IsNullOrWhiteSpace dto.ExplainedArtifactType) && not (String.IsNullOrWhiteSpace dto.ExplainedArtifactId) then
+                sprintf "AI Causal Analysis for %s (%s)" dto.ExplainedArtifactId dto.ExplainedArtifactType
+            elif not (String.IsNullOrWhiteSpace dto.ExplainedArtifactId) then
+                sprintf "AI Causal Analysis for %s" dto.ExplainedArtifactId
+            else
+                sprintf "AI Causal Analysis (%s)" dto.ExplanationId
+
+        let summary =
+            if not (String.IsNullOrWhiteSpace dto.MultiLevelRenderings.PlannerSummary) then
+                dto.MultiLevelRenderings.PlannerSummary
+            else
+                sprintf "Governed causal trace for %s composed under %s." dto.ExplainedArtifactId dto.TemplateVersionReference
+
+        { EntityId = dto.ExplainedArtifactId
+          EntityType = dto.ExplainedArtifactType
+          Title = title
+          Summary = summary
+          RootCauseStatement = rootCause
+          FinancialImpact = financialImpact
+          Severity = severity
+          CausalPath = causalPath
+          Recommendations = recommendations
+          GeneratedAt = dto.CompositionTimestamp }
+
+    /// Dynamically creates a standard SupplyExplanationDto for any arbitrary entity
+    let createDynamicDto (entityId: string) (entityType: string) : SupplyExplanationDto =
+        let cleanId = if String.IsNullOrWhiteSpace entityId then "UNKNOWN" else entityId.Trim()
+        let cleanType = if String.IsNullOrWhiteSpace entityType then "Artifact" else entityType.Trim()
+        { ExplanationId = sprintf "EXP-%s-%d" cleanId (DateTimeOffset.UtcNow.ToUnixTimeSeconds())
+          ExplainedArtifactType = cleanType
+          ExplainedArtifactId = cleanId
+          ExplainedArtifactVersion = 1L
+          StructuredReasoningGraph =
+            { Nodes =
+                [ { NodeId = cleanId
+                    NodeType = cleanType
+                    Label = sprintf "%s · %s" cleanType cleanId
+                    Properties =
+                        Map.ofList
+                            [ ("EntityId", cleanId)
+                              ("Type", cleanType)
+                              ("Status", "Operational")
+                              ("EvaluatedAt", DateTimeOffset.UtcNow.ToString("yyyy-MM-dd HH:mm")) ]
+                    IsHypothetical = false } ]
+              Edges = [] }
+          MultiLevelRenderings =
+            { PlannerSummary = sprintf "Dynamic causal evaluation for %s (%s) derived from active planning graph. Constraint satisfaction evaluation shows operating parameters within normal thresholds." cleanId cleanType
+              FactorWaterfallMarkdown = "| Driver | Impact |\n|---|---|\n| Operational Telemetry | Nominal |"
+              FullAuditJson = sprintf """{"entityId":"%s","entityType":"%s","status":"nominal"}""" cleanId cleanType
+              AiConsumableJsonLd = sprintf """{"@context":"https://medhavi.ai/ontology","@type":"CausalInference","entity":"%s"}""" cleanId }
+          FactorContributions =
+            [ { FactorName = "Operational Telemetry"
+                BaseValue = 100m
+                ImpactValue = 0m
+                PercentageContribution = 0m
+                Direction = "Nominal"
+                Confidence = 0.95m } ]
+          PreservedEvidenceRefs = []
+          RationaleBlocks =
+            [ { RationaleBlockId = "RB-EVAL-01"
+                OutcomeDimension = "Operational State"
+                CausalRuleRef = "BR-S-001"
+                InputEvidenceRef = cleanId
+                GovernedNarrative = sprintf "Autonomous evaluation confirms %s meets all governed operating constraints." cleanId } ]
+          IsNegativeExplanation = false
+          NegativeExplanation = None
+          OpaqueModelProvenance = None
+          Confidence =
+            { InheritedEvidenceConfidence = 0.95m
+              EvidenceCompleteness = 0.95m
+              EvidenceConsistency = 0.95m
+              CompositeIndex = 0.95m
+              ConfidenceLevel = "High" }
+          TemplateVersionReference = "v1.0"
+          CompositionTimestamp = DateTimeOffset.UtcNow }
+
+    /// Dynamic explain query function using SupplyExplanationQueries when available
+    let explainWithQueriesAsync (queries: SupplyExplanationQueries) (entityId: string) : Task<CausalExplanation option> =
+        task {
+            let cleanId = entityId.Trim()
+            let! byId = queries.GetById cleanId
+            match byId with
+            | Some dto -> return Some (ofDto dto)
+            | None ->
+                let! matching =
+                    queries.Filter (fun d ->
+                        d.ExplainedArtifactId.Equals(cleanId, StringComparison.OrdinalIgnoreCase)
+                        || d.ExplanationId.Equals(cleanId, StringComparison.OrdinalIgnoreCase))
+                return matching |> List.tryHead |> Option.map ofDto
+        }
+
+    /// Dynamic explain query function with fallback to dynamic explanation when not found in queries
+    let explainWithQueries (queries: SupplyExplanationQueries) (entityId: string) (entityType: string) : Task<CausalExplanation> =
+        task {
+            let! found = explainWithQueriesAsync queries entityId
+            match found with
+            | Some expl -> return expl
+            | None -> return createDynamicDto entityId entityType |> ofDto
+        }
+
+    /// Synchronous dynamic explain function that builds an explanation dynamically without static hardcoded entities
     let explain (entityId: string) (entityType: string) : CausalExplanation =
-        match entityId.Trim().ToUpperInvariant() with
-        | "D-1002" -> explanationForD1002
-        | "D-1003" -> explanationForD1003
-        | "PO-8802" -> explanationForPO8802
-        | "WC-BER-03" -> explanationForWCBER03
-        | _ -> fallbackExplanation entityId entityType
-
+        createDynamicDto entityId entityType |> ofDto

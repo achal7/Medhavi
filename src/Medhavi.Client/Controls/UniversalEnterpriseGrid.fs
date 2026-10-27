@@ -141,11 +141,13 @@ let render (ctx: ComponentRenderContext) (dispatch: ComponentEvent -> unit) : No
             comp<DynamicRadzenGrid> {
                 "Rows" => (dynamicRows :> IReadOnlyList<Value>)
                 "Columns" => (dynamicColumns :> IReadOnlyList<Definition>)
-                "AllowPaging" => false
+                let isLargeDataset = dynamicRows.Length > 100
+                "AllowPaging" => isLargeDataset
+                "PageSize" => 50
                 "AllowSorting" => true
                 "AllowFiltering" => true
-                "AllowGrouping" => true
-                "AllowVirtualization" => false
+                "AllowGrouping" => not isLargeDataset
+                "AllowVirtualization" => isLargeDataset
                 "AllowColumnResize" => true
                 "AllowColumnPicking" => true
                 "SelectedValues" => selectedRowValues
@@ -158,7 +160,8 @@ let render (ctx: ComponentRenderContext) (dispatch: ComponentEvent -> unit) : No
                 "FormatProvider" => (ctx.Culture :> IFormatProvider)
                 "CellTemplates" => CellRenderers.templates
 
-                "OnRowSelected" => Action<Value>(fun (row: Value) ->
+                "OnRowSelected"
+                => Action<Value>(fun (row: Value) ->
                     let mutable key: obj = null
 
                     match keyColumn with
@@ -167,7 +170,8 @@ let render (ctx: ComponentRenderContext) (dispatch: ComponentEvent -> unit) : No
                             dispatch(SelectionChanged(Some(string key)))
                     | None -> ())
 
-                "OnSort" => Action<DataGridColumnSortEventArgs<Value>>(fun (args: DataGridColumnSortEventArgs<Value>) ->
+                "OnSort"
+                => Action<DataGridColumnSortEventArgs<Value>>(fun (args: DataGridColumnSortEventArgs<Value>) ->
                     let colId = args.Column.Property
 
                     let sortCriterion =
@@ -185,7 +189,8 @@ let render (ctx: ComponentRenderContext) (dispatch: ComponentEvent -> unit) : No
 
                     dispatch(SortChanged sortCriterion))
 
-                "OnFilter" => Action<DataGridColumnFilterEventArgs<Value>>(fun (args: DataGridColumnFilterEventArgs<Value>) ->
+                "OnFilter"
+                => Action<DataGridColumnFilterEventArgs<Value>>(fun (args: DataGridColumnFilterEventArgs<Value>) ->
                     let colId = args.Column.Property
 
                     let filterValStr =
