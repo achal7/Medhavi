@@ -34,6 +34,7 @@
     <Compile Include="Services\PlanningContextService.fs" />
     
     <Compile Include="Formatting.fs" />
+    <Compile Include="ActionExecution\ActionExecution.fs" />
     <Compile Include="ApplicationContext.fs" />
 
 
@@ -41,6 +42,8 @@
     <Compile Include="Components\RadzenOutlets.fs" />
     <Compile Include="Components\KpiSchema.fs" />
     <Compile Include="Components\KpiSummaryGrid.fs" />
+    <Compile Include="Components\Traceability\TraceabilitySchema.fs" />
+    <Compile Include="Components\Traceability\TraceabilityWorkbench.fs" />
 
     <!-- Core Bounded Context (Medhavi.Core) -->
     <Compile Include="Components\Core\Demand\DemandOrdersSchema.fs" />
@@ -49,17 +52,35 @@
     <Compile Include="Components\Core\Exceptions\ExceptionGrid.fs" />
     <Compile Include="Components\Core\ItemTransition\ItemTransitionSchema.fs" />
     <Compile Include="Components\Core\ItemTransition\ItemTransitionGrid.fs" />
+    <Compile Include="Components\Core\EnterprisePicture\EnterprisePictureSchema.fs" />
+    <Compile Include="Components\Core\EnterprisePicture\EnterprisePictureGrid.fs" />
 
     <!-- Demand Bounded Context (Medhavi.Demand) -->
     <Compile Include="Components\Demand\Observations\DemandObservationSchema.fs" />
     <Compile Include="Components\Demand\Observations\DemandObservationGrid.fs" />
     <Compile Include="Components\Demand\Understanding\DomainHealthRadar.fs" />
 
-    <!-- Supply & Capacity Staged Bounded Context -->
-    <Compile Include="Components\Supply\SupplySchema.fs" />
-    <Compile Include="Components\Supply\SupplyGrid.fs" />
+    <!-- Supply Bounded Context (Medhavi.Supply) -->
+    <Compile Include="Components\Supply\InventorySchema.fs" />
+    <Compile Include="Components\Supply\InventoryGrid.fs" />
     <Compile Include="Components\Supply\CapacitySchema.fs" />
     <Compile Include="Components\Supply\CapacityGrid.fs" />
+    <Compile Include="Components\Supply\CapacityStudio.fs" />
+    <Compile Include="Components\Supply\SupplySchema.fs" />
+    <Compile Include="Components\Supply\SupplyGrid.fs" />
+    <Compile Include="Components\Supply\SupplyUnderstandingSchema.fs" />
+    <Compile Include="Components\Supply\SupplyUnderstandingGrid.fs" />
+    <Compile Include="Components\Supply\SupplyExceptionSchema.fs" />
+    <Compile Include="Components\Supply\SupplyExceptionGrid.fs" />
+    <Compile Include="Components\Supply\SupplyChangeSensingSchema.fs" />
+    <Compile Include="Components\Supply\SupplyChangeSensingGrid.fs" />
+    <Compile Include="Components\Supply\SupplierCollaborationSchema.fs" />
+    <Compile Include="Components\Supply\SupplierCollaborationGrid.fs" />
+    <Compile Include="Components\Supply\SupplyReasoningGraph.fs" />
+    <Compile Include="Components\Supply\SupplyExplanationSchema.fs" />
+    <Compile Include="Components\Supply\SupplyExplanationStudio.fs" />
+    <Compile Include="Components\Supply\PeggingSchedulerSchema.fs" />
+    <Compile Include="Components\Supply\PeggingScheduler.fs" />
 
     <!-- AI Layer -->
     <Compile Include="AI\CausalExplainer.fs" />

@@ -16,6 +16,7 @@ module DynamicGridColumn =
           Filterable: bool
           Groupable: bool
           Frozen: bool
+          Visible: bool
           RenderHint: string option }
 
     let create (key: string) (title: string) (valueType: Type) : Definition =
@@ -29,6 +30,7 @@ module DynamicGridColumn =
           Filterable = true
           Groupable = true
           Frozen = false
+          Visible = true
           RenderHint = None }
 
     let withFormat (formatString: string) (definition: Definition) : Definition =
@@ -53,6 +55,10 @@ module DynamicGridColumn =
         { definition with
             Groupable = groupable }
 
+    let withVisible (visible: bool) (definition: Definition) : Definition =
+        { definition with
+            Visible = visible }
+
 open System.Collections.Generic
 
 module DynamicGridRow =
@@ -66,6 +72,7 @@ module DynamicGridRow =
 
 open System.Globalization
 open Microsoft.AspNetCore.Components
+open Microsoft.AspNetCore.Components.Web
 open Bolero
 open Bolero.Html
 open Radzen.Blazor
@@ -105,10 +112,31 @@ type DynamicRadzenGrid() =
     member val AllowFiltering: bool = true with get, set
 
     [<Parameter>]
-    member val AllowGrouping: bool = false with get, set
+    member val AllowGrouping: bool = true with get, set
 
     [<Parameter>]
-    member val AllowVirtualization: bool = true with get, set
+    member val AllowVirtualization: bool = false with get, set
+
+    [<Parameter>]
+    member val AllowColumnResize: bool = true with get, set
+
+    [<Parameter>]
+    member val AllowColumnPicking: bool = true with get, set
+
+    [<Parameter>]
+    member val SelectedValues: IList<Value> = (ResizeArray<Value>() :> IList<Value>) with get, set
+
+    [<Parameter>]
+    member val ActiveSortField: string option = None with get, set
+
+    [<Parameter>]
+    member val ActiveSortDirection: string option = None with get, set
+
+    [<Parameter>]
+    member val SelectedKey: string option = None with get, set
+
+    [<Parameter>]
+    member val KeyColumnId: string option = None with get, set
 
     [<Parameter>]
     member val SelectionMode: DataGridSelectionMode = DataGridSelectionMode.Single with get, set
@@ -120,13 +148,13 @@ type DynamicRadzenGrid() =
     member val FormatProvider: IFormatProvider = CultureInfo.CurrentCulture with get, set
 
     [<Parameter>]
-    member val OnRowSelected: EventCallback<Value> = EventCallback<Value>.Empty with get, set
+    member val OnRowSelected: Action<Value> = null with get, set
 
     [<Parameter>]
-    member val OnSort: EventCallback<DataGridColumnSortEventArgs<Value>> = EventCallback<DataGridColumnSortEventArgs<Value>>.Empty with get, set
+    member val OnSort: Action<DataGridColumnSortEventArgs<Value>> = null with get, set
 
     [<Parameter>]
-    member val OnFilter: EventCallback<DataGridColumnFilterEventArgs<Value>> = EventCallback<DataGridColumnFilterEventArgs<Value>>.Empty with get, set
+    member val OnFilter: Action<DataGridColumnFilterEventArgs<Value>> = null with get, set
 
     [<Parameter>]
     member val CellTemplates: IDictionary<string, Func<obj, Node>> = null with get, set
@@ -142,11 +170,18 @@ type DynamicRadzenGrid() =
             | _ -> Convert.ToString(value, this.FormatProvider)
 
     member private this.RenderColumn(definition: Definition) : Node =
-        let propertyExpression: string =
-            PropertyAccess.GetDynamicPropertyExpression(definition.Key, definition.ValueType)
+        let isSorted =
+            match this.ActiveSortField with
+            | Some field when field = definition.Key ->
+                if this.ActiveSortDirection = Some "Descending" then
+                    Nullable SortOrder.Descending
+                else
+                    Nullable SortOrder.Ascending
+            | _ -> Nullable()
 
         comp<RadzenDataGridColumn<Value>> {
-            "Property" => propertyExpression
+            "Property" => definition.Key
+            "GroupProperty" => $@"it[""{definition.Key}""]"
             "Title" => definition.Title
             "Type" => definition.ValueType
             "Sortable" => definition.Sortable
@@ -154,30 +189,43 @@ type DynamicRadzenGrid() =
             "Groupable" => definition.Groupable
             "Frozen" => definition.Frozen
             "TextAlign" => definition.TextAlign
+            "Visible" => definition.Visible
+            "Pickable" => true
+            "ColumnPickerTitle" => definition.Title
+            "SortOrder" => isSorted
 
             match definition.Width with
             | Some width -> "Width" => width
             | None -> attr.empty()
 
-            match definition.RenderHint with
-            | Some hint when not (isNull this.CellTemplates) && this.CellTemplates.ContainsKey(hint) ->
-                let templateFunc = this.CellTemplates.[hint]
+            let renderContent (row: Value) =
+                let mutable value: obj = null
 
-                attr.fragmentWith "Template" (fun (row: Value) ->
-                    let mutable value: obj = null
+                let contentNode =
+                    match definition.RenderHint with
+                    | Some hint when not (isNull this.CellTemplates) && this.CellTemplates.ContainsKey(hint) ->
+                        let templateFunc = this.CellTemplates.[hint]
 
-                    if row.TryGetValue(definition.Key, &value) then
-                        templateFunc.Invoke(value)
-                    else
-                        Bolero.Html.empty())
-            | _ ->
-                attr.fragmentWith "Template" (fun (row: Value) ->
-                    let mutable value: obj = null
+                        if row.TryGetValue(definition.Key, &value) then
+                            templateFunc.Invoke(value)
+                        else
+                            Bolero.Html.empty()
+                    | _ ->
+                        if row.TryGetValue(definition.Key, &value) then
+                            text(this.FormatValue definition.FormatString value)
+                        else
+                            text String.Empty
 
-                    if row.TryGetValue(definition.Key, &value) then
-                        text(this.FormatValue definition.FormatString value)
-                    else
-                        text String.Empty)
+                div {
+                    attr.style "width: 100%; height: 100%; min-height: 24px; display: flex; align-items: center; cursor: pointer;"
+                    on.click (fun (e: MouseEventArgs) ->
+                        if not (isNull this.OnRowSelected) then
+                            this.OnRowSelected.Invoke(row))
+
+                    contentNode
+                }
+
+            attr.fragmentWith "Template" (fun (row: Value) -> renderContent row)
         }
 
     override this.Render() =
@@ -186,21 +234,69 @@ type DynamicRadzenGrid() =
 
             comp<RadzenDataGrid<Value>> {
                 "Data" => this.Rows
+                "Count" => this.Rows.Count
                 "AllowPaging" => this.AllowPaging
                 "AllowSorting" => this.AllowSorting
                 "AllowFiltering" => this.AllowFiltering
                 "AllowGrouping" => this.AllowGrouping
-                "AllowVirtualization" => this.AllowVirtualization
+                "AllGroupsExpanded" => Nullable true
+                "GroupPanelText" => "Drag a column header here and drop it to group by that column"
+                "AllowVirtualization" => (this.AllowVirtualization && not this.AllowGrouping)
                 "AllowRowSelectOnRowClick" => this.AllowRowSelectOnRowClick
+                "AllowColumnResize" => this.AllowColumnResize
+                "AllowColumnPicking" => this.AllowColumnPicking
+                "Value" => this.SelectedValues
                 "SelectionMode" => this.SelectionMode
                 "FilterCaseSensitivity" => FilterCaseSensitivity.CaseInsensitive
                 "Density" => Density.Compact
                 "Responsive" => true
                 "Style" => "width: 100%; height: 100%; min-height: 0;"
 
-                attr.callback "RowSelect" (fun (row: Value) -> this.OnRowSelected.InvokeAsync(row) |> ignore)
-                attr.callback "Sort" (fun (args: DataGridColumnSortEventArgs<Value>) -> this.OnSort.InvokeAsync(args) |> ignore)
-                attr.callback "Filter" (fun (args: DataGridColumnFilterEventArgs<Value>) -> this.OnFilter.InvokeAsync(args) |> ignore)
+                "RowRender" => Action<RowRenderEventArgs<Value>>(fun args ->
+                    match this.SelectedKey, this.KeyColumnId with
+                    | Some key, Some kc when not (String.IsNullOrEmpty key) ->
+                        let mutable v: obj = null
+                        if not (isNull (box args.Data)) && args.Data.TryGetValue(kc, &v) && string v = key then
+                            let existingClass = if args.Attributes.ContainsKey("class") then string args.Attributes.["class"] + " " else ""
+                            args.Attributes.["class"] <- existingClass + "rz-state-highlight"
+                            let existingStyle = if args.Attributes.ContainsKey("style") then string args.Attributes.["style"] + "; " else ""
+                            args.Attributes.["style"] <- existingStyle + "background-color: var(--rz-primary-lighter) !important; color: var(--rz-primary-dark) !important; font-weight: 600;"
+                    | _ -> ())
+
+                "CellRender" => Action<DataGridCellRenderEventArgs<Value>>(fun args ->
+                    match this.SelectedKey, this.KeyColumnId with
+                    | Some key, Some kc when not (String.IsNullOrEmpty key) ->
+                        let mutable v: obj = null
+                        if not (isNull (box args.Data)) && args.Data.TryGetValue(kc, &v) && string v = key then
+                            let existingStyle = if args.Attributes.ContainsKey("style") then string args.Attributes.["style"] + "; " else ""
+                            args.Attributes.["style"] <- existingStyle + "background-color: var(--rz-primary-lighter) !important; color: var(--rz-primary-dark) !important; font-weight: 600;"
+                    | _ -> ())
+
+                "LoadData" => EventCallback.Factory.Create<LoadDataArgs>(obj(), Action<LoadDataArgs>(fun _ -> ()))
+
+                "RowSelect" => EventCallback.Factory.Create<Value>(this, Action<Value>(fun row ->
+                    if not (isNull this.OnRowSelected) then
+                        this.OnRowSelected.Invoke(row)))
+
+                "RowClick" => EventCallback.Factory.Create<DataGridRowMouseEventArgs<Value>>(this, Action<DataGridRowMouseEventArgs<Value>>(fun args ->
+                    if not (isNull (box args.Data)) && not (isNull this.OnRowSelected) then
+                        this.OnRowSelected.Invoke(args.Data)))
+
+                "CellClick" => EventCallback.Factory.Create<DataGridCellMouseEventArgs<Value>>(this, Action<DataGridCellMouseEventArgs<Value>>(fun args ->
+                    if not (isNull (box args.Data)) && not (isNull this.OnRowSelected) then
+                        this.OnRowSelected.Invoke(args.Data)))
+
+                "RowDeselect" => EventCallback.Factory.Create<Value>(this, Action<Value>(fun _ -> ()))
+
+                "ValueChanged" => EventCallback.Factory.Create<IList<Value>>(this, Action<IList<Value>>(fun list ->
+                    if not (isNull list) && list.Count > 0 && not (isNull this.OnRowSelected) then
+                        this.OnRowSelected.Invoke(list.[0])))
+
+                "Sort" => EventCallback.Factory.Create<DataGridColumnSortEventArgs<Value>>(this, Action<DataGridColumnSortEventArgs<Value>>(fun args ->
+                    if not (isNull this.OnSort) then this.OnSort.Invoke(args)))
+
+                "Filter" => EventCallback.Factory.Create<DataGridColumnFilterEventArgs<Value>>(this, Action<DataGridColumnFilterEventArgs<Value>>(fun args ->
+                    if not (isNull this.OnFilter) then this.OnFilter.Invoke(args)))
 
                 attr.fragment "Columns" (forEach this.Columns this.RenderColumn)
             }

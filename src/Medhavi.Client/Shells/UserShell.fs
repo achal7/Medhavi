@@ -21,6 +21,7 @@ open Medhavi.Client.Primitives
 open Medhavi.Client.ViewComposition.Session
 open Medhavi.Client.ViewComposition.Geometry
 open Medhavi.Client.ViewComposition.Component
+open Medhavi.Client.ActionExecution
 
 type BreadcrumbItem =
     { Label: string
@@ -81,6 +82,8 @@ type Msg =
     | SettingsDialogMsg of SettingsDialog.Msg
 
     | ToggleCommandPalette
+
+    | ActionExecutionCompleted of Result<ActionExecutionOutcome, string>
 
 [<RequireQualifiedAccess>]
 type Output =
@@ -204,118 +207,143 @@ let private handleNavigationOutput
             |> fun cmd -> model, cmd, None
         | NavigationBar.NavigationTarget.Tool _ -> model, Cmd.none, None
 
-let private handleViewSpaceOutput (output: ViewSpace.Output) (model: Model) : Model * Cmd<Msg> * Output option =
+let private handleViewSpaceOutput (ctx: ApplicationContext) (output: ViewSpace.Output) (model: Model) : Model * Cmd<Msg> * Output option =
     match output with
-    | ViewSpace.Output.ActionRequested(_viewComponentId, actionId, targetKey, _payload) ->
-        let keyDesc = targetKey |> Option.defaultValue "Selected item"
-
-        if actionId = DemandOrdersActions.explainShortage.Id then
-            let target = targetKey |> Option.defaultValue "D-1002"
-
-            let sidePanelModel, sideCmd, _ =
-                SidePanel.update (SidePanel.Msg.ExplainEntity(target, "Demand")) model.SidePanel
-
-            let req =
-                Services.NotificationRequest.Create(
-                    "AI Copilot Analysis",
-                    $"Generating causal graph trace for Demand '{target}'...",
-                    Services.NotificationType.Info
-                )
-
+    | ViewSpace.Output.ActionRequested(viewComponentId, actionId, targetKey, payload) ->
+        let updatedModel =
             { model with
-                SidePanel = sidePanelModel },
-            Cmd.map SidePanelMsg sideCmd,
-            Some(Output.Notify req)
+                SidePanel =
+                    { model.SidePanel with
+                        SelectedDetail = targetKey } }
 
-        elif actionId = SupplyActions.explainDelay.Id then
-            let target = targetKey |> Option.defaultValue "PO-8802"
+        if ActionRegistry.contains actionId ctx.ActionRegistry then
+            let actionCtx : ActionExecutionContext =
+                { Services = ctx.Services
+                  OriginComponentId = viewComponentId
+                  TargetKey = targetKey
+                  Payload = payload
+                  PlanningContext = model.Planning }
 
-            let sidePanelModel, sideCmd, _ =
-                SidePanel.update (SidePanel.Msg.ExplainEntity(target, "Supply")) model.SidePanel
+            let executeTask () =
+                ActionRouter.execute ctx.ActionRegistry actionCtx actionId
 
-            let req =
-                Services.NotificationRequest.Create(
-                    "AI Copilot Analysis",
-                    $"Generating supplier delay trace for PO '{target}'...",
-                    Services.NotificationType.Info
-                )
-
-            { model with
-                SidePanel = sidePanelModel },
-            Cmd.map SidePanelMsg sideCmd,
-            Some(Output.Notify req)
-
-        elif actionId = CapacityActions.explainBottleneck.Id then
-            let target = targetKey |> Option.defaultValue "WC-BER-03"
-
-            let sidePanelModel, sideCmd, _ =
-                SidePanel.update (SidePanel.Msg.ExplainEntity(target, "Capacity")) model.SidePanel
-
-            let req =
-                Services.NotificationRequest.Create(
-                    "AI Copilot Analysis",
-                    $"Generating machine bottleneck & load trace for '{target}'...",
-                    Services.NotificationType.Info
-                )
-
-            { model with
-                SidePanel = sidePanelModel },
-            Cmd.map SidePanelMsg sideCmd,
-            Some(Output.Notify req)
-
+            updatedModel,
+            Cmd.OfTask.either
+                executeTask
+                ()
+                ActionExecutionCompleted
+                (fun ex -> ActionExecutionCompleted (Error ex.Message)),
+            None
         else
-            let updatedModel =
-                { model with
-                    SidePanel =
-                        { model.SidePanel with
-                            SelectedDetail = targetKey } }
+            let keyDesc = targetKey |> Option.defaultValue "Selected item"
 
-            match ComponentCatalog.tryFindAction actionId with
-            | Some descriptor ->
-                match descriptor.ExecutionMode with
-                | Direct ->
-                    let req =
-                        Services.NotificationRequest.Create(
-                            descriptor.DisplayName,
-                            $"Action '{descriptor.DisplayName}' executed for '{keyDesc}'.",
-                            Services.NotificationType.Info
-                        )
+            if actionId = DemandOrdersActions.explainShortage.Id then
+                let target = targetKey |> Option.defaultValue "D-1002"
 
-                    updatedModel, Cmd.none, Some(Output.Notify req)
-                | RequiresConfirmation prompt ->
-                    let req =
-                        Services.NotificationRequest.Create(
-                            descriptor.DisplayName,
-                            $"Confirmed: {prompt} on target '{keyDesc}'.",
-                            Services.NotificationType.Success
-                        )
+                let sidePanelModel, sideCmd, _ =
+                    SidePanel.update (SidePanel.Msg.ExplainEntity(target, "Demand")) model.SidePanel
 
-                    updatedModel, Cmd.none, Some(Output.Notify req)
-                | Parameterized(schemaId, formTitle) ->
-                    let req =
-                        Services.NotificationRequest.Create(
-                            formTitle,
-                            $"Parameter form '{schemaId}' initiated for '{keyDesc}'.",
-                            Services.NotificationType.Info
-                        )
-
-                    updatedModel, Cmd.none, Some(Output.Notify req)
-            | None ->
                 let req =
                     Services.NotificationRequest.Create(
-                        "Unknown Action",
-                        $"Action '{ActionDefId.value actionId}' is not registered in the catalog.",
-                        Services.NotificationType.Warning
+                        "AI Copilot Analysis",
+                        $"Generating causal graph trace for Demand '{target}'...",
+                        Services.NotificationType.Info
                     )
 
-                updatedModel, Cmd.none, Some(Output.Notify req)
+                { model with
+                    SidePanel = sidePanelModel },
+                Cmd.map SidePanelMsg sideCmd,
+                Some(Output.Notify req)
+
+            elif actionId = SupplyActions.explainDelay.Id then
+                let target = targetKey |> Option.defaultValue "PO-8802"
+
+                let sidePanelModel, sideCmd, _ =
+                    SidePanel.update (SidePanel.Msg.ExplainEntity(target, "Supply")) model.SidePanel
+
+                let req =
+                    Services.NotificationRequest.Create(
+                        "AI Copilot Analysis",
+                        $"Generating supplier delay trace for PO '{target}'...",
+                        Services.NotificationType.Info
+                    )
+
+                { model with
+                    SidePanel = sidePanelModel },
+                Cmd.map SidePanelMsg sideCmd,
+                Some(Output.Notify req)
+
+            elif actionId = CapacityActions.explainBottleneck.Id then
+                let target = targetKey |> Option.defaultValue "WC-BER-03"
+
+                let sidePanelModel, sideCmd, _ =
+                    SidePanel.update (SidePanel.Msg.ExplainEntity(target, "Capacity")) model.SidePanel
+
+                let req =
+                    Services.NotificationRequest.Create(
+                        "AI Copilot Analysis",
+                        $"Generating machine bottleneck & load trace for '{target}'...",
+                        Services.NotificationType.Info
+                    )
+
+                { model with
+                    SidePanel = sidePanelModel },
+                Cmd.map SidePanelMsg sideCmd,
+                Some(Output.Notify req)
+
+            else
+                let updatedModel =
+                    { model with
+                        SidePanel =
+                            { model.SidePanel with
+                                SelectedDetail = targetKey } }
+
+                match ComponentCatalog.tryFindAction actionId with
+                | Some descriptor ->
+                    match descriptor.ExecutionMode with
+                    | Direct ->
+                        let req =
+                            Services.NotificationRequest.Create(
+                                descriptor.DisplayName,
+                                $"Action '{descriptor.DisplayName}' executed for '{keyDesc}'.",
+                                Services.NotificationType.Info
+                            )
+
+                        updatedModel, Cmd.none, Some(Output.Notify req)
+                    | RequiresConfirmation prompt ->
+                        let req =
+                            Services.NotificationRequest.Create(
+                                descriptor.DisplayName,
+                                $"Confirmed: {prompt} on target '{keyDesc}'.",
+                                Services.NotificationType.Success
+                            )
+
+                        updatedModel, Cmd.none, Some(Output.Notify req)
+                    | Parameterized(schemaId, formTitle) ->
+                        let req =
+                            Services.NotificationRequest.Create(
+                                formTitle,
+                                $"Parameter form '{schemaId}' initiated for '{keyDesc}'.",
+                                Services.NotificationType.Info
+                            )
+
+                        updatedModel, Cmd.none, Some(Output.Notify req)
+                | None ->
+                    let req =
+                        Services.NotificationRequest.Create(
+                            "Unknown Action",
+                            $"Action '{ActionDefId.value actionId}' is not registered in the catalog.",
+                            Services.NotificationType.Warning
+                        )
+
+                    updatedModel, Cmd.none, Some(Output.Notify req)
 
     | ViewSpace.Output.ParameterizedActionRequested(_viewComponentId, actionId, targetKey) ->
         let keyDesc = targetKey |> Option.defaultValue "Selected item"
         let req = Services.NotificationRequest.Create("Parameterized Action", $"Initiating parameterized action '{ActionDefId.value actionId}' for '{keyDesc}'", Services.NotificationType.Info)
         model, Cmd.none, Some(Output.Notify req)
 
-    | ViewSpace.Output.SelectionChanged(_viewComponentId, targetKey) ->
+    | ViewSpace.Output.SelectionChanged(viewComponentId, targetKey) ->
         let updatedModel = { model with SidePanel = { model.SidePanel with SelectedDetail = targetKey } }
         updatedModel, Cmd.none, None
 
@@ -344,7 +372,6 @@ let private handleViewSpaceOutput (output: ViewSpace.Output) (model: Model) : Mo
         model, Cmd.none, Some(Output.Notify req)
 
 let rec update (ctx: ApplicationContext) (msg: Msg) (model: Model) : Model * Cmd<Msg> * Output option =
-
     match msg with
     | ApplicationBarMsg childMsg ->
         updateChildWithOutput
@@ -372,7 +399,7 @@ let rec update (ctx: ApplicationContext) (msg: Msg) (model: Model) : Model * Cmd
             (fun child m -> { m with ViewSpace = child })
             ViewSpaceMsg
             (ViewSpace.update ctx)
-            handleViewSpaceOutput
+            (handleViewSpaceOutput ctx)
             childMsg
             model
 
@@ -826,6 +853,34 @@ let rec update (ctx: ApplicationContext) (msg: Msg) (model: Model) : Model * Cmd
         Cmd.map CommandPaletteMsg childCmd,
         None
 
+    // ------------------------------------------------------------
+    // Action execution outcome handling
+    // ------------------------------------------------------------
+
+    | ActionExecutionCompleted result ->
+        match result with
+        | Ok (ActionExecutionOutcome.Completed (successMsg, refreshedStores)) ->
+            let notify = Services.NotificationRequest.Create("Success", successMsg, Services.NotificationType.Success)
+            let refreshCmd =
+                if List.isEmpty refreshedStores then Cmd.none
+                else Cmd.ofMsg (ViewSpaceMsg (ViewSpace.Msg.RefreshStores refreshedStores))
+            model, refreshCmd, Some (Output.Notify notify)
+        | Ok (ActionExecutionOutcome.ExplainRequested (entityId, entityKind)) ->
+            let sidePanelModel, sideCmd, _ =
+                SidePanel.update (SidePanel.Msg.ExplainEntity(entityId, entityKind)) model.SidePanel
+            { model with SidePanel = sidePanelModel }, Cmd.map SidePanelMsg sideCmd, None
+        | Ok (ActionExecutionOutcome.NavigationRequested targetView) ->
+            model, Cmd.ofMsg (NavigateToView targetView), None
+        | Ok (ActionExecutionOutcome.JobInitiated (jobId, desc, _)) ->
+            let notify = Services.NotificationRequest.Create("Engine Job Started", $"{desc} (Job ID: {jobId})", Services.NotificationType.Info)
+            model, Cmd.none, Some (Output.Notify notify)
+        | Ok (ActionExecutionOutcome.ClientSideDialogRequested (title, msg)) ->
+            let notify = Services.NotificationRequest.Create(title, msg, Services.NotificationType.Info)
+            model, Cmd.none, Some (Output.Notify notify)
+        | Error errorMsg ->
+            let notify = Services.NotificationRequest.Create("Action Failed", errorMsg, Services.NotificationType.Error')
+            model, Cmd.none, Some (Output.Notify notify)
+
 let private renderBreadcrumbs (model: Model) (_: Msg -> unit) : Node =
     comp<RadzenBreadCrumb> {
         attr.fragment
@@ -918,7 +973,7 @@ let private renderFooter (model: Model) (dispatch: Msg -> unit) : Node =
             if isDirty then
                 span {
                     attr.style
-                        "background: rgba(255, 193, 7, 0.2); color: #b78103; border: 1px solid #b78103; border-radius: 10px; padding: 1px 8px; font-size: 10px; font-weight: 700;"
+                        "background: var(--rz-warning-lighter); color: var(--rz-warning-dark); border: 1px solid var(--rz-warning); border-radius: 10px; padding: 1px 8px; font-size: 10px; font-weight: 700;"
 
                     "● Modified"
                 }
@@ -926,7 +981,7 @@ let private renderFooter (model: Model) (dispatch: Msg -> unit) : Node =
             if isEditMode then
                 span {
                     attr.style
-                        "background: rgba(23, 162, 184, 0.2); color: var(--rz-info); border: 1px solid var(--rz-info); border-radius: 10px; padding: 1px 8px; font-size: 10px; font-weight: 700;"
+                        "background: var(--rz-info-lighter); color: var(--rz-info); border: 1px solid var(--rz-info); border-radius: 10px; padding: 1px 8px; font-size: 10px; font-weight: 700;"
 
                     "⚙️ Layout Mode"
                 }

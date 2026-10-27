@@ -80,4 +80,19 @@ type SchemaBinding = DataBinding
 type ViewComponent =
     { ComponentDefId: ComponentDefId
       Binding: SchemaBinding
-      Configuration: ComponentConfiguration }
+      Configuration: ComponentConfiguration
+      Title: string option
+      Icon: string option }
+
+module ViewComponent =
+    let create defId storeId schemaId config =
+        { ComponentDefId = defId
+          Binding =
+            { StoreId = storeId
+              SchemaDefId = schemaId }
+          Configuration = config
+          Title = None
+          Icon = None }
+
+    let withTitle (title: string) (vc: ViewComponent) = { vc with Title = Some title }
+    let withIcon (icon: string) (vc: ViewComponent) = { vc with Icon = Some icon }

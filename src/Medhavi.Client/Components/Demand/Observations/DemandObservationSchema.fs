@@ -21,7 +21,16 @@ module DemandObservationActions =
           RequiredRoles = [ "Planner"; "DemandAnalyst" ]
           IsPrimary = true }
 
-    let all: ActionDescriptor list = [ evaluate ]
+    let receive: ActionDescriptor =
+        { Id = ActionDefId.literal "demand_observation.receive"
+          DisplayName = "Ingest Signal"
+          Icon = "add_circle"
+          Scope = GlobalScope
+          ExecutionMode = RequiresConfirmation "Ingest a new demand observation into the sensory stream?"
+          RequiredRoles = [ "Planner"; "DemandAnalyst" ]
+          IsPrimary = false }
+
+    let all: ActionDescriptor list = [ evaluate; receive ]
 
 module DemandObservationSchema =
 
@@ -32,6 +41,7 @@ module DemandObservationSchema =
           DisplayName = "Demand Observations (Sensory Stream)"
           Capabilities = [ "Tabular" ]
           SupportedActions = DemandObservationActions.all |> List.map(fun a -> a.Id)
+          Actions = DemandObservationActions.all
           Columns =
             [ { ColumnId = "LifecycleState"
                 PropertyName = Some "LifecycleState"

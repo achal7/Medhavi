@@ -1,6 +1,7 @@
 namespace Medhavi.Client.Components.Supply
 
 open System
+open Medhavi.Contracts.Supply
 open Medhavi.Client.ViewComposition.Identity
 open Medhavi.Client.ViewComposition.Component
 open Medhavi.Client.ViewComposition.Schema
@@ -13,16 +14,16 @@ module SupplyActions =
 
     let expedite: ActionDescriptor =
         { Id = ActionDefId.literal "supply.expedite"
-          DisplayName = "Expedite PO"
+          DisplayName = "Expedite Order"
           Icon = "bolt"
           Scope = SingleEntityScope
-          ExecutionMode = RequiresConfirmation "Request supplier to expedite delivery by 3 days?"
+          ExecutionMode = RequiresConfirmation "Request expedited release for planned order?"
           RequiredRoles = [ "Planner"; "Buyer" ]
           IsPrimary = true }
 
     let deExpedite: ActionDescriptor =
         { Id = ActionDefId.literal "supply.de_expedite"
-          DisplayName = "De-Expedite PO"
+          DisplayName = "De-Expedite Order"
           Icon = "update"
           Scope = SingleEntityScope
           ExecutionMode = Direct
@@ -31,10 +32,10 @@ module SupplyActions =
 
     let split: ActionDescriptor =
         { Id = ActionDefId.literal "supply.split"
-          DisplayName = "Split PO"
+          DisplayName = "Split Order"
           Icon = "call_split"
           Scope = SingleEntityScope
-          ExecutionMode = Parameterized("supply-split-form", "Split Purchase Order")
+          ExecutionMode = Parameterized("supply-split-form", "Split Planned Order")
           RequiredRoles = [ "Planner"; "Buyer" ]
           IsPrimary = false }
 
@@ -49,25 +50,16 @@ module SupplyActions =
 
     let explainDelay: ActionDescriptor =
         { Id = ActionDefId.literal "supply.explain"
-          DisplayName = "Explain Delay"
+          DisplayName = "Explain Delay / Feasibility"
           Icon = "auto_awesome"
           Scope = SingleEntityScope
           ExecutionMode = Direct
           RequiredRoles = [ "Planner"; "Viewer" ]
           IsPrimary = false }
 
-    let all: ActionDescriptor list = [ expedite; deExpedite; split; changeVendor; explainDelay ]
+    let explainPlan = explainDelay
 
-type SupplyRow =
-    { SupplyId: string
-      Vendor: string
-      Product: string
-      Location: string
-      PromisedDate: DateTimeOffset
-      Quantity: decimal
-      Confirmed: decimal
-      Status: string
-      PeggedDemandId: string }
+    let all: ActionDescriptor list = [ expedite; deExpedite; split; changeVendor; explainDelay ]
 
 module SupplySchema =
 
@@ -75,13 +67,14 @@ module SupplySchema =
 
     let definition: SchemaDefinition =
         { Id = schemaId
-          DisplayName = "Supply Orders Schema"
+          DisplayName = "Planned Order Schedule"
           Capabilities = [ "Tabular" ]
-          SupportedActions = SupplyActions.all |> List.map(fun a -> a.Id)
+          SupportedActions = SupplyActions.all |> List.map (fun a -> a.Id)
+          Actions = SupplyActions.all
           Columns =
-            [ { ColumnId = "Status"
-                PropertyName = Some "Status"
-                Title = "Status"
+            [ { ColumnId = "SupplyType"
+                PropertyName = Some "SupplyType"
+                Title = "Type"
                 DefaultOrder = 0
                 DefaultWidthInPixels = Some 110
                 DefaultVisible = true
@@ -89,18 +82,18 @@ module SupplySchema =
                 Sortable = true
                 FilterValueKind = Some Text
                 Filterable = true
-                Groupable = false
+                Groupable = true
                 RenderHint = Some "StatusBadge"
                 Alignment = Left
                 CellType = TextType
                 IsKey = false
                 FormatString = None
                 UserConfigurable = true }
-              { ColumnId = "SupplyId"
-                PropertyName = Some "SupplyId"
-                Title = "PO Number"
+              { ColumnId = "OrderId"
+                PropertyName = Some "OrderId"
+                Title = "Planned Order ID"
                 DefaultOrder = 1
-                DefaultWidthInPixels = Some 120
+                DefaultWidthInPixels = Some 130
                 DefaultVisible = true
                 DefaultPinned = true
                 Sortable = true
@@ -113,28 +106,11 @@ module SupplySchema =
                 IsKey = true
                 FormatString = None
                 UserConfigurable = true }
-              { ColumnId = "Vendor"
-                PropertyName = Some "Vendor"
-                Title = "Supplier / Vendor"
+              { ColumnId = "Item"
+                PropertyName = Some "Item"
+                Title = "Item / SKU"
                 DefaultOrder = 2
-                DefaultWidthInPixels = Some 170
-                DefaultVisible = true
-                DefaultPinned = false
-                Sortable = true
-                FilterValueKind = Some Text
-                Filterable = true
-                Groupable = true
-                RenderHint = None
-                Alignment = Left
-                CellType = TextType
-                IsKey = false
-                FormatString = None
-                UserConfigurable = true }
-              { ColumnId = "Product"
-                PropertyName = Some "Product"
-                Title = "Component / Item"
-                DefaultOrder = 3
-                DefaultWidthInPixels = Some 160
+                DefaultWidthInPixels = Some 140
                 DefaultVisible = true
                 DefaultPinned = false
                 Sortable = true
@@ -149,9 +125,9 @@ module SupplySchema =
                 UserConfigurable = true }
               { ColumnId = "Location"
                 PropertyName = Some "Location"
-                Title = "Destination DC"
-                DefaultOrder = 4
-                DefaultWidthInPixels = Some 130
+                Title = "Location"
+                DefaultOrder = 3
+                DefaultWidthInPixels = Some 120
                 DefaultVisible = true
                 DefaultPinned = false
                 Sortable = true
@@ -164,10 +140,44 @@ module SupplySchema =
                 IsKey = false
                 FormatString = None
                 UserConfigurable = true }
-              { ColumnId = "PromisedDate"
-                PropertyName = Some "PromisedDate"
-                Title = "Promised Date"
+              { ColumnId = "Quantity"
+                PropertyName = Some "Quantity"
+                Title = "Quantity"
+                DefaultOrder = 4
+                DefaultWidthInPixels = Some 110
+                DefaultVisible = true
+                DefaultPinned = false
+                Sortable = true
+                FilterValueKind = Some Number
+                Filterable = true
+                Groupable = false
+                RenderHint = None
+                Alignment = Right
+                CellType = NumberType
+                IsKey = false
+                FormatString = Some "N0"
+                UserConfigurable = true }
+              { ColumnId = "UnitOfMeasure"
+                PropertyName = Some "UnitOfMeasure"
+                Title = "UoM"
                 DefaultOrder = 5
+                DefaultWidthInPixels = Some 80
+                DefaultVisible = true
+                DefaultPinned = false
+                Sortable = true
+                FilterValueKind = Some Text
+                Filterable = true
+                Groupable = true
+                RenderHint = None
+                Alignment = Left
+                CellType = TextType
+                IsKey = false
+                FormatString = None
+                UserConfigurable = true }
+              { ColumnId = "ReleaseDate"
+                PropertyName = Some "ReleaseDate"
+                Title = "Release Date"
+                DefaultOrder = 6
                 DefaultWidthInPixels = Some 120
                 DefaultVisible = true
                 DefaultPinned = false
@@ -181,63 +191,82 @@ module SupplySchema =
                 IsKey = false
                 FormatString = Some "yyyy-MM-dd"
                 UserConfigurable = true }
-              { ColumnId = "Quantity"
-                PropertyName = Some "Quantity"
-                Title = "Ordered Qty"
-                DefaultOrder = 6
-                DefaultWidthInPixels = Some 110
-                DefaultVisible = true
-                DefaultPinned = false
-                Sortable = true
-                FilterValueKind = Some Number
-                Filterable = true
-                Groupable = false
-                RenderHint = None
-                Alignment = Right
-                CellType = NumberType
-                IsKey = false
-                FormatString = Some "N0"
-                UserConfigurable = true }
-              { ColumnId = "Confirmed"
-                PropertyName = Some "Confirmed"
-                Title = "Confirmed Qty"
+              { ColumnId = "DueDate"
+                PropertyName = Some "DueDate"
+                Title = "Due Date"
                 DefaultOrder = 7
-                DefaultWidthInPixels = Some 110
+                DefaultWidthInPixels = Some 120
                 DefaultVisible = true
                 DefaultPinned = false
                 Sortable = true
-                FilterValueKind = Some Number
+                FilterValueKind = Some DateTimeOffset
                 Filterable = true
                 Groupable = false
                 RenderHint = None
-                Alignment = Right
-                CellType = NumberType
+                Alignment = Left
+                CellType = DateTimeType
                 IsKey = false
-                FormatString = Some "N0"
+                FormatString = Some "yyyy-MM-dd"
                 UserConfigurable = true }
-              { ColumnId = "PeggedDemandId"
-                PropertyName = Some "PeggedDemandId"
-                Title = "Pegged Demand"
+              { ColumnId = "AssignedResource"
+                PropertyName = Some "AssignedResource"
+                Title = "Assigned Resource"
                 DefaultOrder = 8
-                DefaultWidthInPixels = Some 120
+                DefaultWidthInPixels = Some 150
                 DefaultVisible = true
                 DefaultPinned = false
                 Sortable = true
                 FilterValueKind = Some Text
                 Filterable = true
-                Groupable = false
+                Groupable = true
+                RenderHint = None
+                Alignment = Left
+                CellType = TextType
+                IsKey = false
+                FormatString = None
+                UserConfigurable = true }
+              { ColumnId = "AssignedSupplier"
+                PropertyName = Some "AssignedSupplier"
+                Title = "Assigned Supplier"
+                DefaultOrder = 9
+                DefaultWidthInPixels = Some 150
+                DefaultVisible = true
+                DefaultPinned = false
+                Sortable = true
+                FilterValueKind = Some Text
+                Filterable = true
+                Groupable = true
+                RenderHint = None
+                Alignment = Left
+                CellType = TextType
+                IsKey = false
+                FormatString = None
+                UserConfigurable = true }
+              { ColumnId = "SourceLocation"
+                PropertyName = Some "SourceLocation"
+                Title = "Source Location"
+                DefaultOrder = 10
+                DefaultWidthInPixels = Some 120
+                DefaultVisible = false
+                DefaultPinned = false
+                Sortable = true
+                FilterValueKind = Some Text
+                Filterable = true
+                Groupable = true
                 RenderHint = None
                 Alignment = Left
                 CellType = TextType
                 IsKey = false
                 FormatString = None
                 UserConfigurable = true } ]
-          DefaultSort = None
+          DefaultSort =
+            Some
+                { Field = "DueDate"
+                  Direction = Ascending
+                  Priority = 1 }
           DefaultFilters = [] }
 
-    let adapter: ProjectionAdapter<SupplyRow> =
-        match ProjectionCompiler.compile<SupplyRow> definition with
+    let adapter =
+        match ProjectionCompiler.compile<PlannedOrderDto> definition with
         | Valid a -> a
         | Invalid errs -> failwithf "SupplySchema compilation failed: %A" errs
-
-    let toUniversal: SupplyRow -> UniversalRow = adapter.ToUniversal

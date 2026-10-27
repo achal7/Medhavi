@@ -59,14 +59,20 @@ module ExceptionGrid =
           Fetch =
             fun (ctx: ApplicationContext) ->
                 async {
-                    match ctx.DomainServices with
-                    | Some ds ->
-                        let! dtos = ds.Core.ExceptionManagement.Queries.GetAll() |> Async.AwaitTask
+                    match ctx.Resolve<ExceptionQueries>() with
+                    | Some queries ->
+                        let! dtos = queries.GetAll() |> Async.AwaitTask
                         let rows = dtos |> List.map ExceptionSchema.adapter.ToUniversal
                         return Tabular rows
                     | None ->
-                        let rows = fallbackDtos |> List.map ExceptionSchema.adapter.ToUniversal
-                        return Tabular rows
+                        match ctx.DomainServices with
+                        | Some ds ->
+                            let! dtos = ds.Core.ExceptionManagement.Queries.GetAll() |> Async.AwaitTask
+                            let rows = dtos |> List.map ExceptionSchema.adapter.ToUniversal
+                            return Tabular rows
+                        | None ->
+                            let rows = fallbackDtos |> List.map ExceptionSchema.adapter.ToUniversal
+                            return Tabular rows
                 } }
 
     let runtime: ComponentRuntime = { Render = UniversalEnterpriseGrid.render }
@@ -74,3 +80,55 @@ module ExceptionGrid =
     let registration: ComponentRegistration =
         { Definition = definition
           Runtime = runtime }
+
+    module ActionHandlers =
+        open System.Threading.Tasks
+        open Medhavi.Client.ActionExecution
+
+        let resolveException : ActionHandler =
+            fun ctx -> task {
+                match ctx.Resolve<ExceptionApi>() with
+                | Some api ->
+                    match ctx.TargetKey with
+                    | Some exceptionId ->
+                        let! dtoOpt =
+                            match ctx.Resolve<ExceptionQueries>() with
+                            | Some q -> q.GetById exceptionId
+                            | None -> Task.FromResult None
+
+                        match dtoOpt with
+                        | Some dto ->
+                            let req : ResolveExceptionReq =
+                                { ConstraintReference = dto.ConstraintReference
+                                  AffectedScopeType = dto.AffectedScopeType
+                                  AffectedScopeIdentifier = dto.AffectedScopeIdentifier
+                                  ResolutionTime = DateTimeOffset.Now
+                                  ResolutionEvidence = "Resolved by planner via exception workbench." }
+                            match! api.Resolve(req) with
+                            | Ok resDto ->
+                                return Ok (ActionExecutionOutcome.Completed(
+                                    $"Exception '{resDto.ExceptionId}' ({resDto.ConstraintReference}) resolved successfully.",
+                                    [ storeId; DataStoreId.literal "demo-demand-store" ]
+                                ))
+                            | Error err ->
+                                return Error err.Message
+                        | None ->
+                            return Error $"Exception '{exceptionId}' not found in query projection."
+                    | None ->
+                        return Error "No exception selected to resolve."
+                | None ->
+                    return Error "ExceptionApi capability is not connected."
+            }
+
+        let investigate : ActionHandler =
+            fun ctx -> task {
+                match ctx.TargetKey with
+                | Some exceptionId ->
+                    return Ok (ActionExecutionOutcome.ExplainRequested(exceptionId, "Exception"))
+                | None ->
+                    return Error "No exception selected to investigate."
+            }
+
+        let all : (ActionDefId * ActionHandler) list =
+            [ ExceptionActions.resolve.Id, resolveException
+              ExceptionActions.investigate.Id, investigate ]

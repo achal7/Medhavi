@@ -127,6 +127,9 @@ type Application() =
     [<Inject>]
     member val DomainServices: DomainServices = Unchecked.defaultof<DomainServices> with get, set
 
+    [<Inject>]
+    member val Services: IServiceProvider = Unchecked.defaultof<IServiceProvider> with get, set
+
     override this.Program =
         //Medhavi.Client.SemanticModel.Tests.report()
         //Medhavi.Client.Rendering.Tests.ViewSurfaceTests.report()
@@ -147,6 +150,8 @@ type Application() =
               ComponentRegistry = componentRegistry
               SchemaRegistry = schemaRegistry
               DataStoreRegistry = ComponentCatalog.dataStores
+              ActionRegistry = ComponentCatalog.actionRegistry
+              Services = this.Services
               DomainServices = if isNull (box this.DomainServices) then None else Some this.DomainServices }
             : ApplicationContext
 

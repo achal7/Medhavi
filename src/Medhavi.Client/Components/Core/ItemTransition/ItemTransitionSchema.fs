@@ -41,6 +41,7 @@ module ItemTransitionSchema =
           DisplayName = "Item Transitions & Supersessions"
           Capabilities = [ "Tabular" ]
           SupportedActions = ItemTransitionActions.all |> List.map(fun a -> a.Id)
+          Actions = ItemTransitionActions.all
           Columns =
             [ { ColumnId = "LifecycleState"
                 PropertyName = Some "LifecycleState"

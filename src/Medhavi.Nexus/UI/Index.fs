@@ -30,16 +30,20 @@ type Index() =
 
                     comp<RadzenTheme> { "Theme" => VisualTheme.cssName VisualTheme.SoftwareDark }
 
-                    link {
-                        attr.rel "stylesheet"
-                        attr.href "_content/Medhavi.Client/app.css"
-                    }
-
                     style {
                         rawHtml
                             """
                             .rz-dropdown-panel, .rz-autocomplete-panel, .rz-datepicker-popup, .rz-popup, .rz-overlaypanel {
                                 z-index: 100005 !important;
+                            }
+                            .rz-grid-table tbody tr {
+                                cursor: pointer;
+                            }
+                            .rz-grid-table tbody tr.rz-state-highlight,
+                            .rz-grid-table tbody tr.rz-state-highlight > td {
+                                background-color: var(--rz-primary-lighter) !important;
+                                color: var(--rz-primary-dark) !important;
+                                font-weight: 600;
                             }
                             """
                     }
@@ -50,6 +54,7 @@ type Index() =
 
                     boleroScript
                     script { attr.src "_content/Radzen.Blazor/Radzen.Blazor.js" }
+
                     script {
                         rawHtml
                             """

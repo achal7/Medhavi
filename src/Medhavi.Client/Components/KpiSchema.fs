@@ -41,6 +41,7 @@ let definition: SchemaDefinition =
       DisplayName = "Executive KPI Metrics Schema"
       Capabilities = [ "Kpi" ]
       SupportedActions = all |> List.map(fun a -> a.Id)
+      Actions = all
       Columns =
         [ { ColumnId = "Domain"
             PropertyName = Some "Domain"

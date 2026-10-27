@@ -6,23 +6,33 @@ open Medhavi.Foundation.Observation.LogContext
 open Microsoft.Extensions.Logging
 open System.Collections.Generic
 
+let private logWithLevel (logger: ILogger) (level: LogLevel) (message: string) (context: LogContext) (ex: exn option) =
+    let state =
+        [| yield KeyValuePair<string, obj>("{OriginalFormat}", box message)
+           for k, v in contextToState context do
+               yield KeyValuePair<string, obj>(k, v) |]
+    let formatter = Func<KeyValuePair<string, obj>[], exn, string>(fun _ e ->
+        if isNull (box e) then message else $"{message} (Exception: {e.Message})")
+    let exceptionOrNull = match ex with Some e -> e | None -> null
+    logger.Log(level, EventId(0), state, exceptionOrNull, formatter)
+
 let logDebug (logger: ILogger) (message: string) (context: LogContext) =
-    logger.LogDebug(message, contextToState context |> Seq.toArray)
+    logWithLevel logger LogLevel.Debug message context None
 
 let logInformation (logger: ILogger) (message: string) (context: LogContext) =
-    logger.LogInformation(message, contextToState context |> Seq.toArray)
+    logWithLevel logger LogLevel.Information message context None
 
 let logWarning (logger: ILogger) (message: string) (context: LogContext) =
-    logger.LogWarning(message, contextToState context |> Seq.toArray)
+    logWithLevel logger LogLevel.Warning message context None
 
 let logError (logger: ILogger) (message: string) (context: LogContext) =
-    logger.LogError(message, contextToState context |> Seq.toArray)
+    logWithLevel logger LogLevel.Error message context None
 
 let logErrorWithException (logger: ILogger) (ex: exn) (message: string) (context: LogContext) =
-    logger.LogError(ex, message, contextToState context |> Seq.toArray)
+    logWithLevel logger LogLevel.Error message context (Some ex)
 
 let logCritical (logger: ILogger) (message: string) (context: LogContext) =
-    logger.LogCritical(message, contextToState context |> Seq.toArray)
+    logWithLevel logger LogLevel.Critical message context None
 
 let logPerformance (logger: ILogger) (operation: string) (comp: string) (duration: TimeSpan) (_: LogContext) =
     let context =
@@ -113,15 +123,15 @@ let private mapLevel (knowledge: ArchitecturalKnowledge) : LogLevel =
 let toKnowledgeRepresentation (logger: Logger) : KnowledgeRepresentation =
     fun knowledge ->
         let level = mapLevel knowledge
-        // Convert attributes to a state array for structured logging
-        let state =
-            knowledge.Attributes |> Map.toSeq |> Seq.map(fun (k, v) -> KeyValuePair<string, obj>(k, v)) |> Array.ofSeq
-
         let logCtx =
             { LogContext.Empty with
                 Component = knowledge.Name
                 AdditionalData = Some knowledge.Attributes }
 
-        match knowledge.Attributes.TryFind "Error" with
-        | Some _ -> logger.Warning(knowledge.Name, logCtx)
-        | None -> logger.Info(knowledge.Name, logCtx)
+        match level with
+        | LogLevel.Critical -> logger.Critical(knowledge.Name, logCtx)
+        | LogLevel.Error -> logger.Error(knowledge.Name, logCtx)
+        | LogLevel.Warning -> logger.Warning(knowledge.Name, logCtx)
+        | LogLevel.Debug -> logger.Debug(knowledge.Name, logCtx)
+        | LogLevel.Trace -> logger.Debug(knowledge.Name, logCtx)
+        | _ -> logger.Info(knowledge.Name, logCtx)

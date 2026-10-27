@@ -19,7 +19,10 @@
     <Compile Include="Observation\LoggerAdapter.fs" />
     <Compile Include="Observation\IngestionLogger.fs" />
     <Compile Include="Observation\ConsoleLogger.fs" />
+    <Compile Include="Observation\FileLogger.fs" />
     <Compile Include="Observation\TelemetryPublisher.fs" />
+    <Compile Include="Observation\TelemetrySink.fs" />
+    <Compile Include="Observation\ObservationQueryService.fs" />
     <Compile Include="Observation\PerformanceTracker.fs" />
     <Compile Include="Observation\ActivityTrackingAdapter.fs" />
     <Compile Include="Observation\HealthCheckPublisher.fs" />

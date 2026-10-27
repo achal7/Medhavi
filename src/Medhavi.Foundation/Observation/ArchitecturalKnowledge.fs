@@ -22,13 +22,15 @@ module ArchitecturalKnowledge =
           Attributes = ("Value", box value) :: ("MetricType", box "PI") :: additionalTags |> Map.ofList }
 
     let ofPerformance (operation: string) (duration: TimeSpan) (success: bool) =
+        let severity = if duration.TotalMilliseconds > 100.0 then "Warning" else "Debug"
         { Name = "Performance"
           Timestamp = DateTimeOffset.UtcNow
           Attributes =
             Map.ofList
                 [ "Operation", box operation
                   "DurationMs", box duration.TotalMilliseconds
-                  "Success", box success ] }
+                  "Success", box success
+                  "Severity", box severity ] }
 
     let ofBusinessEvent (name: string) (attributes: (string * obj) list) =
         { Name = name

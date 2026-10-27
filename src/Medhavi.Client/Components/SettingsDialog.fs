@@ -166,7 +166,7 @@ module SettingsDialog =
 
                         div {
                             attr.style
-                                "width: 32px; height: 32px; border-radius: 8px; background: var(--rz-primary); display: flex; align-items: center; justify-content: center; color: #fff;"
+                                "width: 32px; height: 32px; border-radius: 8px; background: var(--rz-primary); display: flex; align-items: center; justify-content: center; color: var(--rz-on-primary);"
 
                             span {
                                 attr.``class`` "rzi"

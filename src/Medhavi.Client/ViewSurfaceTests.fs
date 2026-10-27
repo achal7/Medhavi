@@ -45,6 +45,7 @@ open Medhavi.Client.ViewComposition.Layout
           DisplayName = "Demand Schema"
           Capabilities = [ "Tabular" ]
           SupportedActions = []
+          Actions = []
           Columns = []
           DefaultSort = None
           DefaultFilters = [] }
@@ -66,7 +67,9 @@ open Medhavi.Client.ViewComposition.Layout
               SchemaDefId = schemaId }
           Configuration =
             { LocalFilters = []
-              Parameters = Map.empty } }
+              Parameters = Map.empty }
+          Title = None
+          Icon = None }
 
     let private componentRegistry =
         match ComponentRegistry.ofList [ testRegistration ] with
@@ -233,6 +236,61 @@ open Medhavi.Client.ViewComposition.Layout
             false
 
     // ==================================================================
+    // Supply Foundation Workbench Validation
+    // ==================================================================
+    let private testInventoryWorkbenchResolves () =
+        let vc: ViewComponent =
+            { ComponentDefId = Components.Supply.InventoryGrid.definitionId
+              Binding =
+                { StoreId = Components.Supply.InventoryGrid.storeId
+                  SchemaDefId = Components.Supply.InventorySchema.schemaId }
+              Configuration = { LocalFilters = []; Parameters = Map.empty }
+              Title = None
+              Icon = None }
+        match ComponentResolver.resolve Components.ComponentCatalog.components Components.ComponentCatalog.schemas vc with
+        | Ok _ -> true
+        | Error _ -> false
+
+    let private testCapacityWorkbenchResolves () =
+        let vc: ViewComponent =
+            { ComponentDefId = Components.Supply.CapacityGrid.definitionId
+              Binding =
+                { StoreId = Components.Supply.CapacityGrid.storeId
+                  SchemaDefId = Components.Supply.CapacitySchema.schemaId }
+              Configuration = { LocalFilters = []; Parameters = Map.empty }
+              Title = None
+              Icon = None }
+        match ComponentResolver.resolve Components.ComponentCatalog.components Components.ComponentCatalog.schemas vc with
+        | Ok _ -> true
+        | Error _ -> false
+
+    let private testSupplyWorkbenchResolves () =
+        let vc: ViewComponent =
+            { ComponentDefId = Components.Supply.SupplyGrid.definitionId
+              Binding =
+                { StoreId = Components.Supply.SupplyGrid.storeId
+                  SchemaDefId = Components.Supply.SupplySchema.schemaId }
+              Configuration = { LocalFilters = []; Parameters = Map.empty }
+              Title = None
+              Icon = None }
+        match ComponentResolver.resolve Components.ComponentCatalog.components Components.ComponentCatalog.schemas vc with
+        | Ok _ -> true
+        | Error _ -> false
+
+    let private testSupplyUnderstandingResolves () =
+        let vc: ViewComponent =
+            { ComponentDefId = Components.Supply.SupplyUnderstandingGrid.definitionId
+              Binding =
+                { StoreId = Components.Supply.SupplyUnderstandingGrid.storeId
+                  SchemaDefId = Components.Supply.SupplyUnderstandingSchema.schemaId }
+              Configuration = { LocalFilters = []; Parameters = Map.empty }
+              Title = None
+              Icon = None }
+        match ComponentResolver.resolve Components.ComponentCatalog.components Components.ComponentCatalog.schemas vc with
+        | Ok _ -> true
+        | Error _ -> false
+
+    // ==================================================================
     // Runner
     // ==================================================================
     let run () : (string * bool) list =
@@ -246,7 +304,11 @@ open Medhavi.Client.ViewComposition.Layout
           "R2.1: Single layout invokes leaf eagerly", testL2SingleInvokesLeaf()
           "R2.1: Split interprets successfully", testL3SplitInterpretsSuccessfully()
           "R2.1: Dashboard interprets successfully", testL4DashboardInterpretsSuccessfully()
-          "R2.1: Tabbed interprets successfully", testL5TabbedInterpretsSuccessfully() ]
+          "R2.1: Tabbed interprets successfully", testL5TabbedInterpretsSuccessfully()
+          "Supply: CA-S-003 Inventory Workbench resolves", testInventoryWorkbenchResolves()
+          "Supply: CA-S-004 Capacity Workbench resolves", testCapacityWorkbenchResolves()
+          "Supply: CA-S-002 Planned Order Schedule resolves", testSupplyWorkbenchResolves()
+          "Supply: CA-S-001 Sensory Stream resolves", testSupplyUnderstandingResolves() ]
 
     let report () : unit =
         let results = run()

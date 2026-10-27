@@ -2,8 +2,6 @@ namespace Medhavi.Client.Controls
 
 open Bolero
 open Bolero.Html
-open Radzen
-open Radzen.Blazor
 open Microsoft.AspNetCore.Components.Web
 
 type KpiTrendDirection =
@@ -18,45 +16,55 @@ type KpiHealth =
     | Neutral
 
 type KpiMetric =
-    { Id: string
-      Title: string
-      Domain: string
-      Value: string
-      Unit: string option
-      Target: string option
-      ProgressPct: float option
-      TrendDirection: KpiTrendDirection
-      TrendValue: string
-      IsTrendFavorable: bool
-      Health: KpiHealth
-      Icon: string
-      Description: string
-      DrillDownViewId: string option }
+    {
+        Id: string
+        Title: string
+        Domain: string
+        Value: string
+        Unit: string option
+        Target: string option
+        ProgressPct: float option
+        TrendDirection: KpiTrendDirection
+        TrendValue: string
+        IsTrendFavorable: bool
+        Health: KpiHealth
+        Icon: string
+        Description: string
+        DrillDownViewId: string option
+    }
 
 module KpiCard =
 
     let private healthColors (health: KpiHealth) =
         match health with
         | Healthy ->
-            {| Accent = "var(--rz-success)"
-               BadgeBg = "rgba(40, 167, 69, 0.12)"
-               BadgeColor = "var(--rz-success)"
-               Border = "1px solid rgba(40, 167, 69, 0.25)" |}
+            {|
+                Accent = "var(--rz-success)"
+                BadgeBg = "var(--rz-success-lighter)"
+                BadgeColor = "var(--rz-success)"
+                Border = "1px solid var(--rz-success-light)"
+            |}
         | Warning ->
-            {| Accent = "var(--rz-warning)"
-               BadgeBg = "rgba(255, 193, 7, 0.15)"
-               BadgeColor = "#b78103"
-               Border = "1px solid rgba(255, 193, 7, 0.35)" |}
+            {|
+                Accent = "var(--rz-warning)"
+                BadgeBg = "var(--rz-warning-lighter)"
+                BadgeColor = "var(--rz-warning-dark)"
+                Border = "1px solid var(--rz-warning-light)"
+            |}
         | Critical ->
-            {| Accent = "var(--rz-danger)"
-               BadgeBg = "rgba(220, 53, 69, 0.12)"
-               BadgeColor = "var(--rz-danger)"
-               Border = "1px solid rgba(220, 53, 69, 0.25)" |}
+            {|
+                Accent = "var(--rz-danger)"
+                BadgeBg = "var(--rz-danger-lighter)"
+                BadgeColor = "var(--rz-danger)"
+                Border = "1px solid var(--rz-danger-light)"
+            |}
         | Neutral ->
-            {| Accent = "var(--rz-info)"
-               BadgeBg = "rgba(23, 162, 184, 0.12)"
-               BadgeColor = "var(--rz-info)"
-               Border = "1px solid rgba(23, 162, 184, 0.25)" |}
+            {|
+                Accent = "var(--rz-info)"
+                BadgeBg = "var(--rz-info-lighter)"
+                BadgeColor = "var(--rz-info)"
+                Border = "1px solid var(--rz-info-light)"
+            |}
 
     let private trendIcon (trend: KpiTrendDirection) =
         match trend with
@@ -70,7 +78,9 @@ module KpiCard =
 
         let cardContainerStyle =
             "background: var(--rz-base-background-color); "
-            + "border: " + styling.Border + "; "
+            + "border: "
+            + styling.Border
+            + "; "
             + "border-radius: 8px; "
             + "padding: 0.9rem 1.1rem; "
             + "display: flex; "
@@ -78,7 +88,9 @@ module KpiCard =
             + "justify-content: space-between; "
             + "box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04); "
             + "transition: transform 0.15s ease, box-shadow 0.15s ease; "
-            + "cursor: " + cursorStyle + "; "
+            + "cursor: "
+            + cursorStyle
+            + "; "
             + "height: 100%; "
             + "box-sizing: border-box;"
 
@@ -95,25 +107,32 @@ module KpiCard =
                 attr.style "display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.4rem;"
 
                 span {
-                    attr.style (
+                    attr.style(
                         "font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; "
-                        + "color: " + styling.BadgeColor + "; "
-                        + "background: " + styling.BadgeBg + "; "
+                        + "color: "
+                        + styling.BadgeColor
+                        + "; "
+                        + "background: "
+                        + styling.BadgeBg
+                        + "; "
                         + "padding: 2px 8px; border-radius: 4px;"
                     )
+
                     metric.Domain
                 }
 
                 span {
                     attr.``class`` "rzi"
-                    attr.style ("font-size: 1.25rem; color: " + styling.Accent + "; opacity: 0.85;")
+                    attr.style("font-size: 1.25rem; color: " + styling.Accent + "; opacity: 0.85;")
                     metric.Icon
                 }
             }
 
             // Title
             div {
-                attr.style "font-size: 13px; font-weight: 600; color: var(--rz-text-secondary-color); margin-bottom: 0.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
+                attr.style
+                    "font-size: 13px; font-weight: 600; color: var(--rz-text-secondary-color); margin-bottom: 0.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
+
                 metric.Title
             }
 
@@ -139,23 +158,31 @@ module KpiCard =
             match metric.ProgressPct, metric.Target with
             | Some pct, Some targetStr ->
                 let clampedPct = min pct 100.0
+
                 div {
                     attr.style "margin-bottom: 0.5rem;"
 
                     div {
-                        attr.style "display: flex; justify-content: space-between; font-size: 11px; color: var(--rz-text-secondary-color); margin-bottom: 2px;"
+                        attr.style
+                            "display: flex; justify-content: space-between; font-size: 11px; color: var(--rz-text-secondary-color); margin-bottom: 2px;"
+
                         span { "Target: " + targetStr }
                         span { sprintf "%.1f%%" clampedPct }
                     }
 
                     div {
-                        attr.style "width: 100%; height: 5px; background: var(--rz-border-color); border-radius: 3px; overflow: hidden;"
+                        attr.style
+                            "width: 100%; height: 5px; background: var(--rz-border-color); border-radius: 3px; overflow: hidden;"
 
                         div {
-                            attr.style (
-                                "width: " + string clampedPct + "%; "
+                            attr.style(
+                                "width: "
+                                + string clampedPct
+                                + "%; "
                                 + "height: 100%; "
-                                + "background: " + styling.Accent + "; "
+                                + "background: "
+                                + styling.Accent
+                                + "; "
                                 + "border-radius: 3px; transition: width 0.3s ease;"
                             )
                         }
@@ -165,7 +192,8 @@ module KpiCard =
 
             // Footer: Trend indicator + Description
             div {
-                attr.style "display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 0.35rem; border-top: 1px solid var(--rz-border-color);"
+                attr.style
+                    "display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 0.35rem; border-top: 1px solid var(--rz-border-color);"
 
                 div {
                     attr.style "display: flex; align-items: center; gap: 0.25rem;"
@@ -177,18 +205,20 @@ module KpiCard =
 
                     span {
                         attr.``class`` "rzi"
-                        attr.style ("font-size: 14px; color: " + trendColor + ";")
+                        attr.style("font-size: 14px; color: " + trendColor + ";")
                         trendIcon metric.TrendDirection
                     }
 
                     span {
-                        attr.style ("font-size: 12px; font-weight: 600; color: " + trendColor + ";")
+                        attr.style("font-size: 12px; font-weight: 600; color: " + trendColor + ";")
                         metric.TrendValue
                     }
                 }
 
                 span {
-                    attr.style "font-size: 11px; color: var(--rz-text-secondary-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 55%;"
+                    attr.style
+                        "font-size: 11px; color: var(--rz-text-secondary-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 55%;"
+
                     metric.Description
                 }
             }

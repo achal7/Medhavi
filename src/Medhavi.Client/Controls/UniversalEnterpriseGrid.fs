@@ -1,13 +1,10 @@
 module Medhavi.Client.Controls.UniversalEnterpriseGrid
 
 open System
-open System.Globalization
 open Bolero
 open Bolero.Html
 open Radzen
-open Radzen.Blazor
 open Microsoft.AspNetCore.Components.Web
-open Medhavi.Client.ViewComposition.Identity
 open Medhavi.Client.ViewComposition.Context
 open Medhavi.Client.ViewComposition.Component
 open Medhavi.Client.ViewComposition.Schema
@@ -20,15 +17,12 @@ open System.Collections.Generic
 /// Render the universal enterprise grid
 let render (ctx: ComponentRenderContext) (dispatch: ComponentEvent -> unit) : Node =
 
-    let rows =
+    let rawRows =
         match ctx.Data with
-        | Tabular rows -> RowNormalization.completeRows ctx.Schema rows
+        | Tabular r -> RowNormalization.completeRows ctx.Schema r
         | NoData -> []
 
-    let dynamicRows = UniversalGridAdapter.toDynamicRows rows
-    let dynamicColumns = UniversalGridAdapter.toDynamicColumns ctx.Schema
-
-    // Decode sort from parameters
+    // Decode sort from parameters or fall back to schema default
     let sortOpt =
         match
             ctx.Configuration.Parameters |> Map.tryFind "SortField",
@@ -38,20 +32,47 @@ let render (ctx: ComponentRenderContext) (dispatch: ComponentEvent -> unit) : No
             let direction = if dir = "Descending" then Descending else Ascending
 
             Some
-                { Field = field
-                  Direction = direction
-                  Priority = 1 }
+                {
+                    Field = field
+                    Direction = direction
+                    Priority = 1
+                }
         | _ -> ctx.Schema.DefaultSort
+
+    // Apply functional pipeline: local filters then sorting
+    let filteredRows = UniversalGridPipeline.applyFilters ctx.Configuration.LocalFilters rawRows
+
+    let sortedRows =
+        match sortOpt with
+        | Some s -> UniversalGridPipeline.applySort s filteredRows
+        | None -> filteredRows
+
+    let dynamicRows = UniversalGridAdapter.toDynamicRows sortedRows
+    let dynamicColumns = UniversalGridAdapter.toDynamicColumns ctx.Schema
 
     let selectedKey = ctx.Selection |> Option.defaultValue ""
 
-    let isFiltered = not(List.isEmpty ctx.Configuration.LocalFilters) || (dynamicRows.Length < List.length rows)
+    let keyColumn = ctx.Schema.Columns |> List.tryFind(fun c -> c.IsKey)
+    let keyColId = keyColumn |> Option.map(fun c -> c.ColumnId)
+
+    // Build the selected values list for RadzenDataGrid to highlight the selected row
+    let selectedRowValues: IList<Value> =
+        match ctx.Selection, keyColumn with
+        | Some key, Some kc when not(String.IsNullOrEmpty key) ->
+            dynamicRows
+            |> Array.filter(fun r ->
+                let mutable v: obj = null
+                r.TryGetValue(kc.ColumnId, &v) && string v = key)
+            |> fun arr -> (ResizeArray<Value>(arr) :> IList<Value>)
+        | _ -> (ResizeArray<Value>() :> IList<Value>)
+
+    let isFiltered = not(List.isEmpty ctx.Configuration.LocalFilters) || (sortedRows.Length < List.length rawRows)
 
     let badgeText =
         if isFiltered then
-            $"{dynamicRows.Length} / {rows.Length} records (Filtered)"
+            $"{sortedRows.Length} / {rawRows.Length} records (Filtered)"
         else
-            $"{dynamicRows.Length} records"
+            $"{sortedRows.Length} records"
 
     let selectionMode =
         match ctx.Definition.SelectionMode with
@@ -59,45 +80,58 @@ let render (ctx: ComponentRenderContext) (dispatch: ComponentEvent -> unit) : No
         | MultiSelection -> DataGridSelectionMode.Multiple
         | NoSelection -> DataGridSelectionMode.Single
 
+    let activeSortField = sortOpt |> Option.map(fun s -> s.Field)
+
+    let activeSortDirection =
+        sortOpt |> Option.map(fun s -> if s.Direction = Descending then "Descending" else "Ascending")
+
     div {
         attr.style
             "width: 100%; height: 100%; display: flex; flex-direction: column; min-height: 0; gap: 8px; padding: 8px; box-sizing: border-box;"
 
-        // Toolbar
+        // Compact Toolstrip (Filter badge + Selection + Actions + Refresh)
         div {
-            attr.style "display: flex; align-items: center; gap: 8px; flex-shrink: 0; flex-wrap: wrap; padding: 4px 0;"
-
-            Rz.icon(ctx.Definition.Icon, style = "font-size: 1.2rem; color: var(--rz-primary);")
-
-            span {
-                attr.style "font-weight: 600; font-size: 14px;"
-                ctx.Schema.DisplayName
-            }
+            attr.style "display: flex; align-items: center; gap: 8px; flex-shrink: 0; flex-wrap: wrap; padding: 2px 0;"
 
             span {
                 attr.style(
                     if isFiltered then
-                        "padding: 2px 8px; border-radius: 10px; background: rgba(255, 193, 7, 0.2); color: #b78103; border: 1px solid #b78103; font-size: 12px; font-weight: 600;"
+                        "padding: 2px 8px; border-radius: 10px; background: var(--rz-warning-lighter); color: var(--rz-warning-dark); border: 1px solid var(--rz-warning); font-size: 11px; font-weight: 600;"
                     else
-                        "padding: 2px 8px; border-radius: 10px; background: var(--rz-secondary-lighter); font-size: 12px;"
+                        "padding: 2px 8px; border-radius: 10px; background: var(--rz-secondary-lighter); font-size: 11px;"
                 )
 
                 badgeText
             }
 
-            div { attr.style "margin-left: auto; display: flex; align-items: center; gap: 8px;" }
+            div {
+                attr.style "margin-left: auto; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;"
 
-            if selectedKey <> "" then
-                span {
-                    attr.style "color: var(--rz-text-secondary-color); font-size: 12px;"
-                    $"Selected: {selectedKey}"
-                }
+                for action in ctx.Schema.Actions do
+                    let btnStyle = if action.IsPrimary then ButtonStyle.Primary else ButtonStyle.Light
 
-            Rz.iconButton(
-                "refresh",
-                onClick = (fun (_: MouseEventArgs) -> dispatch RefreshRequested),
-                tooltip = "Refresh data"
-            )
+                    Rz.button(
+                        action.DisplayName,
+                        onClick =
+                            (fun (_: MouseEventArgs) ->
+                                let targetOpt = if selectedKey <> "" then Some selectedKey else None
+                                dispatch(ActionRequested(action.Id, targetOpt, NoPayload))),
+                        style = btnStyle,
+                        icon = action.Icon
+                    )
+
+                if selectedKey <> "" then
+                    span {
+                        attr.style "color: var(--rz-text-secondary-color); font-size: 12px; margin-left: 4px;"
+                        $"Selected: {selectedKey}"
+                    }
+
+                Rz.iconButton(
+                    "refresh",
+                    onClick = (fun (_: MouseEventArgs) -> dispatch RefreshRequested),
+                    tooltip = "Refresh data"
+                )
+            }
         }
 
         // Grid
@@ -110,16 +144,22 @@ let render (ctx: ComponentRenderContext) (dispatch: ComponentEvent -> unit) : No
                 "AllowPaging" => false
                 "AllowSorting" => true
                 "AllowFiltering" => true
-                "AllowGrouping" => false
-                "AllowVirtualization" => true
+                "AllowGrouping" => true
+                "AllowVirtualization" => false
+                "AllowColumnResize" => true
+                "AllowColumnPicking" => true
+                "SelectedValues" => selectedRowValues
+                "SelectedKey" => ctx.Selection
+                "KeyColumnId" => keyColId
+                "ActiveSortField" => activeSortField
+                "ActiveSortDirection" => activeSortDirection
                 "SelectionMode" => selectionMode
                 "AllowRowSelectOnRowClick" => true
                 "FormatProvider" => (ctx.Culture :> IFormatProvider)
                 "CellTemplates" => CellRenderers.templates
 
-                attr.callback "OnRowSelected" (fun (row: Value) ->
+                "OnRowSelected" => Action<Value>(fun (row: Value) ->
                     let mutable key: obj = null
-                    let keyColumn = ctx.Schema.Columns |> List.tryFind(fun c -> c.IsKey)
 
                     match keyColumn with
                     | Some kc ->
@@ -127,24 +167,26 @@ let render (ctx: ComponentRenderContext) (dispatch: ComponentEvent -> unit) : No
                             dispatch(SelectionChanged(Some(string key)))
                     | None -> ())
 
-                attr.callback "OnSort" (fun (args: DataGridColumnSortEventArgs<Value>) ->
-                    let prop = args.Column.Property
+                "OnSort" => Action<DataGridColumnSortEventArgs<Value>>(fun (args: DataGridColumnSortEventArgs<Value>) ->
+                    let colId = args.Column.Property
 
                     let sortCriterion =
                         if args.SortOrder.HasValue then
                             let dir = if args.SortOrder.Value = SortOrder.Ascending then Ascending else Descending
 
                             Some
-                                { Field = prop
-                                  Direction = dir
-                                  Priority = 1 }
+                                {
+                                    Field = colId
+                                    Direction = dir
+                                    Priority = 1
+                                }
                         else
                             None
 
                     dispatch(SortChanged sortCriterion))
 
-                attr.callback "OnFilter" (fun (args: DataGridColumnFilterEventArgs<Value>) ->
-                    let prop = args.Column.Property
+                "OnFilter" => Action<DataGridColumnFilterEventArgs<Value>>(fun (args: DataGridColumnFilterEventArgs<Value>) ->
+                    let colId = args.Column.Property
 
                     let filterValStr =
                         if isNull args.FilterValue then
@@ -170,12 +212,14 @@ let render (ctx: ComponentRenderContext) (dispatch: ComponentEvent -> unit) : No
                         match filterValStr with
                         | Some v ->
                             Some
-                                { Field = prop
-                                  Operator = op
-                                  Value = Some v }
+                                {
+                                    Field = colId
+                                    Operator = op
+                                    Value = Some v
+                                }
                         | None -> None
 
-                    dispatch(FilterChanged(prop, filterCriterion)))
+                    dispatch(FilterChanged(colId, filterCriterion)))
             }
         }
     }

@@ -14,7 +14,9 @@
     <Compile Include="Composition\ComposeClient.fs" />
     <Compile Include="Composition\StartupData.fs" />
 
+    <Compile Include="Services\TraceabilityQueryAdapter.fs" />
     <Compile Include="Api\HealthEndpoints.fs" />
+    <Compile Include="Api\TraceabilityEndpoints.fs" />
     <Compile Include="UI\Index.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
@@ -32,7 +34,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Infra -->
+    <!-- Common & Infra -->
+    <ProjectReference Include="../Medhavi.Common/Medhavi.Common.fsproj" />
+    <ProjectReference Include="../Medhavi.Contracts/Medhavi.Contracts.fsproj" />
     <ProjectReference Include="../Medhavi.Infrastructure/Medhavi.Infrastructure.fsproj" />
 
     <!-- Domain -->

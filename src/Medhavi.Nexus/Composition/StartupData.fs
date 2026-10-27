@@ -248,8 +248,39 @@ let seed (nexusCtx: NexusContext) : Task<unit> =
         | None ->
             printfn "[StartupData] Skipping Supply seeding due to missing or invalid SupplySeedData.json"
 
+        // Allow projection agents to process mailboxes from Supply records
+        do! Task.Delay 600
+
+        printfn "[StartupData] Seeding Initial Inventory Positions..."
+        let invItems =
+            [ ("SKU-DRIVE-500GB", "LOC-CENTRAL-WH")
+              ("SKU-DRIVE-1TB", "LOC-WEST-PLANT")
+              ("SKU-BATTERY-PACK-PRO", "LOC-CENTRAL-WH")
+              ("SKU-POWER-SUPPLY-850W", "LOC-EAST-HUB") ]
+
+        for (item, loc) in invItems do
+            let req: UpdateInventoryPositionReq =
+                { ItemId = item
+                  LocationId = loc
+                  TriggeringEvidence = [ "INIT_SEED" ] }
+            let! res = nexusCtx.Supply.ManageInventory.Commands.Position.Update req
+            match res with
+            | Ok dto -> printfn $"  [OK] Inventory position assessed: {dto.ItemId} @ {dto.LocationId} (Available: {dto.AvailableQuantity}, Health: {dto.HealthStatus})"
+            | Error err -> printfn $"  [FAIL] Inventory position update error for {item}: {err.Message}"
+
+        printfn "[StartupData] Seeding Initial Capacity Positions..."
+        let capResources = [ "WC-ASSEMBLY-LINE-01"; "WC-PACKAGING-01" ]
+        for resId in capResources do
+            let req: UpdateCapacityPositionReq =
+                { PhysicalResourceId = resId
+                  TriggeringEvidence = [ "INIT_SEED" ] }
+            let! res = nexusCtx.Supply.ManageCapacity.Commands.Position.Update req
+            match res with
+            | Ok dto -> printfn $"  [OK] Capacity position assessed: {dto.PhysicalResourceId} (Load: {dto.CurrentLoadHours}/{dto.AvailableCapacityHours} hrs, Status: {dto.UtilizationStatus})"
+            | Error err -> printfn $"  [FAIL] Capacity position update error for {resId}: {err.Message}"
+
         // Final drain of projection mailboxes
-        do! Task.Delay 500
+        do! Task.Delay 600
         printfn "[StartupData] Seeding completed. All projection mailboxes processed."
         printfn "========================================================="
     }

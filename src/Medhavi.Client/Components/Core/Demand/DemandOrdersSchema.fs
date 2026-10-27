@@ -12,31 +12,22 @@ open Medhavi.Client.Components.Shared
 
 module DemandOrdersActions =
 
-    let lock: ActionDescriptor =
-        { Id = ActionDefId.literal "demand.lock"
-          DisplayName = "Lock Demand"
-          Icon = "lock"
+    let satisfy: ActionDescriptor =
+        { Id = ActionDefId.literal "demand.satisfy"
+          DisplayName = "Satisfy Demand"
+          Icon = "check_circle"
           Scope = SingleEntityScope
-          ExecutionMode = RequiresConfirmation "Lock this demand line against automated rescheduling?"
+          ExecutionMode = RequiresConfirmation "Mark this demand order as fulfilled and satisfied?"
           RequiredRoles = [ "Planner"; "LeadPlanner" ]
           IsPrimary = true }
 
-    let unlock: ActionDescriptor =
-        { Id = ActionDefId.literal "demand.unlock"
-          DisplayName = "Unlock Demand"
-          Icon = "lock_open"
+    let cancel: ActionDescriptor =
+        { Id = ActionDefId.literal "demand.cancel"
+          DisplayName = "Cancel Demand"
+          Icon = "cancel"
           Scope = SingleEntityScope
-          ExecutionMode = Direct
+          ExecutionMode = RequiresConfirmation "Cancel this demand order in the enterprise ledger?"
           RequiredRoles = [ "Planner"; "LeadPlanner" ]
-          IsPrimary = false }
-
-    let overrideQuantity: ActionDescriptor =
-        { Id = ActionDefId.literal "demand.override"
-          DisplayName = "Override Quantity"
-          Icon = "edit_note"
-          Scope = SingleEntityScope
-          ExecutionMode = Parameterized("demand-override-form", "Override Demand Quantity")
-          RequiredRoles = [ "Planner" ]
           IsPrimary = false }
 
     let explainShortage: ActionDescriptor =
@@ -48,7 +39,7 @@ module DemandOrdersActions =
           RequiredRoles = [ "Planner"; "Viewer" ]
           IsPrimary = false }
 
-    let all: ActionDescriptor list = [ lock; unlock; overrideQuantity; explainShortage ]
+    let all: ActionDescriptor list = [ satisfy; cancel; explainShortage ]
 
 module DemandOrdersSchema =
 
@@ -59,6 +50,7 @@ module DemandOrdersSchema =
           DisplayName = "Enterprise Demand Orders"
           Capabilities = [ "Tabular" ]
           SupportedActions = DemandOrdersActions.all |> List.map(fun a -> a.Id)
+          Actions = DemandOrdersActions.all
           Columns =
             [ { ColumnId = "LifecycleState"
                 PropertyName = Some "LifecycleState"

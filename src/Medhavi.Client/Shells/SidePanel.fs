@@ -68,11 +68,11 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> * Output option =
 let private severityStyle (severity: ImpactSeverity) =
     match severity with
     | Critical ->
-        "color: var(--rz-danger); background: rgba(220, 53, 69, 0.15); border: 1px solid rgba(220, 53, 69, 0.35);"
-    | High -> "color: #b78103; background: rgba(255, 193, 7, 0.15); border: 1px solid rgba(255, 193, 7, 0.35);"
+        "color: var(--rz-danger); background: var(--rz-danger-lighter); border: 1px solid var(--rz-danger-light);"
+    | High -> "color: var(--rz-warning-dark); background: var(--rz-warning-lighter); border: 1px solid var(--rz-warning-light);"
     | Medium ->
-        "color: var(--rz-info); background: rgba(23, 162, 184, 0.15); border: 1px solid rgba(23, 162, 184, 0.35);"
-    | Low -> "color: var(--rz-success); background: rgba(40, 167, 69, 0.15); border: 1px solid rgba(40, 167, 69, 0.35);"
+        "color: var(--rz-info); background: var(--rz-info-lighter); border: 1px solid var(--rz-info-light);"
+    | Low -> "color: var(--rz-success); background: var(--rz-success-lighter); border: 1px solid var(--rz-success-light);"
 
 let private severityLabel (severity: ImpactSeverity) =
     match severity with
@@ -352,7 +352,7 @@ let private renderActiveExplanation (expl: CausalExplanation) (dispatch: Msg -> 
                                 width: 100%;
                                 padding: 0.4rem 0.75rem;
                                 background: var(--rz-primary);
-                                color: white;
+                                color: var(--rz-on-primary);
                                 border: none;
                                 border-radius: 4px;
                                 font-size: 12px;
@@ -487,7 +487,7 @@ let private renderStandbyCopilot (dispatch: Msg -> unit) : Node =
 
                 span {
                     attr.``class`` "rzi"
-                    attr.style "font-size: 16px; color: #b78103;"
+                    attr.style "font-size: 16px; color: var(--rz-warning);"
                     "warning"
                 }
 

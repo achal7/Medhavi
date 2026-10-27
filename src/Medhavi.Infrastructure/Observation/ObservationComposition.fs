@@ -20,7 +20,7 @@ module ObservationComposition =
 
     /// Create a minimal provider suitable for development and testing.
     let createDevelopmentProvider (dispatchTelemetry: TelemetryEvent -> unit) : ArchitecturalKnowledgeProvider =
-        let logger = ConsoleLogger("Medhavi.Development") |> Logger.Create |> toKnowledgeRepresentation
+        let logger = ConsoleLogger.createLogger "Medhavi.Development" |> Logger.Create |> toKnowledgeRepresentation
         let telemetryRep = TelemetryPublisher.toKnowledgeRepresentation dispatchTelemetry
 
         [ logger; telemetryRep ]

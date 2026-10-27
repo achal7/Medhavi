@@ -41,6 +41,7 @@ module ExceptionSchema =
           DisplayName = "Core Constraint Exceptions"
           Capabilities = [ "Tabular" ]
           SupportedActions = ExceptionActions.all |> List.map(fun a -> a.Id)
+          Actions = ExceptionActions.all
           Columns =
             [ { ColumnId = "LifecycleState"
                 PropertyName = Some "LifecycleState"

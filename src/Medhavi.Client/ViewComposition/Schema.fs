@@ -42,6 +42,7 @@ type SchemaDefinition =
       DisplayName: string
       Capabilities: string list
       SupportedActions: ActionDefId list
+      Actions: ActionDescriptor list
       Columns: SchemaColumnDefinition list
       DefaultSort: SortCriterion option
       DefaultFilters: FilterCriterion list }
@@ -151,4 +152,6 @@ module ComponentBinding =
           Binding =
             { StoreId = b.Store
               SchemaDefId = b.Schema.Id }
-          Configuration = b.Configuration }
+          Configuration = b.Configuration
+          Title = None
+          Icon = None }

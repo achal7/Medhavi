@@ -86,6 +86,7 @@ type Msg =
     | SurfaceAdapterError of LayoutAdapterError
     | DataStoreLoaded of DataStoreId * DataPayload
     | DataStoreLoadFailed of DataStoreId * string
+    | RefreshStores of DataStoreId list
 
 // Deterministic identity generation
 let private createWorkspaceTabId number = sprintf "workspace-tab-%03d" number |> WorkspaceTabId.create
@@ -249,7 +250,8 @@ let private updateSelection
     (model: Model)
     : Model * Cmd<Msg> * Output option =
     match activeTab model with
-    | None -> model, Cmd.none, None
+    | None ->
+        model, Cmd.none, None
     | Some tab ->
         let updatedSelections = tab.Session.Selections |> Map.add viewComponentId selection
 
@@ -311,13 +313,18 @@ let private applySortChange
         match tab.Session.State.Components |> Map.tryFind viewComponentId with
         | None -> model, Cmd.none, None
         | Some vc ->
+            let baseParams =
+                vc.Configuration.Parameters
+                |> Map.remove "SortField"
+                |> Map.remove "SortDirection"
+
             let newParams =
                 match sortOpt with
                 | Some s ->
-                    Map.ofList
-                        [ "SortField", StringValue s.Field
-                          "SortDirection", StringValue(if s.Direction = Ascending then "Ascending" else "Descending") ]
-                | None -> Map.empty
+                    baseParams
+                    |> Map.add "SortField" (StringValue s.Field)
+                    |> Map.add "SortDirection" (StringValue(if s.Direction = Ascending then "Ascending" else "Descending"))
+                | None -> baseParams
 
             let newConfig =
                 { vc.Configuration with
@@ -445,6 +452,14 @@ let update (ctx: ApplicationContext) (msg: Msg) (model: Model) : Model * Cmd<Msg
         { model with DataStores = Map.add storeId payload model.DataStores }, Cmd.none, None
     | DataStoreLoadFailed(_storeId, _error) ->
         model, Cmd.none, None
+    | RefreshStores storeIds ->
+        let cmds =
+            storeIds
+            |> List.distinct
+            |> List.map (fetchStoreCmd ctx)
+            |> Cmd.batch
+
+        model, cmds, None
 
 // View
 let private renderTab (model: Model) (tab: WorkspaceTab) (dispatch: Msg -> unit) : Node =

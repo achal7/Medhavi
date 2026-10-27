@@ -67,7 +67,7 @@ module CausalExplainer =
                 Title = "Berlin DC · SMT Line 3"
                 Subtitle = "Scheduled Build: 2026-09-03"
                 Status = "Material Starvation"
-                StatusColor = "#b78103"
+                StatusColor = "var(--rz-warning)"
                 Metrics = [ "Current Load", "92.4% (Bottleneck)"; "Buffer Stock", "0 Units available" ] }
 
               { NodeId = "PO-8802"
@@ -125,7 +125,7 @@ module CausalExplainer =
                 Title = "ASML Corp · B200 Inverter"
                 Subtitle = "Required: 300 Units · Due: 2026-09-04"
                 Status = "At Risk"
-                StatusColor = "#b78103"
+                StatusColor = "var(--rz-warning)"
                 Metrics = [ "Contract SLA", "Tier 2 Priority"; "Margin", "42.5%" ] }
 
               { NodeId = "PL-BER-L2"
@@ -134,7 +134,7 @@ module CausalExplainer =
                 Title = "Berlin DC · Inverter Line 2"
                 Subtitle = "Scheduled Maintenance: 2026-09-02"
                 Status = "Capacity Constrained (94.8%)"
-                StatusColor = "#b78103"
+                StatusColor = "var(--rz-warning)"
                 Metrics = [ "Downtime", "16 Hours"; "Available Capacity", "5.2%" ] } ]
           Recommendations =
             [ { ResolutionId = "RES-OVERTIME"

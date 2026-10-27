@@ -41,6 +41,7 @@ let schemaDefinition: SchemaDefinition =
           CapacityActions.reallocate.Id
           SupplyActions.expedite.Id
           SupplyActions.split.Id ]
+      Actions = []
       Columns = [] }
 
 let definition: ComponentDefinition =
@@ -218,7 +219,7 @@ let private renderCausalNode (node: CausalNode) (isLast: bool) : Node =
             }
 
             div {
-                attr.style "font-size: 11px; color: #b78103; font-weight: 600;"
+                attr.style "font-size: 11px; color: var(--rz-warning-dark); font-weight: 600;"
                 node.Status
             }
         }
@@ -243,7 +244,7 @@ let private renderMessage (msg: ChatMessage) (onExecuteAction: ProposedAction ->
 
             div {
                 attr.style
-                    "background: var(--rz-primary); color: #fff; padding: 0.75rem 1rem; border-radius: 12px 12px 2px 12px; max-width: 75%; font-size: 13px; box-shadow: 0 2px 8px rgba(0,0,0,0.12);"
+                    "background: var(--rz-primary); color: var(--rz-on-primary); padding: 0.75rem 1rem; border-radius: 12px 12px 2px 12px; max-width: 75%; font-size: 13px; box-shadow: 0 2px 8px rgba(0,0,0,0.12);"
 
                 div { text }
 
@@ -266,7 +267,7 @@ let private renderMessage (msg: ChatMessage) (onExecuteAction: ProposedAction ->
             // AI Avatar Icon
             div {
                 attr.style
-                    "width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, var(--rz-primary), #6f42c1); display: flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0; box-shadow: 0 2px 8px rgba(111,66,193,0.3);"
+                    "width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, var(--rz-primary), var(--rz-secondary)); display: flex; align-items: center; justify-content: center; color: var(--rz-on-primary); flex-shrink: 0; box-shadow: 0 2px 8px var(--rz-shadow-1);"
 
                 span {
                     attr.``class`` "rzi"
@@ -292,7 +293,7 @@ let private renderMessage (msg: ChatMessage) (onExecuteAction: ProposedAction ->
 
                     span {
                         attr.style
-                            "font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; background: rgba(220, 53, 69, 0.15); color: #dc3545; border: 1px solid #dc3545;"
+                            "font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; background: var(--rz-danger-lighter); color: var(--rz-danger); border: 1px solid var(--rz-danger);"
 
                         financialImpact
                     }
@@ -495,7 +496,7 @@ let private render (ctx: ComponentRenderContext) (dispatchEvent: ComponentEvent 
 
                 div {
                     attr.style
-                        "width: 34px; height: 34px; border-radius: 8px; background: linear-gradient(135deg, var(--rz-primary), #6f42c1); display: flex; align-items: center; justify-content: center; color: #fff; box-shadow: 0 2px 8px rgba(111,66,193,0.3);"
+                        "width: 34px; height: 34px; border-radius: 8px; background: linear-gradient(135deg, var(--rz-primary), var(--rz-secondary)); display: flex; align-items: center; justify-content: center; color: var(--rz-on-primary); box-shadow: 0 2px 8px var(--rz-shadow-1);"
 
                     span {
                         attr.``class`` "rzi"
@@ -524,7 +525,7 @@ let private render (ctx: ComponentRenderContext) (dispatchEvent: ComponentEvent 
 
                 span {
                     attr.style
-                        "padding: 3px 10px; border-radius: 12px; background: rgba(40, 167, 69, 0.15); color: #28a745; border: 1px solid #28a745; font-size: 11px; font-weight: 700;"
+                        "padding: 3px 10px; border-radius: 12px; background: var(--rz-success-lighter); color: var(--rz-success); border: 1px solid var(--rz-success); font-size: 11px; font-weight: 700;"
 
                     "● AI Online"
                 }

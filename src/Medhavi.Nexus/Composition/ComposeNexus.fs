@@ -6,6 +6,7 @@ open Microsoft.Extensions.DependencyInjection
 open Medhavi.Common
 open Medhavi.Foundation
 open Medhavi.Foundation.Contracts
+open Medhavi.Foundation.Observation
 open Medhavi.Infrastructure.Projections
 open Medhavi.Infrastructure.Stores
 open Medhavi.Infrastructure.Stores.EnvelopeStore
@@ -21,16 +22,13 @@ type NexusContext =
       Store: EnvelopeStoreOps
       Dispose: unit -> unit }
 
-let composeAll (services: IServiceCollection) =
+let composeAll
+    (publishKnowledge: KnowledgeRepresentation)
+    (telemetryPublisher: TelemetryEvent -> unit)
+    (services: IServiceCollection) =
     taskResult {
         // Step 1: Create shared event store
         let store = EnvelopeStoreMem.createEnvelopeStoreMem()
-
-        let publishKnowledge = fun _ -> ()
-        let telemetryPublisher (t: Medhavi.Foundation.Observation.TelemetryEvent) =
-            if t.Severity = Medhavi.Foundation.Observation.TelemetrySeverity.Critical
-               || t.Severity = Medhavi.Foundation.Observation.TelemetrySeverity.Errors then
-                eprintfn $"[Telemetry %A{t.Severity}] %s{t.Message}"
         let pconfig = ProjectionConfig.Default
         let traceCodec: Codec<DecisionTrace> = Codec.json<DecisionTrace>
 

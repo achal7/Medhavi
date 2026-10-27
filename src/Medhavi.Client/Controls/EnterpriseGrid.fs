@@ -95,7 +95,7 @@ module EnterpriseGrid =
                 span {
                     attr.style(
                         if isFiltered then
-                            "padding: 2px 8px; border-radius: 10px; background: rgba(255, 193, 7, 0.2); color: #b78103; border: 1px solid #b78103; font-size: 12px; font-weight: 600;"
+                            "padding: 2px 8px; border-radius: 10px; background: var(--rz-warning-lighter); color: var(--rz-warning-dark); border: 1px solid var(--rz-warning); font-size: 12px; font-weight: 600;"
                         else
                             "padding: 2px 8px; border-radius: 10px; background: var(--rz-secondary-lighter); font-size: 12px;"
                     )
