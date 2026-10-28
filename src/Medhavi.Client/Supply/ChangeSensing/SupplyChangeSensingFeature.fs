@@ -2,10 +2,15 @@ module Medhavi.Client.Supply.ChangeSensing.SupplyChangeSensingFeature
 
 open Medhavi.Client
 
-let manifest =
-    {|
-        Schemas = [ SupplyChangeSensingGridSchema.definition ]
-        Stores = [ (SupplyChangeSensingStore.store.Id, SupplyChangeSensingStore.store) ]
+let store =
+    DataStore.fromQuery
+        SupplyChangeSensingGrid.storeId
+        (fun ds -> ds.Supply.SenseSupplyChanges.SupplyChangeQueries)
+        SupplyChangeSensingGrid.adapter
+
+let manifest: FeatureManifest =
+    {
+        Stores = [ (store.Id, store) ]
         Actions = SupplyChangeSensingActions.all
         Components = [ SupplyChangeSensingGrid.registration ]
-    |}
+    }

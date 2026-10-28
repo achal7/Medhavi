@@ -7,7 +7,6 @@ open Microsoft.AspNetCore.Components
 open Microsoft.AspNetCore.Components.Web
 open Radzen.Blazor
 open Medhavi.Contracts.Client
-open Medhavi.Client.Components
 
 [<Route "/{*path}">]
 type Index() =

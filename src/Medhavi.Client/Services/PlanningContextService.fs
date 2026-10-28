@@ -73,4 +73,5 @@ module PlanningContextService =
 
         { Scenario = ScenarioId.baseline
           Horizon = defaultHorizon
-          PlantId = None }
+          PlantId = None
+          ScopeId = Some "PS-GLOBAL-SUPPLY-CHAIN" }

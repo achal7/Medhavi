@@ -16,8 +16,9 @@ open Medhavi.Client.Core.Demand
 open Medhavi.Client.Supply.Capacity
 open Medhavi.Client.Supply.SupplyOrders
 
-module SupplyActions = SupplyOrderGridSchema
-module CapacityActions = CapacityGridSchema
+module SupplyActions = SupplyGrid
+module CapacityActions = CapacityGrid
+
 open Medhavi.Client.Components.SettingsDialog
 open Medhavi.Client.ViewComposition.View
 open Medhavi.Client.ViewComposition.Identity
@@ -28,29 +29,35 @@ open Medhavi.Client.ViewComposition.Component
 open Medhavi.Client.ActionExecution
 
 type BreadcrumbItem =
-    { Label: string
-      Icon: string option
-      IsActive: bool }
+    {
+        Label: string
+        Icon: string option
+        IsActive: bool
+    }
 
 type SaveViewModalState =
-    { ViewName: string
-      Category: string
-      Icon: string
-      IsSaveAs: bool }
+    {
+        ViewName: string
+        Category: string
+        Icon: string
+        IsSaveAs: bool
+    }
 
 type Model =
-    { ApplicationBar: ApplicationBar.Model
-      Navigation: NavigationBar.Model
-      ViewSpace: ViewSpace.Model
-      SidePanel: SidePanel.Model
-      CommandPalette: CommandPalette.Model
-      SavedViews: ViewDefinition list
-      SaveViewModal: SaveViewModalState option
-      SettingsModal: SettingsDialog.Model option
-      Appearance: AppearancePreferences
-      Cultural: CulturalPreferences
-      Planning: PlanningContext
-      Breadcrumbs: BreadcrumbItem list }
+    {
+        ApplicationBar: ApplicationBar.Model
+        Navigation: NavigationBar.Model
+        ViewSpace: ViewSpace.Model
+        SidePanel: SidePanel.Model
+        CommandPalette: CommandPalette.Model
+        SavedViews: ViewDefinition list
+        SaveViewModal: SaveViewModalState option
+        SettingsModal: SettingsDialog.Model option
+        Appearance: AppearancePreferences
+        Cultural: CulturalPreferences
+        Planning: PlanningContext
+        Breadcrumbs: BreadcrumbItem list
+    }
 
 type Msg =
     | ApplicationBarMsg of ApplicationBar.Msg
@@ -97,9 +104,13 @@ type Output =
     | Logout
 
 let private initialBreadcrumbs =
-    [ { Label = "Home"
-        Icon = Some "home"
-        IsActive = true } ]
+    [
+        {
+            Label = "Home"
+            Icon = Some "home"
+            IsActive = true
+        }
+    ]
 
 let private pushBreadcrumb
     (breadcrumbs: BreadcrumbItem list)
@@ -115,9 +126,13 @@ let private pushBreadcrumb
         withoutLast @ [ { last with IsActive = true } ]
     | _ ->
         deactivated
-        @ [ { Label = label
-              Icon = icon
-              IsActive = true } ]
+        @ [
+            {
+                Label = label
+                Icon = icon
+                IsActive = true
+            }
+        ]
 
 let init ctx : Model * Cmd<Msg> =
     let planning = ctx.PlanningContextService.Get()
@@ -134,25 +149,29 @@ let init ctx : Model * Cmd<Msg> =
             ViewSpaceMsg(ViewSpace.Msg.Request(ViewSpace.OpenViewDefinition ViewCatalog.executiveKpiDashboardView))
         )
 
-    { ApplicationBar = applicationBarModel
-      Navigation = navigationModel
-      ViewSpace = viewSpaceModel
-      SidePanel = sidePanelModel
-      CommandPalette = commandPaletteModel
-      SavedViews = initialViews
-      SaveViewModal = None
-      SettingsModal = None
-      Appearance = Formatting.defaultAppearancePreferences
-      Cultural = Formatting.defaultCulturalPreferences
-      Planning = planning
-      Breadcrumbs = initialBreadcrumbs },
+    {
+        ApplicationBar = applicationBarModel
+        Navigation = navigationModel
+        ViewSpace = viewSpaceModel
+        SidePanel = sidePanelModel
+        CommandPalette = commandPaletteModel
+        SavedViews = initialViews
+        SaveViewModal = None
+        SettingsModal = None
+        Appearance = Formatting.defaultAppearancePreferences
+        Cultural = Formatting.defaultCulturalPreferences
+        Planning = planning
+        Breadcrumbs = initialBreadcrumbs
+    },
     Cmd.batch
-        [ Cmd.map ApplicationBarMsg applicationBarCmd
-          Cmd.map NavigationMsg navigationCmd
-          Cmd.map ViewSpaceMsg viewSpaceCmd
-          Cmd.map SidePanelMsg sidePanelCmd
-          Cmd.map CommandPaletteMsg commandPaletteCmd
-          initialViewCmd ]
+        [
+            Cmd.map ApplicationBarMsg applicationBarCmd
+            Cmd.map NavigationMsg navigationCmd
+            Cmd.map ViewSpaceMsg viewSpaceCmd
+            Cmd.map SidePanelMsg sidePanelCmd
+            Cmd.map CommandPaletteMsg commandPaletteCmd
+            initialViewCmd
+        ]
 
 let private handleNavigationLoaded (views: ViewDefinition list) (model: Model) : Model * Cmd<Msg> =
     model, Cmd.ofMsg(NavigationMsg(NavigationBar.Msg.ReplaceViews views))
@@ -211,37 +230,41 @@ let private handleNavigationOutput
             |> fun cmd -> model, cmd, None
         | NavigationBar.NavigationTarget.Tool _ -> model, Cmd.none, None
 
-let private handleViewSpaceOutput (ctx: ApplicationContext) (output: ViewSpace.Output) (model: Model) : Model * Cmd<Msg> * Output option =
+let private handleViewSpaceOutput
+    (ctx: ApplicationContext)
+    (output: ViewSpace.Output)
+    (model: Model)
+    : Model * Cmd<Msg> * Output option =
     match output with
     | ViewSpace.Output.ActionRequested(viewComponentId, actionId, targetKey, payload) ->
         let updatedModel =
             { model with
                 SidePanel =
                     { model.SidePanel with
-                        SelectedDetail = targetKey } }
+                        SelectedDetail = targetKey
+                    }
+            }
 
         if ActionRegistry.contains actionId ctx.ActionRegistry then
-            let actionCtx : ActionExecutionContext =
-                { Services = ctx.Services
-                  OriginComponentId = viewComponentId
-                  TargetKey = targetKey
-                  Payload = payload
-                  PlanningContext = model.Planning }
+            let actionCtx: ActionExecutionContext =
+                {
+                    DomainServices = ctx.Domain
+                    OriginComponentId = viewComponentId
+                    TargetKey = targetKey
+                    Payload = payload
+                    PlanningContext = model.Planning
+                }
 
-            let executeTask () =
-                ActionRouter.execute ctx.ActionRegistry actionCtx actionId
+            let executeTask () = ActionRouter.execute ctx.ActionRegistry actionCtx actionId
 
             updatedModel,
-            Cmd.OfTask.either
-                executeTask
-                ()
-                ActionExecutionCompleted
-                (fun ex -> ActionExecutionCompleted (Error ex.Message)),
+            Cmd.OfTask.either executeTask () ActionExecutionCompleted (fun ex ->
+                ActionExecutionCompleted(Error ex.Message)),
             None
         else
             let keyDesc = targetKey |> Option.defaultValue "Selected item"
 
-            if actionId = DemandGridActions.explainShortage.Id then
+            if actionId = DemandOrdersGrid.explainShortage.Id then
                 let target = targetKey |> Option.defaultValue "D-1002"
 
                 let sidePanelModel, sideCmd, _ =
@@ -255,7 +278,8 @@ let private handleViewSpaceOutput (ctx: ApplicationContext) (output: ViewSpace.O
                     )
 
                 { model with
-                    SidePanel = sidePanelModel },
+                    SidePanel = sidePanelModel
+                },
                 Cmd.map SidePanelMsg sideCmd,
                 Some(Output.Notify req)
 
@@ -273,7 +297,8 @@ let private handleViewSpaceOutput (ctx: ApplicationContext) (output: ViewSpace.O
                     )
 
                 { model with
-                    SidePanel = sidePanelModel },
+                    SidePanel = sidePanelModel
+                },
                 Cmd.map SidePanelMsg sideCmd,
                 Some(Output.Notify req)
 
@@ -291,7 +316,8 @@ let private handleViewSpaceOutput (ctx: ApplicationContext) (output: ViewSpace.O
                     )
 
                 { model with
-                    SidePanel = sidePanelModel },
+                    SidePanel = sidePanelModel
+                },
                 Cmd.map SidePanelMsg sideCmd,
                 Some(Output.Notify req)
 
@@ -300,7 +326,9 @@ let private handleViewSpaceOutput (ctx: ApplicationContext) (output: ViewSpace.O
                     { model with
                         SidePanel =
                             { model.SidePanel with
-                                SelectedDetail = targetKey } }
+                                SelectedDetail = targetKey
+                            }
+                    }
 
                 match ComponentCatalog.tryFindAction actionId with
                 | Some descriptor ->
@@ -344,11 +372,25 @@ let private handleViewSpaceOutput (ctx: ApplicationContext) (output: ViewSpace.O
 
     | ViewSpace.Output.ParameterizedActionRequested(_viewComponentId, actionId, targetKey) ->
         let keyDesc = targetKey |> Option.defaultValue "Selected item"
-        let req = Services.NotificationRequest.Create("Parameterized Action", $"Initiating parameterized action '{ActionDefId.value actionId}' for '{keyDesc}'", Services.NotificationType.Info)
+
+        let req =
+            Services.NotificationRequest.Create(
+                "Parameterized Action",
+                $"Initiating parameterized action '{ActionDefId.value actionId}' for '{keyDesc}'",
+                Services.NotificationType.Info
+            )
+
         model, Cmd.none, Some(Output.Notify req)
 
     | ViewSpace.Output.SelectionChanged(viewComponentId, targetKey) ->
-        let updatedModel = { model with SidePanel = { model.SidePanel with SelectedDetail = targetKey } }
+        let updatedModel =
+            { model with
+                SidePanel =
+                    { model.SidePanel with
+                        SelectedDetail = targetKey
+                    }
+            }
+
         updatedModel, Cmd.none, None
 
     | ViewSpace.Output.RefreshRequested viewComponentId ->
@@ -480,7 +522,8 @@ let rec update (ctx: ApplicationContext) (msg: Msg) (model: Model) : Model * Cmd
             |> List.truncate(index + 1)
 
         { model with
-            Breadcrumbs = newBreadcrumbs },
+            Breadcrumbs = newBreadcrumbs
+        },
         Cmd.none,
         None
 
@@ -496,13 +539,16 @@ let rec update (ctx: ApplicationContext) (msg: Msg) (model: Model) : Model * Cmd
 
         let newPlanning =
             { model.Planning with
-                Scenario = scenario }
+                Scenario = scenario
+            }
 
         { model with
             Planning = newPlanning
             ApplicationBar =
                 { model.ApplicationBar with
-                    Planning = newPlanning } },
+                    Planning = newPlanning
+                }
+        },
         Cmd.none,
         Some(Output.Notify req)
 
@@ -520,13 +566,16 @@ let rec update (ctx: ApplicationContext) (msg: Msg) (model: Model) : Model * Cmd
 
         let newPlanning =
             { model.Planning with
-                Horizon = horizon }
+                Horizon = horizon
+            }
 
         { model with
             Planning = newPlanning
             ApplicationBar =
                 { model.ApplicationBar with
-                    Planning = newPlanning } },
+                    Planning = newPlanning
+                }
+        },
         Cmd.none,
         Some(Output.Notify req)
 
@@ -543,13 +592,16 @@ let rec update (ctx: ApplicationContext) (msg: Msg) (model: Model) : Model * Cmd
 
         let newPlanning =
             { model.Planning with
-                PlantId = plantOpt }
+                PlantId = plantOpt
+            }
 
         { model with
             Planning = newPlanning
             ApplicationBar =
                 { model.ApplicationBar with
-                    Planning = newPlanning } },
+                    Planning = newPlanning
+                }
+        },
         Cmd.none,
         Some(Output.Notify req)
 
@@ -572,14 +624,17 @@ let rec update (ctx: ApplicationContext) (msg: Msg) (model: Model) : Model * Cmd
                             State = tab.Session.State
                             Metadata =
                                 { existingView.Metadata with
-                                    ModifiedAt = DateTimeOffset.UtcNow } }
+                                    ModifiedAt = DateTimeOffset.UtcNow
+                                }
+                        }
 
                     let updatedSavedViews =
                         model.SavedViews |> List.map(fun v -> if v.Id = defId then updatedView else v)
 
                     let updatedSession =
                         { tab.Session with
-                            SourceVersion = Some newVersion }
+                            SourceVersion = Some newVersion
+                        }
 
                     let updatedViewSpace =
                         { model.ViewSpace with
@@ -587,7 +642,8 @@ let rec update (ctx: ApplicationContext) (msg: Msg) (model: Model) : Model * Cmd
                                 ViewSpace.updateTab
                                     tab.Id
                                     (fun t -> { t with Session = updatedSession })
-                                    model.ViewSpace.Tabs }
+                                    model.ViewSpace.Tabs
+                        }
 
                     let req =
                         Services.NotificationRequest.Create(
@@ -598,7 +654,8 @@ let rec update (ctx: ApplicationContext) (msg: Msg) (model: Model) : Model * Cmd
 
                     { model with
                         SavedViews = updatedSavedViews
-                        ViewSpace = updatedViewSpace },
+                        ViewSpace = updatedViewSpace
+                    },
                     Cmd.ofMsg(NavigationMsg(NavigationBar.Msg.ReplaceViews updatedSavedViews)),
                     Some(Output.Notify req)
 
@@ -607,10 +664,13 @@ let rec update (ctx: ApplicationContext) (msg: Msg) (model: Model) : Model * Cmd
                     { model with
                         SaveViewModal =
                             Some
-                                { ViewName = tab.Session.State.Title
-                                  Category = "Custom Workspaces"
-                                  Icon = "dashboard"
-                                  IsSaveAs = false } },
+                                {
+                                    ViewName = tab.Session.State.Title
+                                    Category = "Custom Workspaces"
+                                    Icon = "dashboard"
+                                    IsSaveAs = false
+                                }
+                    },
                     Cmd.none,
                     None
 
@@ -619,10 +679,13 @@ let rec update (ctx: ApplicationContext) (msg: Msg) (model: Model) : Model * Cmd
                 { model with
                     SaveViewModal =
                         Some
-                            { ViewName = tab.Session.State.Title
-                              Category = "Custom Workspaces"
-                              Icon = "dashboard"
-                              IsSaveAs = false } },
+                            {
+                                ViewName = tab.Session.State.Title
+                                Category = "Custom Workspaces"
+                                Icon = "dashboard"
+                                IsSaveAs = false
+                            }
+                },
                 Cmd.none,
                 None
 
@@ -637,10 +700,13 @@ let rec update (ctx: ApplicationContext) (msg: Msg) (model: Model) : Model * Cmd
         { model with
             SaveViewModal =
                 Some
-                    { ViewName = defaultName
-                      Category = "Custom Workspaces"
-                      Icon = "dashboard"
-                      IsSaveAs = true } },
+                    {
+                        ViewName = defaultName
+                        Category = "Custom Workspaces"
+                        Icon = "dashboard"
+                        IsSaveAs = true
+                    }
+        },
         Cmd.none,
         None
 
@@ -653,28 +719,34 @@ let rec update (ctx: ApplicationContext) (msg: Msg) (model: Model) : Model * Cmd
         { model with
             SaveViewModal =
                 Some
-                    { ViewName = defaultName
-                      Category = "Custom Workspaces"
-                      Icon = "dashboard"
-                      IsSaveAs = isSaveAs } },
+                    {
+                        ViewName = defaultName
+                        Category = "Custom Workspaces"
+                        Icon = "dashboard"
+                        IsSaveAs = isSaveAs
+                    }
+        },
         Cmd.none,
         None
 
     | UpdateSaveViewModalName name ->
         { model with
-            SaveViewModal = model.SaveViewModal |> Option.map(fun s -> { s with ViewName = name }) },
+            SaveViewModal = model.SaveViewModal |> Option.map(fun s -> { s with ViewName = name })
+        },
         Cmd.none,
         None
 
     | UpdateSaveViewModalCategory cat ->
         { model with
-            SaveViewModal = model.SaveViewModal |> Option.map(fun s -> { s with Category = cat }) },
+            SaveViewModal = model.SaveViewModal |> Option.map(fun s -> { s with Category = cat })
+        },
         Cmd.none,
         None
 
     | UpdateSaveViewModalIcon icon ->
         { model with
-            SaveViewModal = model.SaveViewModal |> Option.map(fun s -> { s with Icon = icon }) },
+            SaveViewModal = model.SaveViewModal |> Option.map(fun s -> { s with Icon = icon })
+        },
         Cmd.none,
         None
 
@@ -684,7 +756,8 @@ let rec update (ctx: ApplicationContext) (msg: Msg) (model: Model) : Model * Cmd
         let settingsModel = SettingsDialog.init model.Appearance model.Cultural
 
         { model with
-            SettingsModal = Some settingsModel },
+            SettingsModal = Some settingsModel
+        },
         Cmd.none,
         None
 
@@ -701,25 +774,29 @@ let rec update (ctx: ApplicationContext) (msg: Msg) (model: Model) : Model * Cmd
 
                 { model with
                     SettingsModal = Some updatedSettingsModel
-                    Appearance = newAppearance },
+                    Appearance = newAppearance
+                },
                 Cmd.none,
                 Some(Output.ChangeTheme theme)
             | Some(SettingsDialog.Output.CulturalUpdated cultural) ->
                 { model with
                     SettingsModal = Some updatedSettingsModel
-                    Cultural = cultural },
+                    Cultural = cultural
+                },
                 Cmd.none,
                 Some(Output.ChangeCulture cultural)
             | Some(SettingsDialog.Output.AppearanceUpdated app) ->
                 { model with
                     SettingsModal = Some updatedSettingsModel
-                    Appearance = app },
+                    Appearance = app
+                },
                 Cmd.none,
                 None
             | Some SettingsDialog.Output.CloseModal -> { model with SettingsModal = None }, Cmd.none, None
             | None ->
                 { model with
-                    SettingsModal = Some updatedSettingsModel },
+                    SettingsModal = Some updatedSettingsModel
+                },
                 Cmd.none,
                 None
         | None -> model, Cmd.none, None
@@ -730,31 +807,38 @@ let rec update (ctx: ApplicationContext) (msg: Msg) (model: Model) : Model * Cmd
             let newDefId = ViewDefId.literal $"view-{Guid.NewGuid():N}"
 
             let newMetadata =
-                { Category = modalState.Category
-                  Icon = modalState.Icon
-                  Roles = [ "Planner"; "Buyer"; "PlantManager"; "Executive" ]
-                  IsDefault = false
-                  IsTemplate = false
-                  CreatedAt = DateTimeOffset.UtcNow
-                  CreatedBy = "Planner"
-                  ModifiedAt = DateTimeOffset.UtcNow
-                  ModifiedBy = "Planner"
-                  Permissions =
-                    { Owner = "Planner"
-                      Visibility = ViewVisibility.Public
-                      EditableBy = [ "Planner" ]
-                      Shareable = true } }
+                {
+                    Category = modalState.Category
+                    Icon = modalState.Icon
+                    Roles = [ "Planner"; "Buyer"; "PlantManager"; "Executive" ]
+                    IsDefault = false
+                    IsTemplate = false
+                    CreatedAt = DateTimeOffset.UtcNow
+                    CreatedBy = "Planner"
+                    ModifiedAt = DateTimeOffset.UtcNow
+                    ModifiedBy = "Planner"
+                    Permissions =
+                        {
+                            Owner = "Planner"
+                            Visibility = ViewVisibility.Public
+                            EditableBy = [ "Planner" ]
+                            Shareable = true
+                        }
+                }
 
             let updatedState =
                 { tab.Session.State with
-                    Title = modalState.ViewName }
+                    Title = modalState.ViewName
+                }
 
             let newView: ViewDefinition =
-                { Id = newDefId
-                  Name = modalState.ViewName
-                  Version = 1
-                  State = updatedState
-                  Metadata = newMetadata }
+                {
+                    Id = newDefId
+                    Name = modalState.ViewName
+                    Version = 1
+                    State = updatedState
+                    Metadata = newMetadata
+                }
 
             let updatedSavedViews = model.SavedViews @ [ newView ]
 
@@ -762,12 +846,14 @@ let rec update (ctx: ApplicationContext) (msg: Msg) (model: Model) : Model * Cmd
                 { tab.Session with
                     SourceViewDefId = Some newDefId
                     SourceVersion = Some 1
-                    State = updatedState }
+                    State = updatedState
+                }
 
             let updatedViewSpace =
                 { model.ViewSpace with
                     Tabs =
-                        ViewSpace.updateTab tab.Id (fun t -> { t with Session = updatedSession }) model.ViewSpace.Tabs }
+                        ViewSpace.updateTab tab.Id (fun t -> { t with Session = updatedSession }) model.ViewSpace.Tabs
+                }
 
             let req =
                 Services.NotificationRequest.Create(
@@ -779,7 +865,8 @@ let rec update (ctx: ApplicationContext) (msg: Msg) (model: Model) : Model * Cmd
             { model with
                 SavedViews = updatedSavedViews
                 ViewSpace = updatedViewSpace
-                SaveViewModal = None },
+                SaveViewModal = None
+            },
             Cmd.ofMsg(NavigationMsg(NavigationBar.Msg.ReplaceViews updatedSavedViews)),
             Some(Output.Notify req)
 
@@ -802,8 +889,10 @@ let rec update (ctx: ApplicationContext) (msg: Msg) (model: Model) : Model * Cmd
                                     (fun t ->
                                         { t with
                                             Session = revertedSession
-                                            IsEditMode = false })
-                                    model.ViewSpace.Tabs }
+                                            IsEditMode = false
+                                        })
+                                    model.ViewSpace.Tabs
+                        }
 
                     let req =
                         Services.NotificationRequest.Create(
@@ -813,7 +902,8 @@ let rec update (ctx: ApplicationContext) (msg: Msg) (model: Model) : Model * Cmd
                         )
 
                     { model with
-                        ViewSpace = updatedViewSpace },
+                        ViewSpace = updatedViewSpace
+                    },
                     Cmd.none,
                     Some(Output.Notify req)
                 | None -> model, Cmd.none, None
@@ -853,7 +943,8 @@ let rec update (ctx: ApplicationContext) (msg: Msg) (model: Model) : Model * Cmd
         let childModel, childCmd, _ = CommandPalette.update command model.CommandPalette
 
         { model with
-            CommandPalette = childModel },
+            CommandPalette = childModel
+        },
         Cmd.map CommandPaletteMsg childCmd,
         None
 
@@ -863,27 +954,43 @@ let rec update (ctx: ApplicationContext) (msg: Msg) (model: Model) : Model * Cmd
 
     | ActionExecutionCompleted result ->
         match result with
-        | Ok (ActionExecutionOutcome.Completed (successMsg, refreshedStores)) ->
+        | Ok(ActionExecutionOutcome.Completed(successMsg, refreshedStores)) ->
             let notify = Services.NotificationRequest.Create("Success", successMsg, Services.NotificationType.Success)
+
             let refreshCmd =
-                if List.isEmpty refreshedStores then Cmd.none
-                else Cmd.ofMsg (ViewSpaceMsg (ViewSpace.Msg.RefreshStores refreshedStores))
-            model, refreshCmd, Some (Output.Notify notify)
-        | Ok (ActionExecutionOutcome.ExplainRequested (entityId, entityKind)) ->
+                if List.isEmpty refreshedStores then
+                    Cmd.none
+                else
+                    Cmd.ofMsg(ViewSpaceMsg(ViewSpace.Msg.RefreshStores refreshedStores))
+
+            model, refreshCmd, Some(Output.Notify notify)
+        | Ok(ActionExecutionOutcome.ExplainRequested(entityId, entityKind)) ->
             let sidePanelModel, sideCmd, _ =
                 SidePanel.update (SidePanel.Msg.ExplainEntity(entityId, entityKind)) model.SidePanel
-            { model with SidePanel = sidePanelModel }, Cmd.map SidePanelMsg sideCmd, None
-        | Ok (ActionExecutionOutcome.NavigationRequested targetView) ->
-            model, Cmd.ofMsg (NavigateToView targetView), None
-        | Ok (ActionExecutionOutcome.JobInitiated (jobId, desc, _)) ->
-            let notify = Services.NotificationRequest.Create("Engine Job Started", $"{desc} (Job ID: {jobId})", Services.NotificationType.Info)
-            model, Cmd.none, Some (Output.Notify notify)
-        | Ok (ActionExecutionOutcome.ClientSideDialogRequested (title, msg)) ->
+
+            { model with
+                SidePanel = sidePanelModel
+            },
+            Cmd.map SidePanelMsg sideCmd,
+            None
+        | Ok(ActionExecutionOutcome.NavigationRequested targetView) -> model, Cmd.ofMsg(NavigateToView targetView), None
+        | Ok(ActionExecutionOutcome.JobInitiated(jobId, desc, _)) ->
+            let notify =
+                Services.NotificationRequest.Create(
+                    "Engine Job Started",
+                    $"{desc} (Job ID: {jobId})",
+                    Services.NotificationType.Info
+                )
+
+            model, Cmd.none, Some(Output.Notify notify)
+        | Ok(ActionExecutionOutcome.ClientSideDialogRequested(title, msg)) ->
             let notify = Services.NotificationRequest.Create(title, msg, Services.NotificationType.Info)
-            model, Cmd.none, Some (Output.Notify notify)
+            model, Cmd.none, Some(Output.Notify notify)
         | Error errorMsg ->
-            let notify = Services.NotificationRequest.Create("Action Failed", errorMsg, Services.NotificationType.Error')
-            model, Cmd.none, Some (Output.Notify notify)
+            let notify =
+                Services.NotificationRequest.Create("Action Failed", errorMsg, Services.NotificationType.Error')
+
+            model, Cmd.none, Some(Output.Notify notify)
 
 let private renderBreadcrumbs (model: Model) (_: Msg -> unit) : Node =
     comp<RadzenBreadCrumb> {
@@ -1144,12 +1251,14 @@ let private renderSaveViewModal (modalState: SaveViewModalState) (dispatch: Msg 
 
                     comp<RadzenDropDown<string>> {
                         "Data"
-                        => [ "Custom Workspaces"
-                             "Demand Planning"
-                             "Capacity Planning"
-                             "Supply Planning"
-                             "Connected Planning"
-                             "Executive Overview" ]
+                        => [
+                            "Custom Workspaces"
+                            "Demand Planning"
+                            "Capacity Planning"
+                            "Supply Planning"
+                            "Connected Planning"
+                            "Executive Overview"
+                        ]
 
                         "Value" => modalState.Category
                         "Style" => "width: 100%;"
@@ -1169,13 +1278,15 @@ let private renderSaveViewModal (modalState: SaveViewModalState) (dispatch: Msg 
 
                     comp<RadzenDropDown<string>> {
                         "Data"
-                        => [ "dashboard"
-                             "hub"
-                             "analytics"
-                             "precision_manufacturing"
-                             "view_list"
-                             "splitscreen"
-                             "auto_awesome_mosaic" ]
+                        => [
+                            "dashboard"
+                            "hub"
+                            "analytics"
+                            "precision_manufacturing"
+                            "view_list"
+                            "splitscreen"
+                            "auto_awesome_mosaic"
+                        ]
 
                         "Value" => modalState.Icon
                         "Style" => "width: 100%;"
@@ -1211,10 +1322,13 @@ let private renderSaveViewModal (modalState: SaveViewModalState) (dispatch: Msg 
 
 let view (ctx: ApplicationContext) (model: Model) (dispatch: Msg -> unit) : Node =
     let dep =
-        { Components = ctx.ComponentRegistry
-          Schemas = ctx.SchemaRegistry
-          Culture = Formatting.toCultureInfo model.Cultural
-          DashboardHints = { RowHeight = 90; Gap = 8 } }
+        {
+            Components = ctx.ComponentRegistry
+            Schemas = ctx.SchemaRegistry
+            Culture = Formatting.toCultureInfo model.Cultural
+            DashboardHints = { RowHeight = 90; Gap = 8 }
+            ContextMenu = ctx.Resolve<Radzen.ContextMenuService>()
+        }
         : ViewSpace.ViewSpaceDependencies
 
     div {

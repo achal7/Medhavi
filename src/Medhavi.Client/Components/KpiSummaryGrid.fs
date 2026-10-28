@@ -97,4 +97,5 @@ let render (context: ComponentRenderContext) (dispatch: ComponentEvent -> unit) 
 
 let registration: ComponentRegistration =
     { Definition = definition
+      Schema = KpiSchema.definition
       Runtime = { Render = render } }

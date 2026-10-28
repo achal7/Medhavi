@@ -58,12 +58,10 @@ module ComponentResolver =
         match ComponentRegistry.find vc.ComponentDefId components with
         | Error _ -> Error(ComponentNotRegistered vc.ComponentDefId)
         | Ok registration ->
-            match SchemaRegistry.find vc.Binding.SchemaDefId schemas with
-            | Error _ -> Error(SchemaNotRegistered vc.Binding.SchemaDefId)
-            | Ok schema ->
-                match SchemaCompatibility.validate registration.Definition schema with
-                | Valid() -> Ok(registration, schema)
-                | Invalid errors -> Error(IncompatibleBinding errors)
+            let schema = registration.Schema
+            match SchemaCompatibility.validate registration.Definition schema with
+            | Valid() -> Ok(registration, schema)
+            | Invalid errors -> Error(IncompatibleBinding errors)
 
     /// Context construction: resolved semantics + runtime state.
     /// ViewRenderState ABSENCE SEMANTICS (explicit invariant):

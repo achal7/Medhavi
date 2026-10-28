@@ -1,17 +1,320 @@
 module Medhavi.Client.Supply.Inventory.InventoryGrid
 
+open System
+open Medhavi.Contracts.Supply
 open Medhavi.Client.ViewComposition.Identity
 open Medhavi.Client.ViewComposition.Geometry
 open Medhavi.Client.ViewComposition.Component
+open Medhavi.Client.ViewComposition.Schema
+open Medhavi.Client.ViewComposition.Data
+open Medhavi.Client.ViewComposition.Context
 open Medhavi.Client.Registries
 open Medhavi.Client.Controls
 open Medhavi.Client.Rendering
+open Medhavi.Common.Validation
+open Medhavi.Client.Components.Shared
 
+/// Declarative metadata descriptors for Inventory actions.
+module InventoryActions =
+
+    let adjustSafetyStock: ActionDescriptor =
+        { Id = ActionDefId.literal "inventory.adjust_safety_stock"
+          DisplayName = "Adjust Safety Stock"
+          Icon = "tune"
+          Scope = SingleEntityScope
+          ExecutionMode = Parameterized("inventory-safety-stock-form", "Adjust Item Safety Stock Target")
+          RequiredRoles = [ "Planner"; "InventoryManager" ]
+          IsPrimary = true }
+
+    let expedite: ActionDescriptor =
+        { Id = ActionDefId.literal "inventory.expedite"
+          DisplayName = "Expedite Replenishment"
+          Icon = "bolt"
+          Scope = SingleEntityScope
+          ExecutionMode = RequiresConfirmation "Trigger emergency replenishment requisition for item?"
+          RequiredRoles = [ "Planner"; "Buyer" ]
+          IsPrimary = false }
+
+    let explainRisk: ActionDescriptor =
+        { Id = ActionDefId.literal "inventory.explain_risk"
+          DisplayName = "Explain Risk"
+          Icon = "auto_awesome"
+          Scope = SingleEntityScope
+          ExecutionMode = Direct
+          RequiredRoles = [ "Planner"; "Viewer" ]
+          IsPrimary = false }
+
+    let all: ActionDescriptor list = [ adjustSafetyStock; expedite; explainRisk ]
+
+let adjustSafetyStock = InventoryActions.adjustSafetyStock
+let expedite = InventoryActions.expedite
+let explainRisk = InventoryActions.explainRisk
+let allActions = InventoryActions.all
+
+let storeId = DataStoreId.literal "inventory-store"
+let schemaId = SchemaDefId.literal "inventory-grid-schema"
 let definitionId = ComponentDefId.literal "inventory-grid"
-let storeId = InventoryStore.storeId
-let schemaId = InventoryGridSchema.schemaId
 
-let definition: ComponentDefinition =
+let schema: SchemaDefinition =
+    { Id = schemaId
+      DisplayName = "Inventory Position Health"
+      Capabilities = [ "Tabular" ]
+      SupportedActions = InventoryActions.all |> List.map (fun a -> a.Id)
+      Actions = InventoryActions.all
+      Columns =
+        [ { ColumnId = "HealthStatus"
+            PropertyName = Some "HealthStatus"
+            Title = "Health Status"
+            DefaultOrder = 0
+            DefaultWidthInPixels = Some 120
+            DefaultVisible = true
+            DefaultPinned = true
+            Sortable = true
+            FilterValueKind = Some Text
+            Filterable = true
+            Groupable = true
+            RenderHint = Some "StatusBadge"
+            Alignment = Left
+            CellType = TextType
+            IsKey = false
+            FormatString = None
+            UserConfigurable = true }
+          { ColumnId = "ItemId"
+            PropertyName = Some "ItemId"
+            Title = "Item / SKU"
+            DefaultOrder = 1
+            DefaultWidthInPixels = Some 140
+            DefaultVisible = true
+            DefaultPinned = true
+            Sortable = true
+            FilterValueKind = Some Text
+            Filterable = true
+            Groupable = false
+            RenderHint = None
+            Alignment = Left
+            CellType = TextType
+            IsKey = true
+            FormatString = None
+            UserConfigurable = true }
+          { ColumnId = "LocationId"
+            PropertyName = Some "LocationId"
+            Title = "Location"
+            DefaultOrder = 2
+            DefaultWidthInPixels = Some 120
+            DefaultVisible = true
+            DefaultPinned = false
+            Sortable = true
+            FilterValueKind = Some Text
+            Filterable = true
+            Groupable = true
+            RenderHint = None
+            Alignment = Left
+            CellType = TextType
+            IsKey = false
+            FormatString = None
+            UserConfigurable = true }
+          { ColumnId = "CoverageStatus"
+            PropertyName = Some "CoverageStatus"
+            Title = "Coverage"
+            DefaultOrder = 3
+            DefaultWidthInPixels = Some 110
+            DefaultVisible = true
+            DefaultPinned = false
+            Sortable = true
+            FilterValueKind = Some Text
+            Filterable = true
+            Groupable = true
+            RenderHint = Some "StatusBadge"
+            Alignment = Left
+            CellType = TextType
+            IsKey = false
+            FormatString = None
+            UserConfigurable = true }
+          { ColumnId = "RiskLevel"
+            PropertyName = Some "RiskLevel"
+            Title = "Risk Level"
+            DefaultOrder = 4
+            DefaultWidthInPixels = Some 110
+            DefaultVisible = true
+            DefaultPinned = false
+            Sortable = true
+            FilterValueKind = Some Text
+            Filterable = true
+            Groupable = true
+            RenderHint = Some "StatusBadge"
+            Alignment = Left
+            CellType = TextType
+            IsKey = false
+            FormatString = None
+            UserConfigurable = true }
+          { ColumnId = "DaysOfSupply"
+            PropertyName = Some "DaysOfSupply"
+            Title = "Days of Supply"
+            DefaultOrder = 5
+            DefaultWidthInPixels = Some 130
+            DefaultVisible = true
+            DefaultPinned = false
+            Sortable = true
+            FilterValueKind = Some Number
+            Filterable = true
+            Groupable = false
+            RenderHint = None
+            Alignment = Right
+            CellType = NumberType
+            IsKey = false
+            FormatString = Some "N1"
+            UserConfigurable = true }
+          { ColumnId = "AvailableQuantity"
+            PropertyName = Some "AvailableQuantity"
+            Title = "Available"
+            DefaultOrder = 6
+            DefaultWidthInPixels = Some 110
+            DefaultVisible = true
+            DefaultPinned = false
+            Sortable = true
+            FilterValueKind = Some Number
+            Filterable = true
+            Groupable = false
+            RenderHint = None
+            Alignment = Right
+            CellType = NumberType
+            IsKey = false
+            FormatString = Some "N0"
+            UserConfigurable = true }
+          { ColumnId = "OnHandQuantity"
+            PropertyName = Some "OnHandQuantity"
+            Title = "OnHand"
+            DefaultOrder = 7
+            DefaultWidthInPixels = Some 110
+            DefaultVisible = true
+            DefaultPinned = false
+            Sortable = true
+            FilterValueKind = Some Number
+            Filterable = true
+            Groupable = false
+            RenderHint = None
+            Alignment = Right
+            CellType = NumberType
+            IsKey = false
+            FormatString = Some "N0"
+            UserConfigurable = true }
+          { ColumnId = "AllocatedQuantity"
+            PropertyName = Some "AllocatedQuantity"
+            Title = "Allocated"
+            DefaultOrder = 8
+            DefaultWidthInPixels = Some 110
+            DefaultVisible = true
+            DefaultPinned = false
+            Sortable = true
+            FilterValueKind = Some Number
+            Filterable = true
+            Groupable = false
+            RenderHint = None
+            Alignment = Right
+            CellType = NumberType
+            IsKey = false
+            FormatString = Some "N0"
+            UserConfigurable = true }
+          { ColumnId = "InTransitQuantity"
+            PropertyName = Some "InTransitQuantity"
+            Title = "In Transit"
+            DefaultOrder = 9
+            DefaultWidthInPixels = Some 110
+            DefaultVisible = true
+            DefaultPinned = false
+            Sortable = true
+            FilterValueKind = Some Number
+            Filterable = true
+            Groupable = false
+            RenderHint = None
+            Alignment = Right
+            CellType = NumberType
+            IsKey = false
+            FormatString = Some "N0"
+            UserConfigurable = true }
+          { ColumnId = "PolicyComplianceStatus"
+            PropertyName = Some "PolicyComplianceStatus"
+            Title = "Policy Compliance"
+            DefaultOrder = 10
+            DefaultWidthInPixels = Some 140
+            DefaultVisible = true
+            DefaultPinned = false
+            Sortable = true
+            FilterValueKind = Some Text
+            Filterable = true
+            Groupable = true
+            RenderHint = None
+            Alignment = Left
+            CellType = TextType
+            IsKey = false
+            FormatString = None
+            UserConfigurable = true }
+          { ColumnId = "FinancialExposure"
+            PropertyName = Some "FinancialExposure"
+            Title = "Exposure ($)"
+            DefaultOrder = 11
+            DefaultWidthInPixels = Some 120
+            DefaultVisible = true
+            DefaultPinned = false
+            Sortable = true
+            FilterValueKind = Some Number
+            Filterable = true
+            Groupable = false
+            RenderHint = None
+            Alignment = Right
+            CellType = NumberType
+            IsKey = false
+            FormatString = Some "N0"
+            UserConfigurable = true }
+          { ColumnId = "LifecycleState"
+            PropertyName = Some "LifecycleState"
+            Title = "State"
+            DefaultOrder = 12
+            DefaultWidthInPixels = Some 100
+            DefaultVisible = false
+            DefaultPinned = false
+            Sortable = true
+            FilterValueKind = Some Text
+            Filterable = true
+            Groupable = true
+            RenderHint = Some "StatusBadge"
+            Alignment = Left
+            CellType = TextType
+            IsKey = false
+            FormatString = None
+            UserConfigurable = true }
+          { ColumnId = "AssessmentTimestamp"
+            PropertyName = Some "AssessmentTimestamp"
+            Title = "Assessed At"
+            DefaultOrder = 13
+            DefaultWidthInPixels = Some 150
+            DefaultVisible = false
+            DefaultPinned = false
+            Sortable = true
+            FilterValueKind = Some FilterValueKind.DateTimeOffset
+            Filterable = true
+            Groupable = false
+            RenderHint = None
+            Alignment = Left
+            CellType = DateTimeType
+            IsKey = false
+            FormatString = Some "yyyy-MM-dd HH:mm"
+            UserConfigurable = true } ]
+      DefaultSort =
+        Some
+            { Field = "DaysOfSupply"
+              Direction = Ascending
+              Priority = 1 }
+      DefaultFilters = [] }
+
+let definition: SchemaDefinition = schema
+
+let adapter: ProjectionAdapter<InventoryPositionAssessmentDto> =
+    match ProjectionCompiler.compile<InventoryPositionAssessmentDto> schema with
+    | Valid a -> a
+    | Invalid _ -> { ToUniversal = fun _ -> { Key = ""; Cells = Map.empty } }
+
+let componentDefinition: ComponentDefinition =
     { Id = definitionId
       DisplayName = "Inventory Health Workbench"
       Icon = "inventory"
@@ -28,5 +331,6 @@ let runtime: ComponentRuntime =
     { Render = UniversalEnterpriseGrid.render }
 
 let registration: ComponentRegistration =
-    { Definition = definition
+    { Definition = componentDefinition
+      Schema = schema
       Runtime = runtime }

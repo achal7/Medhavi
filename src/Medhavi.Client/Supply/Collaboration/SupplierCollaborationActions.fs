@@ -13,32 +13,23 @@ let acceptCommitments: ActionHandler =
         task {
             match ctx.TargetKey with
             | Some supplierId ->
-                let apiOpt =
-                    match ctx.Resolve<SupplierCommitmentAssessmentApi>() with
-                    | Some api -> Some api
-                    | None ->
-                        ctx.Resolve<DomainServices>()
-                        |> Option.map (fun ds -> ds.Supply.CollaborateWithSuppliers.CollaborateWithSuppliersApis.Assessment)
+                let api = ctx.Domain.Supply.CollaborateWithSuppliers.CollaborateWithSuppliersApis.Assessment
+                let req: UpdateSupplierCommitmentAssessmentReq =
+                    { SupplierId = supplierId
+                      AssessmentTimestamp = DateTimeOffset.UtcNow }
 
-                match apiOpt with
-                | Some api ->
-                    let req: UpdateSupplierCommitmentAssessmentReq =
-                        { SupplierId = supplierId
-                          AssessmentTimestamp = DateTimeOffset.UtcNow }
-
-                    match! api.Update req with
-                    | Ok _ ->
-                        return
-                            Ok(
-                                ActionExecutionOutcome.Completed(
-                                    $"Supplier commitments for '{supplierId}' accepted as firm planning constraints.",
-                                    [ SupplierCollaborationStore.storeId
-                                      DataStoreId.literal "supply-store"
-                                      DataStoreId.literal "inventory-store" ]
-                                )
+                match! api.Update req with
+                | Ok _ ->
+                    return
+                        Ok(
+                            ActionExecutionOutcome.Completed(
+                                $"Supplier commitments for '{supplierId}' accepted as firm planning constraints.",
+                                [ SupplierCollaborationGrid.storeId
+                                  DataStoreId.literal "supply-store"
+                                  DataStoreId.literal "inventory-store" ]
                             )
-                    | Error err -> return Error err.Message
-                | None -> return Error "SupplierCommitmentAssessmentApi capability is not connected."
+                        )
+                | Error err -> return Error err.Message
             | None -> return Error "No supplier selected to accept commitments."
         }
 
@@ -47,77 +38,40 @@ let requestAlternative: ActionHandler =
         task {
             match ctx.TargetKey with
             | Some supplierId ->
-                let apiOpt =
-                    match ctx.Resolve<SupplierCommitmentApi>() with
-                    | Some api -> Some api
-                    | None ->
-                        match ctx.Resolve<CollaborateWithSuppliersApis>() with
-                        | Some apis -> Some apis.Commitment
-                        | None ->
-                            ctx.Resolve<DomainServices>()
-                            |> Option.map (fun ds -> ds.Supply.CollaborateWithSuppliers.CollaborateWithSuppliersApis.Commitment)
+                let api = ctx.Domain.Supply.CollaborateWithSuppliers.CollaborateWithSuppliersApis.Commitment
+                let queries = ctx.Domain.Supply.CollaborateWithSuppliers.SupplierCommitmentQueries
+                let! commitments = queries.Filter (fun c -> c.SupplierId = supplierId)
 
-                match apiOpt with
-                | Some api ->
-                    let queriesOpt =
-                        match ctx.Resolve<SupplierCommitmentQueries>() with
-                        | Some q -> Some q
-                        | None ->
-                            ctx.Resolve<DomainServices>()
-                            |> Option.map (fun ds -> ds.Supply.CollaborateWithSuppliers.SupplierCommitmentQueries)
+                match commitments |> List.tryHead with
+                | Some c ->
+                    let req: RecordSupplierResponseReq =
+                        { SupplierId = supplierId
+                          ItemId = c.ItemId
+                          RequiredDate = c.RequiredDate
+                          ResponseEventType = CollaborationEventType.SupplierAlternative
+                          CommittedQuantity = c.CommittedQuantity
+                          CommittedDate = c.CommittedDate
+                          AlternativeDescription = Some "Alternative delivery schedule & split requested by planner"
+                          AlternativeQuantity = c.CommittedQuantity |> Option.map (fun q -> q * 0.5m)
+                          AlternativeDate = c.CommittedDate |> Option.map (fun d -> d.AddDays 3.0)
+                          SupplierAssumptions = [ "Split delivery proposed across multiple batches" ]
+                          ResponseTimestamp = DateTimeOffset.UtcNow }
 
-                    let! commitments =
-                        match queriesOpt with
-                        | Some q -> q.Filter (fun c -> c.SupplierId = supplierId)
-                        | None -> Task.FromResult []
-
-                    match commitments |> List.tryHead with
-                    | Some c ->
-                        let req: RecordSupplierResponseReq =
-                            { SupplierId = supplierId
-                              ItemId = c.ItemId
-                              RequiredDate = c.RequiredDate
-                              ResponseEventType = CollaborationEventType.SupplierAlternative
-                              CommittedQuantity = c.CommittedQuantity
-                              CommittedDate = c.CommittedDate
-                              AlternativeDescription = Some "Alternative delivery schedule & split requested by planner"
-                              AlternativeQuantity = c.CommittedQuantity |> Option.map (fun q -> q * 0.5m)
-                              AlternativeDate = c.CommittedDate |> Option.map (fun d -> d.AddDays 3.0)
-                              SupplierAssumptions = [ "Split delivery proposed across multiple batches" ]
-                              ResponseTimestamp = DateTimeOffset.UtcNow }
-
-                        match! api.RecordSupplierResponse req with
-                        | Ok dto ->
-                            return
-                                Ok(
-                                    ActionExecutionOutcome.Completed(
-                                        $"Alternative delivery schedule & split requested from supplier '{supplierId}' (Item: {dto.ItemId}).",
-                                        [ SupplierCollaborationStore.storeId
-                                          DataStoreId.literal "supply-store" ]
-                                    )
+                    match! api.RecordSupplierResponse req with
+                    | Ok _ ->
+                        return
+                            Ok(
+                                ActionExecutionOutcome.Completed(
+                                    $"Alternative response logged for supplier '{supplierId}'. Updated delivery split requested.",
+                                    [ SupplierCollaborationGrid.storeId
+                                      DataStoreId.literal "supply-store" ]
                                 )
-                        | Error err -> return Error err.Message
-                    | None ->
-                        let req: RecordEnterpriseRequestReq =
-                            { SupplierId = supplierId
-                              ItemId = "SKU-POWER-SUPPLY-850W"
-                              RequiredDate = DateTimeOffset.UtcNow.AddDays 14.0
-                              RequestedQuantity = 100m
-                              RequestedDate = DateTimeOffset.UtcNow.AddDays 14.0
-                              RequestTimestamp = DateTimeOffset.UtcNow }
-
-                        match! api.RecordEnterpriseRequest req with
-                        | Ok dto ->
-                            return
-                                Ok(
-                                    ActionExecutionOutcome.Completed(
-                                        $"Alternative procurement request initiated for supplier '{supplierId}' (Item: {dto.ItemId}, Qty: {dto.RequestedQuantity}).",
-                                        [ SupplierCollaborationStore.storeId
-                                          DataStoreId.literal "supply-store" ]
-                                    )
-                                )
-                        | Error err -> return Error err.Message
-                | None -> return Error "SupplierCommitmentApi capability is not connected."
+                            )
+                    | Error err -> return Error err.Message
+                | None ->
+                    return
+                        Error
+                            $"No active commitments found for supplier '{supplierId}' to request alternative schedule."
             | None -> return Error "No supplier selected to request alternative schedule."
         }
 
@@ -126,94 +80,63 @@ let escalateProcurement: ActionHandler =
         task {
             match ctx.TargetKey with
             | Some supplierId ->
-                let exceptionApiOpt =
-                    match ctx.Resolve<ExceptionApi>() with
-                    | Some api -> Some api
-                    | None ->
-                        ctx.Resolve<DomainServices>()
-                        |> Option.map (fun ds -> ds.Core.ExceptionManagement.Commands)
-
-                match exceptionApiOpt with
-                | Some exceptionApi ->
-                    let assessmentQueriesOpt =
-                        match ctx.Resolve<SupplierCommitmentAssessmentQueries>() with
-                        | Some q -> Some q
-                        | None ->
-                            ctx.Resolve<DomainServices>()
-                            |> Option.map (fun ds -> ds.Supply.CollaborateWithSuppliers.SupplierAssessmentQueries)
-
-                    let! dtoOpt =
-                        match assessmentQueriesOpt with
-                        | Some q -> q.GetById supplierId
-                        | None -> Task.FromResult None
-
-                    let evidenceRef =
-                        dtoOpt
-                        |> Option.bind (fun d -> d.ActiveRiskSignals |> List.tryHead)
-                        |> Option.defaultValue ($"Supplier risk state: " + (dtoOpt |> Option.map (fun d -> d.AuthoritativeHealthState) |> Option.defaultValue "AtRisk"))
-
-                    let severity =
-                        match dtoOpt |> Option.map (fun d -> d.AuthoritativeHealthState) with
-                        | Some "Breached" | Some "Critical" -> "Severe"
-                        | _ -> "Major"
-
+                let api = ctx.Domain.Core.ExceptionManagement.Commands
+                let queries = ctx.Domain.Supply.CollaborateWithSuppliers.SupplierAssessmentQueries
+                let! dtoOpt = queries.GetById supplierId
+                match dtoOpt with
+                | Some dto ->
                     let req: ExceptionEvidenceReq =
-                        { ConstraintReference = "POL-SUP-COLLAB-03"
-                          Classification = "LeadTimeBreach"
+                        { ConstraintReference = $"POL-SUPPLIER-SLA-{supplierId}"
+                          Classification = "SupplierCommitmentBreach"
                           AffectedScopeType = "Supplier"
                           AffectedScopeIdentifier = supplierId
-                          EvidenceReference = Some evidenceRef
-                          Severity = Some severity
+                          EvidenceReference = Some $"ASSESSMENT-{supplierId}-{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}"
+                          Severity = Some "High"
                           EvidenceTime = DateTimeOffset.UtcNow }
 
-                    match! exceptionApi.ProcessEvidence req with
+                    match! api.ProcessEvidence req with
                     | Ok coreDto ->
                         return
                             Ok(
                                 ActionExecutionOutcome.Completed(
-                                    $"Critical commitment variance for supplier '{supplierId}' escalated to procurement leadership and Core exception governance (CA-C-020, Exception '{coreDto.ExceptionId}').",
-                                    [ SupplierCollaborationStore.storeId
+                                    $"Critical supplier commitment failure for '{supplierId}' escalated to Core exception governance (Core Exception '{coreDto.ExceptionId}').",
+                                    [ SupplierCollaborationGrid.storeId
                                       DataStoreId.literal "core-exception-store" ]
                                 )
                             )
                     | Error err -> return Error err.Message
-                | None -> return Error "Core ExceptionApi capability is not connected."
-            | None -> return Error "No supplier selected for procurement escalation."
+                | None -> return Error $"Supplier assessment for '{supplierId}' not found in query projection."
+            | None -> return Error "No supplier selected to escalate procurement."
         }
 
 let refreshHealth: ActionHandler =
     fun ctx ->
         task {
-            let healthApiOpt =
-                match ctx.Resolve<SupplierCollaborationHealthApi>() with
-                | Some api -> Some api
-                | None ->
-                    ctx.Resolve<DomainServices>()
-                    |> Option.map (fun ds -> ds.Supply.CollaborateWithSuppliers.CollaborateWithSuppliersApis.Health)
+            let api = ctx.Domain.Supply.CollaborateWithSuppliers.CollaborateWithSuppliersApis.Assessment
+            let queries = ctx.Domain.Supply.CollaborateWithSuppliers.SupplierAssessmentQueries
+            let! assessments = queries.GetAll()
 
-            match healthApiOpt with
-            | Some api ->
-                let req: PublishSupplierCollaborationHealthAssessmentReq =
-                    { AssessmentScopeId = "GLOBAL"
-                      EvaluationPeriod = "CURRENT"
-                      PublicationTimestamp = DateTimeOffset.UtcNow }
+            let mutable updatedCount = 0
+            for a in assessments do
+                let req: UpdateSupplierCommitmentAssessmentReq =
+                    { SupplierId = a.SupplierId
+                      AssessmentTimestamp = DateTimeOffset.UtcNow }
+                let! res = api.Update req
+                if Result.isOk res then
+                    updatedCount <- updatedCount + 1
 
-                match! api.Publish req with
-                | Ok _ ->
-                    return
-                        Ok(
-                            ActionExecutionOutcome.Completed(
-                                "Supplier collaboration health assessment refreshed across all strategic vendors.",
-                                [ SupplierCollaborationStore.storeId
-                                  DataStoreId.literal "demo-domain-health-store" ]
-                            )
-                        )
-                | Error err -> return Error err.Message
-            | None -> return Error "SupplierCollaborationHealthApi capability is not connected."
+            return
+                Ok(
+                    ActionExecutionOutcome.Completed(
+                        $"Supplier commitment health refreshed for {updatedCount} supplier(s).",
+                        [ SupplierCollaborationGrid.storeId ]
+                    )
+                )
         }
 
 let all: (ActionDefId * ActionHandler) list =
-    [ SupplierCollaborationGridSchema.acceptCommitments.Id, acceptCommitments
-      SupplierCollaborationGridSchema.requestAlternative.Id, requestAlternative
-      SupplierCollaborationGridSchema.escalateProcurement.Id, escalateProcurement
-      SupplierCollaborationGridSchema.refreshHealth.Id, refreshHealth ]
+    [ SupplierCollaborationGrid.SupplierCollaborationActions.acceptCommitments.Id, acceptCommitments
+      SupplierCollaborationGrid.SupplierCollaborationActions.requestAlternative.Id, requestAlternative
+      SupplierCollaborationGrid.SupplierCollaborationActions.escalateProcurement.Id, escalateProcurement
+      SupplierCollaborationGrid.SupplierCollaborationActions.refreshHealth.Id, refreshHealth ]
+

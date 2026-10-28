@@ -7,6 +7,8 @@ open Bolero
 open Bolero.Html
 open Microsoft.AspNetCore.Components
 open Microsoft.AspNetCore.Components.Web
+open Radzen
+open Radzen.Blazor
 open Medhavi.Common.Validation
 open Medhavi.Client.ViewComposition.Identity
 open Medhavi.Client.ViewComposition.Geometry
@@ -66,7 +68,8 @@ type ViewSpaceDependencies =
     { Components: ComponentRegistry
       Schemas: SchemaRegistry
       Culture: CultureInfo
-      DashboardHints: DashboardRenderHints }
+      DashboardHints: DashboardRenderHints
+      ContextMenu: ContextMenuService option }
 
 // Model
 type Model =
@@ -81,6 +84,12 @@ type Msg =
     | Request of Request
     | SelectTab of WorkspaceTabId
     | CloseTab of WorkspaceTabId
+    | CloseOtherTabs of WorkspaceTabId
+    | CloseTabsToRight of WorkspaceTabId
+    | CloseTabsToLeft of WorkspaceTabId
+    | CloseAllTabs
+    | DuplicateTab of WorkspaceTabId
+    | RefreshTab of WorkspaceTabId
     | ToggleEditMode
     | SurfaceMessage of ViewSurfaceMsg
     | SurfaceAdapterError of LayoutAdapterError
@@ -424,11 +433,129 @@ let update (ctx: ApplicationContext) (msg: Msg) (model: Model) : Model * Cmd<Msg
                 |> Option.bind(fun candidate ->
                     remaining |> List.tryFind(fun tab -> tab.Id = candidate) |> Option.map(fun tab -> tab.Id))
 
+        let cmd =
+            match newActive with
+            | Some activeId when model.ActiveTabId <> Some activeId ->
+                match tryFindTab activeId remaining with
+                | Some tab -> fetchStoresForSession ctx tab.Session
+                | None -> Cmd.none
+            | _ -> Cmd.none
+
         { model with
             Tabs = remaining
             ActiveTabId = newActive },
+        cmd,
+        None
+    | CloseOtherTabs tabId ->
+        let remaining = model.Tabs |> List.filter(fun tab -> tab.Id = tabId)
+        let newActive = remaining |> List.tryHead |> Option.map(fun tab -> tab.Id)
+        let cmd =
+            match newActive with
+            | Some activeId when model.ActiveTabId <> Some activeId ->
+                match tryFindTab activeId remaining with
+                | Some tab -> fetchStoresForSession ctx tab.Session
+                | None -> Cmd.none
+            | _ -> Cmd.none
+
+        { model with
+            Tabs = remaining
+            ActiveTabId = newActive },
+        cmd,
+        None
+    | CloseTabsToRight tabId ->
+        let remaining =
+            match model.Tabs |> List.tryFindIndex(fun tab -> tab.Id = tabId) with
+            | Some idx -> model.Tabs |> List.take(idx + 1)
+            | None -> model.Tabs
+
+        let newActive =
+            match model.ActiveTabId with
+            | Some active when remaining |> List.exists(fun tab -> tab.Id = active) -> Some active
+            | _ -> Some tabId
+
+        let cmd =
+            match newActive with
+            | Some activeId when model.ActiveTabId <> Some activeId ->
+                match tryFindTab activeId remaining with
+                | Some tab -> fetchStoresForSession ctx tab.Session
+                | None -> Cmd.none
+            | _ -> Cmd.none
+
+        { model with
+            Tabs = remaining
+            ActiveTabId = newActive },
+        cmd,
+        None
+    | CloseTabsToLeft tabId ->
+        let remaining =
+            match model.Tabs |> List.tryFindIndex(fun tab -> tab.Id = tabId) with
+            | Some idx -> model.Tabs |> List.skip idx
+            | None -> model.Tabs
+
+        let newActive =
+            match model.ActiveTabId with
+            | Some active when remaining |> List.exists(fun tab -> tab.Id = active) -> Some active
+            | _ -> Some tabId
+
+        let cmd =
+            match newActive with
+            | Some activeId when model.ActiveTabId <> Some activeId ->
+                match tryFindTab activeId remaining with
+                | Some tab -> fetchStoresForSession ctx tab.Session
+                | None -> Cmd.none
+            | _ -> Cmd.none
+
+        { model with
+            Tabs = remaining
+            ActiveTabId = newActive },
+        cmd,
+        None
+    | CloseAllTabs ->
+        { model with
+            Tabs = []
+            ActiveTabId = None },
         Cmd.none,
         None
+    | DuplicateTab tabId ->
+        match tryFindTab tabId model.Tabs with
+        | None -> model, Cmd.none, None
+        | Some tab ->
+            let newTabId = createWorkspaceTabId model.NextTabNumber
+            let newSessionId = createViewSessionId model.NextSessionNumber
+            let newTitle = $"{tab.Session.State.Title} (Copy)"
+            let duplicatedState = { tab.Session.State with Title = newTitle }
+            let duplicatedSession =
+                { tab.Session with
+                    SessionId = newSessionId
+                    State = duplicatedState }
+            let newTab =
+                { Id = newTabId
+                  Session = duplicatedSession
+                  IsEditMode = tab.IsEditMode }
+
+            let updatedTabs =
+                let rec insertAfter acc = function
+                    | [] -> List.rev (newTab :: acc)
+                    | (head: WorkspaceTab) :: tail when head.Id = tabId ->
+                        List.rev (head :: acc) @ (newTab :: tail)
+                    | head :: tail -> insertAfter (head :: acc) tail
+                insertAfter [] model.Tabs
+
+            let updatedModel =
+                { model with
+                    Tabs = updatedTabs
+                    ActiveTabId = Some newTabId
+                    NextTabNumber = model.NextTabNumber + 1
+                    NextSessionNumber = model.NextSessionNumber + 1 }
+
+            updatedModel, fetchStoresForSession ctx duplicatedSession, None
+    | RefreshTab tabId ->
+        let cmd =
+            match tryFindTab tabId model.Tabs with
+            | Some tab -> fetchStoresForSession ctx tab.Session
+            | None -> Cmd.none
+
+        model, cmd, None
     | ToggleEditMode ->
         match activeTab model with
         | None -> model, Cmd.none, None
@@ -461,8 +588,57 @@ let update (ctx: ApplicationContext) (msg: Msg) (model: Model) : Model * Cmd<Msg
 
         model, cmds, None
 
+// Context menu helper leveraging Radzen ContextMenuService
+let private openTabContextMenu
+    (contextMenuService: ContextMenuService)
+    (tab: WorkspaceTab)
+    (model: Model)
+    (dispatch: Msg -> unit)
+    (args: MouseEventArgs)
+    : unit =
+    let tabs = model.Tabs
+    let targetIndex = tabs |> List.tryFindIndex(fun t -> t.Id = tab.Id)
+    let totalTabs = tabs.Length
+
+    let canCloseOthers = totalTabs > 1
+    let canCloseRight =
+        match targetIndex with
+        | Some idx -> idx < totalTabs - 1
+        | None -> false
+    let canCloseLeft =
+        match targetIndex with
+        | Some idx -> idx > 0
+        | None -> false
+    let canCloseAll = totalTabs > 0
+
+    let items = ResizeArray<ContextMenuItem>()
+
+    let addItem text icon disabled (msg: Msg) =
+        let item = ContextMenuItem()
+        item.Text <- text
+        item.Icon <- icon
+        item.Disabled <- disabled
+        item.Value <- box msg
+        items.Add item
+
+    addItem "Close" "close" false (CloseTab tab.Id)
+    addItem "Close Other Tabs" "tab_unselected" (not canCloseOthers) (CloseOtherTabs tab.Id)
+    addItem "Close Tabs to the Right" "arrow_forward" (not canCloseRight) (CloseTabsToRight tab.Id)
+    addItem "Close Tabs to the Left" "arrow_back" (not canCloseLeft) (CloseTabsToLeft tab.Id)
+    addItem "Close All Tabs" "delete_sweep" (not canCloseAll) CloseAllTabs
+    addItem "Duplicate View" "content_copy" false (DuplicateTab tab.Id)
+    addItem "Refresh View" "refresh" false (RefreshTab tab.Id)
+
+    contextMenuService.Open(
+        args,
+        items,
+        Action<MenuItemEventArgs>(fun e ->
+            contextMenuService.Close()
+            match box e with | null -> () | _ -> match e.Value with | :? Msg as msg -> dispatch msg | _ -> ())
+    )
+
 // View
-let private renderTab (model: Model) (tab: WorkspaceTab) (dispatch: Msg -> unit) : Node =
+let private renderTab (model: Model) (dependencies: ViewSpaceDependencies) (tab: WorkspaceTab) (dispatch: Msg -> unit) : Node =
     let tabId = WorkspaceTabId.value tab.Id
     let isActive = model.ActiveTabId = Some tab.Id
 
@@ -491,17 +667,23 @@ let private renderTab (model: Model) (tab: WorkspaceTab) (dispatch: Msg -> unit)
         )
 
         attr.callback "onclick" (fun (_: MouseEventArgs) -> dispatch(SelectTab tab.Id))
+        on.preventDefault "contextmenu" true
+        on.stopPropagation "contextmenu" true
+        attr.callback "oncontextmenu" (fun (e: MouseEventArgs) ->
+            match dependencies.ContextMenu with
+            | Some cms -> openTabContextMenu cms tab model dispatch e
+            | None -> ())
 
         span {
             attr.style "white-space: nowrap;"
             tab.Session.State.Title
         }
 
-        comp<Radzen.Blazor.RadzenButton> {
+        comp<RadzenButton> {
             "Icon" => "close"
-            "ButtonStyle" => Radzen.ButtonStyle.Light
-            "Size" => Radzen.ButtonSize.Small
-            "Variant" => Radzen.Variant.Text
+            "ButtonStyle" => ButtonStyle.Light
+            "Size" => ButtonSize.Small
+            "Variant" => Variant.Text
             attr.callback "Click" (fun (_: MouseEventArgs) -> dispatch(CloseTab tab.Id))
         }
     }
@@ -555,8 +737,10 @@ let view (model: Model) (dependencies: ViewSpaceDependencies) (dispatch: Msg -> 
                 border-bottom: 1px solid var(--rz-border-color);
                 flex-shrink: 0;
             """
+            on.preventDefault "contextmenu" true
+            on.stopPropagation "contextmenu" true
 
-            forEach model.Tabs (fun tab -> renderTab model tab dispatch)
+            forEach model.Tabs (fun tab -> renderTab model dependencies tab dispatch)
         }
 
         div {
@@ -576,14 +760,25 @@ let view (model: Model) (dependencies: ViewSpaceDependencies) (dispatch: Msg -> 
 type Component() =
     inherit ElmishComponent<Model, Msg>()
 
+    [<Inject>]
+    member val ContextMenuService: ContextMenuService = Unchecked.defaultof<ContextMenuService> with get, set
+
     [<Parameter>]
     member val Dependencies: ViewSpaceDependencies option = None with get, set
 
     override this.View model dispatch =
         match this.Dependencies with
-        | Some dependencies -> view model dependencies dispatch
+        | Some dependencies ->
+            let deps =
+                match dependencies.ContextMenu with
+                | Some _ -> dependencies
+                | None ->
+                    if isNull(box this.ContextMenuService) then dependencies
+                    else { dependencies with ContextMenu = Some this.ContextMenuService }
+            view model deps dispatch
         | None ->
             div {
                 attr.``class`` "viewspace-configuration-error"
                 text "ViewSpace presentation dependencies are not configured."
             }
+

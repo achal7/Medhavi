@@ -1,15 +1,14 @@
 module Medhavi.Client.Components.ViewCatalog
 
 open System
-open Medhavi.Client.Registries
 open Medhavi.Client.ViewComposition.Identity
 open Medhavi.Client.ViewComposition.Component
 open Medhavi.Client.ViewComposition.View
 open Medhavi.Client.ViewComposition.Layout
 open Medhavi.Client.ViewComposition.Geometry
-open Medhavi.Client.ViewComposition.Data
 
 // Feature slices: Core
+open Medhavi.Client.Core.MasterData
 open Medhavi.Client.Core.Demand
 open Medhavi.Client.Core.Exceptions
 open Medhavi.Client.Core.ItemTransition
@@ -19,6 +18,16 @@ open Medhavi.Client.Core.Traceability
 // Feature slices: Demand
 open Medhavi.Client.Demand.Observations
 open Medhavi.Client.Demand.Understanding
+open Medhavi.Client.Demand.Forecast
+open Medhavi.Client.Demand.Sensing
+open Medhavi.Client.Demand.Exceptions
+open Medhavi.Client.Demand.Segmentation
+open Medhavi.Client.Demand.Classification
+open Medhavi.Client.Demand.Prioritization
+open Medhavi.Client.Demand.Quality
+open Medhavi.Client.Demand.Explanation
+open Medhavi.Client.Demand.Learning
+open Medhavi.Client.Demand.Interventions
 
 // Feature slices: Supply
 open Medhavi.Client.Supply.Inventory
@@ -29,6 +38,10 @@ open Medhavi.Client.Supply.ChangeSensing
 open Medhavi.Client.Supply.Collaboration
 open Medhavi.Client.Supply.Explanation
 open Medhavi.Client.Supply.Pegging
+open Medhavi.Client.Supply.Procurement
+open Medhavi.Client.Supply.Distribution
+open Medhavi.Client.Supply.Quality
+open Medhavi.Client.Supply.Learning
 
 // AI & Cross-cutting
 open Medhavi.Client.Components
@@ -72,6 +85,208 @@ let private idPeggingScheduler = ViewComponentId.literal "comp-pegging-scheduler
 let private idKpiSummary = ViewComponentId.literal "comp-kpi-summary"
 let private idDomainRadar = ViewComponentId.literal "comp-domain-radar"
 let private idTraceabilityWorkbench = ViewComponentId.literal "comp-traceability-workbench"
+let private idProcurement = ViewComponentId.literal "comp-procurement-recommendations"
+let private idDistribution = ViewComponentId.literal "comp-distribution-recommendations"
+let private idSupplyQuality = ViewComponentId.literal "comp-supply-quality"
+let private idSupplyLearning = ViewComponentId.literal "comp-supply-learning"
+let private idMasterData = ViewComponentId.literal "comp-core-master-data"
+let private idForecast = ViewComponentId.literal "comp-forecast-publication"
+let private idDemandSensing = ViewComponentId.literal "comp-demand-sensing"
+let private idDemandExceptions = ViewComponentId.literal "comp-demand-exceptions"
+let private idSegmentation = ViewComponentId.literal "comp-demand-segmentation"
+let private idClassification = ViewComponentId.literal "comp-demand-classification"
+let private idPrioritization = ViewComponentId.literal "comp-demand-prioritization"
+let private idDemandQuality = ViewComponentId.literal "comp-demand-quality"
+let private idDemandExplanation = ViewComponentId.literal "comp-demand-explanation"
+let private idDemandLearning = ViewComponentId.literal "comp-demand-learning"
+let private idDemandInterventions = ViewComponentId.literal "comp-demand-interventions"
+
+let private compForecast: ViewComponent =
+    {
+        ComponentDefId = ForecastGrid.definitionId
+        Binding =
+            {
+                StoreId = ForecastGrid.storeId
+                SchemaDefId = ForecastGrid.schemaId
+            }
+        Configuration =
+            {
+                LocalFilters = []
+                Parameters = Map.empty
+            }
+        Title = Some "Forecast Publications"
+        Icon = Some "query_stats"
+    }
+
+let private compDemandSensing: ViewComponent =
+    {
+        ComponentDefId = DemandSensingGrid.definitionId
+        Binding =
+            {
+                StoreId = DemandSensingGrid.storeId
+                SchemaDefId = DemandSensingGrid.schemaId
+            }
+        Configuration =
+            {
+                LocalFilters = []
+                Parameters = Map.empty
+            }
+        Title = Some "Demand Sensing"
+        Icon = Some "sensors"
+    }
+
+let private compDemandExceptions: ViewComponent =
+    {
+        ComponentDefId = DemandExceptionGrid.definitionId
+        Binding =
+            {
+                StoreId = DemandExceptionGrid.storeId
+                SchemaDefId = DemandExceptionGrid.schemaId
+            }
+        Configuration =
+            {
+                LocalFilters = []
+                Parameters = Map.empty
+            }
+        Title = Some "Demand Exceptions"
+        Icon = Some "warning_amber"
+    }
+
+let private compSegmentation: ViewComponent =
+    {
+        ComponentDefId = SegmentationGrid.definitionId
+        Binding =
+            {
+                StoreId = SegmentationGrid.storeId
+                SchemaDefId = SegmentationGrid.schemaId
+            }
+        Configuration =
+            {
+                LocalFilters = []
+                Parameters = Map.empty
+            }
+        Title = Some "Demand Planning Segmentation (ABC/XYZ)"
+        Icon = Some "category"
+    }
+
+let private compClassification: ViewComponent =
+    {
+        ComponentDefId = DemandBehaviorClassificationGrid.definitionId
+        Binding =
+            {
+                StoreId = DemandBehaviorClassificationGrid.storeId
+                SchemaDefId = DemandBehaviorClassificationGrid.schemaId
+            }
+        Configuration =
+            {
+                LocalFilters = []
+                Parameters = Map.empty
+            }
+        Title = Some "Demand Behavior Classification Studio"
+        Icon = Some "auto_graph"
+    }
+
+let private compPrioritization: ViewComponent =
+    {
+        ComponentDefId = PrioritizationGrid.definitionId
+        Binding =
+            {
+                StoreId = PrioritizationGrid.storeId
+                SchemaDefId = PrioritizationGrid.schemaId
+            }
+        Configuration =
+            {
+                LocalFilters = []
+                Parameters = Map.empty
+            }
+        Title = Some "Demand Prioritization Workbench"
+        Icon = Some "rule"
+    }
+
+let private compDemandQuality: ViewComponent =
+    {
+        ComponentDefId = DemandQualityGrid.definitionId
+        Binding =
+            {
+                StoreId = DemandQualityGrid.storeId
+                SchemaDefId = DemandQualityGrid.schemaId
+            }
+        Configuration =
+            {
+                LocalFilters = []
+                Parameters = Map.empty
+            }
+        Title = Some "Forecast Quality Studio"
+        Icon = Some "verified"
+    }
+
+let private compDemandExplanation: ViewComponent =
+    {
+        ComponentDefId = DemandExplanationGrid.definitionId
+        Binding =
+            {
+                StoreId = DemandExplanationGrid.storeId
+                SchemaDefId = DemandExplanationGrid.schemaId
+            }
+        Configuration =
+            {
+                LocalFilters = []
+                Parameters = Map.empty
+            }
+        Title = Some "Demand Decision Explanations"
+        Icon = Some "lightbulb"
+    }
+
+let private compDemandLearning: ViewComponent =
+    {
+        ComponentDefId = DemandLearningGrid.definitionId
+        Binding =
+            {
+                StoreId = DemandLearningGrid.storeId
+                SchemaDefId = DemandLearningGrid.schemaId
+            }
+        Configuration =
+            {
+                LocalFilters = []
+                Parameters = Map.empty
+            }
+        Title = Some "Demand Continuous Learning Studio"
+        Icon = Some "school"
+    }
+
+let private compDemandInterventions: ViewComponent =
+    {
+        ComponentDefId = DemandInterventionGrid.definitionId
+        Binding =
+            {
+                StoreId = DemandInterventionGrid.storeId
+                SchemaDefId = DemandInterventionGrid.schemaId
+            }
+        Configuration =
+            {
+                LocalFilters = []
+                Parameters = Map.empty
+            }
+        Title = Some "Demand Intervention & Lift Studio"
+        Icon = Some "transform"
+    }
+
+let private compMasterData: ViewComponent =
+    {
+        ComponentDefId = MasterDataGrid.definitionId
+        Binding =
+            {
+                StoreId = MasterDataGrid.storeId
+                SchemaDefId = MasterDataGrid.schemaId
+            }
+        Configuration =
+            {
+                LocalFilters = []
+                Parameters = Map.empty
+            }
+        Title = Some "Core Master Data"
+        Icon = Some "inventory_2"
+    }
 
 let private compMedhaviAssistant: ViewComponent =
     {
@@ -96,7 +311,7 @@ let private compDemand: ViewComponent =
         Binding =
             {
                 StoreId = DemandOrdersGrid.storeId
-                SchemaDefId = DemandGridSchema.schemaId
+                SchemaDefId = DemandOrdersGrid.schemaId
             }
         Configuration =
             {
@@ -112,8 +327,8 @@ let private compException: ViewComponent =
         ComponentDefId = ExceptionGrid.definitionId
         Binding =
             {
-                StoreId = ExceptionStore.storeId
-                SchemaDefId = ExceptionGridSchema.schemaId
+                StoreId = ExceptionGrid.storeId
+                SchemaDefId = ExceptionGrid.schemaId
             }
         Configuration =
             {
@@ -129,8 +344,8 @@ let private compItemTransition: ViewComponent =
         ComponentDefId = ItemTransitionGrid.definitionId
         Binding =
             {
-                StoreId = ItemTransitionStore.storeId
-                SchemaDefId = ItemTransitionGridSchema.schemaId
+                StoreId = ItemTransitionGrid.storeId
+                SchemaDefId = ItemTransitionGrid.schemaId
             }
         Configuration =
             {
@@ -146,8 +361,8 @@ let private compEnterprisePicture: ViewComponent =
         ComponentDefId = EnterprisePictureGrid.definitionId
         Binding =
             {
-                StoreId = EnterprisePictureStore.storeId
-                SchemaDefId = EnterprisePictureGridSchema.schemaId
+                StoreId = EnterprisePictureGrid.storeId
+                SchemaDefId = EnterprisePictureGrid.schemaId
             }
         Configuration =
             {
@@ -163,8 +378,8 @@ let private compTraceabilityWorkbench: ViewComponent =
         ComponentDefId = TraceabilityWorkbench.definitionId
         Binding =
             {
-                StoreId = TraceabilityStore.storeId
-                SchemaDefId = TraceabilityGridSchema.schemaId
+                StoreId = TraceabilityWorkbench.storeId
+                SchemaDefId = TraceabilityWorkbench.schemaId
             }
         Configuration =
             {
@@ -180,8 +395,8 @@ let private compDemandObservation: ViewComponent =
         ComponentDefId = DemandObservationGrid.definitionId
         Binding =
             {
-                StoreId = DemandObservationStore.storeId
-                SchemaDefId = DemandObservationGridSchema.schemaId
+                StoreId = DemandObservationGrid.storeId
+                SchemaDefId = DemandObservationGrid.schemaId
             }
         Configuration =
             {
@@ -197,8 +412,8 @@ let private compInventory: ViewComponent =
         ComponentDefId = InventoryGrid.definitionId
         Binding =
             {
-                StoreId = InventoryStore.storeId
-                SchemaDefId = InventoryGridSchema.schemaId
+                StoreId = InventoryGrid.storeId
+                SchemaDefId = InventoryGrid.schemaId
             }
         Configuration =
             {
@@ -214,8 +429,8 @@ let private compCapacity: ViewComponent =
         ComponentDefId = CapacityGrid.definitionId
         Binding =
             {
-                StoreId = CapacityStore.storeId
-                SchemaDefId = CapacityGridSchema.schemaId
+                StoreId = CapacityGrid.storeId
+                SchemaDefId = CapacityGrid.schemaId
             }
         Configuration =
             {
@@ -231,8 +446,8 @@ let private compCapacityStudio: ViewComponent =
         ComponentDefId = CapacityStudio.definitionId
         Binding =
             {
-                StoreId = CapacityStudio.storeId
-                SchemaDefId = CapacityGridSchema.schemaId
+                StoreId = CapacityGrid.storeId
+                SchemaDefId = CapacityGrid.schemaId
             }
         Configuration =
             {
@@ -248,8 +463,8 @@ let private compSupply: ViewComponent =
         ComponentDefId = SupplyGrid.definitionId
         Binding =
             {
-                StoreId = SupplyOrderStore.storeId
-                SchemaDefId = SupplyOrderGridSchema.schemaId
+                StoreId = SupplyGrid.storeId
+                SchemaDefId = SupplyGrid.schemaId
             }
         Configuration =
             {
@@ -282,8 +497,8 @@ let private compDomainRadar: ViewComponent =
         ComponentDefId = DomainHealthRadar.definitionId
         Binding =
             {
-                StoreId = DomainHealthStore.storeId
-                SchemaDefId = DomainHealthSchema.schemaId
+                StoreId = DomainHealthRadar.storeId
+                SchemaDefId = DomainHealthRadar.schemaId
             }
         Configuration =
             {
@@ -299,8 +514,8 @@ let private compSupplyExceptions: ViewComponent =
         ComponentDefId = SupplyExceptionGrid.definitionId
         Binding =
             {
-                StoreId = SupplyExceptionStore.storeId
-                SchemaDefId = SupplyExceptionGridSchema.schemaId
+                StoreId = SupplyExceptionGrid.storeId
+                SchemaDefId = SupplyExceptionGrid.schemaId
             }
         Configuration =
             {
@@ -316,8 +531,8 @@ let private compSupplyChanges: ViewComponent =
         ComponentDefId = SupplyChangeSensingGrid.definitionId
         Binding =
             {
-                StoreId = SupplyChangeSensingStore.storeId
-                SchemaDefId = SupplyChangeSensingGridSchema.schemaId
+                StoreId = SupplyChangeSensingGrid.storeId
+                SchemaDefId = SupplyChangeSensingGrid.schemaId
             }
         Configuration =
             {
@@ -333,8 +548,8 @@ let private compSupplierCollaboration: ViewComponent =
         ComponentDefId = SupplierCollaborationGrid.definitionId
         Binding =
             {
-                StoreId = SupplierCollaborationStore.storeId
-                SchemaDefId = SupplierCollaborationGridSchema.schemaId
+                StoreId = SupplierCollaborationGrid.storeId
+                SchemaDefId = SupplierCollaborationGrid.schemaId
             }
         Configuration =
             {
@@ -350,8 +565,8 @@ let private compSupplyExplanationStudio: ViewComponent =
         ComponentDefId = SupplyExplanationStudio.definitionId
         Binding =
             {
-                StoreId = SupplyExplanationStore.storeId
-                SchemaDefId = SupplyExplanationSchema.schemaId
+                StoreId = SupplyExplanationStudio.storeId
+                SchemaDefId = SupplyExplanationStudio.schemaId
             }
         Configuration =
             {
@@ -367,8 +582,8 @@ let private compPeggingScheduler: ViewComponent =
         ComponentDefId = PeggingScheduler.definitionId
         Binding =
             {
-                StoreId = PeggingSchedulerStore.storeId
-                SchemaDefId = PeggingSchedulerSchema.schemaId
+                StoreId = PeggingScheduler.storeId
+                SchemaDefId = PeggingScheduler.schemaId
             }
         Configuration =
             {
@@ -377,6 +592,74 @@ let private compPeggingScheduler: ViewComponent =
             }
         Title = Some "Demand-Supply Pegging Horizon"
         Icon = Some "alt_route"
+    }
+
+let private compProcurement: ViewComponent =
+    {
+        ComponentDefId = ProcurementGrid.definitionId
+        Binding =
+            {
+                StoreId = ProcurementGrid.storeId
+                SchemaDefId = ProcurementGrid.schemaId
+            }
+        Configuration =
+            {
+                LocalFilters = []
+                Parameters = Map.empty
+            }
+        Title = Some "Procurement Recommendations"
+        Icon = Some "shopping_cart"
+    }
+
+let private compDistribution: ViewComponent =
+    {
+        ComponentDefId = DistributionGrid.definitionId
+        Binding =
+            {
+                StoreId = DistributionGrid.storeId
+                SchemaDefId = DistributionGrid.schemaId
+            }
+        Configuration =
+            {
+                LocalFilters = []
+                Parameters = Map.empty
+            }
+        Title = Some "Distribution Recommendations"
+        Icon = Some "local_shipping"
+    }
+
+let private compSupplyQuality: ViewComponent =
+    {
+        ComponentDefId = SupplyQualityGrid.definitionId
+        Binding =
+            {
+                StoreId = SupplyQualityGrid.storeId
+                SchemaDefId = SupplyQualityGrid.schemaId
+            }
+        Configuration =
+            {
+                LocalFilters = []
+                Parameters = Map.empty
+            }
+        Title = Some "Supply Quality Assessments"
+        Icon = Some "verified"
+    }
+
+let private compSupplyLearning: ViewComponent =
+    {
+        ComponentDefId = SupplyLearningGrid.definitionId
+        Binding =
+            {
+                StoreId = SupplyLearningGrid.storeId
+                SchemaDefId = SupplyLearningGrid.schemaId
+            }
+        Configuration =
+            {
+                LocalFilters = []
+                Parameters = Map.empty
+            }
+        Title = Some "Supply Learning Insights"
+        Icon = Some "school"
     }
 
 let medhaviAssistantView: ViewDefinition =
@@ -789,15 +1072,311 @@ let traceabilityWorkbenchView: ViewDefinition =
         Metadata = defaultMetadata "Traceability & Investigation Studio" "Auditing & Traceability" "account_tree"
     }
 
+let procurementWorkbenchView: ViewDefinition =
+    {
+        Id = ViewDefId.literal "view-procurement-workbench"
+        Name = "Procurement Recommendations Workbench"
+        Version = 1
+        State =
+            {
+                Title = "Procurement Recommendations (CA-S-006)"
+                Components = Map.ofList [ (idProcurement, compProcurement) ]
+                Layout =
+                    LayoutDefinition.Dashboard(
+                        GridDimensions.defaultDimensions,
+                        Map.ofList [ (idProcurement, TilePosition.literal 1 1 12 6) ]
+                    )
+                SharedContext = None
+            }
+        Metadata = defaultMetadata "Procurement Recommendations" "Procurement Planning" "shopping_cart"
+    }
+
+let distributionWorkbenchView: ViewDefinition =
+    {
+        Id = ViewDefId.literal "view-distribution-workbench"
+        Name = "Distribution Network Workbench"
+        Version = 1
+        State =
+            {
+                Title = "Distribution Network Recommendations (CA-S-008)"
+                Components = Map.ofList [ (idDistribution, compDistribution) ]
+                Layout =
+                    LayoutDefinition.Dashboard(
+                        GridDimensions.defaultDimensions,
+                        Map.ofList [ (idDistribution, TilePosition.literal 1 1 12 6) ]
+                    )
+                SharedContext = None
+            }
+        Metadata = defaultMetadata "Distribution Network Workbench" "Distribution Planning" "local_shipping"
+    }
+
+let supplyQualityWorkbenchView: ViewDefinition =
+    {
+        Id = ViewDefId.literal "view-supply-quality-workbench"
+        Name = "Supply Quality Assessment Workbench"
+        Version = 1
+        State =
+            {
+                Title = "Supply Quality & Operational Alignment (CA-S-010)"
+                Components = Map.ofList [ (idSupplyQuality, compSupplyQuality) ]
+                Layout =
+                    LayoutDefinition.Dashboard(
+                        GridDimensions.defaultDimensions,
+                        Map.ofList [ (idSupplyQuality, TilePosition.literal 1 1 12 6) ]
+                    )
+                SharedContext = None
+            }
+        Metadata = defaultMetadata "Supply Quality Workbench" "Quality & Governance" "verified"
+    }
+
+let supplyLearningWorkbenchView: ViewDefinition =
+    {
+        Id = ViewDefId.literal "view-supply-learning-workbench"
+        Name = "Supply Learning & Retrospectives"
+        Version = 1
+        State =
+            {
+                Title = "Supply Learning & Multi-Period Retrospectives (CA-S-013)"
+                Components = Map.ofList [ (idSupplyLearning, compSupplyLearning) ]
+                Layout =
+                    LayoutDefinition.Dashboard(
+                        GridDimensions.defaultDimensions,
+                        Map.ofList [ (idSupplyLearning, TilePosition.literal 1 1 12 6) ]
+                    )
+                SharedContext = None
+            }
+        Metadata = defaultMetadata "Supply Learning Workbench" "Learning & Adaptation" "school"
+    }
+
+let coreMasterDataWorkbenchView: ViewDefinition =
+    {
+        Id = ViewDefId.literal "view-core-master-data-workbench"
+        Name = "Core Master Data Catalog"
+        Version = 1
+        State =
+            {
+                Title = "Core Items & Locations Master Catalog"
+                Components = Map.ofList [ (idMasterData, compMasterData) ]
+                Layout =
+                    LayoutDefinition.Dashboard(
+                        GridDimensions.defaultDimensions,
+                        Map.ofList [ (idMasterData, TilePosition.literal 1 1 12 6) ]
+                    )
+                SharedContext = None
+            }
+        Metadata = defaultMetadata "Core Master Data Catalog" "Master Data" "inventory_2"
+    }
+
+let forecastWorkbenchView: ViewDefinition =
+    {
+        Id = ViewDefId.literal "view-forecast-workbench"
+        Name = "Forecast Publication Studio"
+        Version = 1
+        State =
+            {
+                Title = "Forecast Publication Studio (CA-D-002)"
+                Components = Map.ofList [ (idForecast, compForecast) ]
+                Layout =
+                    LayoutDefinition.Dashboard(
+                        GridDimensions.defaultDimensions,
+                        Map.ofList [ (idForecast, TilePosition.literal 1 1 12 6) ]
+                    )
+                SharedContext = None
+            }
+        Metadata = defaultMetadata "Forecast Publication Studio" "Demand Forecasting" "query_stats"
+    }
+
+let demandSensingWorkbenchView: ViewDefinition =
+    {
+        Id = ViewDefId.literal "view-demand-sensing-workbench"
+        Name = "Demand Sensing Studio"
+        Version = 1
+        State =
+            {
+                Title = "Demand Sensing & Signal Intelligence (CA-D-003)"
+                Components = Map.ofList [ (idDemandSensing, compDemandSensing) ]
+                Layout =
+                    LayoutDefinition.Dashboard(
+                        GridDimensions.defaultDimensions,
+                        Map.ofList [ (idDemandSensing, TilePosition.literal 1 1 12 6) ]
+                    )
+                SharedContext = None
+            }
+        Metadata = defaultMetadata "Demand Sensing Studio" "Demand Sensing" "sensors"
+    }
+
+let demandExceptionsWorkbenchView: ViewDefinition =
+    {
+        Id = ViewDefId.literal "view-demand-exceptions-workbench"
+        Name = "Demand Exceptions Workbench"
+        Version = 1
+        State =
+            {
+                Title = "Demand Exceptions & Pattern Detection (CA-D-008)"
+                Components = Map.ofList [ (idDemandExceptions, compDemandExceptions) ]
+                Layout =
+                    LayoutDefinition.Dashboard(
+                        GridDimensions.defaultDimensions,
+                        Map.ofList [ (idDemandExceptions, TilePosition.literal 1 1 12 6) ]
+                    )
+                SharedContext = None
+            }
+        Metadata = defaultMetadata "Demand Exceptions Workbench" "Exception Management" "warning_amber"
+    }
+
+let segmentationWorkbenchView: ViewDefinition =
+    {
+        Id = ViewDefId.literal "view-demand-segmentation"
+        Name = "Demand Planning Segmentation Workbench (ABC/XYZ)"
+        Version = 1
+        State =
+            {
+                Title = "Demand Planning Segmentation Workbench (ABC/XYZ)"
+                Components = Map.ofList [ (idSegmentation, compSegmentation) ]
+                Layout =
+                    LayoutDefinition.Dashboard(
+                        GridDimensions.defaultDimensions,
+                        Map.ofList [ (idSegmentation, TilePosition.literal 1 1 12 6) ]
+                    )
+                SharedContext = None
+            }
+        Metadata = defaultMetadata "Demand Segmentation Workbench" "Demand Planning" "category"
+    }
+
+let classificationWorkbenchView: ViewDefinition =
+    {
+        Id = ViewDefId.literal "view-demand-classification"
+        Name = "Demand Behavior Classification Studio"
+        Version = 1
+        State =
+            {
+                Title = "Demand Behavior Classification Studio"
+                Components = Map.ofList [ (idClassification, compClassification) ]
+                Layout =
+                    LayoutDefinition.Dashboard(
+                        GridDimensions.defaultDimensions,
+                        Map.ofList [ (idClassification, TilePosition.literal 1 1 12 6) ]
+                    )
+                SharedContext = None
+            }
+        Metadata = defaultMetadata "Demand Behavior Classification" "Demand Planning" "auto_graph"
+    }
+
+let prioritizationWorkbenchView: ViewDefinition =
+    {
+        Id = ViewDefId.literal "view-demand-prioritization"
+        Name = "Demand Planning Priority Workbench"
+        Version = 1
+        State =
+            {
+                Title = "Demand Planning Priority Workbench"
+                Components = Map.ofList [ (idPrioritization, compPrioritization) ]
+                Layout =
+                    LayoutDefinition.Dashboard(
+                        GridDimensions.defaultDimensions,
+                        Map.ofList [ (idPrioritization, TilePosition.literal 1 1 12 6) ]
+                    )
+                SharedContext = None
+            }
+        Metadata = defaultMetadata "Demand Prioritization Workbench" "Demand Planning" "rule"
+    }
+
+let demandQualityWorkbenchView: ViewDefinition =
+    {
+        Id = ViewDefId.literal "view-demand-quality"
+        Name = "Forecast Quality Studio"
+        Version = 1
+        State =
+            {
+                Title = "Forecast Quality & Accuracy Studio (CA-D-007)"
+                Components = Map.ofList [ (idDemandQuality, compDemandQuality) ]
+                Layout =
+                    LayoutDefinition.Dashboard(
+                        GridDimensions.defaultDimensions,
+                        Map.ofList [ (idDemandQuality, TilePosition.literal 1 1 12 6) ]
+                    )
+                SharedContext = None
+            }
+        Metadata = defaultMetadata "Forecast Quality Studio" "Demand Forecasting" "verified"
+    }
+
+let demandExplanationWorkbenchView: ViewDefinition =
+    {
+        Id = ViewDefId.literal "view-demand-explanation"
+        Name = "Demand Decision Explanations Studio"
+        Version = 1
+        State =
+            {
+                Title = "Demand Decision Explanations & Factor Attribution (CA-D-009)"
+                Components = Map.ofList [ (idDemandExplanation, compDemandExplanation) ]
+                Layout =
+                    LayoutDefinition.Dashboard(
+                        GridDimensions.defaultDimensions,
+                        Map.ofList [ (idDemandExplanation, TilePosition.literal 1 1 12 6) ]
+                    )
+                SharedContext = None
+            }
+        Metadata = defaultMetadata "Demand Explanations Studio" "Demand Planning" "lightbulb"
+    }
+
+let demandLearningWorkbenchView: ViewDefinition =
+    {
+        Id = ViewDefId.literal "view-demand-learning"
+        Name = "Demand Continuous Learning Workbench"
+        Version = 1
+        State =
+            {
+                Title = "Demand Continuous Learning & Bias Insights (CA-D-010)"
+                Components = Map.ofList [ (idDemandLearning, compDemandLearning) ]
+                Layout =
+                    LayoutDefinition.Dashboard(
+                        GridDimensions.defaultDimensions,
+                        Map.ofList [ (idDemandLearning, TilePosition.literal 1 1 12 6) ]
+                    )
+                SharedContext = None
+            }
+        Metadata = defaultMetadata "Demand Continuous Learning" "Demand Planning" "school"
+    }
+
+let demandInterventionWorkbenchView: ViewDefinition =
+    {
+        Id = ViewDefId.literal "view-demand-interventions"
+        Name = "Demand Intervention & Lift Studio"
+        Version = 1
+        State =
+            {
+                Title = "Demand Intervention & Scenario Lift Modeling (CA-D-011)"
+                Components = Map.ofList [ (idDemandInterventions, compDemandInterventions) ]
+                Layout =
+                    LayoutDefinition.Dashboard(
+                        GridDimensions.defaultDimensions,
+                        Map.ofList [ (idDemandInterventions, TilePosition.literal 1 1 12 6) ]
+                    )
+                SharedContext = None
+            }
+        Metadata = defaultMetadata "Demand Intervention Studio" "Demand Planning" "transform"
+    }
+
 let defaultViews: ViewDefinition list =
     [
         medhaviAssistantView
         executiveKpiDashboardView
+        coreMasterDataWorkbenchView
         demandSupplyCapacityTripleView
         coreExceptionsWorkbenchView
         itemTransitionsWorkbenchView
         enterprisePictureWorkbenchView
         demandObservationsStreamView
+        forecastWorkbenchView
+        demandSensingWorkbenchView
+        demandExceptionsWorkbenchView
+        segmentationWorkbenchView
+        classificationWorkbenchView
+        prioritizationWorkbenchView
+        demandQualityWorkbenchView
+        demandExplanationWorkbenchView
+        demandLearningWorkbenchView
+        demandInterventionWorkbenchView
         inventoryWorkbenchView
         capacityWorkbenchView
         capacityStudioView
@@ -809,5 +1388,8 @@ let defaultViews: ViewDefinition list =
         peggingDashboardView
         peggingSplitView
         traceabilityWorkbenchView
+        procurementWorkbenchView
+        distributionWorkbenchView
+        supplyQualityWorkbenchView
+        supplyLearningWorkbenchView
     ]
-

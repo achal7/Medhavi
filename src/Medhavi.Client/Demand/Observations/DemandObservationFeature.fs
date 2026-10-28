@@ -1,12 +1,17 @@
 module Medhavi.Client.Demand.Observations.DemandObservationFeature
 
-open Medhavi.Client.Registries
-open Medhavi.Client.ActionExecution
 open Medhavi.Client
 
+let store =
+    DataStore.fromQuery
+        DemandObservationGrid.storeId
+        (fun ds -> ds.Demand.UnderstandDemand.Observation.Queries)
+        DemandObservationGrid.adapter
+
 /// Feature composition manifest for the Demand Observations slice.
-let manifest =
-    {| Schemas = [ DemandObservationGridSchema.definition ]
-       Stores = [ (DemandObservationStore.store.Id, DemandObservationStore.store) ]
-       Actions = DemandObservationActions.all
-       Components = [ DemandObservationGrid.registration ] |}
+let manifest: FeatureManifest =
+    {
+        Stores = [ (store.Id, store) ]
+        Actions = DemandObservationActions.all
+        Components = [ DemandObservationGrid.registration ]
+    }

@@ -2,11 +2,15 @@ namespace Medhavi.Client.Registries
 
 open Medhavi.Client.ViewComposition.Identity
 open Medhavi.Client.ViewComposition.Component
+open Medhavi.Client.ViewComposition.Schema
 open Medhavi.Client.Rendering
 
 type ComponentRegistration =
-    { Definition: ComponentDefinition
-      Runtime: ComponentRuntime }
+    {
+        Definition: ComponentDefinition
+        Schema: SchemaDefinition
+        Runtime: ComponentRuntime
+    }
 
 type ComponentRegistryError =
     | ComponentNotRegistered of ComponentDefId
@@ -26,8 +30,10 @@ module ComponentRegistry =
     let tryRegister (registration: ComponentRegistration) (ComponentRegistry m) =
         let id = registration.Definition.Id
 
-        if Map.containsKey id m then Error(DuplicateRegistration id)
-        else Ok(ComponentRegistry(Map.add id registration m))
+        if Map.containsKey id m then
+            Error(DuplicateRegistration id)
+        else
+            Ok(ComponentRegistry(Map.add id registration m))
 
     let ofList (registrations: ComponentRegistration list) =
         List.fold

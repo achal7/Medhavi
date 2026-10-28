@@ -159,7 +159,7 @@ let main args =
     builder.Services.AddSingleton<NexusContext>(nexusCtx) |> ignore
 
     // 9. Initialize Client
-    Composition.ComposeClient.addApplicationServices applicationConfiguration nexusCtx builder.Services |> ignore
+    Composition.ComposeClient.addApplicationServices applicationConfiguration nexusCtx traceabilityQueryService builder.Services |> ignore
 
     // 10. Build Web Application
     let app = builder.Build()
@@ -220,3 +220,4 @@ let main args =
 
     app.Run()
     0
+

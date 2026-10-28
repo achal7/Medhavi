@@ -1,11 +1,16 @@
 module Medhavi.Client.Supply.Inventory.InventoryFeature
 
-open Medhavi.Client.Registries
-open Medhavi.Client.ActionExecution
 open Medhavi.Client
 
-let manifest =
-    {| Schemas = [ InventoryGridSchema.definition ]
-       Stores = [ (InventoryStore.store.Id, InventoryStore.store) ]
-       Actions = InventoryActions.all
-       Components = [ InventoryGrid.registration ] |}
+let store =
+    DataStore.fromQuery
+        InventoryGrid.storeId
+        (fun ds -> ds.Supply.ManageInventory.InventoryPositionQueries)
+        InventoryGrid.adapter
+
+let manifest: FeatureManifest =
+    {
+        Stores = [ (store.Id, store) ]
+        Actions = InventoryActions.all
+        Components = [ InventoryGrid.registration ]
+    }

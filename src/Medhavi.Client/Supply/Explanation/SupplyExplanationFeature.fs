@@ -1,13 +1,16 @@
 module Medhavi.Client.Supply.Explanation.SupplyExplanationFeature
 
 open Medhavi.Client
-open Medhavi.Client.ViewComposition.Identity
-open Medhavi.Client.ActionExecution
 
-let manifest =
-    {|
-        Schemas = [ SupplyExplanationSchema.definition ]
-        Stores = [ (SupplyExplanationStore.store.Id, SupplyExplanationStore.store) ]
-        Actions = ([]: (ActionDefId * ActionHandler) list)
+let store =
+    DataStore.fromQuery
+        SupplyExplanationStudio.storeId
+        (fun ds -> ds.Supply.ExplainSupplyDecisions.SupplyExplanationQueries)
+        SupplyExplanationStudio.adapter
+
+let manifest: FeatureManifest =
+    {
+        Stores = [ (store.Id, store) ]
+        Actions = []
         Components = [ SupplyExplanationStudio.registration ]
-    |}
+    }

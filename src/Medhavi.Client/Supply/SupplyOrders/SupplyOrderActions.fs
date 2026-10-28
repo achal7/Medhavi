@@ -7,70 +7,82 @@ open Medhavi.Client.ViewComposition.Identity
 open Medhavi.Client.ActionExecution
 open Medhavi.Client
 
-type SupplyPlanningApi = SupplyPlanApi
-
-let expedite: ActionHandler =
+let generatePlan: ActionHandler =
     fun ctx ->
         task {
-            match ctx.TargetKey with
-            | Some orderId ->
+            let api = ctx.Domain.Supply.PlanSupply.SupplyPlanApi
+            let req: GenerateSupplyPlanReq =
+                { PlanningScopeId = "PS-GLOBAL-SUPPLY-CHAIN"
+                  ForecastHorizonId = "HORIZON-90D"
+                  SupplyUnderstandingVersion = 1
+                  ForecastPublicationVersion = 1
+                  EnterprisePictureVersion = 1L }
+
+            match! api.Generate req with
+            | Ok planDto ->
+                let verNum =
+                    planDto.CurrentVersion
+                    |> Option.map (fun v -> string v.VersionNumber)
+                    |> Option.defaultValue "1"
                 return
                     Ok(
                         ActionExecutionOutcome.Completed(
-                            $"Planned order '{orderId}' marked for expedited release and priority fulfillment.",
-                            [ SupplyOrderStore.storeId
+                            $"Supply plan generated successfully (Version {verNum}, Scope '{planDto.PlanningScopeId}').",
+                            [ SupplyGrid.storeId
                               DataStoreId.literal "inventory-store"
-                              DataStoreId.literal "core-exception-store" ]
+                              DataStoreId.literal "capacity-store" ]
                         )
                     )
-            | None -> return Error "No planned order selected to expedite."
+            | Error err -> return Error err.Message
         }
 
-let deExpedite: ActionHandler =
+let evaluatePlan: ActionHandler =
     fun ctx ->
         task {
-            match ctx.TargetKey with
-            | Some orderId ->
+            let api = ctx.Domain.Supply.PlanSupply.SupplyPlanApi
+            let req: EvaluateSupplyPlanReq =
+                { PlanningScopeId = "PS-GLOBAL-SUPPLY-CHAIN"
+                  ForecastHorizonId = "HORIZON-90D"
+                  VersionNumber = 1 }
+
+            match! api.Evaluate req with
+            | Ok planDto ->
+                let outcomeStr =
+                    planDto.CurrentVersion
+                    |> Option.bind (fun v -> v.EvaluationOutcome)
+                    |> Option.map (fun o -> string o)
+                    |> Option.defaultValue "Evaluated"
                 return
                     Ok(
                         ActionExecutionOutcome.Completed(
-                            $"Planned order '{orderId}' de-expedited and restored to baseline schedule.",
-                            [ SupplyOrderStore.storeId
+                            $"Supply plan evaluated: Outcome = {outcomeStr}.",
+                            [ SupplyGrid.storeId ]
+                        )
+                    )
+            | Error err -> return Error err.Message
+        }
+
+let publishPlan: ActionHandler =
+    fun ctx ->
+        task {
+            let api = ctx.Domain.Supply.PlanSupply.SupplyPlanApi
+            let req: PublishSupplyPlanReq =
+                { PlanningScopeId = "PS-GLOBAL-SUPPLY-CHAIN"
+                  ForecastHorizonId = "HORIZON-90D"
+                  VersionNumber = 1
+                  IsOutCycle = false }
+
+            match! api.Publish req with
+            | Ok planDto ->
+                return
+                    Ok(
+                        ActionExecutionOutcome.Completed(
+                            $"Supply plan published to enterprise picture ledger for '{planDto.PlanningScopeId}'.",
+                            [ SupplyGrid.storeId
                               DataStoreId.literal "inventory-store" ]
                         )
                     )
-            | None -> return Error "No planned order selected to de-expedite."
-        }
-
-let split: ActionHandler =
-    fun ctx ->
-        task {
-            match ctx.TargetKey with
-            | Some orderId ->
-                return
-                    Ok(
-                        ActionExecutionOutcome.Completed(
-                            $"Planned order '{orderId}' split into staggered production batches.",
-                            [ SupplyOrderStore.storeId ]
-                        )
-                    )
-            | None -> return Error "No planned order selected to split."
-        }
-
-let changeVendor: ActionHandler =
-    fun ctx ->
-        task {
-            match ctx.TargetKey with
-            | Some orderId ->
-                return
-                    Ok(
-                        ActionExecutionOutcome.Completed(
-                            $"Alternate supplier assigned to planned order '{orderId}'. Lead time re-benchmarked.",
-                            [ SupplyOrderStore.storeId
-                              DataStoreId.literal "supplier-collaboration-store" ]
-                        )
-                    )
-            | None -> return Error "No planned order selected for supplier reassignment."
+            | Error err -> return Error err.Message
         }
 
 let explainDelay: ActionHandler =
@@ -83,8 +95,7 @@ let explainDelay: ActionHandler =
         }
 
 let all: (ActionDefId * ActionHandler) list =
-    [ SupplyOrderGridSchema.expedite.Id, expedite
-      SupplyOrderGridSchema.deExpedite.Id, deExpedite
-      SupplyOrderGridSchema.split.Id, split
-      SupplyOrderGridSchema.changeVendor.Id, changeVendor
-      SupplyOrderGridSchema.explainDelay.Id, explainDelay ]
+    [ SupplyGrid.SupplyOrderActions.generatePlan.Id, generatePlan
+      SupplyGrid.SupplyOrderActions.evaluatePlan.Id, evaluatePlan
+      SupplyGrid.SupplyOrderActions.publishPlan.Id, publishPlan
+      SupplyGrid.SupplyOrderActions.explainDelay.Id, explainDelay ]

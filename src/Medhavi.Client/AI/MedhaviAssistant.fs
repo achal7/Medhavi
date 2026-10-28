@@ -14,9 +14,12 @@ open Medhavi.Client.Controls
 open Medhavi.Client.AI
 open Medhavi.Client.Supply.Capacity
 open Medhavi.Client.Supply.SupplyOrders
+open Medhavi.Client.Supply.Collaboration
 
-module CapacityActions = CapacityGridSchema
-module SupplyActions = SupplyOrderGridSchema
+module CapacityActions = CapacityGrid
+module SupplyActions = SupplyGrid
+module SupplierActions = SupplierCollaborationGrid
+
 open Medhavi.Client.ViewComposition.Identity
 open Medhavi.Client.ViewComposition.Schema
 open Medhavi.Client.ViewComposition.Component
@@ -27,39 +30,47 @@ let storeId = DataStoreId.literal "demo-ai-store"
 let schemaId = SchemaDefId.literal "medhavi-assistant-schema"
 
 type ProposedAction =
-    { Title: string
-      ActionId: ActionDefId
-      TargetKey: string
-      Description: string
-      Impact: string
-      Icon: string }
+    {
+        Title: string
+        ActionId: ActionDefId
+        TargetKey: string
+        Description: string
+        Impact: string
+        Icon: string
+    }
 
 let schemaDefinition: SchemaDefinition =
-    { Id = schemaId
-      DisplayName = "Medhavi Assistant Intelligence Schema"
-      Capabilities = [ "AI"; "Intelligence"; "Causal" ]
-      DefaultSort = None
-      DefaultFilters = []
-      SupportedActions =
-        [ CapacityActions.addShift.Id
-          CapacityActions.reallocate.Id
-          SupplyActions.expedite.Id
-          SupplyActions.split.Id ]
-      Actions = []
-      Columns = [] }
+    {
+        Id = schemaId
+        DisplayName = "Medhavi Assistant Intelligence Schema"
+        Capabilities = [ "AI"; "Intelligence"; "Causal" ]
+        DefaultSort = None
+        DefaultFilters = []
+        SupportedActions =
+            [
+                CapacityActions.addShift.Id
+                CapacityActions.reallocate.Id
+                SupplyActions.generatePlan.Id
+                SupplierActions.requestAlternative.Id
+            ]
+        Actions = []
+        Columns = []
+    }
 
 let definition: ComponentDefinition =
-    { Id = definitionId
-      DisplayName = "Medhavi Assistant"
-      Icon = "auto_awesome"
-      Category = ComponentCategory.Visualization
-      RequiredSchemaCapabilities = []
-      DefaultGridSpan = GridSpan.literal 12 12
-      DefaultSchemaId = Some schemaId
-      DefaultStoreId = Some storeId
-      IsResizable = true
-      IsDraggable = true
-      SelectionMode = SelectionMode.NoSelection }
+    {
+        Id = definitionId
+        DisplayName = "Medhavi Assistant"
+        Icon = "auto_awesome"
+        Category = ComponentCategory.Visualization
+        RequiredSchemaCapabilities = []
+        DefaultGridSpan = GridSpan.literal 12 12
+        DefaultSchemaId = Some schemaId
+        DefaultStoreId = Some storeId
+        IsResizable = true
+        IsDraggable = true
+        SelectionMode = SelectionMode.NoSelection
+    }
 
 type ChatMessage =
     | UserMessage of timestamp: string * text: string
@@ -75,22 +86,26 @@ type ChatMessage =
     | ReceiptMessage of timestamp: string * title: string * details: string
 
 let private quickPrompts =
-    [ "🚨 Shortage Causal Trace (D-1002)", "Explain shortage on demand order D-1002"
-      "⚡ Berlin Line 3 Bottleneck (WC-BER-03)", "Analyze critical bottleneck on Berlin Line 3"
-      "🚢 PO-8802 Supplier Delay", "Explain 4-day supplier delay on PO-8802"
-      "🔄 Multi-DC Load Balancing", "Propose autonomous plan rebalancing across European DCs" ]
+    [
+        "🚨 Shortage Causal Trace (D-1002)", "Explain shortage on demand order D-1002"
+        "⚡ Berlin Line 3 Bottleneck (WC-BER-03)", "Analyze critical bottleneck on Berlin Line 3"
+        "🚢 PO-8802 Supplier Delay", "Explain 4-day supplier delay on PO-8802"
+        "🔄 Multi-DC Load Balancing", "Propose autonomous plan rebalancing across European DCs"
+    ]
 
 let private initialMessages: ChatMessage list =
-    [ AssistantMessage(
-          DateTimeOffset.UtcNow.ToString("HH:mm:ss"),
-          "Medhavi Autonomous Planning Copilot",
-          "Welcome to Medhavi Assistant — your AI Supply Chain Strategist and Autonomous Planning Intelligence Engine.\n\nI continuously monitor real-time demand variations, supplier lead-time slips, and machine capacity constraints across European distribution centers. Select a quick starter prompt below or type any planning query.",
-          "Continuous multi-tier causal monitoring active.",
-          "$0.00 At Risk",
-          None,
-          None,
-          []
-      ) ]
+    [
+        AssistantMessage(
+            DateTimeOffset.UtcNow.ToString("HH:mm:ss"),
+            "Medhavi Autonomous Planning Copilot",
+            "Welcome to Medhavi Assistant — your AI Supply Chain Strategist and Autonomous Planning Intelligence Engine.\n\nI continuously monitor real-time demand variations, supplier lead-time slips, and machine capacity constraints across European distribution centers. Select a quick starter prompt below or type any planning query.",
+            "Continuous multi-tier causal monitoring active.",
+            "$0.00 At Risk",
+            None,
+            None,
+            []
+        )
+    ]
 
 let private jsonOptions =
     let opt = JsonSerializerOptions()
@@ -119,18 +134,24 @@ let private generateAssistantResponse (prompt: string) : ChatMessage =
 
     if p.Contains("d-1002") || p.Contains("shortage") then
         let actions =
-            [ { Title = "Authorize Weekend Overtime (+8h)"
-                ActionId = CapacityActions.addShift.Id
-                TargetKey = "WC-BER-03"
-                Description = "Authorize +8h Saturday shift on Berlin DC Line 3 to recover 26h deficit."
-                Impact = "Recovers 550 units on D-1002; protects $342.5k revenue."
-                Icon = "more_time" }
-              { Title = "Reallocate Workload to Munich DC"
-                ActionId = CapacityActions.reallocate.Id
-                TargetKey = "WC-BER-03"
-                Description = "Reroute 400 units of A100 Power Module assembly to Munich DC Cell 2."
-                Impact = "Balances Berlin Line 3 load to 94.2%; OTIF preserved."
-                Icon = "alt_route" } ]
+            [
+                {
+                    Title = "Authorize Weekend Overtime (+8h)"
+                    ActionId = CapacityActions.addShift.Id
+                    TargetKey = "WC-BER-03"
+                    Description = "Authorize +8h Saturday shift on Berlin DC Line 3 to recover 26h deficit."
+                    Impact = "Recovers 550 units on D-1002; protects $342.5k revenue."
+                    Icon = "more_time"
+                }
+                {
+                    Title = "Reallocate Workload to Munich DC"
+                    ActionId = CapacityActions.reallocate.Id
+                    TargetKey = "WC-BER-03"
+                    Description = "Reroute 400 units of A100 Power Module assembly to Munich DC Cell 2."
+                    Impact = "Balances Berlin Line 3 load to 94.2%; OTIF preserved."
+                    Icon = "alt_route"
+                }
+            ]
 
         AssistantMessage(
             now,
@@ -144,18 +165,24 @@ let private generateAssistantResponse (prompt: string) : ChatMessage =
         )
     elif p.Contains("wc-ber-03") || p.Contains("bottleneck") || p.Contains("line 3") || p.Contains("berlin") then
         let actions =
-            [ { Title = "Authorize Weekend Overtime (+8h)"
-                ActionId = CapacityActions.addShift.Id
-                TargetKey = "WC-BER-03"
-                Description = "Add +8h weekend shift on Berlin Final Power QC & Test Line 3."
-                Impact = "Reduces Berlin Line 3 utilization from 121.7% to 92.4%."
-                Icon = "more_time" }
-              { Title = "Reallocate Workload to Munich Cell 2"
-                ActionId = CapacityActions.reallocate.Id
-                TargetKey = "WC-BER-03"
-                Description = "Shift 38h assembly load to Munich DC Cell 2."
-                Impact = "Eliminates overtime expense; restores plant balance."
-                Icon = "alt_route" } ]
+            [
+                {
+                    Title = "Authorize Weekend Overtime (+8h)"
+                    ActionId = CapacityActions.addShift.Id
+                    TargetKey = "WC-BER-03"
+                    Description = "Add +8h weekend shift on Berlin Final Power QC & Test Line 3."
+                    Impact = "Reduces Berlin Line 3 utilization from 121.7% to 92.4%."
+                    Icon = "more_time"
+                }
+                {
+                    Title = "Reallocate Workload to Munich Cell 2"
+                    ActionId = CapacityActions.reallocate.Id
+                    TargetKey = "WC-BER-03"
+                    Description = "Shift 38h assembly load to Munich DC Cell 2."
+                    Impact = "Eliminates overtime expense; restores plant balance."
+                    Icon = "alt_route"
+                }
+            ]
 
         AssistantMessage(
             now,
@@ -169,18 +196,24 @@ let private generateAssistantResponse (prompt: string) : ChatMessage =
         )
     elif p.Contains("po-8802") || p.Contains("delay") || p.Contains("supplier") || p.Contains("vendor") then
         let actions =
-            [ { Title = "Air Freight Expedite for PO-8802"
-                ActionId = SupplyActions.expedite.Id
-                TargetKey = "PO-8802"
-                Description = "Switch PO-8802 shipment from ocean transit to priority air cargo."
-                Impact = "Recovers 3 business days; avoids €12,500/day SLA penalty."
-                Icon = "bolt" }
-              { Title = "Split Purchase Order"
-                ActionId = SupplyActions.split.Id
-                TargetKey = "PO-8802"
-                Description = "Split PO-8802: 400 units air freight immediately, 550 units ground."
-                Impact = "Guarantees Siemens D-1002 assembly schedule on Sept 3."
-                Icon = "call_split" } ]
+            [
+                {
+                    Title = "Regenerate Supply Plan for PO-8802"
+                    ActionId = SupplyActions.generatePlan.Id
+                    TargetKey = "PO-8802"
+                    Description = "Regenerate supply plan baseline taking supplier delay into account."
+                    Impact = "Recovers 3 business days; avoids €12,500/day SLA penalty."
+                    Icon = "auto_mode"
+                }
+                {
+                    Title = "Request Alternative from Supplier"
+                    ActionId = SupplierActions.requestAlternative.Id
+                    TargetKey = "PO-8802"
+                    Description = "Request alternative delivery split or buffer date from supplier."
+                    Impact = "Guarantees Siemens D-1002 assembly schedule on Sept 3."
+                    Icon = "swap_horiz"
+                }
+            ]
 
         AssistantMessage(
             now,
@@ -426,7 +459,7 @@ let private render (ctx: ComponentRenderContext) (dispatchEvent: ComponentEvent 
     let historyJson =
         ctx.Configuration.Parameters
         |> Map.tryFind "ChatHistory"
-        |> Option.bind (function
+        |> Option.bind(function
             | StringValue s -> Some s
             | _ -> None)
         |> Option.defaultValue ""
@@ -434,7 +467,7 @@ let private render (ctx: ComponentRenderContext) (dispatchEvent: ComponentEvent 
     let currentDraft =
         ctx.Configuration.Parameters
         |> Map.tryFind "Draft"
-        |> Option.bind (function
+        |> Option.bind(function
             | StringValue s -> Some s
             | _ -> None)
         |> Option.defaultValue ""
@@ -451,7 +484,8 @@ let private render (ctx: ComponentRenderContext) (dispatchEvent: ComponentEvent 
 
         let updatedConfig =
             { ctx.Configuration with
-                Parameters = updatedParams }
+                Parameters = updatedParams
+            }
 
         dispatchEvent(ConfigurationChangeRequested updatedConfig)
 
@@ -482,7 +516,8 @@ let private render (ctx: ComponentRenderContext) (dispatchEvent: ComponentEvent 
 
         let updatedConfig =
             { ctx.Configuration with
-                Parameters = updatedParams }
+                Parameters = updatedParams
+            }
 
         dispatchEvent(ConfigurationChangeRequested updatedConfig)
 
@@ -605,5 +640,8 @@ let private render (ctx: ComponentRenderContext) (dispatchEvent: ComponentEvent 
 let runtime: ComponentRuntime = { Render = render }
 
 let registration: ComponentRegistration =
-    { Definition = definition
-      Runtime = runtime }
+    {
+        Definition = definition
+        Schema = schemaDefinition
+        Runtime = runtime
+    }

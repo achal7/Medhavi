@@ -12,14 +12,256 @@ open Medhavi.Client.Rendering
 open Medhavi.Client.ViewComposition.Identity
 open Medhavi.Client.ViewComposition.Geometry
 open Medhavi.Client.ViewComposition.Component
+open Medhavi.Client.ViewComposition.Schema
 open Medhavi.Client.ViewComposition.Data
-open Medhavi.Client.Supply.Pegging.PeggingSchedulerSchema
+open Medhavi.Client.ViewComposition.Context
 
+type PeggingItemType =
+    | Demand
+    | PlannedSupply
+
+type PeggingAppointment =
+    {
+        Id: string
+        Text: string
+        Start: DateTimeOffset
+        End: DateTimeOffset
+        ItemType: PeggingItemType
+        Quantity: decimal
+        EntityRef: string
+        Status: string
+    }
+
+/// Declarative metadata descriptors for Pegging Scheduler actions.
+module PeggingSchedulerActions =
+
+    let realignPegging: ActionDescriptor =
+        {
+            Id = ActionDefId.literal "pegging.realign"
+            DisplayName = "Realign Pegging Horizon"
+            Icon = "sync"
+            Scope = GlobalScope
+            ExecutionMode = Direct
+            RequiredRoles = [ "Planner" ]
+            IsPrimary = true
+        }
+
+    let all: ActionDescriptor list = [ realignPegging ]
+
+let realignPegging = PeggingSchedulerActions.realignPegging
+let allActions = PeggingSchedulerActions.all
+
+let storeId = DataStoreId.literal "pegging-scheduler-store"
+let schemaId = SchemaDefId.literal "schema-pegging-scheduler"
 let definitionId = ComponentDefId.literal "comp-pegging-scheduler"
-let storeId = PeggingSchedulerStore.storeId
-let schemaId = PeggingSchedulerSchema.schemaId
 
-let definition: ComponentDefinition =
+let schema: SchemaDefinition =
+    {
+        Id = schemaId
+        DisplayName = "Demand-Supply Pegging Horizon"
+        Capabilities = [ "TimeSeries"; "Tabular" ]
+        SupportedActions = PeggingSchedulerActions.all |> List.map(fun a -> a.Id)
+        Actions = PeggingSchedulerActions.all
+        Columns =
+            [
+                {
+                    ColumnId = "Id"
+                    PropertyName = Some "Id"
+                    Title = "Pegging ID"
+                    DefaultOrder = 0
+                    DefaultWidthInPixels = Some 140
+                    DefaultVisible = true
+                    DefaultPinned = true
+                    Sortable = true
+                    FilterValueKind = Some Text
+                    Filterable = true
+                    Groupable = false
+                    RenderHint = None
+                    Alignment = Left
+                    CellType = TextType
+                    IsKey = true
+                    FormatString = None
+                    UserConfigurable = false
+                }
+                {
+                    ColumnId = "Text"
+                    PropertyName = Some "Text"
+                    Title = "Description"
+                    DefaultOrder = 1
+                    DefaultWidthInPixels = Some 260
+                    DefaultVisible = true
+                    DefaultPinned = false
+                    Sortable = true
+                    FilterValueKind = Some Text
+                    Filterable = true
+                    Groupable = false
+                    RenderHint = None
+                    Alignment = Left
+                    CellType = TextType
+                    IsKey = false
+                    FormatString = None
+                    UserConfigurable = true
+                }
+                {
+                    ColumnId = "Start"
+                    PropertyName = Some "Start"
+                    Title = "Start Date"
+                    DefaultOrder = 2
+                    DefaultWidthInPixels = Some 130
+                    DefaultVisible = true
+                    DefaultPinned = false
+                    Sortable = true
+                    FilterValueKind = Some FilterValueKind.DateTimeOffset
+                    Filterable = true
+                    Groupable = false
+                    RenderHint = None
+                    Alignment = Left
+                    CellType = DateTimeType
+                    IsKey = false
+                    FormatString = Some "yyyy-MM-dd"
+                    UserConfigurable = true
+                }
+                {
+                    ColumnId = "End"
+                    PropertyName = Some "End"
+                    Title = "End Date"
+                    DefaultOrder = 3
+                    DefaultWidthInPixels = Some 130
+                    DefaultVisible = true
+                    DefaultPinned = false
+                    Sortable = true
+                    FilterValueKind = Some FilterValueKind.DateTimeOffset
+                    Filterable = true
+                    Groupable = false
+                    RenderHint = None
+                    Alignment = Left
+                    CellType = DateTimeType
+                    IsKey = false
+                    FormatString = Some "yyyy-MM-dd"
+                    UserConfigurable = true
+                }
+                {
+                    ColumnId = "ItemType"
+                    PropertyName = Some "ItemType"
+                    Title = "Type"
+                    DefaultOrder = 4
+                    DefaultWidthInPixels = Some 120
+                    DefaultVisible = true
+                    DefaultPinned = false
+                    Sortable = true
+                    FilterValueKind = Some Text
+                    Filterable = true
+                    Groupable = true
+                    RenderHint = Some "StatusBadge"
+                    Alignment = Left
+                    CellType = TextType
+                    IsKey = false
+                    FormatString = None
+                    UserConfigurable = true
+                }
+                {
+                    ColumnId = "Quantity"
+                    PropertyName = Some "Quantity"
+                    Title = "Quantity"
+                    DefaultOrder = 5
+                    DefaultWidthInPixels = Some 110
+                    DefaultVisible = true
+                    DefaultPinned = false
+                    Sortable = true
+                    FilterValueKind = Some Number
+                    Filterable = true
+                    Groupable = false
+                    RenderHint = None
+                    Alignment = Right
+                    CellType = NumberType
+                    IsKey = false
+                    FormatString = Some "N0"
+                    UserConfigurable = true
+                }
+                {
+                    ColumnId = "EntityRef"
+                    PropertyName = Some "EntityRef"
+                    Title = "Entity Reference"
+                    DefaultOrder = 6
+                    DefaultWidthInPixels = Some 140
+                    DefaultVisible = true
+                    DefaultPinned = false
+                    Sortable = true
+                    FilterValueKind = Some Text
+                    Filterable = true
+                    Groupable = false
+                    RenderHint = None
+                    Alignment = Left
+                    CellType = TextType
+                    IsKey = false
+                    FormatString = None
+                    UserConfigurable = true
+                }
+                {
+                    ColumnId = "Status"
+                    PropertyName = Some "Status"
+                    Title = "Status"
+                    DefaultOrder = 7
+                    DefaultWidthInPixels = Some 110
+                    DefaultVisible = true
+                    DefaultPinned = false
+                    Sortable = true
+                    FilterValueKind = Some Text
+                    Filterable = true
+                    Groupable = true
+                    RenderHint = Some "StatusBadge"
+                    Alignment = Left
+                    CellType = TextType
+                    IsKey = false
+                    FormatString = None
+                    UserConfigurable = true
+                }
+            ]
+        DefaultSort = None
+        DefaultFilters = []
+    }
+
+let definition: SchemaDefinition = schema
+
+let createRow
+    (id: string)
+    (text: string)
+    (startDt: DateTimeOffset)
+    (endDt: DateTimeOffset)
+    (itemType: string)
+    (quantity: decimal)
+    (entityRef: string)
+    (status: string)
+    : UniversalRow =
+    {
+        Key = id
+        Cells =
+            Map.ofList
+                [
+                    "Id", TextValue id
+                    "Text", TextValue text
+                    "Start", DateTimeValue startDt
+                    "End", DateTimeValue endDt
+                    "ItemType", TextValue itemType
+                    "Quantity", NumberValue quantity
+                    "EntityRef", TextValue entityRef
+                    "Status", TextValue status
+                ]
+    }
+
+let adapter: ProjectionAdapter<PeggingAppointment> =
+    {
+        ToUniversal =
+            fun (appt: PeggingAppointment) ->
+                let itemTypeStr =
+                    match appt.ItemType with
+                    | Demand -> "Demand"
+                    | PlannedSupply -> "PlannedSupply"
+
+                createRow appt.Id appt.Text appt.Start appt.End itemTypeStr appt.Quantity appt.EntityRef appt.Status
+    }
+
+let componentDefinition: ComponentDefinition =
     { Id = definitionId
       DisplayName = "Demand-Supply Pegging Horizon & Timeline"
       Icon = "calendar_month"
@@ -69,61 +311,79 @@ let render (context: ComponentRenderContext) (dispatch: ComponentEvent -> unit) 
                 | _ -> None)
         | _ -> []
 
-    let appointments = appointmentsList :> IEnumerable<PeggingAppointment>
+    let appointments: IEnumerable<PeggingAppointment> = appointmentsList :> IEnumerable<PeggingAppointment>
+
+    let startDate =
+        appointmentsList
+        |> List.tryHead
+        |> Option.map (fun a -> a.Start.DateTime)
+        |> Option.defaultValue DateTime.Today
+
+    let startMonth =
+        appointmentsList
+        |> List.tryHead
+        |> Option.map (fun a -> enum<Month> a.Start.Month)
+        |> Option.defaultValue Month.January
 
     div {
-        attr.style
-            "display: flex; flex-direction: column; height: 100%; width: 100%; box-sizing: border-box; background: var(--rz-base-background-color); border: 1px solid var(--rz-border-color); border-radius: 8px; overflow: hidden;"
+        attr.style "display: flex; flex-direction: column; height: 100%; width: 100%; overflow: hidden; background: var(--rz-base-background-color);"
 
-        // Header Legend Banner
+        // Workbench Control Bar
         div {
-            attr.style
-                "display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; background: rgba(0,0,0,0.02); border-bottom: 1px solid var(--rz-border-color);"
+            attr.style "display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid var(--rz-border-color); background: var(--rz-base-200);"
 
             div {
                 attr.style "display: flex; align-items: center; gap: 8px;"
 
                 span {
-                    attr.``class`` "rzi"
-                    attr.style "font-size: 18px; color: var(--rz-primary);"
-                    "calendar_month"
+                    attr.style "font-weight: 600; font-size: 14px;"
+                    "Pegging Horizon & Replenishment Timeline"
                 }
 
                 span {
-                    attr.style "font-size: 13px; font-weight: 700; color: var(--rz-text-color);"
-                    "Demand-Supply Pegging Horizon"
+                    attr.style "font-size: 12px; color: var(--rz-text-secondary-color);"
+                    $"(Showing {appointmentsList.Length} demand/supply events)"
                 }
             }
 
-            // Legend
             div {
-                attr.style "display: flex; align-items: center; gap: 16px; font-size: 11px; font-weight: 600;"
+                attr.style "display: flex; align-items: center; gap: 8px;"
 
+                // Legend
                 div {
-                    attr.style "display: flex; align-items: center; gap: 6px;"
+                    attr.style "display: flex; align-items: center; gap: 6px; font-size: 11px; margin-right: 8px;"
 
                     span {
-                        attr.style
-                            "display: inline-block; width: 12px; height: 12px; background: var(--rz-primary); border-left: 3px solid var(--rz-primary-dark); border-radius: 2px;"
+                        attr.style "display: inline-block; width: 12px; height: 12px; background: var(--rz-primary); border-radius: 2px;"
                     }
+                    span { "Demand Orders" }
 
                     span {
-                        attr.style "color: var(--rz-text-color);"
-                        "Demand Commitments (Blue)"
+                        attr.style "display: inline-block; width: 12px; height: 12px; background: var(--rz-success); border-radius: 2px; margin-left: 6px;"
                     }
+                    span { "Planned Supply" }
                 }
 
-                div {
-                    attr.style "display: flex; align-items: center; gap: 6px;"
+                button {
+                    attr.``class`` "rz-button rz-button-sm rz-secondary rz-shade-default"
+                    attr.style "display: flex; align-items: center; gap: 4px;"
+                    on.click (fun _ -> dispatch (ActionRequested(PeggingSchedulerActions.realignPegging.Id, None, NoPayload)))
 
                     span {
-                        attr.style
-                            "display: inline-block; width: 12px; height: 12px; background: var(--rz-success); border-left: 3px solid var(--rz-success-dark); border-radius: 2px;"
+                        attr.``class`` "rzi"
+                        "sync"
                     }
+                    span { "Realign Pegging" }
+                }
+
+                button {
+                    attr.``class`` "rz-button rz-button-sm rz-base-100 rz-shade-default"
+                    attr.style "display: flex; align-items: center;"
+                    on.click (fun _ -> dispatch RefreshRequested)
 
                     span {
-                        attr.style "color: var(--rz-text-color);"
-                        "Planned Supplies (Green)"
+                        attr.``class`` "rzi"
+                        "refresh"
                     }
                 }
             }
@@ -138,7 +398,7 @@ let render (context: ComponentRenderContext) (dispatch: ComponentEvent -> unit) 
                 "StartProperty" => "Start"
                 "EndProperty" => "End"
                 "TextProperty" => "Text"
-                "Date" => DateTime(2026, 9, 1)
+                "Date" => startDate
                 "SelectedIndex" => 0
                 "Style" => "height: 100%; width: 100%;"
 
@@ -154,7 +414,7 @@ let render (context: ComponentRenderContext) (dispatch: ComponentEvent -> unit) 
                     (concat {
                         comp<RadzenYearPlannerView> {
                             "Text" => "Year Planner"
-                            "StartMonth" => Month.September
+                            "StartMonth" => startMonth
                         }
 
                         comp<RadzenYearTimelineView> { "Text" => "Timeline" }
@@ -167,5 +427,6 @@ let render (context: ComponentRenderContext) (dispatch: ComponentEvent -> unit) 
 let runtime: ComponentRuntime = { Render = render }
 
 let registration: ComponentRegistration =
-    { Definition = definition
+    { Definition = componentDefinition
+      Schema = schema
       Runtime = runtime }

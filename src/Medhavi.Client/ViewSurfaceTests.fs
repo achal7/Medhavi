@@ -63,6 +63,7 @@ open Medhavi.Client.Supply.ChangeSensing
 
     let private testRegistration: ComponentRegistration =
         { Definition = testDefinition
+          Schema = testSchema
           Runtime = testRuntime }
 
     let private testVC: ViewComponent =
@@ -247,8 +248,8 @@ open Medhavi.Client.Supply.ChangeSensing
         let vc: ViewComponent =
             { ComponentDefId = InventoryGrid.definitionId
               Binding =
-                { StoreId = InventoryStore.storeId
-                  SchemaDefId = InventoryGridSchema.schemaId }
+                { StoreId = InventoryGrid.storeId
+                  SchemaDefId = InventoryGrid.schemaId }
               Configuration = { LocalFilters = []; Parameters = Map.empty }
               Title = None
               Icon = None }
@@ -260,8 +261,8 @@ open Medhavi.Client.Supply.ChangeSensing
         let vc: ViewComponent =
             { ComponentDefId = CapacityGrid.definitionId
               Binding =
-                { StoreId = CapacityStore.storeId
-                  SchemaDefId = CapacityGridSchema.schemaId }
+                { StoreId = CapacityGrid.storeId
+                  SchemaDefId = CapacityGrid.schemaId }
               Configuration = { LocalFilters = []; Parameters = Map.empty }
               Title = None
               Icon = None }
@@ -273,8 +274,8 @@ open Medhavi.Client.Supply.ChangeSensing
         let vc: ViewComponent =
             { ComponentDefId = SupplyGrid.definitionId
               Binding =
-                { StoreId = SupplyOrderStore.storeId
-                  SchemaDefId = SupplyOrderGridSchema.schemaId }
+                { StoreId = SupplyGrid.storeId
+                  SchemaDefId = SupplyGrid.schemaId }
               Configuration = { LocalFilters = []; Parameters = Map.empty }
               Title = None
               Icon = None }
@@ -286,8 +287,8 @@ open Medhavi.Client.Supply.ChangeSensing
         let vc: ViewComponent =
             { ComponentDefId = SupplyChangeSensingGrid.definitionId
               Binding =
-                { StoreId = SupplyChangeSensingStore.storeId
-                  SchemaDefId = SupplyChangeSensingGridSchema.schemaId }
+                { StoreId = SupplyChangeSensingGrid.storeId
+                  SchemaDefId = SupplyChangeSensingGrid.schemaId }
               Configuration = { LocalFilters = []; Parameters = Map.empty }
               Title = None
               Icon = None }

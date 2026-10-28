@@ -53,6 +53,7 @@ module private QueryAdapter =
 let addApplicationServices
     (configuration: ClientConfiguration)
     (nexusCtx: ComposeNexus.NexusContext)
+    (traceability: Medhavi.Contracts.Traceability.TraceabilityQueryService)
     (services: IServiceCollection)
     : IServiceCollection =
 
@@ -84,7 +85,13 @@ let addApplicationServices
               Queries = exceptionQueries }
           ItemTransitionManagement =
             { Commands = itemTransitionApi
-              Queries = itemTransitionQueries } }
+              Queries = itemTransitionQueries }
+          EnterprisePicture =
+            { Commands = epicApi
+              Queries = epicQueries }
+          Traceability =
+            { Queries = traceability }
+          MasterData = None }
 
     services.AddSingleton<CoreDomainServices>(coreServices) |> ignore
     services.AddSingleton<DemandApi>(demandApi) |> ignore
@@ -105,6 +112,46 @@ let addApplicationServices
     let demandUndQueries: DemandUnderstandingQueries =
         QueryAdapter.adaptWith PlanningScopeId.create nexusCtx.Demand.UnderstandDemandContext.UnderstandingQueries
 
+    let forecastPubApi: ForecastPublicationApi = nexusCtx.Demand.ForecastDemand.Commands
+    let forecastPubQueries: ForecastPublicationQueries =
+        QueryAdapter.adaptWith ForecastPublicationId.create nexusCtx.Demand.ForecastDemand.Queries
+
+    let senseDemandApi: DemandBehaviorAssessmentApi = nexusCtx.Demand.SenseDemand.Commands
+    let senseDemandQueries: DemandBehaviorAssessmentQueries =
+        QueryAdapter.adaptWith DemandBehaviorAssessmentId.create nexusCtx.Demand.SenseDemand.Queries
+
+    let demandExceptionApi: DemandExceptionApi = nexusCtx.Demand.DetectDemandExceptions.Commands
+    let demandExceptionQueries: DemandExceptionQueries =
+        QueryAdapter.adaptWith DemandExceptionEvidenceId.create nexusCtx.Demand.DetectDemandExceptions.Queries
+
+    let segmentDemandApi: PlanningClassificationApi = nexusCtx.Demand.SegmentDemand.Commands
+    let segmentDemandQueries: PlanningClassificationQueries =
+        QueryAdapter.adaptWith PlanningClassificationAssignmentId.create nexusCtx.Demand.SegmentDemand.Queries
+
+    let classifyDemandApi: DemandBehaviorClassificationApi = nexusCtx.Demand.ClassifyDemand.Commands
+    let classifyDemandQueries: DemandBehaviorClassificationQueries =
+        QueryAdapter.adaptWith DemandBehaviorAssignmentId.create nexusCtx.Demand.ClassifyDemand.Queries
+
+    let prioritizeDemandApi: PlanningPriorityApi = nexusCtx.Demand.PrioritizeDemand.Commands
+    let prioritizeDemandQueries: PlanningPriorityQueries =
+        QueryAdapter.adaptWith PlanningPriorityAssignmentId.create nexusCtx.Demand.PrioritizeDemand.Queries
+
+    let evaluateDemandQualityApi: ForecastQualityApi = nexusCtx.Demand.EvaluateDemandQuality.Commands
+    let evaluateDemandQualityQueries: ForecastQualityQueries =
+        QueryAdapter.adaptWith ForecastQualityAssessmentId.create nexusCtx.Demand.EvaluateDemandQuality.Queries
+
+    let explainDemandApi: DemandExplanationApi = nexusCtx.Demand.ExplainDemand.Commands
+    let explainDemandQueries: DemandExplanationQueries =
+        QueryAdapter.adaptWith DemandExplanationId.create nexusCtx.Demand.ExplainDemand.Queries
+
+    let learnDemandApi: DemandLearningApi = nexusCtx.Demand.LearnFromDemand.Commands
+    let learnDemandQueries: DemandLearningQueries =
+        QueryAdapter.adaptWith DemandLearningId.create nexusCtx.Demand.LearnFromDemand.Queries
+
+    let interventionDemandApi: DemandInterventionApi = nexusCtx.Demand.ModelDemandInterventions.Commands
+    let interventionDemandQueries: DemandInterventionQueries =
+        QueryAdapter.adaptWith DemandInterventionImpactId.create nexusCtx.Demand.ModelDemandInterventions.Queries
+
     let demandServices: DemandDomainServices =
         { UnderstandDemand =
             { Observation =
@@ -112,13 +159,63 @@ let addApplicationServices
                   Queries = demandObsQueries }
               Understanding =
                 { Commands = demandUndApi
-                  Queries = demandUndQueries } } }
+                  Queries = demandUndQueries } }
+          ForecastDemand =
+            { Commands = forecastPubApi
+              Queries = forecastPubQueries }
+          SenseDemand =
+            { Commands = senseDemandApi
+              Queries = senseDemandQueries }
+          DetectDemandExceptions =
+            { Commands = demandExceptionApi
+              Queries = demandExceptionQueries }
+          SegmentDemand =
+            { Commands = segmentDemandApi
+              Queries = segmentDemandQueries }
+          ClassifyDemand =
+            { Commands = classifyDemandApi
+              Queries = classifyDemandQueries }
+          PrioritizeDemand =
+            { Commands = prioritizeDemandApi
+              Queries = prioritizeDemandQueries }
+          EvaluateDemandQuality =
+            { Commands = evaluateDemandQualityApi
+              Queries = evaluateDemandQualityQueries }
+          ExplainDemand =
+            { Commands = explainDemandApi
+              Queries = explainDemandQueries }
+          LearnFromDemand =
+            { Commands = learnDemandApi
+              Queries = learnDemandQueries }
+          ModelDemandInterventions =
+            { Commands = interventionDemandApi
+              Queries = interventionDemandQueries } }
 
     services.AddSingleton<DemandDomainServices>(demandServices) |> ignore
     services.AddSingleton<DemandObservationApi>(demandObsApi) |> ignore
     services.AddSingleton<DemandObservationQueries>(demandObsQueries) |> ignore
     services.AddSingleton<DemandUnderstandingApi>(demandUndApi) |> ignore
     services.AddSingleton<DemandUnderstandingQueries>(demandUndQueries) |> ignore
+    services.AddSingleton<ForecastPublicationApi>(forecastPubApi) |> ignore
+    services.AddSingleton<ForecastPublicationQueries>(forecastPubQueries) |> ignore
+    services.AddSingleton<DemandBehaviorAssessmentApi>(senseDemandApi) |> ignore
+    services.AddSingleton<DemandBehaviorAssessmentQueries>(senseDemandQueries) |> ignore
+    services.AddSingleton<DemandExceptionApi>(demandExceptionApi) |> ignore
+    services.AddSingleton<DemandExceptionQueries>(demandExceptionQueries) |> ignore
+    services.AddSingleton<PlanningClassificationApi>(segmentDemandApi) |> ignore
+    services.AddSingleton<PlanningClassificationQueries>(segmentDemandQueries) |> ignore
+    services.AddSingleton<DemandBehaviorClassificationApi>(classifyDemandApi) |> ignore
+    services.AddSingleton<DemandBehaviorClassificationQueries>(classifyDemandQueries) |> ignore
+    services.AddSingleton<PlanningPriorityApi>(prioritizeDemandApi) |> ignore
+    services.AddSingleton<PlanningPriorityQueries>(prioritizeDemandQueries) |> ignore
+    services.AddSingleton<ForecastQualityApi>(evaluateDemandQualityApi) |> ignore
+    services.AddSingleton<ForecastQualityQueries>(evaluateDemandQualityQueries) |> ignore
+    services.AddSingleton<DemandExplanationApi>(explainDemandApi) |> ignore
+    services.AddSingleton<DemandExplanationQueries>(explainDemandQueries) |> ignore
+    services.AddSingleton<DemandLearningApi>(learnDemandApi) |> ignore
+    services.AddSingleton<DemandLearningQueries>(learnDemandQueries) |> ignore
+    services.AddSingleton<DemandInterventionApi>(interventionDemandApi) |> ignore
+    services.AddSingleton<DemandInterventionQueries>(interventionDemandQueries) |> ignore
 
     // 4. Supply Intelligence Domain Services (CA-S-001 .. CA-S-013)
     let supplyServices: SupplyDomainServices =
@@ -240,3 +337,4 @@ let addApplicationServices
     services.AddSingleton<DomainServices>(domainServices) |> ignore
 
     services
+

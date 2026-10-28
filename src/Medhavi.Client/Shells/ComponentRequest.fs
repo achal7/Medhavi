@@ -25,19 +25,14 @@ module ComponentRequest =
         match ComponentRegistry.find componentDefId componentRegistry with
         | Error _ -> Error(ComponentNotRegistered componentDefId)
         | Ok registration ->
-            match registration.Definition.DefaultSchemaId with
-            | None -> Error(ComponentHasNoDefaultSchema componentDefId)
-            | Some schemaDefId ->
-                match SchemaRegistry.find schemaDefId schemaRegistry with
-                | Error _ -> Error(SchemaNotRegistered schemaDefId)
-                | Ok schema ->
-                    match registration.Definition.DefaultStoreId with
-                    | None -> Error(ComponentHasNoDefaultStore componentDefId)
-                    | Some storeId ->
-                        let configuration =
-                            { LocalFilters = schema.DefaultFilters
-                              Parameters = Map.empty }
+            let schema = registration.Schema
+            match registration.Definition.DefaultStoreId with
+            | None -> Error(ComponentHasNoDefaultStore componentDefId)
+            | Some storeId ->
+                let configuration =
+                    { LocalFilters = schema.DefaultFilters
+                      Parameters = Map.empty }
 
-                        match ComponentBinding.create registration.Definition schema storeId configuration with
-                        | Invalid errors -> Error(BindingRejected(componentDefId, schemaDefId, errors))
-                        | Valid binding -> Ok(ViewSpace.AddComponent(viewComponentId, binding))
+                match ComponentBinding.create registration.Definition schema storeId configuration with
+                | Invalid errors -> Error(BindingRejected(componentDefId, schema.Id, errors))
+                | Valid binding -> Ok(ViewSpace.AddComponent(viewComponentId, binding))

@@ -22,6 +22,9 @@ module ScenarioId =
     let baseline = literal "baseline"
 
 type PlanningContext =
-    { Scenario: ScenarioId
-      Horizon: DateRange
-      PlantId: string option }
+    {
+        Scenario: ScenarioId
+        Horizon: DateRange
+        PlantId: string option
+        ScopeId: string option
+    }

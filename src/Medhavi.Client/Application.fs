@@ -137,22 +137,29 @@ type Application() =
         let schemaRegistry = ComponentCatalog.schemas
 
         let baselinePlanningContext =
-            { Scenario = ScenarioId.baseline
-              Horizon =
-                { Start = DateTimeOffset.Now
-                  End = DateTimeOffset.Now.AddDays(30) }
-              PlantId = None }
+            {
+                Scenario = ScenarioId.baseline
+                Horizon =
+                    {
+                        Start = DateTimeOffset.Now
+                        End = DateTimeOffset.Now.AddDays(30)
+                    }
+                PlantId = None
+                ScopeId = Some "PS-GLOBAL-SUPPLY-CHAIN"
+            }
 
         let pctx = Services.PlanningContextService.create baselinePlanningContext
 
         let ctx =
-            { PlanningContextService = pctx
-              ComponentRegistry = componentRegistry
-              SchemaRegistry = schemaRegistry
-              DataStoreRegistry = ComponentCatalog.dataStores
-              ActionRegistry = ComponentCatalog.actionRegistry
-              Services = this.Services
-              DomainServices = if isNull (box this.DomainServices) then None else Some this.DomainServices }
+            {
+                PlanningContextService = pctx
+                ComponentRegistry = componentRegistry
+                SchemaRegistry = schemaRegistry
+                DataStoreRegistry = ComponentCatalog.dataStores
+                ActionRegistry = ComponentCatalog.actionRegistry
+                Services = this.Services
+                DomainServices = if isNull(box this.DomainServices) then None else Some this.DomainServices
+            }
             : ApplicationContext
 
         let view model dispatch = view ctx model dispatch

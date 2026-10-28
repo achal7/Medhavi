@@ -14,19 +14,134 @@ open Medhavi.Client.Rendering
 open Medhavi.Client.ViewComposition.Identity
 open Medhavi.Client.ViewComposition.Geometry
 open Medhavi.Client.ViewComposition.Component
+open Medhavi.Client.ViewComposition.Schema
 open Medhavi.Client.ViewComposition.Data
+open Medhavi.Client.ViewComposition.Context
 
+module SupplyExplanationActions =
+    let all: ActionDescriptor list = []
+
+let storeId = DataStoreId.literal "supply-explanation-store"
+let schemaId = SchemaDefId.literal "schema-supply-explanation"
 let definitionId = ComponentDefId.literal "comp-supply-explanation-studio"
-let storeId = SupplyExplanationStore.storeId
 
-let definition: ComponentDefinition =
+let schema: SchemaDefinition =
+    { Id = schemaId
+      DisplayName = "Supply Explanation Schema"
+      Capabilities = [ "Detail"; "Tabular" ]
+      SupportedActions = []
+      Actions = []
+      Columns =
+        [ { ColumnId = "ExplanationId"
+            PropertyName = Some "ExplanationId"
+            Title = "Explanation ID"
+            DefaultOrder = 0
+            DefaultWidthInPixels = Some 150
+            DefaultVisible = true
+            DefaultPinned = true
+            Sortable = true
+            FilterValueKind = Some Text
+            Filterable = true
+            Groupable = false
+            RenderHint = None
+            Alignment = Left
+            CellType = TextType
+            IsKey = true
+            FormatString = None
+            UserConfigurable = false }
+          { ColumnId = "ExplainedArtifactType"
+            PropertyName = Some "ExplainedArtifactType"
+            Title = "Artifact Type"
+            DefaultOrder = 1
+            DefaultWidthInPixels = Some 140
+            DefaultVisible = true
+            DefaultPinned = false
+            Sortable = true
+            FilterValueKind = Some Text
+            Filterable = true
+            Groupable = true
+            RenderHint = Some "StatusBadge"
+            Alignment = Left
+            CellType = TextType
+            IsKey = false
+            FormatString = None
+            UserConfigurable = true }
+          { ColumnId = "ExplainedArtifactId"
+            PropertyName = Some "ExplainedArtifactId"
+            Title = "Artifact Ref"
+            DefaultOrder = 2
+            DefaultWidthInPixels = Some 150
+            DefaultVisible = true
+            DefaultPinned = false
+            Sortable = true
+            FilterValueKind = Some Text
+            Filterable = true
+            Groupable = false
+            RenderHint = None
+            Alignment = Left
+            CellType = TextType
+            IsKey = false
+            FormatString = None
+            UserConfigurable = true }
+          { ColumnId = "ExplainedArtifactVersion"
+            PropertyName = Some "ExplainedArtifactVersion"
+            Title = "Version"
+            DefaultOrder = 3
+            DefaultWidthInPixels = Some 90
+            DefaultVisible = true
+            DefaultPinned = false
+            Sortable = true
+            FilterValueKind = Some Number
+            Filterable = false
+            Groupable = false
+            RenderHint = None
+            Alignment = Right
+            CellType = NumberType
+            IsKey = false
+            FormatString = Some "N0"
+            UserConfigurable = true }
+          { ColumnId = "Confidence"
+            PropertyName = Some "Confidence"
+            Title = "Confidence"
+            DefaultOrder = 4
+            DefaultWidthInPixels = Some 120
+            DefaultVisible = true
+            DefaultPinned = false
+            Sortable = true
+            FilterValueKind = Some Number
+            Filterable = true
+            Groupable = false
+            RenderHint = None
+            Alignment = Right
+            CellType = NumberType
+            IsKey = false
+            FormatString = Some "P0"
+            UserConfigurable = true } ]
+      DefaultSort = None
+      DefaultFilters = [] }
+
+let definition: SchemaDefinition = schema
+
+let adapter: ProjectionAdapter<SupplyExplanationDto> =
+    { ToUniversal =
+        fun (dto: SupplyExplanationDto) ->
+            { Key = dto.ExplanationId
+              Cells =
+                Map.ofList
+                    [ "ExplanationId", TextValue dto.ExplanationId
+                      "ExplainedArtifactType", TextValue dto.ExplainedArtifactType
+                      "ExplainedArtifactId", TextValue dto.ExplainedArtifactId
+                      "ExplainedArtifactVersion", NumberValue (decimal dto.ExplainedArtifactVersion)
+                      "Confidence", NumberValue dto.Confidence.CompositeIndex ] } }
+
+let componentDefinition: ComponentDefinition =
     { Id = definitionId
       DisplayName = "AI Causal Explanation Studio"
       Icon = "psychology"
       Category = ComponentCategory.Visualization
       RequiredSchemaCapabilities = [ "Detail" ]
       DefaultGridSpan = GridSpan.literal 12 7
-      DefaultSchemaId = Some SupplyExplanationSchema.schemaId
+      DefaultSchemaId = Some schemaId
       DefaultStoreId = Some storeId
       IsResizable = true
       IsDraggable = true
@@ -145,18 +260,9 @@ let queryMatchingSelection (queries: SupplyExplanationQueries) (selection: strin
 
 let fetchExplanation (ctx: ApplicationContext) (selection: string option) : Async<SupplyExplanationDto option> =
     async {
-        let queriesOpt =
-            match ctx.Resolve<SupplyExplanationQueries>() with
-            | Some q -> Some q
-            | None ->
-                ctx.DomainServices
-                |> Option.map (fun ds -> ds.Supply.ExplainSupplyDecisions.SupplyExplanationQueries)
-        match queriesOpt with
-        | Some queries ->
-            let! dtoOpt = queryMatchingSelection queries selection |> Async.AwaitTask
-            return dtoOpt
-        | None ->
-            return None
+        let queries = ctx.Domain.Supply.ExplainSupplyDecisions.SupplyExplanationQueries
+        let! dtoOpt = queryMatchingSelection queries selection |> Async.AwaitTask
+        return dtoOpt
     }
 
 let resolveExplanation (context: ComponentRenderContext) : SupplyExplanationDto option =
@@ -504,5 +610,6 @@ let renderWithExplanation (explOpt: SupplyExplanationDto option) (dispatch: Comp
 let runtime: ComponentRuntime = { Render = render }
 
 let registration: ComponentRegistration =
-    { Definition = definition
+    { Definition = componentDefinition
+      Schema = schema
       Runtime = runtime }

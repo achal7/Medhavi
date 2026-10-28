@@ -17,7 +17,7 @@ open Medhavi.Client.ViewComposition.Geometry
 open Medhavi.Client.ViewComposition.Data
 
 let definitionId = ComponentDefId.literal "capacity-studio"
-let storeId = CapacityStore.storeId
+let storeId = CapacityGrid.storeId
 
 let definition: ComponentDefinition =
     { Id = definitionId
@@ -26,7 +26,7 @@ let definition: ComponentDefinition =
       Category = ComponentCategory.Visualization
       RequiredSchemaCapabilities = [ "Tabular" ]
       DefaultGridSpan = GridSpan.literal 12 8
-      DefaultSchemaId = Some CapacityGridSchema.schemaId
+      DefaultSchemaId = Some CapacityGrid.schemaId
       DefaultStoreId = Some storeId
       IsResizable = true
       IsDraggable = true
@@ -60,98 +60,125 @@ type WorkCenterSchedule =
       Envelope: CapacityOperatingEnvelopeDto
       Tasks: WorkCenterTask list }
 
-let private defaultEnvelope =
-    { MinEconomicHours = 40.0m
-      TargetLowerHours = 120.0m
-      TargetUpperHours = 150.0m
-      MaxPlannedHours = 160.0m
-      AbsoluteCapacityHours = 180.0m
-      OvertimeThresholdHours = 155.0m }
+let private defaultEnvelope (availHours: decimal) : CapacityOperatingEnvelopeDto =
+    let safeAvail = max 1.0m availHours
+    { MinEconomicHours = safeAvail * 0.25m
+      TargetLowerHours = safeAvail * 0.75m
+      TargetUpperHours = safeAvail * 0.90m
+      MaxPlannedHours = safeAvail
+      AbsoluteCapacityHours = max (safeAvail * 1.125m) 1.0m
+      OvertimeThresholdHours = safeAvail * 0.95m }
 
-let schedules: WorkCenterSchedule list =
-    [ { ResourceId = "WC-ASSEMBLY-LINE-01"
-        DisplayName = "Main Automated Assembly Line"
-        AvailableHours = 160.0m
-        LoadHours = 184.0m
-        UtilizationPct = 115.0m
-        Status = CapacityUtilizationStatus.Overloaded
-        Constraint = CapacityConstraintStatus.ActiveConstraint
-        Bottleneck = BottleneckAssessmentStatus.CurrentBottleneck
-        OverloadRisk = CapacityRiskLevel.Critical
-        Envelope = defaultEnvelope
-        Tasks =
-          [ { OrderId = "WO-2026-W37-01"
-              Item = "SKU-BATTERY-PACK-PRO"
-              StartDay = 6
-              DurationDays = 10
-              PlannedHours = 120.0m
-              ProgressPct = 65.0
-              IsOverload = false
-              StatusBadge = "In Production" }
-            { OrderId = "WO-2026-W37-04"
-              Item = "SKU-DRIVE-500GB"
-              StartDay = 12
-              DurationDays = 5
-              PlannedHours = 64.0m
-              ProgressPct = 0.0
-              IsOverload = true
-              StatusBadge = "Conflict Overload" } ] }
-
-      { ResourceId = "WC-PACKAGING-01"
-        DisplayName = "High-Speed Palletizing & Boxing"
-        AvailableHours = 160.0m
-        LoadHours = 128.0m
-        UtilizationPct = 80.0m
-        Status = CapacityUtilizationStatus.Optimal
-        Constraint = CapacityConstraintStatus.NonConstraint
-        Bottleneck = BottleneckAssessmentStatus.NotABottleneck
-        OverloadRisk = CapacityRiskLevel.Low
-        Envelope = defaultEnvelope
-        Tasks =
-          [ { OrderId = "WO-2026-W37-02"
-              Item = "SKU-BATTERY-PACK-PRO"
-              StartDay = 8
-              DurationDays = 6
-              PlannedHours = 72.0m
-              ProgressPct = 30.0
-              IsOverload = false
-              StatusBadge = "Scheduled" }
-            { OrderId = "WO-2026-W37-05"
-              Item = "SKU-DRIVE-500GB"
-              StartDay = 13
-              DurationDays = 5
-              PlannedHours = 56.0m
-              ProgressPct = 0.0
-              IsOverload = false
-              StatusBadge = "Planned" } ] }
-
-      { ResourceId = "WC-TESTING-BAY-02"
-        DisplayName = "Thermal Burn-In & Automated QA Rig"
-        AvailableHours = 120.0m
-        LoadHours = 112.0m
-        UtilizationPct = 93.3m
-        Status = CapacityUtilizationStatus.NearCapacity
-        Constraint = CapacityConstraintStatus.NearConstraint
-        Bottleneck = BottleneckAssessmentStatus.PotentialBottleneck
-        OverloadRisk = CapacityRiskLevel.Medium
-        Envelope = { defaultEnvelope with AbsoluteCapacityHours = 140.0m; MaxPlannedHours = 120.0m }
-        Tasks =
-          [ { OrderId = "WO-2026-W37-03"
-              Item = "SKU-POWER-SUPPLY-850W"
+let private tasksForWc (resId: string) (loadHours: decimal) (availHours: decimal) (utilPct: decimal) : WorkCenterTask list =
+    if loadHours <= 0m then []
+    else
+        let isOverloaded = loadHours > availHours
+        let baseHours = min loadHours availHours
+        let overloadHours = max 0m (loadHours - availHours)
+        let baseDuration = min 12 (max 3 (int (Math.Ceiling (float baseHours / 16.0))))
+        let baseTask =
+            { OrderId = sprintf "WO-%s-01" resId
+              Item = sprintf "PROD-%s" resId
               StartDay = 2
-              DurationDays = 4
-              PlannedHours = 48.0m
-              ProgressPct = 90.0
+              DurationDays = baseDuration
+              PlannedHours = baseHours
+              ProgressPct = min 100.0 (float (baseHours / (if availHours > 0m then availHours else 1m) * 65.0m))
               IsOverload = false
-              StatusBadge = "QA Testing" }
-            { OrderId = "WO-2026-W37-06"
-              Item = "SKU-DRIVE-1TB"
-              StartDay = 10
-              DurationDays = 5
-              PlannedHours = 64.0m
-              ProgressPct = 0.0
-              IsOverload = false
-              StatusBadge = "Scheduled" } ] } ]
+              StatusBadge = if utilPct >= 90m then "Near Capacity" else "In Production" }
+        if isOverloaded && overloadHours > 0m then
+            let ovDuration = max 2 (int (Math.Ceiling (float overloadHours / 16.0)))
+            let ovTask =
+                { OrderId = sprintf "WO-%s-02" resId
+                  Item = sprintf "OVERLOAD-%s" resId
+                  StartDay = min 16 (baseTask.StartDay + baseTask.DurationDays - 1)
+                  DurationDays = ovDuration
+                  PlannedHours = overloadHours
+                  ProgressPct = 0.0
+                  IsOverload = true
+                  StatusBadge = "Conflict Overload" }
+            [ baseTask; ovTask ]
+        else
+            [ baseTask ]
+
+let private parseRowToSchedule (row: UniversalRow) : WorkCenterSchedule =
+    let getCellText col =
+        match Map.tryFind col row.Cells with
+        | Some (TextValue t) -> t
+        | Some (EnumValue e) -> e
+        | _ -> ""
+    let getCellNumber col defVal =
+        match Map.tryFind col row.Cells with
+        | Some (NumberValue n) -> n
+        | _ -> defVal
+
+    let resId =
+        let id = getCellText "PhysicalResourceId"
+        if String.IsNullOrWhiteSpace id then row.Key else id
+
+    let availHours = getCellNumber "AvailableCapacityHours" 160.0m
+    let loadHours = getCellNumber "CurrentLoadHours" 0.0m
+    let utilPct =
+        let u = getCellNumber "CurrentUtilizationPercentage" 0.0m
+        if u > 0.0m then u
+        elif availHours > 0.0m then (loadHours / availHours) * 100.0m
+        else 0.0m
+
+    let status =
+        match getCellText "UtilizationStatus" with
+        | "Optimal" -> CapacityUtilizationStatus.Optimal
+        | "NearCapacity" -> CapacityUtilizationStatus.NearCapacity
+        | "Overloaded" -> CapacityUtilizationStatus.Overloaded
+        | "Underutilized" -> CapacityUtilizationStatus.Underutilized
+        | _ ->
+            if utilPct > 100.0m then CapacityUtilizationStatus.Overloaded
+            elif utilPct >= 85.0m then CapacityUtilizationStatus.NearCapacity
+            elif utilPct < 50.0m then CapacityUtilizationStatus.Underutilized
+            else CapacityUtilizationStatus.Optimal
+
+    let constraintStatus =
+        match getCellText "ConstraintStatus" with
+        | "ActiveConstraint" -> CapacityConstraintStatus.ActiveConstraint
+        | "NearConstraint" -> CapacityConstraintStatus.NearConstraint
+        | _ ->
+            if utilPct >= 100.0m then CapacityConstraintStatus.ActiveConstraint
+            elif utilPct >= 85.0m then CapacityConstraintStatus.NearConstraint
+            else CapacityConstraintStatus.NonConstraint
+
+    let bottleneck =
+        match getCellText "BottleneckAssessment" with
+        | "CurrentBottleneck" -> BottleneckAssessmentStatus.CurrentBottleneck
+        | "PotentialBottleneck" -> BottleneckAssessmentStatus.PotentialBottleneck
+        | _ ->
+            if utilPct > 100.0m then BottleneckAssessmentStatus.CurrentBottleneck
+            elif utilPct >= 90.0m then BottleneckAssessmentStatus.PotentialBottleneck
+            else BottleneckAssessmentStatus.NotABottleneck
+
+    let overloadRisk =
+        match getCellText "OverloadRisk" with
+        | "Critical" -> CapacityRiskLevel.Critical
+        | "High" -> CapacityRiskLevel.High
+        | "Medium" -> CapacityRiskLevel.Medium
+        | "Low" -> CapacityRiskLevel.Low
+        | _ ->
+            if utilPct > 110.0m then CapacityRiskLevel.Critical
+            elif utilPct > 100.0m then CapacityRiskLevel.High
+            elif utilPct >= 90.0m then CapacityRiskLevel.Medium
+            else CapacityRiskLevel.Low
+
+    let env = defaultEnvelope availHours
+    let tasks = tasksForWc resId loadHours availHours utilPct
+
+    { ResourceId = resId
+      DisplayName = sprintf "Work Center %s" resId
+      AvailableHours = availHours
+      LoadHours = loadHours
+      UtilizationPct = utilPct
+      Status = status
+      Constraint = constraintStatus
+      Bottleneck = bottleneck
+      OverloadRisk = overloadRisk
+      Envelope = env
+      Tasks = tasks }
 
 let private horizonDays = 18
 let private days = [ 0 .. horizonDays - 1 ]
@@ -174,387 +201,392 @@ let private statusBadgeStyle (status: CapacityUtilizationStatus) =
     | CapacityUtilizationStatus.Underutilized ->
         "color: var(--rz-info); background: var(--rz-info-lighter); border: 1px solid var(--rz-info-light);"
 
-let renderGanttTimeline (selectedOrder: string option) (onSelectOrder: string -> unit) : Node =
-    div {
-        attr.style "display: flex; flex-direction: column; gap: 12px; height: 100%; min-height: 480px;"
-
-        // Timeline Header Days
+let renderGanttTimeline (schedules: WorkCenterSchedule list) (selectedOrder: string option) (onSelectOrder: string -> unit) : Node =
+    if schedules.IsEmpty then
         div {
-            attr.style "display: flex; align-items: center; border-bottom: 2px solid var(--rz-border-color); padding-bottom: 8px;"
+            attr.style "display: flex; flex-direction: column; align-items: center; justify-content: center; height: 320px; color: var(--rz-text-secondary-color); font-size: 13px; gap: 8px;"
+            span {
+                attr.``class`` "rzi"
+                attr.style "font-size: 32px; color: var(--rz-text-disabled-color);"
+                "view_timeline"
+            }
+            "No active capacity positions available. Ingest telemetry or run assessment to populate schedule."
+        }
+    else
+        let baseDate = DateTime.UtcNow.Date
+        div {
+            attr.style "display: flex; flex-direction: column; gap: 12px; height: 100%; min-height: 480px;"
 
+            // Timeline Header Days
             div {
-                attr.style "width: 280px; min-width: 280px; font-weight: 700; font-size: 13px; color: var(--rz-text-color);"
-                "Work Center / Resource"
+                attr.style "display: flex; align-items: center; border-bottom: 2px solid var(--rz-border-color); padding-bottom: 8px;"
+
+                div {
+                    attr.style "width: 280px; min-width: 280px; font-weight: 700; font-size: 13px; color: var(--rz-text-color);"
+                    "Work Center / Resource"
+                }
+
+                div {
+                    attr.style "flex: 1; display: grid; grid-template-columns: repeat(18, 1fr); gap: 2px; text-align: center;"
+
+                    for dayIdx in days do
+                        let targetDate = baseDate.AddDays(float dayIdx)
+                        let isWeekend = targetDate.DayOfWeek = DayOfWeek.Saturday || targetDate.DayOfWeek = DayOfWeek.Sunday
+                        let isCurrent = dayIdx = 0
+
+                        div {
+                            attr.style(
+                                if isCurrent then
+                                    "padding: 4px 0; font-size: 11px; font-weight: 800; border-radius: 4px; background: rgba(var(--rz-primary-rgb), 0.15); color: var(--rz-primary); border: 1px solid var(--rz-primary);"
+                                elif isWeekend then
+                                    "padding: 4px 0; font-size: 11px; font-weight: 500; border-radius: 4px; background: rgba(0,0,0,0.03); color: var(--rz-text-secondary-color);"
+                                else
+                                    "padding: 4px 0; font-size: 11px; font-weight: 600; color: var(--rz-text-color);"
+                            )
+                            targetDate.ToString("MMM dd")
+                        }
+                }
             }
 
+            // Resource Swimlanes
             div {
-                attr.style "flex: 1; display: grid; grid-template-columns: repeat(18, 1fr); gap: 2px; text-align: center;"
+                attr.style "display: flex; flex-direction: column; gap: 16px; overflow-y: auto;"
 
-                for dayIdx in days do
-                    let calDay = 12 + dayIdx
-                    let isWeekend = (dayIdx % 7 = 1) || (dayIdx % 7 = 2)
-                    let isCurrent = dayIdx = 0
-
+                for wc in schedules do
                     div {
-                        attr.style(
-                            if isCurrent then
-                                "padding: 4px 0; font-size: 11px; font-weight: 800; border-radius: 4px; background: rgba(var(--rz-primary-rgb), 0.15); color: var(--rz-primary); border: 1px solid var(--rz-primary);"
-                            elif isWeekend then
-                                "padding: 4px 0; font-size: 11px; font-weight: 500; border-radius: 4px; background: rgba(0,0,0,0.03); color: var(--rz-text-secondary-color);"
-                            else
-                                "padding: 4px 0; font-size: 11px; font-weight: 600; color: var(--rz-text-color);"
-                        )
-                        $"Sep {calDay}"
+                        attr.style
+                            """
+                            display: flex;
+                            align-items: stretch;
+                            background: rgba(var(--rz-base-background-color-rgb), 0.6);
+                            border: 1px solid var(--rz-border-color);
+                            border-radius: 8px;
+                            padding: 8px 12px;
+                            transition: box-shadow 0.2s ease;
+                            """
+
+                        // Work Center Metadata Card
+                        div {
+                            attr.style "width: 280px; min-width: 280px; display: flex; flex-direction: column; justify-content: center; gap: 4px; padding-right: 16px; border-right: 1px solid var(--rz-border-color);"
+
+                            div {
+                                attr.style "display: flex; align-items: center; justify-content: space-between;"
+                                span {
+                                    attr.style "font-weight: 700; font-size: 13px; color: var(--rz-text-color);"
+                                    wc.ResourceId
+                                }
+                                span {
+                                    let badgeStyle = statusBadgeStyle wc.Status
+                                    attr.style (sprintf "font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px; %s" badgeStyle)
+                                    sprintf "%.1f%%" wc.UtilizationPct
+                                }
+                            }
+
+                            div {
+                                attr.style "font-size: 11px; color: var(--rz-text-secondary-color);"
+                                wc.DisplayName
+                            }
+
+                            div {
+                                attr.style "display: flex; align-items: center; justify-content: space-between; font-size: 11px; margin-top: 2px;"
+                                span {
+                                    attr.style "color: var(--rz-text-secondary-color);"
+                                    sprintf "Load: %.0fh / %.0fh" wc.LoadHours wc.AvailableHours
+                                }
+                                if wc.Bottleneck = BottleneckAssessmentStatus.CurrentBottleneck then
+                                    span {
+                                        attr.style "color: var(--rz-danger); font-weight: 700; font-size: 10px;"
+                                        "BOTTLENECK"
+                                    }
+                            }
+
+                            // Micro progress bar
+                            div {
+                                attr.style "width: 100%; height: 5px; background: var(--rz-secondary-lighter); border-radius: 3px; overflow: hidden; margin-top: 2px;"
+                                div {
+                                    let fillWidth = min 100.0 (float wc.UtilizationPct)
+                                    let clr = statusColor wc.Status
+                                    attr.style (sprintf "width: %.1f%%; height: 100%%; background: %s; border-radius: 3px;" fillWidth clr)
+                                }
+                            }
+                        }
+
+                        // Interactive Timeline Lane
+                        div {
+                            attr.style "flex: 1; position: relative; min-height: 80px; padding-left: 8px; display: flex; align-items: center;"
+
+                            // Grid background guidelines
+                            div {
+                                attr.style "position: absolute; inset: 0; display: grid; grid-template-columns: repeat(18, 1fr); gap: 2px; pointer-events: none;"
+                                for dayIdx in days do
+                                    let targetDate = baseDate.AddDays(float dayIdx)
+                                    let isWeekend = targetDate.DayOfWeek = DayOfWeek.Saturday || targetDate.DayOfWeek = DayOfWeek.Sunday
+                                    div {
+                                        attr.style(
+                                            if isWeekend then "background: rgba(0,0,0,0.02); border-right: 1px dashed rgba(0,0,0,0.05);"
+                                            else "border-right: 1px dashed rgba(0,0,0,0.06);"
+                                        )
+                                    }
+                            }
+
+                            // Task bars
+                            for task in wc.Tasks do
+                                let leftPct = (float task.StartDay / float horizonDays) * 100.0
+                                let widthPct = (float task.DurationDays / float horizonDays) * 100.0
+                                let isSelected = selectedOrder = Some task.OrderId
+
+                                let barBg =
+                                    if task.IsOverload then "var(--rz-danger)"
+                                    elif isSelected then "var(--rz-primary)"
+                                    else "var(--rz-secondary)"
+
+                                let textColor =
+                                    if task.IsOverload then "var(--rz-on-danger)"
+                                    elif isSelected then "var(--rz-on-primary)"
+                                    else "var(--rz-on-secondary)"
+
+                                let isSelectedBorder = if isSelected then "2px solid var(--rz-warning)" else "1px solid var(--rz-border-color)"
+                                let zIndexVal = if isSelected then "10" else "2"
+
+                                div {
+                                    attr.style (sprintf "position: absolute; left: %.2f%%; width: %.2f%%; height: 38px; background: %s; border-radius: 6px; color: %s; display: flex; flex-direction: column; justify-content: center; padding: 0 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.18); cursor: pointer; overflow: hidden; box-sizing: border-box; border: %s; z-index: %s; transition: transform 0.15s ease, box-shadow 0.15s ease;" leftPct widthPct barBg textColor isSelectedBorder zIndexVal)
+
+                                    on.click (fun _ -> onSelectOrder task.OrderId)
+
+                                    // Task inner info
+                                    div {
+                                        attr.style "display: flex; align-items: center; justify-content: space-between; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
+                                        span {
+                                            attr.style "font-weight: 700; font-size: 11px; overflow: hidden; text-overflow: ellipsis;"
+                                            task.OrderId
+                                        }
+                                        span {
+                                            attr.style "font-size: 10px; opacity: 0.9; margin-left: 4px;"
+                                            sprintf "%.0fh" task.PlannedHours
+                                        }
+                                    }
+
+                                    div {
+                                        attr.style "display: flex; align-items: center; justify-content: space-between; font-size: 9px; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
+                                        span {
+                                            attr.style "overflow: hidden; text-overflow: ellipsis;"
+                                            task.Item
+                                        }
+                                        span {
+                                            if task.IsOverload then "OVERLOAD"
+                                            else sprintf "%.0f%%" task.ProgressPct
+                                        }
+                                    }
+
+                                    // Internal progress fill line
+                                    div {
+                                        attr.style "position: absolute; bottom: 0; left: 0; height: 3px; background: rgba(255,255,255,0.3); width: 100%;"
+                                        div {
+                                            attr.style (sprintf "height: 100%%; width: %.1f%%; background: var(--rz-success);" task.ProgressPct)
+                                        }
+                                    }
+                                }
+                        }
                     }
+            }
+
+            // Bottom Aggregate Workload Histogram
+            div {
+                attr.style "margin-top: 12px; padding: 12px; background: rgba(0,0,0,0.02); border: 1px solid var(--rz-border-color); border-radius: 8px;"
+
+                div {
+                    attr.style "display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;"
+                    span {
+                        attr.style "font-weight: 700; font-size: 12px; color: var(--rz-text-color);"
+                        "Daily Multi-Resource Workload Histogram (Planned Load vs Fleet Safe Capacity)"
+                    }
+                    div {
+                        attr.style "display: flex; align-items: center; gap: 12px; font-size: 11px; color: var(--rz-text-secondary-color);"
+                        span {
+                            attr.style "display: flex; align-items: center; gap: 4px;"
+                            span { attr.style "display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: var(--rz-success);" }
+                            "Optimal Load (<85%)"
+                        }
+                        span {
+                            attr.style "display: flex; align-items: center; gap: 4px;"
+                            span { attr.style "display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: var(--rz-danger);" }
+                            "Bottleneck Spike (>100%)"
+                        }
+                    }
+                }
+
+                div {
+                    attr.style "display: grid; grid-template-columns: repeat(18, 1fr); gap: 4px; height: 50px; align-items: flex-end;"
+                    let fleetDailyCapacity =
+                        let totalAvail = schedules |> List.sumBy (fun wc -> wc.AvailableHours)
+                        max 24.0m (totalAvail / decimal horizonDays)
+
+                    for dayIdx in days do
+                        let targetDate = baseDate.AddDays(float dayIdx)
+                        let loadOnDay =
+                            schedules
+                            |> List.sumBy (fun wc ->
+                                wc.Tasks
+                                |> List.filter (fun t -> dayIdx >= t.StartDay && dayIdx < t.StartDay + t.DurationDays)
+                                |> List.sumBy (fun t -> t.PlannedHours / decimal t.DurationDays))
+
+                        let fillPct = min 100.0 (float (loadOnDay / fleetDailyCapacity * 100.0m))
+                        let isSpike = loadOnDay > fleetDailyCapacity
+
+                        div {
+                            attr.style "display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end;"
+                            div {
+                                let bg = if isSpike then "var(--rz-danger)" else "var(--rz-primary)"
+                                let dateStr = targetDate.ToString("MMM dd")
+                                attr.style (sprintf "width: 100%%; height: %.0f%%; background: %s; border-radius: 3px 3px 0 0; transition: height 0.3s ease;" fillPct bg)
+                                attr.title (sprintf "%s: %.1fh Load / %.0fh Daily Fleet Shift" dateStr loadOnDay fleetDailyCapacity)
+                            }
+                        }
+                }
             }
         }
 
-        // Resource Swimlanes
+let renderOperatingEnvelopes (schedules: WorkCenterSchedule list) : Node =
+    if schedules.IsEmpty then
         div {
-            attr.style "display: flex; flex-direction: column; gap: 16px; overflow-y: auto;"
+            attr.style "display: flex; flex-direction: column; align-items: center; justify-content: center; height: 320px; color: var(--rz-text-secondary-color); font-size: 13px; gap: 8px;"
+            span {
+                attr.``class`` "rzi"
+                attr.style "font-size: 32px; color: var(--rz-text-disabled-color);"
+                "bar_chart"
+            }
+            "No active capacity positions available. Ingest telemetry or run assessment to populate envelopes."
+        }
+    else
+        div {
+            attr.style "display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; padding: 8px 0;"
 
             for wc in schedules do
                 div {
                     attr.style
                         """
-                        display: flex;
-                        align-items: stretch;
-                        background: rgba(var(--rz-base-background-color-rgb), 0.6);
+                        background: var(--rz-base-background-color);
                         border: 1px solid var(--rz-border-color);
                         border-radius: 8px;
-                        padding: 8px 12px;
-                        transition: box-shadow 0.2s ease;
+                        padding: 16px;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 12px;
+                        box-shadow: 0 2px 6px rgba(0,0,0,0.03);
                         """
 
-                    // Work Center Metadata Card
+                    // Header
                     div {
-                        attr.style "width: 280px; min-width: 280px; display: flex; flex-direction: column; justify-content: center; gap: 4px; padding-right: 16px; border-right: 1px solid var(--rz-border-color);"
-
+                        attr.style "display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--rz-border-color); padding-bottom: 8px;"
                         div {
-                            attr.style "display: flex; align-items: center; justify-content: space-between;"
                             span {
-                                attr.style "font-weight: 700; font-size: 13px; color: var(--rz-text-color);"
+                                attr.style "font-weight: 700; font-size: 14px; color: var(--rz-text-color);"
                                 wc.ResourceId
                             }
-                            span {
-                                attr.style $"font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px; {statusBadgeStyle wc.Status}"
-                                $"{wc.UtilizationPct:F1}%%"
-                            }
-                        }
-
-                        div {
-                            attr.style "font-size: 11px; color: var(--rz-text-secondary-color);"
-                            wc.DisplayName
-                        }
-
-                        div {
-                            attr.style "display: flex; align-items: center; justify-content: space-between; font-size: 11px; margin-top: 2px;"
-                            span {
-                                attr.style "color: var(--rz-text-secondary-color);"
-                                $"Load: {wc.LoadHours:F0}h / {wc.AvailableHours:F0}h"
-                            }
-                            if wc.Bottleneck = BottleneckAssessmentStatus.CurrentBottleneck then
-                                span {
-                                    attr.style "color: var(--rz-danger); font-weight: 700; font-size: 10px;"
-                                    "BOTTLENECK"
-                                }
-                        }
-
-                        // Micro progress bar
-                        div {
-                            attr.style "width: 100%; height: 5px; background: var(--rz-secondary-lighter); border-radius: 3px; overflow: hidden; margin-top: 2px;"
                             div {
-                                let fillWidth = min 100.0 (float wc.UtilizationPct)
-                                attr.style $"width: {fillWidth}%%; height: 100%%; background: {statusColor wc.Status}; border-radius: 3px;"
+                                attr.style "font-size: 11px; color: var(--rz-text-secondary-color);"
+                                wc.DisplayName
                             }
+                        }
+                        span {
+                            let bStyle = statusBadgeStyle wc.Status
+                            attr.style (sprintf "font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; %s" bStyle)
+                            string wc.Status
                         }
                     }
 
-                    // Interactive Timeline Lane
+                    // Envelope Stats Cards
                     div {
-                        attr.style "flex: 1; position: relative; min-height: 80px; padding-left: 8px; display: flex; align-items: center;"
+                        attr.style "display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center;"
 
-                        // Grid background guidelines
                         div {
-                            attr.style "position: absolute; inset: 0; display: grid; grid-template-columns: repeat(18, 1fr); gap: 2px; pointer-events: none;"
-                            for dayIdx in days do
-                                let isWeekend = (dayIdx % 7 = 1) || (dayIdx % 7 = 2)
-                                div {
-                                    attr.style(
-                                        if isWeekend then "background: rgba(0,0,0,0.02); border-right: 1px dashed rgba(0,0,0,0.05);"
-                                        else "border-right: 1px dashed rgba(0,0,0,0.06);"
-                                    )
-                                }
+                            attr.style "padding: 8px; background: rgba(0,0,0,0.02); border-radius: 6px;"
+                            div { attr.style "font-size: 10px; color: var(--rz-text-secondary-color);"; "Target Upper" }
+                            div { attr.style "font-size: 13px; font-weight: 700; color: var(--rz-text-color);"; sprintf "%.0fh" wc.Envelope.TargetUpperHours }
                         }
 
-                        // Task bars
-                        for task in wc.Tasks do
-                            let leftPct = (float task.StartDay / float horizonDays) * 100.0
-                            let widthPct = (float task.DurationDays / float horizonDays) * 100.0
-                            let isSelected = selectedOrder = Some task.OrderId
+                        div {
+                            attr.style "padding: 8px; background: rgba(0,0,0,0.02); border-radius: 6px;"
+                            div { attr.style "font-size: 10px; color: var(--rz-text-secondary-color);"; "Max Planned" }
+                            div { attr.style "font-size: 13px; font-weight: 700; color: var(--rz-text-color);"; sprintf "%.0fh" wc.Envelope.MaxPlannedHours }
+                        }
 
-                            let barBg =
-                                if task.IsOverload then "var(--rz-danger)"
-                                elif isSelected then "var(--rz-primary)"
-                                else "var(--rz-secondary)"
+                        div {
+                            attr.style "padding: 8px; background: rgba(0,0,0,0.02); border-radius: 6px;"
+                            div { attr.style "font-size: 10px; color: var(--rz-text-secondary-color);"; "Absolute Cap" }
+                            div { attr.style "font-size: 13px; font-weight: 700; color: var(--rz-text-color);"; sprintf "%.0fh" wc.Envelope.AbsoluteCapacityHours }
+                        }
+                    }
 
-                            let textColor =
-                                if task.IsOverload then "var(--rz-on-danger)"
-                                elif isSelected then "var(--rz-on-primary)"
-                                else "var(--rz-on-secondary)"
-
-                            div {
-                                attr.style
-                                    $"""
-                                    position: absolute;
-                                    left: {leftPct:F2}%%;
-                                    width: {widthPct:F2}%%;
-                                    height: 38px;
-                                    background: {barBg};
-                                    border-radius: 6px;
-                                    color: {textColor};
-                                    display: flex;
-                                    flex-direction: column;
-                                    justify-content: center;
-                                    padding: 0 8px;
-                                    box-shadow: 0 2px 6px rgba(0,0,0,0.18);
-                                    cursor: pointer;
-                                    overflow: hidden;
-                                    box-sizing: border-box;
-                                    border: {if isSelected then "2px solid var(--rz-warning)" else "1px solid var(--rz-border-color)"};
-                                    z-index: {if isSelected then "10" else "2"};
-                                    transition: transform 0.15s ease, box-shadow 0.15s ease;
-                                    """
-
-                                on.click (fun _ -> onSelectOrder task.OrderId)
-
-                                // Task inner info
-                                div {
-                                    attr.style "display: flex; align-items: center; justify-content: space-between; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
-                                    span {
-                                        attr.style "font-weight: 700; font-size: 11px; overflow: hidden; text-overflow: ellipsis;"
-                                        task.OrderId
-                                    }
-                                    span {
-                                        attr.style "font-size: 10px; opacity: 0.9; margin-left: 4px;"
-                                        $"{task.PlannedHours:F0}h"
-                                    }
-                                }
-
-                                div {
-                                    attr.style "display: flex; align-items: center; justify-content: space-between; font-size: 9px; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
-                                    span {
-                                        attr.style "overflow: hidden; text-overflow: ellipsis;"
-                                        task.Item
-                                    }
-                                    span {
-                                        if task.IsOverload then "OVERLOAD"
-                                        else $"{task.ProgressPct:F0}%%"
-                                    }
-                                }
-
-                                // Internal progress fill line
-                                div {
-                                    attr.style "position: absolute; bottom: 0; left: 0; height: 3px; background: rgba(255,255,255,0.3); width: 100%;"
-                                    div {
-                                        attr.style $"height: 100%%; width: {task.ProgressPct}%%; background: var(--rz-success);"
-                                    }
-                                }
+                    // Operating Envelope Bar Visualizer
+                    div {
+                        attr.style "display: flex; flex-direction: column; gap: 4px; margin-top: 4px;"
+                        div {
+                            attr.style "display: flex; justify-content: space-between; font-size: 11px;"
+                            span { attr.style "color: var(--rz-text-secondary-color);"; "Current Scheduled Load" }
+                            span {
+                                let clr = statusColor wc.Status
+                                attr.style (sprintf "font-weight: 700; color: %s;" clr)
+                                sprintf "%.1fh (%.1f%%)" wc.LoadHours wc.UtilizationPct
                             }
+                        }
+
+                        div {
+                            attr.style "width: 100%; height: 22px; background: var(--rz-secondary-lighter); border-radius: 4px; position: relative; overflow: hidden; border: 1px solid var(--rz-border-color);"
+
+                            let safeCap = max 1.0m wc.Envelope.AbsoluteCapacityHours
+                            let targetPct = (float (wc.Envelope.TargetUpperHours / safeCap)) * 100.0
+                            div {
+                                attr.style (sprintf "position: absolute; left: %.1f%%; top: 0; bottom: 0; width: 2px; background: var(--rz-warning); z-index: 2;" targetPct)
+                                attr.title (sprintf "Target Upper Buffer: %.0fh" wc.Envelope.TargetUpperHours)
+                            }
+
+                            let maxPlannedPct = (float (wc.Envelope.MaxPlannedHours / safeCap)) * 100.0
+                            div {
+                                attr.style (sprintf "position: absolute; left: %.1f%%; top: 0; bottom: 0; width: 2px; background: var(--rz-danger); z-index: 2;" maxPlannedPct)
+                                attr.title (sprintf "Max Planned Capacity: %.0fh" wc.Envelope.MaxPlannedHours)
+                            }
+
+                            let loadFillPct = min 100.0 ((float (wc.LoadHours / safeCap)) * 100.0)
+                            div {
+                                let clr = statusColor wc.Status
+                                attr.style (sprintf "height: 100%%; width: %.1f%%; background: %s; opacity: 0.85; transition: width 0.3s ease;" loadFillPct clr)
+                            }
+                        }
+
+                        div {
+                            attr.style "display: flex; justify-content: space-between; font-size: 9px; color: var(--rz-text-secondary-color);"
+                            span { "0h (Idle)" }
+                            span { sprintf "Safe: %.0fh" wc.Envelope.TargetUpperHours }
+                            span { sprintf "Max: %.0fh" wc.Envelope.MaxPlannedHours }
+                            span { sprintf "Ceiling: %.0fh" wc.Envelope.AbsoluteCapacityHours }
+                        }
+                    }
+
+                    // Bottleneck & Risk Diagnostics
+                    div {
+                        attr.style "padding: 8px; border-radius: 6px; font-size: 11px; display: flex; flex-direction: column; gap: 4px; background: rgba(0,0,0,0.02);"
+                        div {
+                            attr.style "display: flex; justify-content: space-between;"
+                            span { attr.style "color: var(--rz-text-secondary-color);"; "Constraint Assessment:" }
+                            span { attr.style "font-weight: 600;"; string wc.Constraint }
+                        }
+                        div {
+                            attr.style "display: flex; justify-content: space-between;"
+                            span { attr.style "color: var(--rz-text-secondary-color);"; "Bottleneck Role:" }
+                            span { attr.style "font-weight: 600;"; string wc.Bottleneck }
+                        }
+                        div {
+                            attr.style "display: flex; justify-content: space-between;"
+                            span { attr.style "color: var(--rz-text-secondary-color);"; "Single Point of Failure:" }
+                            span {
+                                attr.style(if wc.OverloadRisk = CapacityRiskLevel.Critical then "color: var(--rz-danger); font-weight: 700;" else "color: var(--rz-text-color);")
+                                if wc.OverloadRisk = CapacityRiskLevel.Critical then "YES (High Vulnerability)" else "No (Alternate Resource Available)"
+                            }
+                        }
                     }
                 }
         }
-
-        // Bottom Aggregate Workload Histogram
-        div {
-            attr.style "margin-top: 12px; padding: 12px; background: rgba(0,0,0,0.02); border: 1px solid var(--rz-border-color); border-radius: 8px;"
-
-            div {
-                attr.style "display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;"
-                span {
-                    attr.style "font-weight: 700; font-size: 12px; color: var(--rz-text-color);"
-                    "Daily Multi-Resource Workload Histogram (Planned Load vs Fleet Safe Capacity)"
-                }
-                div {
-                    attr.style "display: flex; align-items: center; gap: 12px; font-size: 11px; color: var(--rz-text-secondary-color);"
-                    span {
-                        attr.style "display: flex; align-items: center; gap: 4px;"
-                        span { attr.style "display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: var(--rz-success);" }
-                        "Optimal Load (<85%)"
-                    }
-                    span {
-                        attr.style "display: flex; align-items: center; gap: 4px;"
-                        span { attr.style "display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: var(--rz-danger);" }
-                        "Bottleneck Spike (>100%)"
-                    }
-                }
-            }
-
-            div {
-                attr.style "display: grid; grid-template-columns: repeat(18, 1fr); gap: 4px; height: 50px; align-items: flex-end;"
-                for dayIdx in days do
-                    let loadOnDay =
-                        schedules
-                        |> List.sumBy (fun wc ->
-                            wc.Tasks
-                            |> List.filter (fun t -> dayIdx >= t.StartDay && dayIdx < t.StartDay + t.DurationDays)
-                            |> List.sumBy (fun t -> t.PlannedHours / decimal t.DurationDays))
-
-                    let maxDailyCapacity = 24.0m
-                    let fillPct = min 100.0 (float (loadOnDay / maxDailyCapacity * 100.0m))
-                    let isSpike = loadOnDay > maxDailyCapacity
-
-                    div {
-                        attr.style "display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end;"
-                        div {
-                            attr.style
-                                $"""
-                                width: 100%%;
-                                height: {fillPct:F0}%%;
-                                background: {if isSpike then "var(--rz-danger)" else "var(--rz-primary)"};
-                                border-radius: 3px 3px 0 0;
-                                transition: height 0.3s ease;
-                                """
-                            attr.title $"Sep {12 + dayIdx}: {loadOnDay:F1}h Load / {maxDailyCapacity:F0}h Daily Fleet Shift"
-                        }
-                    }
-            }
-        }
-    }
-
-let renderOperatingEnvelopes () : Node =
-    div {
-        attr.style "display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; padding: 8px 0;"
-
-        for wc in schedules do
-            div {
-                attr.style
-                    """
-                    background: var(--rz-base-background-color);
-                    border: 1px solid var(--rz-border-color);
-                    border-radius: 8px;
-                    padding: 16px;
-                    display: flex;
-                    flex-direction: column;
-                    gap: 12px;
-                    box-shadow: 0 2px 6px rgba(0,0,0,0.03);
-                    """
-
-                // Header
-                div {
-                    attr.style "display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--rz-border-color); padding-bottom: 8px;"
-                    div {
-                        span {
-                            attr.style "font-weight: 700; font-size: 14px; color: var(--rz-text-color);"
-                            wc.ResourceId
-                        }
-                        div {
-                            attr.style "font-size: 11px; color: var(--rz-text-secondary-color);"
-                            wc.DisplayName
-                        }
-                    }
-                    span {
-                        attr.style $"font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; {statusBadgeStyle wc.Status}"
-                        string wc.Status
-                    }
-                }
-
-                // Envelope Stats Cards
-                div {
-                    attr.style "display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center;"
-
-                    div {
-                        attr.style "padding: 8px; background: rgba(0,0,0,0.02); border-radius: 6px;"
-                        div { attr.style "font-size: 10px; color: var(--rz-text-secondary-color);"; "Target Upper" }
-                        div { attr.style "font-size: 13px; font-weight: 700; color: var(--rz-text-color);"; $"{wc.Envelope.TargetUpperHours:F0}h" }
-                    }
-
-                    div {
-                        attr.style "padding: 8px; background: rgba(0,0,0,0.02); border-radius: 6px;"
-                        div { attr.style "font-size: 10px; color: var(--rz-text-secondary-color);"; "Max Planned" }
-                        div { attr.style "font-size: 13px; font-weight: 700; color: var(--rz-text-color);"; $"{wc.Envelope.MaxPlannedHours:F0}h" }
-                    }
-
-                    div {
-                        attr.style "padding: 8px; background: rgba(0,0,0,0.02); border-radius: 6px;"
-                        div { attr.style "font-size: 10px; color: var(--rz-text-secondary-color);"; "Absolute Cap" }
-                        div { attr.style "font-size: 13px; font-weight: 700; color: var(--rz-text-color);"; $"{wc.Envelope.AbsoluteCapacityHours:F0}h" }
-                    }
-                }
-
-                // Operating Envelope Bar Visualizer
-                div {
-                    attr.style "display: flex; flex-direction: column; gap: 4px; margin-top: 4px;"
-                    div {
-                        attr.style "display: flex; justify-content: space-between; font-size: 11px;"
-                        span { attr.style "color: var(--rz-text-secondary-color);"; "Current Scheduled Load" }
-                        span {
-                            attr.style $"font-weight: 700; color: {statusColor wc.Status};"
-                            $"{wc.LoadHours:F1}h ({wc.UtilizationPct:F1}%%)"
-                        }
-                    }
-
-                    div {
-                        attr.style "width: 100%; height: 22px; background: var(--rz-secondary-lighter); border-radius: 4px; position: relative; overflow: hidden; border: 1px solid var(--rz-border-color);"
-
-                        let targetPct = (float (wc.Envelope.TargetUpperHours / wc.Envelope.AbsoluteCapacityHours)) * 100.0
-                        div {
-                            attr.style $"position: absolute; left: {targetPct:F1}%%; top: 0; bottom: 0; width: 2px; background: var(--rz-warning); z-index: 2;"
-                            attr.title $"Target Upper Buffer: {wc.Envelope.TargetUpperHours}h"
-                        }
-
-                        let maxPlannedPct = (float (wc.Envelope.MaxPlannedHours / wc.Envelope.AbsoluteCapacityHours)) * 100.0
-                        div {
-                            attr.style $"position: absolute; left: {maxPlannedPct:F1}%%; top: 0; bottom: 0; width: 2px; background: var(--rz-danger); z-index: 2;"
-                            attr.title $"Max Planned Capacity: {wc.Envelope.MaxPlannedHours}h"
-                        }
-
-                        let loadFillPct = min 100.0 ((float (wc.LoadHours / wc.Envelope.AbsoluteCapacityHours)) * 100.0)
-                        div {
-                            attr.style
-                                $"""
-                                height: 100%%;
-                                width: {loadFillPct:F1}%%;
-                                background: {statusColor wc.Status};
-                                opacity: 0.85;
-                                transition: width 0.3s ease;
-                                """
-                        }
-                    }
-
-                    div {
-                        attr.style "display: flex; justify-content: space-between; font-size: 9px; color: var(--rz-text-secondary-color);"
-                        span { "0h (Idle)" }
-                        span { $"Safe: {wc.Envelope.TargetUpperHours:F0}h" }
-                        span { $"Max: {wc.Envelope.MaxPlannedHours:F0}h" }
-                        span { $"Ceiling: {wc.Envelope.AbsoluteCapacityHours:F0}h" }
-                    }
-                }
-
-                // Bottleneck & Risk Diagnostics
-                div {
-                    attr.style "padding: 8px; border-radius: 6px; font-size: 11px; display: flex; flex-direction: column; gap: 4px; background: rgba(0,0,0,0.02);"
-                    div {
-                        attr.style "display: flex; justify-content: space-between;"
-                        span { attr.style "color: var(--rz-text-secondary-color);"; "Constraint Assessment:" }
-                        span { attr.style "font-weight: 600;"; string wc.Constraint }
-                    }
-                    div {
-                        attr.style "display: flex; justify-content: space-between;"
-                        span { attr.style "color: var(--rz-text-secondary-color);"; "Bottleneck Role:" }
-                        span { attr.style "font-weight: 600;"; string wc.Bottleneck }
-                    }
-                    div {
-                        attr.style "display: flex; justify-content: space-between;"
-                        span { attr.style "color: var(--rz-text-secondary-color);"; "Single Point of Failure:" }
-                        span {
-                            attr.style(if wc.OverloadRisk = CapacityRiskLevel.Critical then "color: var(--rz-danger); font-weight: 700;" else "color: var(--rz-text-color);")
-                            if wc.OverloadRisk = CapacityRiskLevel.Critical then "YES (High Vulnerability)" else "No (Alternate Resource Available)"
-                        }
-                    }
-                }
-            }
-    }
 
 let render (ctx: ComponentRenderContext) (dispatch: ComponentEvent -> unit) : Node =
     let activeTab =
@@ -564,6 +596,25 @@ let render (ctx: ComponentRenderContext) (dispatch: ComponentEvent -> unit) : No
         | _ -> GanttTimeline
 
     let selectedOrder = ctx.Selection
+
+    let schedules: WorkCenterSchedule list =
+        match ctx.Data with
+        | Tabular rows -> rows |> List.map parseRowToSchedule
+        | _ -> []
+
+    let bottleneckList =
+        schedules
+        |> List.filter (fun s -> s.Bottleneck = BottleneckAssessmentStatus.CurrentBottleneck || s.Status = CapacityUtilizationStatus.Overloaded)
+
+    let bottleneckSummary =
+        match bottleneckList with
+        | [] -> "No Active Bottlenecks"
+        | [ b ] -> sprintf "1 Bottleneck Active: %s (%.1f%%)" b.ResourceId b.UtilizationPct
+        | head :: _ -> sprintf "%d Bottlenecks Active (e.g. %s: %.1f%%)" bottleneckList.Length head.ResourceId head.UtilizationPct
+
+    let avgFleetUtil =
+        if schedules.IsEmpty then 0.0m
+        else (schedules |> List.sumBy (fun s -> s.UtilizationPct)) / decimal schedules.Length
 
     div {
         attr.style
@@ -599,7 +650,7 @@ let render (ctx: ComponentRenderContext) (dispatch: ComponentEvent -> unit) : No
                     }
                     div {
                         attr.style "font-size: 11px; color: var(--rz-text-secondary-color);"
-                        "Horizon: Sep 12 - Sep 30, 2026 · Planning Scope: PS-GLOBAL-SUPPLY-CHAIN"
+                        sprintf "Active Fleet: %d Work Centers · Planning Scope: PS-GLOBAL-SUPPLY-CHAIN" schedules.Length
                     }
                 }
             }
@@ -609,13 +660,20 @@ let render (ctx: ComponentRenderContext) (dispatch: ComponentEvent -> unit) : No
                 attr.style "display: flex; align-items: center; gap: 8px;"
 
                 span {
-                    attr.style "padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; background: rgba(220, 53, 69, 0.12); color: var(--rz-danger); border: 1px solid rgba(220, 53, 69, 0.3);"
-                    "1 Bottleneck Active: WC-ASSEMBLY-LINE-01 (115%)"
+                    let hasBottleneck = not bottleneckList.IsEmpty
+                    let badgeColor = if hasBottleneck then "var(--rz-danger)" else "var(--rz-success)"
+                    let badgeBg = if hasBottleneck then "rgba(220, 53, 69, 0.12)" else "rgba(40, 167, 69, 0.12)"
+                    let badgeBorder = if hasBottleneck then "rgba(220, 53, 69, 0.3)" else "rgba(40, 167, 69, 0.3)"
+                    attr.style (sprintf "padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; background: %s; color: %s; border: 1px solid %s;" badgeBg badgeColor badgeBorder)
+                    bottleneckSummary
                 }
 
                 span {
-                    attr.style "padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; background: rgba(40, 167, 69, 0.12); color: var(--rz-success); border: 1px solid rgba(40, 167, 69, 0.3);"
-                    "Fleet Utilization: 96.1%"
+                    let utilColor = if avgFleetUtil > 100.0m then "var(--rz-danger)" elif avgFleetUtil >= 85.0m then "var(--rz-warning)" else "var(--rz-success)"
+                    let utilBg = if avgFleetUtil > 100.0m then "rgba(220, 53, 69, 0.12)" elif avgFleetUtil >= 85.0m then "rgba(255, 193, 7, 0.15)" else "rgba(40, 167, 69, 0.12)"
+                    let utilBorder = if avgFleetUtil > 100.0m then "rgba(220, 53, 69, 0.3)" elif avgFleetUtil >= 85.0m then "rgba(255, 193, 7, 0.4)" else "rgba(40, 167, 69, 0.3)"
+                    attr.style (sprintf "padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; background: %s; color: %s; border: 1px solid %s;" utilBg utilColor utilBorder)
+                    sprintf "Fleet Utilization: %.1f%%" avgFleetUtil
                 }
             }
 
@@ -664,9 +722,9 @@ let render (ctx: ComponentRenderContext) (dispatch: ComponentEvent -> unit) : No
 
             match activeTab with
             | GanttTimeline ->
-                renderGanttTimeline selectedOrder (fun ord -> dispatch (SelectionChanged (Some ord)))
+                renderGanttTimeline schedules selectedOrder (fun ord -> dispatch (SelectionChanged (Some ord)))
             | OperatingEnvelopes ->
-                renderOperatingEnvelopes ()
+                renderOperatingEnvelopes schedules
             | PositionTable ->
                 UniversalEnterpriseGrid.render ctx dispatch
         }
@@ -676,4 +734,5 @@ let runtime: ComponentRuntime = { Render = render }
 
 let registration: ComponentRegistration =
     { Definition = definition
+      Schema = CapacityGrid.schema
       Runtime = runtime }
