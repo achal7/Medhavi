@@ -11,7 +11,8 @@ open Medhavi.Client.ViewComposition.View
 
 type NavigationSection =
     | Assistant
-    | Views
+    | Workbenches
+    | Governance
     | Components
     | Tools
 
@@ -21,28 +22,34 @@ type NavigationTarget =
     | Tool of toolId: string
 
 type NavigationLink =
-    { LinkId: string
-      Label: string
-      Icon: string
-      Target: NavigationTarget
-      Section: NavigationSection
-      KeyboardShortcut: string option
-      RequiredRoles: string list
-      Order: int
-      IsPinned: bool }
+    {
+        LinkId: string
+        Label: string
+        Icon: string
+        Target: NavigationTarget
+        Section: NavigationSection
+        KeyboardShortcut: string option
+        RequiredRoles: string list
+        Order: int
+        IsPinned: bool
+    }
 
 type NavigationSectionModel =
-    { Section: NavigationSection
-      Label: string
-      Icon: string
-      Links: NavigationLink list
-      Collapsed: bool }
+    {
+        Section: NavigationSection
+        Label: string
+        Icon: string
+        Links: NavigationLink list
+        Collapsed: bool
+    }
 
 type Model =
-    { Sections: NavigationSectionModel list
-      Collapsed: bool
-      SearchText: string
-      ActiveLinkId: string option }
+    {
+        Sections: NavigationSectionModel list
+        Collapsed: bool
+        SearchText: string
+        ActiveLinkId: string option
+    }
 
 type Msg =
     | SetExpanded of bool
@@ -59,85 +66,125 @@ type Msg =
 type Output = LinkClicked of NavigationLink
 
 let private sectionMetadata =
-    [ Assistant, "AI Intelligence", "auto_awesome"
-      Views, "Views", "layout"
-      Components, "Components", "grid_view"
-      Tools, "Tools", "construction" ]
+    [
+        Assistant, "AI Intelligence", "auto_awesome"
+        Workbenches, "Operational Workbenches", "dashboard"
+        Governance, "Enterprise Governance", "account_balance"
+        Components, "Component Explorer", "grid_view"
+        Tools, "Tools", "construction"
+    ]
 
 let fromViewDefinition (view: ViewDefinition) : NavigationLink =
-    { LinkId = "view-" + ViewDefId.value view.Id
-      Label = view.Name
-      Icon = view.Metadata.Icon
-      Target = NavigationTarget.OpenView view.Id
-      Section = Views
-      KeyboardShortcut = None
-      RequiredRoles = view.Metadata.Roles
-      Order = if view.Metadata.IsDefault then 0 else 1
-      IsPinned = view.Metadata.IsDefault }
+    let section =
+        if view.Metadata.Category = Medhavi.Client.Components.ViewCatalog.aiViewCategory then
+            Assistant
+        elif view.Metadata.Category = Medhavi.Client.Components.ViewCatalog.governanceViewCategory then
+            Governance
+        else
+            Workbenches
+
+    {
+        LinkId = "view-" + ViewDefId.value view.Id
+        Label = view.Name
+        Icon = view.Metadata.Icon
+        Target = NavigationTarget.OpenView view.Id
+        Section = section
+        KeyboardShortcut = None
+        RequiredRoles = view.Metadata.Roles
+        Order = if view.Metadata.IsDefault then 0 else 1
+        IsPinned = view.Metadata.IsDefault
+    }
 
 let private fromComponentRegistration (registration: ComponentRegistration) : NavigationLink =
     let def = registration.Definition
 
-    { LinkId = "comp-" + ComponentDefId.value def.Id
-      Label = def.DisplayName
-      Icon = def.Icon
-      Target = NavigationTarget.AddComponent def.Id
-      Section = Components
-      KeyboardShortcut = None
-      RequiredRoles = []
-      Order = 0
-      IsPinned = false }
+    {
+        LinkId = "comp-" + ComponentDefId.value def.Id
+        Label = def.DisplayName
+        Icon = def.Icon
+        Target = NavigationTarget.AddComponent def.Id
+        Section = Components
+        KeyboardShortcut = None
+        RequiredRoles = []
+        Order = 0
+        IsPinned = false
+    }
 
 let private buildSections
     (componentRegistry: ComponentRegistry)
     (views: ViewDefinition list)
     : NavigationSectionModel list =
     let assistantLink =
-        { LinkId = "nav-medhavi-assistant"
-          Label = "Medhavi Assistant"
-          Icon = "auto_awesome"
-          Target = NavigationTarget.OpenView(ViewDefId.literal "view-medhavi-assistant")
-          Section = Assistant
-          KeyboardShortcut = Some "Ctrl+Shift+A"
-          RequiredRoles = []
-          Order = 0
-          IsPinned = true }
+        {
+            LinkId = "nav-medhavi-assistant"
+            Label = "Medhavi Assistant"
+            Icon = "auto_awesome"
+            Target = NavigationTarget.OpenView(ViewDefId.literal "view-medhavi-assistant")
+            Section = Assistant
+            KeyboardShortcut = Some "Ctrl+Shift+A"
+            RequiredRoles = []
+            Order = 0
+            IsPinned = true
+        }
 
-    let viewLinks =
+    let links =
         views
         |> List.filter(fun v -> v.Id <> ViewDefId.literal "view-medhavi-assistant")
         |> List.map fromViewDefinition
         |> List.sortBy(fun l -> l.Order, l.Label)
 
+    let aiViews = assistantLink :: (links |> List.filter(fun l -> l.Section = Assistant))
+    let workbenchViews = links |> List.filter(fun l -> l.Section = Workbenches)
+    let governanceViews = links |> List.filter(fun l -> l.Section = Governance)
+
     let componentLinks =
         ComponentRegistry.all componentRegistry |> List.map fromComponentRegistration |> List.sortBy(fun l -> l.Label)
 
-    [ { Section = Assistant
-        Label = "Medhavi Assistant"
-        Icon = "auto_awesome"
-        Links = [ assistantLink ]
-        Collapsed = false }
-      { Section = Views
-        Label = "Views"
-        Icon = "auto_awesome_mosaic"
-        Links = viewLinks
-        Collapsed = false }
-      { Section = Components
-        Label = "Components"
-        Icon = "view_list"
-        Links = componentLinks
-        Collapsed = false }
-      { Section = Tools
-        Label = "Tools"
-        Icon = "construction"
-        Links = []
-        Collapsed = false } ]
+    [
+        {
+            Section = Assistant
+            Label = "AI Intelligence"
+            Icon = "auto_awesome"
+            Links = aiViews
+            Collapsed = false
+        }
+        {
+            Section = Workbenches
+            Label = "Operational Workbenches"
+            Icon = "dashboard"
+            Links = workbenchViews
+            Collapsed = false
+        }
+        {
+            Section = Governance
+            Label = "Enterprise Governance"
+            Icon = "account_balance"
+            Links = governanceViews
+            Collapsed = false
+        }
+        {
+            Section = Components
+            Label = "Component Explorer"
+            Icon = "grid_view"
+            Links = componentLinks
+            Collapsed = false
+        }
+        {
+            Section = Tools
+            Label = "Tools"
+            Icon = "construction"
+            Links = []
+            Collapsed = false
+        }
+    ]
 
 let init (componentRegistry: ComponentRegistry) (views: ViewDefinition list) : Model * Cmd<Msg> =
-    { Sections = buildSections componentRegistry views
-      Collapsed = false
-      SearchText = ""
-      ActiveLinkId = None },
+    {
+        Sections = buildSections componentRegistry views
+        Collapsed = false
+        SearchText = ""
+        ActiveLinkId = None
+    },
     Cmd.none
 
 let private matchesSearch searchText (link: NavigationLink) =
@@ -151,18 +198,44 @@ let private visibleSections model =
     model.Sections
     |> List.map(fun section ->
         { section with
-            Links = section.Links |> List.filter(matchesSearch model.SearchText) })
+            Links = section.Links |> List.filter(matchesSearch model.SearchText)
+        })
     |> List.filter(fun section -> not(List.isEmpty section.Links) || System.String.IsNullOrWhiteSpace model.SearchText)
 
 let private replaceViews (views: ViewDefinition list) (model: Model) : Model =
-    let newViewLinks =
+    let assistantLink =
+        {
+            LinkId = "nav-medhavi-assistant"
+            Label = "Medhavi Assistant"
+            Icon = "auto_awesome"
+            Target = NavigationTarget.OpenView(ViewDefId.literal "view-medhavi-assistant")
+            Section = Assistant
+            KeyboardShortcut = Some "Ctrl+Shift+A"
+            RequiredRoles = []
+            Order = 0
+            IsPinned = true
+        }
+
+    let links =
         views
         |> List.filter(fun v -> v.Id <> ViewDefId.literal "view-medhavi-assistant")
         |> List.map fromViewDefinition
         |> List.sortBy(fun l -> l.Order, l.Label)
 
+    let aiViews = assistantLink :: (links |> List.filter(fun l -> l.Section = Assistant))
+    let workbenchViews = links |> List.filter(fun l -> l.Section = Workbenches)
+    let governanceViews = links |> List.filter(fun l -> l.Section = Governance)
+
     { model with
-        Sections = model.Sections |> List.map(fun s -> if s.Section = Views then { s with Links = newViewLinks } else s) }
+        Sections =
+            model.Sections
+            |> List.map(fun s ->
+                match s.Section with
+                | Assistant -> { s with Links = aiViews }
+                | Workbenches -> { s with Links = workbenchViews }
+                | Governance -> { s with Links = governanceViews }
+                | _ -> s)
+    }
 
 let private upsertLink (link: NavigationLink) (model: Model) : Model * Cmd<Msg> * Output option =
     let updatedSections =
@@ -176,7 +249,8 @@ let private upsertLink (link: NavigationLink) (model: Model) : Model * Cmd<Msg> 
                 section)
 
     { model with
-        Sections = updatedSections },
+        Sections = updatedSections
+    },
     Cmd.none,
     None
 
@@ -186,7 +260,8 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> * Output option =
 
     | ToggleCollapsed ->
         { model with
-            Collapsed = not model.Collapsed },
+            Collapsed = not model.Collapsed
+        },
         Cmd.none,
         None
 
@@ -194,7 +269,8 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> * Output option =
 
     | LinkClicked link ->
         { model with
-            ActiveLinkId = Some link.LinkId },
+            ActiveLinkId = Some link.LinkId
+        },
         Cmd.none,
         Some(Output.LinkClicked link)
 
@@ -202,7 +278,8 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> * Output option =
         { model with
             Sections =
                 model.Sections
-                |> List.map(fun s -> if s.Section = section then { s with Collapsed = not s.Collapsed } else s) },
+                |> List.map(fun s -> if s.Section = section then { s with Collapsed = not s.Collapsed } else s)
+        },
         Cmd.none,
         None
 
@@ -214,7 +291,9 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> * Output option =
                 model.Sections
                 |> List.map(fun s ->
                     { s with
-                        Links = s.Links |> List.filter(fun l -> l.LinkId <> linkId) }) },
+                        Links = s.Links |> List.filter(fun l -> l.LinkId <> linkId)
+                    })
+        },
         Cmd.none,
         None
 
@@ -227,7 +306,9 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> * Output option =
                         Links =
                             s.Links
                             |> List.map(fun l -> if l.LinkId = linkId then { l with Order = newOrder } else l)
-                            |> List.sortBy(fun l -> l.Order, l.Label) }) },
+                            |> List.sortBy(fun l -> l.Order, l.Label)
+                    })
+        },
         Cmd.none,
         None
 

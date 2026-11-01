@@ -31,7 +31,9 @@ module Workflows =
             let processEnvelope (envelope: Envelope) : Task<unit> =
                 task {
                     let resourceId =
-                        if not (String.IsNullOrWhiteSpace envelope.AggregateId) then
+                        if not (String.IsNullOrWhiteSpace envelope.AggregateId)
+                           && not (envelope.AggregateId.Contains("PlanningScope"))
+                           && not (envelope.AggregateId.StartsWith("PS-")) then
                             envelope.AggregateId
                         else
                             deps.DefaultResourceId
@@ -97,8 +99,12 @@ module Workflows =
                 task {
                     if envelope.EventType = ArsIdentifiers.EnterpriseEvents.capacityPositionAssessmentChanged.Id then
                         let resourceId =
-                            if not (String.IsNullOrWhiteSpace envelope.AggregateId) then envelope.AggregateId
-                            else deps.DefaultResourceId
+                            if not (String.IsNullOrWhiteSpace envelope.AggregateId)
+                               && not (envelope.AggregateId.Contains("PlanningScope"))
+                               && not (envelope.AggregateId.StartsWith("PS-")) then
+                                envelope.AggregateId
+                            else
+                                deps.DefaultResourceId
 
                         let notif: CapacityPositionChangedNotification =
                             { PhysicalResourceId = resourceId

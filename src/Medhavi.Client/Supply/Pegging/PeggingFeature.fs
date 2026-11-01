@@ -15,7 +15,7 @@ let store =
             let demandRows =
                 demands
                 |> List.map(fun d ->
-                    PeggingScheduler.createRow
+                    PeggingScheduler.createRowEnriched
                         d.Id
                         $"Demand: {d.Id} ({d.Item} · {d.Quantity} EA)"
                         d.NeedWindowLatest
@@ -23,12 +23,15 @@ let store =
                         "Demand"
                         d.Quantity
                         d.Item
-                        d.LifecycleState)
+                        d.LifecycleState
+                        (Some d.Location)
+                        None
+                        None)
 
             let supplyRows =
                 supplies
                 |> List.map(fun o ->
-                    PeggingScheduler.createRow
+                    PeggingScheduler.createRowEnriched
                         o.OrderId
                         $"Supply: {o.OrderId} ({o.Item} · {o.Quantity} {o.UnitOfMeasure})"
                         o.ReleaseDate
@@ -36,7 +39,10 @@ let store =
                         "PlannedSupply"
                         o.Quantity
                         o.Item
-                        "Planned")
+                        "Planned"
+                        (Some o.Location)
+                        None
+                        (Some(string o.SupplyType)))
 
             return demandRows @ supplyRows
         })

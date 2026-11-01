@@ -104,6 +104,17 @@ let render (ctx: ComponentRenderContext) (dispatch: ComponentEvent -> unit) : No
                 badgeText
             }
 
+            if isFiltered then
+                button {
+                    attr.style "cursor: pointer; background: transparent; border: none; color: var(--rz-primary); font-size: 11px; text-decoration: underline; padding: 0 4px;"
+                    attr.``type`` "button"
+                    on.click (fun (_: MouseEventArgs) ->
+                        let cleared = { ctx.Configuration with LocalFilters = [] }
+                        dispatch (ConfigurationChangeRequested cleared)
+                        dispatch (SelectionChanged None))
+                    text "Clear filter"
+                }
+
             div {
                 attr.style "margin-left: auto; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;"
 

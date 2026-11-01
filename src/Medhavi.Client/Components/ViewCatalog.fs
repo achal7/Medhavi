@@ -66,6 +66,10 @@ let private defaultMetadata name category icon =
             }
     }
 
+let aiViewCategory = "AI Intelligence"
+let workbenchViewCategory = "Operational Workbenches"
+let governanceViewCategory = "Enterprise Governance"
+let atomicComponentViewCategory = "Atomic Components"
 let private idMedhaviAssistant = ViewComponentId.literal "comp-medhavi-assistant"
 let private idDemand = ViewComponentId.literal "comp-demand-grid"
 let private idException = ViewComponentId.literal "comp-exception-grid"
@@ -678,7 +682,7 @@ let medhaviAssistantView: ViewDefinition =
                     )
                 SharedContext = None
             }
-        Metadata = defaultMetadata "Medhavi Assistant" "AI Intelligence" "auto_awesome"
+        Metadata = defaultMetadata "Medhavi Assistant" aiViewCategory "auto_awesome"
     }
 
 let executiveKpiDashboardView: ViewDefinition =
@@ -710,31 +714,7 @@ let executiveKpiDashboardView: ViewDefinition =
                     )
                 SharedContext = None
             }
-        Metadata = defaultMetadata "Executive Overview" "Executive Dashboard" "dashboard"
-    }
-
-let demandSupplyCapacityTripleView: ViewDefinition =
-    {
-        Id = ViewDefId.literal "view-demand-supply-capacity-triple"
-        Name = "3-Way Demand-Supply-Capacity Analysis"
-        Version = 1
-        State =
-            {
-                Title = "3-Way Supply Chain Bottleneck Analysis"
-                Components = Map.ofList [ (idDemand, compDemand); (idSupply, compSupply); (idCapacity, compCapacity) ]
-                Layout =
-                    LayoutDefinition.Dashboard(
-                        GridDimensions.defaultDimensions,
-                        Map.ofList
-                            [
-                                (idDemand, TilePosition.literal 1 1 12 4)
-                                (idSupply, TilePosition.literal 1 5 12 4)
-                                (idCapacity, TilePosition.literal 1 9 12 4)
-                            ]
-                    )
-                SharedContext = None
-            }
-        Metadata = defaultMetadata "Demand-Supply-Capacity Triple" "Supply Intelligence" "account_tree"
+        Metadata = defaultMetadata "Executive Overview" workbenchViewCategory "dashboard"
     }
 
 let coreExceptionsWorkbenchView: ViewDefinition =
@@ -753,7 +733,7 @@ let coreExceptionsWorkbenchView: ViewDefinition =
                     )
                 SharedContext = None
             }
-        Metadata = defaultMetadata "Core Exceptions Workbench" "Core Management" "warning"
+        Metadata = defaultMetadata "Core Exceptions Workbench" governanceViewCategory "warning"
     }
 
 let itemTransitionsWorkbenchView: ViewDefinition =
@@ -772,7 +752,7 @@ let itemTransitionsWorkbenchView: ViewDefinition =
                     )
                 SharedContext = None
             }
-        Metadata = defaultMetadata "Item Transitions Workbench" "Core Management" "swap_calls"
+        Metadata = defaultMetadata "Item Transitions Workbench" governanceViewCategory "swap_calls"
     }
 
 let enterprisePictureWorkbenchView: ViewDefinition =
@@ -791,7 +771,7 @@ let enterprisePictureWorkbenchView: ViewDefinition =
                     )
                 SharedContext = None
             }
-        Metadata = defaultMetadata "Enterprise Picture Workbench" "Core Management" "photo_library"
+        Metadata = defaultMetadata "Enterprise Picture Workbench" governanceViewCategory "photo_library"
     }
 
 let demandObservationsStreamView: ViewDefinition =
@@ -829,7 +809,7 @@ let capacityWorkbenchView: ViewDefinition =
                     )
                 SharedContext = None
             }
-        Metadata = defaultMetadata "Work Center Capacity Workbench" "Capacity Planning" "precision_manufacturing"
+        Metadata = defaultMetadata "Work Center Capacity Workbench" atomicComponentViewCategory "precision_manufacturing"
     }
 
 let capacityStudioView: ViewDefinition =
@@ -840,15 +820,22 @@ let capacityStudioView: ViewDefinition =
         State =
             {
                 Title = "Capacity Planning Studio — Gantt & Envelopes"
-                Components = Map.ofList [ (idCapacityStudio, compCapacityStudio) ]
+                Components =
+                    Map.ofList
+                        [
+                            (idCapacityStudio, compCapacityStudio)
+                            (idCapacity, compCapacity)
+                        ]
                 Layout =
-                    LayoutDefinition.Dashboard(
-                        GridDimensions.defaultDimensions,
-                        Map.ofList [ (idCapacityStudio, TilePosition.literal 1 1 12 8) ]
+                    LayoutDefinition.Split(
+                        SplitDirection.Vertical,
+                        LayoutDefinition.Single idCapacityStudio,
+                        LayoutDefinition.Single idCapacity,
+                        SplitRatio.literal 0.62m
                     )
                 SharedContext = None
             }
-        Metadata = defaultMetadata "Capacity Planning Studio" "Capacity Planning" "view_timeline"
+        Metadata = defaultMetadata "Capacity Planning Studio" workbenchViewCategory "precision_manufacturing"
     }
 
 let peggingDashboardView: ViewDefinition =
@@ -871,7 +858,7 @@ let peggingDashboardView: ViewDefinition =
                     )
                 SharedContext = None
             }
-        Metadata = defaultMetadata "Demand-Supply Pegging Analysis" "Comparative Analysis" "link"
+        Metadata = defaultMetadata "Demand-Supply Pegging Analysis" atomicComponentViewCategory "link"
     }
 
 let supplyWorkbenchView: ViewDefinition =
@@ -890,7 +877,7 @@ let supplyWorkbenchView: ViewDefinition =
                     )
                 SharedContext = None
             }
-        Metadata = defaultMetadata "Supply Orders Workbench" "Supply Planning" "local_shipping"
+        Metadata = defaultMetadata "Supply Orders Workbench" atomicComponentViewCategory "local_shipping"
     }
 
 let peggingSplitView: ViewDefinition =
@@ -922,17 +909,32 @@ let peggingSplitView: ViewDefinition =
                     )
                 SharedContext = None
             }
-        Metadata = defaultMetadata "Demand-Supply Pegging Studio" "Comparative Analysis" "splitscreen"
+        Metadata = defaultMetadata "Demand-Supply Pegging Studio" atomicComponentViewCategory "splitscreen"
+    }
+
+let peggingWorkbenchView: ViewDefinition =
+    {
+        Id = ViewDefId.literal "view-pegging-workbench"
+        Name = "Demand-Supply Pegging Workbench"
+        Version = 1
+        State =
+            {
+                Title = "Demand-Supply Pegging & Time-Phased Matrix"
+                Components = Map.ofList [ (idPeggingScheduler, compPeggingScheduler) ]
+                Layout = LayoutDefinition.Single idPeggingScheduler
+                SharedContext = None
+            }
+        Metadata = defaultMetadata "Demand-Supply Pegging Workbench" workbenchViewCategory "account_tree"
     }
 
 let supplyControlTowerView: ViewDefinition =
     {
         Id = ViewDefId.literal "view-supply-control-tower"
-        Name = "Supply Control Tower"
+        Name = "Supply Chain Control Tower"
         Version = 1
         State =
             {
-                Title = "Supply Control Tower"
+                Title = "Supply Chain Control Tower"
                 Components =
                     Map.ofList
                         [
@@ -954,17 +956,17 @@ let supplyControlTowerView: ViewDefinition =
                     )
                 SharedContext = None
             }
-        Metadata = defaultMetadata "Supply Control Tower" "Control Tower" "cell_tower"
+        Metadata = defaultMetadata "Supply Control Tower" workbenchViewCategory "cell_tower"
     }
 
 let aiCausalStudioView: ViewDefinition =
     {
         Id = ViewDefId.literal "view-ai-causal-studio"
-        Name = "AI Causal Reasoning & Explanation Studio"
+        Name = "AI Root Cause Studio"
         Version = 1
         State =
             {
-                Title = "AI Causal Reasoning & Root Cause Studio"
+                Title = "AI Root Cause Studio"
                 Components =
                     Map.ofList
                         [
@@ -980,7 +982,7 @@ let aiCausalStudioView: ViewDefinition =
                     )
                 SharedContext = None
             }
-        Metadata = defaultMetadata "AI Causal Studio" "AI Intelligence" "psychology"
+        Metadata = defaultMetadata "AI Causal Studio" aiViewCategory "psychology"
     }
 
 let inventoryWorkbenchView: ViewDefinition =
@@ -999,7 +1001,7 @@ let inventoryWorkbenchView: ViewDefinition =
                     )
                 SharedContext = None
             }
-        Metadata = defaultMetadata "Inventory Health Workbench" "Inventory Planning" "inventory"
+        Metadata = defaultMetadata "Inventory Health Workbench" atomicComponentViewCategory "inventory"
     }
 
 let supplyUnderstandingView: ViewDefinition =
@@ -1018,13 +1020,13 @@ let supplyUnderstandingView: ViewDefinition =
                     )
                 SharedContext = None
             }
-        Metadata = defaultMetadata "Supply Sensory Stream" "Supply Intelligence" "sensors"
+        Metadata = defaultMetadata "Supply Sensory Stream" atomicComponentViewCategory "sensors"
     }
 
 let supplyQuadWorkbenchView: ViewDefinition =
     {
         Id = ViewDefId.literal "view-supply-quad-workbench"
-        Name = "Quad Supply Triangulation Workbench"
+        Name = "Supply-Demand Triangulation Studio"
         Version = 1
         State =
             {
@@ -1050,7 +1052,83 @@ let supplyQuadWorkbenchView: ViewDefinition =
                     )
                 SharedContext = None
             }
-        Metadata = defaultMetadata "Quad Supply Triangulation" "Supply Intelligence" "dashboard"
+        Metadata = defaultMetadata "Quad Supply Triangulation" workbenchViewCategory "view_quilt"
+    }
+
+let demandConsensusStudioView: ViewDefinition =
+    {
+        Id = ViewDefId.literal "view-demand-consensus-studio"
+        Name = "Demand Sensing & Consensus Studio"
+        Version = 1
+        State =
+            {
+                Title = "Demand Sensing & Consensus Studio (Sensing, Forecast, Quality, Interventions)"
+                Components =
+                    Map.ofList
+                        [
+                            (idDemandSensing, compDemandSensing)
+                            (idForecast, compForecast)
+                            (idDemandQuality, compDemandQuality)
+                            (idDemandInterventions, compDemandInterventions)
+                        ]
+                Layout =
+                    LayoutDefinition.Split(
+                        SplitDirection.Vertical,
+                        LayoutDefinition.Split(
+                            SplitDirection.Horizontal,
+                            LayoutDefinition.Single idDemandSensing,
+                            LayoutDefinition.Single idForecast,
+                            SplitRatio.literal 0.5m
+                        ),
+                        LayoutDefinition.Split(
+                            SplitDirection.Horizontal,
+                            LayoutDefinition.Single idDemandQuality,
+                            LayoutDefinition.Single idDemandInterventions,
+                            SplitRatio.literal 0.5m
+                        ),
+                        SplitRatio.literal 0.5m
+                    )
+                SharedContext = None
+            }
+        Metadata = defaultMetadata "Demand Sensing & Consensus Studio" workbenchViewCategory "query_stats"
+    }
+
+let sourcingDeploymentStudioView: ViewDefinition =
+    {
+        Id = ViewDefId.literal "view-sourcing-deployment-studio"
+        Name = "Sourcing & Deployment Studio"
+        Version = 1
+        State =
+            {
+                Title = "Sourcing & Multi-Echelon Deployment Studio"
+                Components =
+                    Map.ofList
+                        [
+                            (idProcurement, compProcurement)
+                            (idDistribution, compDistribution)
+                            (idSupplierCollaboration, compSupplierCollaboration)
+                            (idInventory, compInventory)
+                        ]
+                Layout =
+                    LayoutDefinition.Split(
+                        SplitDirection.Vertical,
+                        LayoutDefinition.Split(
+                            SplitDirection.Horizontal,
+                            LayoutDefinition.Single idProcurement,
+                            LayoutDefinition.Single idDistribution,
+                            SplitRatio.literal 0.5m
+                        ),
+                        LayoutDefinition.Split(
+                            SplitDirection.Horizontal,
+                            LayoutDefinition.Single idSupplierCollaboration,
+                            LayoutDefinition.Single idInventory,
+                            SplitRatio.literal 0.5m
+                        ),
+                        SplitRatio.literal 0.5m
+                    )
+                SharedContext = None
+            }
+        Metadata = defaultMetadata "Sourcing & Deployment Studio" workbenchViewCategory "local_shipping"
     }
 
 let traceabilityWorkbenchView: ViewDefinition =
@@ -1069,7 +1147,7 @@ let traceabilityWorkbenchView: ViewDefinition =
                     )
                 SharedContext = None
             }
-        Metadata = defaultMetadata "Traceability & Investigation Studio" "Auditing & Traceability" "account_tree"
+        Metadata = defaultMetadata "Traceability & Investigation Studio" governanceViewCategory "history_edu"
     }
 
 let procurementWorkbenchView: ViewDefinition =
@@ -1088,7 +1166,7 @@ let procurementWorkbenchView: ViewDefinition =
                     )
                 SharedContext = None
             }
-        Metadata = defaultMetadata "Procurement Recommendations" "Procurement Planning" "shopping_cart"
+        Metadata = defaultMetadata "Procurement Recommendations" atomicComponentViewCategory "shopping_cart"
     }
 
 let distributionWorkbenchView: ViewDefinition =
@@ -1107,7 +1185,7 @@ let distributionWorkbenchView: ViewDefinition =
                     )
                 SharedContext = None
             }
-        Metadata = defaultMetadata "Distribution Network Workbench" "Distribution Planning" "local_shipping"
+        Metadata = defaultMetadata "Distribution Network Workbench" atomicComponentViewCategory "local_shipping"
     }
 
 let supplyQualityWorkbenchView: ViewDefinition =
@@ -1126,7 +1204,7 @@ let supplyQualityWorkbenchView: ViewDefinition =
                     )
                 SharedContext = None
             }
-        Metadata = defaultMetadata "Supply Quality Workbench" "Quality & Governance" "verified"
+        Metadata = defaultMetadata "Supply Quality Workbench" atomicComponentViewCategory "verified"
     }
 
 let supplyLearningWorkbenchView: ViewDefinition =
@@ -1145,7 +1223,7 @@ let supplyLearningWorkbenchView: ViewDefinition =
                     )
                 SharedContext = None
             }
-        Metadata = defaultMetadata "Supply Learning Workbench" "Learning & Adaptation" "school"
+        Metadata = defaultMetadata "Supply Learning Workbench" atomicComponentViewCategory "school"
     }
 
 let coreMasterDataWorkbenchView: ViewDefinition =
@@ -1164,7 +1242,7 @@ let coreMasterDataWorkbenchView: ViewDefinition =
                     )
                 SharedContext = None
             }
-        Metadata = defaultMetadata "Core Master Data Catalog" "Master Data" "inventory_2"
+        Metadata = defaultMetadata "Core Master Data Catalog" governanceViewCategory "inventory_2"
     }
 
 let forecastWorkbenchView: ViewDefinition =
@@ -1183,7 +1261,7 @@ let forecastWorkbenchView: ViewDefinition =
                     )
                 SharedContext = None
             }
-        Metadata = defaultMetadata "Forecast Publication Studio" "Demand Forecasting" "query_stats"
+        Metadata = defaultMetadata "Forecast Publication Studio" atomicComponentViewCategory "query_stats"
     }
 
 let demandSensingWorkbenchView: ViewDefinition =
@@ -1202,7 +1280,7 @@ let demandSensingWorkbenchView: ViewDefinition =
                     )
                 SharedContext = None
             }
-        Metadata = defaultMetadata "Demand Sensing Studio" "Demand Sensing" "sensors"
+        Metadata = defaultMetadata "Demand Sensing Studio" atomicComponentViewCategory "sensors"
     }
 
 let demandExceptionsWorkbenchView: ViewDefinition =
@@ -1221,7 +1299,7 @@ let demandExceptionsWorkbenchView: ViewDefinition =
                     )
                 SharedContext = None
             }
-        Metadata = defaultMetadata "Demand Exceptions Workbench" "Exception Management" "warning_amber"
+        Metadata = defaultMetadata "Demand Exceptions Workbench" atomicComponentViewCategory "warning_amber"
     }
 
 let segmentationWorkbenchView: ViewDefinition =
@@ -1240,7 +1318,7 @@ let segmentationWorkbenchView: ViewDefinition =
                     )
                 SharedContext = None
             }
-        Metadata = defaultMetadata "Demand Segmentation Workbench" "Demand Planning" "category"
+        Metadata = defaultMetadata "Demand Segmentation Workbench" atomicComponentViewCategory "category"
     }
 
 let classificationWorkbenchView: ViewDefinition =
@@ -1259,7 +1337,7 @@ let classificationWorkbenchView: ViewDefinition =
                     )
                 SharedContext = None
             }
-        Metadata = defaultMetadata "Demand Behavior Classification" "Demand Planning" "auto_graph"
+        Metadata = defaultMetadata "Demand Behavior Classification" atomicComponentViewCategory "auto_graph"
     }
 
 let prioritizationWorkbenchView: ViewDefinition =
@@ -1278,7 +1356,7 @@ let prioritizationWorkbenchView: ViewDefinition =
                     )
                 SharedContext = None
             }
-        Metadata = defaultMetadata "Demand Prioritization Workbench" "Demand Planning" "rule"
+        Metadata = defaultMetadata "Demand Prioritization Workbench" atomicComponentViewCategory "rule"
     }
 
 let demandQualityWorkbenchView: ViewDefinition =
@@ -1297,7 +1375,7 @@ let demandQualityWorkbenchView: ViewDefinition =
                     )
                 SharedContext = None
             }
-        Metadata = defaultMetadata "Forecast Quality Studio" "Demand Forecasting" "verified"
+        Metadata = defaultMetadata "Forecast Quality Studio" atomicComponentViewCategory "verified"
     }
 
 let demandExplanationWorkbenchView: ViewDefinition =
@@ -1316,7 +1394,7 @@ let demandExplanationWorkbenchView: ViewDefinition =
                     )
                 SharedContext = None
             }
-        Metadata = defaultMetadata "Demand Explanations Studio" "Demand Planning" "lightbulb"
+        Metadata = defaultMetadata "Demand Explanations Studio" atomicComponentViewCategory "lightbulb"
     }
 
 let demandLearningWorkbenchView: ViewDefinition =
@@ -1335,7 +1413,7 @@ let demandLearningWorkbenchView: ViewDefinition =
                     )
                 SharedContext = None
             }
-        Metadata = defaultMetadata "Demand Continuous Learning" "Demand Planning" "school"
+        Metadata = defaultMetadata "Demand Continuous Learning" atomicComponentViewCategory "school"
     }
 
 let demandInterventionWorkbenchView: ViewDefinition =
@@ -1354,18 +1432,34 @@ let demandInterventionWorkbenchView: ViewDefinition =
                     )
                 SharedContext = None
             }
-        Metadata = defaultMetadata "Demand Intervention Studio" "Demand Planning" "transform"
+        Metadata = defaultMetadata "Demand Intervention Studio" atomicComponentViewCategory "transform"
     }
 
 let defaultViews: ViewDefinition list =
     [
+        // 1. AI Intelligence
         medhaviAssistantView
+        aiCausalStudioView
+
+        // 2. Operational Workbenches
+        peggingWorkbenchView
         executiveKpiDashboardView
+        demandConsensusStudioView
+        capacityStudioView
+        sourcingDeploymentStudioView
+        supplyControlTowerView
+        supplyQuadWorkbenchView
+
+        // 3. Enterprise Governance
         coreMasterDataWorkbenchView
-        demandSupplyCapacityTripleView
-        coreExceptionsWorkbenchView
-        itemTransitionsWorkbenchView
         enterprisePictureWorkbenchView
+        itemTransitionsWorkbenchView
+        coreExceptionsWorkbenchView
+        traceabilityWorkbenchView
+    ]
+
+let atomicComponentViews: ViewDefinition list =
+    [
         demandObservationsStreamView
         forecastWorkbenchView
         demandSensingWorkbenchView
@@ -1379,17 +1473,14 @@ let defaultViews: ViewDefinition list =
         demandInterventionWorkbenchView
         inventoryWorkbenchView
         capacityWorkbenchView
-        capacityStudioView
         supplyWorkbenchView
         supplyUnderstandingView
-        supplyQuadWorkbenchView
-        supplyControlTowerView
-        aiCausalStudioView
         peggingDashboardView
         peggingSplitView
-        traceabilityWorkbenchView
         procurementWorkbenchView
         distributionWorkbenchView
         supplyQualityWorkbenchView
         supplyLearningWorkbenchView
     ]
+
+let allViews: ViewDefinition list = defaultViews @ atomicComponentViews

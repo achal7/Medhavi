@@ -262,11 +262,39 @@ let private updateSelection
     | None ->
         model, Cmd.none, None
     | Some tab ->
-        let updatedSelections = tab.Session.Selections |> Map.add viewComponentId selection
+        let sourceVcOpt = tab.Session.State.Components |> Map.tryFind viewComponentId
 
+        let updatedSelections, updatedComponents =
+            match sourceVcOpt with
+            | Some sourceVc ->
+                let store = sourceVc.Binding.StoreId
+                let mutable sels = tab.Session.Selections |> Map.add viewComponentId selection
+                let mutable comps = tab.Session.State.Components
+
+                for (siblingId, siblingVc) in tab.Session.State.Components |> Map.toList do
+                    if siblingId <> viewComponentId && siblingVc.Binding.StoreId = store then
+                        sels <- sels |> Map.add siblingId selection
+                        // Master-detail synchronization: filter sibling by selected physical resource
+                        let newFilters =
+                            match selection with
+                            | Some key when not (String.IsNullOrWhiteSpace key) ->
+                                let keyFilter = { Field = "PhysicalResourceId"; Operator = FilterOperator.Equals; Value = Some key }
+                                let otherFilters = siblingVc.Configuration.LocalFilters |> List.filter (fun f -> f.Field <> "PhysicalResourceId")
+                                keyFilter :: otherFilters
+                            | _ ->
+                                siblingVc.Configuration.LocalFilters |> List.filter (fun f -> f.Field <> "PhysicalResourceId")
+                        let updatedSiblingVc = { siblingVc with Configuration = { siblingVc.Configuration with LocalFilters = newFilters } }
+                        comps <- comps |> Map.add siblingId updatedSiblingVc
+
+                sels, comps
+            | None ->
+                tab.Session.Selections |> Map.add viewComponentId selection, tab.Session.State.Components
+
+        let updatedState = { tab.Session.State with Components = updatedComponents }
         let session =
             { tab.Session with
-                Selections = updatedSelections }
+                Selections = updatedSelections
+                State = updatedState }
 
         { model with
             Tabs = updateTab tab.Id (fun current -> { current with Session = session }) model.Tabs },

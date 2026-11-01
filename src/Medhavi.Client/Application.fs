@@ -1,16 +1,15 @@
 namespace Medhavi.Client
 
-open System.Threading.Tasks
-open Microsoft.AspNetCore.Components
+open System
 open Bolero
+open Bolero.Html
 open Elmish
 open Radzen
+open Microsoft.AspNetCore.Components
 open Medhavi.Contracts.Client
 open Medhavi.Client.Shells
-open Bolero.Html
 open Medhavi.Client.Components
 open Medhavi.Client.Primitives
-open System
 
 type Model =
     | Unauthenticated
