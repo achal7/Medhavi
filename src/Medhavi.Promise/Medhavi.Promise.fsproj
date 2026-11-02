@@ -1,0 +1,192 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="ArsIdentifiers.fs" />
+    <Compile Include="Ids.fs" />
+    <Compile Include="Types.fs" />
+    <Compile Include="Helpers.fs" />
+    <Compile Include="AclHelpers.fs" />
+    <Compile Include="Ports.fs" />
+    <Compile Include="UnderstandOrders\OrderBookSnapshot\Model.fs" />
+    <Compile Include="UnderstandOrders\OrderBookSnapshot\Policies.fs" />
+    <Compile Include="UnderstandOrders\OrderBookSnapshot\Rules.fs" />
+    <Compile Include="UnderstandOrders\OrderBookSnapshot\Decisions.fs" />
+    <Compile Include="UnderstandOrders\OrderBookSnapshot\Behaviors.fs" />
+    <Compile Include="UnderstandOrders\OrderBookSnapshot\Projections.fs" />
+    <Compile Include="UnderstandOrders\OrderBookSnapshot\ACL.fs" />
+    <Compile Include="UnderstandOrders\OrderBookSnapshot\Capabilities.fs" />
+    <Compile Include="UnderstandOrders\CustomerPromiseProfile\Model.fs" />
+    <Compile Include="UnderstandOrders\CustomerPromiseProfile\Policies.fs" />
+    <Compile Include="UnderstandOrders\CustomerPromiseProfile\Rules.fs" />
+    <Compile Include="UnderstandOrders\CustomerPromiseProfile\Decisions.fs" />
+    <Compile Include="UnderstandOrders\CustomerPromiseProfile\Behaviors.fs" />
+    <Compile Include="UnderstandOrders\CustomerPromiseProfile\Projections.fs" />
+    <Compile Include="UnderstandOrders\CustomerPromiseProfile\ACL.fs" />
+    <Compile Include="UnderstandOrders\CustomerPromiseProfile\Capabilities.fs" />
+    <Compile Include="UnderstandOrders\Capabilities.fs" />
+    <Compile Include="UnderstandOrders\Workflows.fs" />
+    <Compile Include="UnderstandOrders\Context.fs" />
+
+    <!-- Phase 2: AllocateSupply (CA-P-002) -->
+    <Compile Include="AllocateSupply\AllocationPool\Model.fs" />
+    <Compile Include="AllocateSupply\AllocationPool\Policies.fs" />
+    <Compile Include="AllocateSupply\AllocationPool\Algorithms.fs" />
+    <Compile Include="AllocateSupply\AllocationPool\Rules.fs" />
+    <Compile Include="AllocateSupply\AllocationPool\Decisions.fs" />
+    <Compile Include="AllocateSupply\AllocationPool\Behaviors.fs" />
+    <Compile Include="AllocateSupply\AllocationPool\Projections.fs" />
+    <Compile Include="AllocateSupply\AllocationPool\ACL.fs" />
+    <Compile Include="AllocateSupply\AllocationPool\Capabilities.fs" />
+    <Compile Include="AllocateSupply\Capabilities.fs" />
+    <Compile Include="AllocateSupply\Workflows.fs" />
+    <Compile Include="AllocateSupply\Context.fs" />
+
+    <!-- Phase 2: ReserveInventory (CA-P-003) -->
+    <Compile Include="ReserveInventory\TemporaryReservation\Model.fs" />
+    <Compile Include="ReserveInventory\TemporaryReservation\Policies.fs" />
+    <Compile Include="ReserveInventory\TemporaryReservation\Rules.fs" />
+    <Compile Include="ReserveInventory\TemporaryReservation\Decisions.fs" />
+    <Compile Include="ReserveInventory\TemporaryReservation\Behaviors.fs" />
+    <Compile Include="ReserveInventory\TemporaryReservation\Projections.fs" />
+    <Compile Include="ReserveInventory\TemporaryReservation\ACL.fs" />
+    <Compile Include="ReserveInventory\TemporaryReservation\Capabilities.fs" />
+    <Compile Include="ReserveInventory\Capabilities.fs" />
+    <Compile Include="ReserveInventory\Workflows.fs" />
+    <Compile Include="ReserveInventory\Context.fs" />
+
+    <!-- Phase 3: EvaluateATP (CA-P-004) -->
+    <Compile Include="EvaluateATP\Model.fs" />
+    <Compile Include="EvaluateATP\Policies.fs" />
+    <Compile Include="EvaluateATP\Algorithms.fs" />
+    <Compile Include="EvaluateATP\Rules.fs" />
+    <Compile Include="EvaluateATP\Decisions.fs" />
+    <Compile Include="EvaluateATP\Behaviors.fs" />
+    <Compile Include="EvaluateATP\Projections.fs" />
+    <Compile Include="EvaluateATP\ACL.fs" />
+    <Compile Include="EvaluateATP\Capabilities.fs" />
+    <Compile Include="EvaluateATP\Workflows.fs" />
+    <Compile Include="EvaluateATP\Context.fs" />
+
+    <!-- Phase 3: EvaluateCTP (CA-P-005) -->
+    <Compile Include="EvaluateCTP\Model.fs" />
+    <Compile Include="EvaluateCTP\Policies.fs" />
+    <Compile Include="EvaluateCTP\Algorithms.fs" />
+    <Compile Include="EvaluateCTP\Rules.fs" />
+    <Compile Include="EvaluateCTP\Decisions.fs" />
+    <Compile Include="EvaluateCTP\Behaviors.fs" />
+    <Compile Include="EvaluateCTP\Projections.fs" />
+    <Compile Include="EvaluateCTP\ACL.fs" />
+    <Compile Include="EvaluateCTP\Capabilities.fs" />
+    <Compile Include="EvaluateCTP\Workflows.fs" />
+    <Compile Include="EvaluateCTP\Context.fs" />
+
+    <!-- Phase 3: EstablishCommitments (CA-P-006) -->
+    <Compile Include="EstablishCommitments\OrderCommitment\Model.fs" />
+    <Compile Include="EstablishCommitments\OrderCommitment\Policies.fs" />
+    <Compile Include="EstablishCommitments\OrderCommitment\Rules.fs" />
+    <Compile Include="EstablishCommitments\OrderCommitment\Decisions.fs" />
+    <Compile Include="EstablishCommitments\OrderCommitment\Behaviors.fs" />
+    <Compile Include="EstablishCommitments\OrderCommitment\Projections.fs" />
+    <Compile Include="EstablishCommitments\OrderCommitment\ACL.fs" />
+    <Compile Include="EstablishCommitments\OrderCommitment\Capabilities.fs" />
+    <Compile Include="EstablishCommitments\PromiseExplanation\Model.fs" />
+    <Compile Include="EstablishCommitments\PromiseExplanation\Algorithms.fs" />
+    <Compile Include="EstablishCommitments\PromiseExplanation\Rules.fs" />
+    <Compile Include="EstablishCommitments\PromiseExplanation\Decisions.fs" />
+    <Compile Include="EstablishCommitments\PromiseExplanation\Behaviors.fs" />
+    <Compile Include="EstablishCommitments\PromiseExplanation\Projections.fs" />
+    <Compile Include="EstablishCommitments\PromiseExplanation\ACL.fs" />
+    <Compile Include="EstablishCommitments\PromiseExplanation\Capabilities.fs" />
+    <Compile Include="EstablishCommitments\Capabilities.fs" />
+    <Compile Include="EstablishCommitments\Workflows.fs" />
+    <Compile Include="EstablishCommitments\Context.fs" />
+
+    <!-- Phase 4: AssessPromiseRisk (CA-P-007) -->
+    <Compile Include="AssessPromiseRisk\PromiseRiskAssessment\Model.fs" />
+    <Compile Include="AssessPromiseRisk\PromiseRiskAssessment\Policies.fs" />
+    <Compile Include="AssessPromiseRisk\PromiseRiskAssessment\Algorithms.fs" />
+    <Compile Include="AssessPromiseRisk\PromiseRiskAssessment\Rules.fs" />
+    <Compile Include="AssessPromiseRisk\PromiseRiskAssessment\Decisions.fs" />
+    <Compile Include="AssessPromiseRisk\PromiseRiskAssessment\Behaviors.fs" />
+    <Compile Include="AssessPromiseRisk\PromiseRiskAssessment\Projections.fs" />
+    <Compile Include="AssessPromiseRisk\PromiseRiskAssessment\ACL.fs" />
+    <Compile Include="AssessPromiseRisk\PromiseRiskAssessment\Capabilities.fs" />
+    <Compile Include="AssessPromiseRisk\Capabilities.fs" />
+    <Compile Include="AssessPromiseRisk\Workflows.fs" />
+    <Compile Include="AssessPromiseRisk\Context.fs" />
+
+    <!-- Phase 4: ManageBackorders (CA-P-008) -->
+    <Compile Include="ManageBackorders\BackorderRecord\Model.fs" />
+    <Compile Include="ManageBackorders\BackorderRecord\Policies.fs" />
+    <Compile Include="ManageBackorders\BackorderRecord\Rules.fs" />
+    <Compile Include="ManageBackorders\BackorderRecord\Decisions.fs" />
+    <Compile Include="ManageBackorders\BackorderRecord\Behaviors.fs" />
+    <Compile Include="ManageBackorders\BackorderRecord\Projections.fs" />
+    <Compile Include="ManageBackorders\BackorderRecord\ACL.fs" />
+    <Compile Include="ManageBackorders\BackorderRecord\Capabilities.fs" />
+    <Compile Include="ManageBackorders\Capabilities.fs" />
+    <Compile Include="ManageBackorders\Workflows.fs" />
+    <Compile Include="ManageBackorders\Context.fs" />
+
+    <!-- Phase 4: ResolveExceptions (CA-P-009) -->
+    <Compile Include="ResolveExceptions\PromiseExceptionAssessment\Model.fs" />
+    <Compile Include="ResolveExceptions\PromiseExceptionAssessment\Policies.fs" />
+    <Compile Include="ResolveExceptions\PromiseExceptionAssessment\Rules.fs" />
+    <Compile Include="ResolveExceptions\PromiseExceptionAssessment\Decisions.fs" />
+    <Compile Include="ResolveExceptions\PromiseExceptionAssessment\Behaviors.fs" />
+    <Compile Include="ResolveExceptions\PromiseExceptionAssessment\Projections.fs" />
+    <Compile Include="ResolveExceptions\PromiseExceptionAssessment\ACL.fs" />
+    <Compile Include="ResolveExceptions\PromiseExceptionAssessment\Capabilities.fs" />
+    <Compile Include="ResolveExceptions\Capabilities.fs" />
+    <Compile Include="ResolveExceptions\Workflows.fs" />
+    <Compile Include="ResolveExceptions\Context.fs" />
+
+    <!-- Phase 5: MeasurePerformance (CA-P-010) -->
+    <Compile Include="MeasurePerformance\PromiseQualityAssessment\Model.fs" />
+    <Compile Include="MeasurePerformance\PromiseQualityAssessment\Policies.fs" />
+    <Compile Include="MeasurePerformance\PromiseQualityAssessment\Algorithms.fs" />
+    <Compile Include="MeasurePerformance\PromiseQualityAssessment\Rules.fs" />
+    <Compile Include="MeasurePerformance\PromiseQualityAssessment\Decisions.fs" />
+    <Compile Include="MeasurePerformance\PromiseQualityAssessment\Behaviors.fs" />
+    <Compile Include="MeasurePerformance\PromiseQualityAssessment\ACL.fs" />
+    <Compile Include="MeasurePerformance\PromiseQualityAssessment\Projections.fs" />
+    <Compile Include="MeasurePerformance\PromiseQualityAssessment\Capabilities.fs" />
+    <Compile Include="MeasurePerformance\Capabilities.fs" />
+    <Compile Include="MeasurePerformance\Workflows.fs" />
+    <Compile Include="MeasurePerformance\Context.fs" />
+
+    <!-- Phase 5: LearnFromPromises (CA-P-011) -->
+    <Compile Include="LearnFromPromises\PromiseCalibrationModel\Model.fs" />
+    <Compile Include="LearnFromPromises\PromiseCalibrationModel\Policies.fs" />
+    <Compile Include="LearnFromPromises\PromiseCalibrationModel\Algorithms.fs" />
+    <Compile Include="LearnFromPromises\PromiseCalibrationModel\Rules.fs" />
+    <Compile Include="LearnFromPromises\PromiseCalibrationModel\Decisions.fs" />
+    <Compile Include="LearnFromPromises\PromiseCalibrationModel\Behaviors.fs" />
+    <Compile Include="LearnFromPromises\PromiseCalibrationModel\Projections.fs" />
+    <Compile Include="LearnFromPromises\PromiseCalibrationModel\ACL.fs" />
+    <Compile Include="LearnFromPromises\PromiseCalibrationModel\Capabilities.fs" />
+    <Compile Include="LearnFromPromises\Capabilities.fs" />
+    <Compile Include="LearnFromPromises\Workflows.fs" />
+    <Compile Include="LearnFromPromises\Context.fs" />
+
+    <!-- Root Bounded Context Composition -->
+    <Compile Include="Context.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Medhavi.Foundation\Medhavi.Foundation.fsproj" />
+    <ProjectReference Include="..\Medhavi.SemanticModel\Medhavi.SemanticModel.fsproj" />
+    <ProjectReference Include="..\Medhavi.Contracts\Medhavi.Contracts.fsproj" />
+    <ProjectReference Include="..\Medhavi.SharedKernel\Medhavi.SharedKernel.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MathNet.Numerics" />
+  </ItemGroup>
+
+</Project>

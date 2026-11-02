@@ -256,6 +256,85 @@ type SupplyDomainServices =
         LearnFromSupply: SupplyLearningCapability
     }
 
+// Promise Intelligence Bounded Context Capabilities (CA-P-001 .. CA-P-011)
+
+type UnderstandOrdersCapability =
+    {
+        OrderBook: Medhavi.Contracts.Promise.OrderBookApi
+        CustomerProfiles: Medhavi.Contracts.Promise.CustomerPromiseProfileApi
+        OrderBookQueries: Medhavi.Contracts.Promise.OrderBookQueries
+        CustomerProfileQueries: Medhavi.Contracts.Promise.CustomerPromiseProfileQueries
+    }
+
+type AllocateSupplyCapability =
+    {
+        Allocation: Medhavi.Contracts.Promise.AllocationApi
+        AllocationQueries: Medhavi.Contracts.Promise.AllocationQueries
+    }
+
+type ReserveInventoryCapability =
+    {
+        Reservation: Medhavi.Contracts.Promise.ReservationApi
+        ReservationQueries: Medhavi.Contracts.Promise.ReservationQueries
+    }
+
+type EvaluatePromiseCapability =
+    {
+        Evaluation: Medhavi.Contracts.Promise.PromiseEvaluationApi
+    }
+
+type EstablishCommitmentsCapability =
+    {
+        Commitments: Medhavi.Contracts.Promise.CommitmentApi
+        CommitmentQueries: Medhavi.Contracts.Promise.CommitmentQueries
+        Explanation: Medhavi.Contracts.Promise.PromiseExplanationApi
+        ExplanationQueries: Medhavi.Contracts.Promise.PromiseExplanationQueries
+    }
+
+type AssessPromiseRiskCapability =
+    {
+        Risk: Medhavi.Contracts.Promise.PromiseRiskApi
+        RiskQueries: Medhavi.Contracts.Promise.PromiseRiskQueries
+    }
+
+type ManageBackordersCapability =
+    {
+        Backorder: Medhavi.Contracts.Promise.BackorderApi
+        BackorderQueries: Medhavi.Contracts.Promise.BackorderQueries
+    }
+
+type ResolvePromiseExceptionsCapability =
+    {
+        ExceptionApi: Medhavi.Contracts.Promise.PromiseExceptionApi
+        ExceptionQueries: Medhavi.Contracts.Promise.PromiseExceptionQueries
+    }
+
+type MeasurePromisePerformanceCapability =
+    {
+        Quality: Medhavi.Contracts.Promise.PromiseQualityApi
+        QualityQueries: Medhavi.Contracts.Promise.PromiseQualityQueries
+    }
+
+type LearnFromPromisesCapability =
+    {
+        Learning: Medhavi.Contracts.Promise.PromiseLearningApi
+        LearningQueries: Medhavi.Contracts.Promise.PromiseLearningQueries
+    }
+
+type PromiseDomainServices =
+    {
+        UnderstandOrders: UnderstandOrdersCapability
+        AllocateSupply: AllocateSupplyCapability
+        ReserveInventory: ReserveInventoryCapability
+        EvaluatePromise: EvaluatePromiseCapability
+        EstablishCommitments: EstablishCommitmentsCapability
+        AssessPromiseRisk: AssessPromiseRiskCapability
+        ManageBackorders: ManageBackordersCapability
+        ResolveExceptions: ResolvePromiseExceptionsCapability
+        MeasurePerformance: MeasurePromisePerformanceCapability
+        LearnFromPromises: LearnFromPromisesCapability
+    }
+
 // Platform Composite Gateway
 
 type DomainServices =
@@ -263,4 +342,5 @@ type DomainServices =
         Core: CoreDomainServices
         Demand: DemandDomainServices
         Supply: SupplyDomainServices
+        Promise: PromiseDomainServices
     }

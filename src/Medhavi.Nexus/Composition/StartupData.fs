@@ -12,6 +12,7 @@ open Medhavi.Contracts.Core.Exception
 open Medhavi.Contracts.Core.ItemTransition
 open Medhavi.Contracts.Demand
 open Medhavi.Contracts.Supply
+open Medhavi.Contracts.Promise
 open Medhavi.Nexus.Composition.ComposeNexus
 
 type EnterprisePictureSeed =
@@ -43,6 +44,11 @@ type DemandSeedDocument =
 type SupplySeedDocument =
     { Records: ReceiveSupplyDataReq list
       Understanding: UnderstandingSeed list }
+
+type PromiseSeedDocument =
+    { CustomerProfiles: ConfigureCustomerPromiseProfileReq list
+      AllocationPools: InitializeAllocationPoolReq list
+      OrderBookSnapshots: IngestOrderRequest list }
 
 let private jsonOptions =
     let opt = JsonSerializerOptions(PropertyNameCaseInsensitive = true)
@@ -207,6 +213,46 @@ let private seedSupplyData
                 printfn $"  [FAIL] Supply Understanding revise error: {err.Message}"
     }
 
+let private seedPromiseData
+    (profileApi: CustomerPromiseProfileApi)
+    (allocApi: AllocationApi)
+    (orderBookApi: OrderBookApi)
+    (doc: PromiseSeedDocument)
+    : Task<unit> =
+    task {
+        printfn "[StartupData] Seeding Customer Promise Profiles..."
+        for req in doc.CustomerProfiles do
+            let! res = profileApi.Configure req
+            match res with
+            | Ok dto -> printfn $"  [OK] Customer profile configured: {dto.CustomerId} (Tier: {dto.CustomerTier}, SLA: {dto.DefaultSlaDays}d)"
+            | Error err -> printfn $"  [FAIL] Customer profile error for {req.CustomerId}: {err.Message}"
+
+        printfn "[StartupData] Seeding Allocation Pools..."
+        for req in doc.AllocationPools do
+            let! res = allocApi.InitializePool req
+            match res with
+            | Ok dto -> printfn $"  [OK] Allocation pool initialized: {dto.PoolId} ({dto.Item} @ {dto.Location}, Planned: {dto.TotalPlannedSupply})"
+            | Error err -> printfn $"  [FAIL] Allocation pool error for {req.PoolId}: {err.Message}"
+
+        printfn "[StartupData] Seeding Order Book Snapshots..."
+        for req in doc.OrderBookSnapshots do
+            let! res = orderBookApi.Ingest req
+            match res with
+            | Ok dto ->
+                printfn $"  [OK] Order book ingested: {dto.SnapshotId} (Order: {dto.CustomerOrderIdentifier}, Lines: {dto.Lines.Length})"
+                for line in req.Lines do
+                    let valReq: ValidateOrderLineReq =
+                        { SnapshotId = req.SnapshotId
+                          OrderLineId = line.OrderLineId
+                          EvaluationTime = DateTimeOffset.UtcNow }
+                    let! valRes = orderBookApi.Validate valReq
+                    match valRes with
+                    | Ok _ -> printfn $"  [OK] Order line validated: {line.OrderLineId} ({line.Item}, Qty: {line.RequestedQuantity})"
+                    | Error err -> printfn $"  [FAIL] Order line validation error for {line.OrderLineId}: {err.Message}"
+            | Error err ->
+                printfn $"  [FAIL] Order book ingestion error for {req.SnapshotId}: {err.Message}"
+    }
+
 let seed (nexusCtx: NexusContext) : Task<unit> =
     task {
         printfn "========================================================="
@@ -253,10 +299,10 @@ let seed (nexusCtx: NexusContext) : Task<unit> =
 
         printfn "[StartupData] Seeding Initial Inventory Positions..."
         let invItems =
-            [ ("SKU-DRIVE-500GB", "LOC-CENTRAL-WH")
-              ("SKU-DRIVE-1TB", "LOC-WEST-PLANT")
-              ("SKU-BATTERY-PACK-PRO", "LOC-CENTRAL-WH")
-              ("SKU-POWER-SUPPLY-850W", "LOC-EAST-HUB") ]
+            [ ("SKU-DRIVE-1TB", "LOC-CENTRAL-WH")
+              ("SKU-BATTERY-PACK-PRO", "LOC-WEST-PLANT")
+              ("SKU-POWER-SUPPLY-850W", "LOC-WEST-PLANT")
+              ("SKU-DRIVE-1TB", "LOC-EAST-HUB") ]
 
         for (item, loc) in invItems do
             let req: UpdateInventoryPositionReq =
@@ -278,6 +324,19 @@ let seed (nexusCtx: NexusContext) : Task<unit> =
             match res with
             | Ok dto -> printfn $"  [OK] Capacity position assessed: {dto.PhysicalResourceId} (Load: {dto.CurrentLoadHours}/{dto.AvailableCapacityHours} hrs, Status: {dto.UtilizationStatus})"
             | Error err -> printfn $"  [FAIL] Capacity position update error for {resId}: {err.Message}"
+
+        // Allow projection agents to process mailboxes from Inventory and Capacity updates
+        do! Task.Delay 600
+
+        match loadJson<PromiseSeedDocument> "PromiseSeedData.json" with
+        | Some promiseDoc ->
+            do! seedPromiseData
+                    nexusCtx.Promise.UnderstandOrders.Commands.CustomerProfiles
+                    nexusCtx.Promise.AllocateSupply.Commands.Allocation
+                    nexusCtx.Promise.UnderstandOrders.Commands.OrderBook
+                    promiseDoc
+        | None ->
+            printfn "[StartupData] Skipping Promise seeding due to missing or invalid PromiseSeedData.json"
 
         // Final drain of projection mailboxes
         do! Task.Delay 600

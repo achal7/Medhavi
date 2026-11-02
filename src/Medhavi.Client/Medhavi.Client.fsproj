@@ -140,6 +140,26 @@
     <Compile Include="Supply\Learning\SupplyLearningActions.fs" />
     <Compile Include="Supply\Learning\SupplyLearningFeature.fs" />
 
+    <!-- Promise Bounded Context (Medhavi.Promise) -->
+    <Compile Include="Promise\OrderBook\OrderBookGrid.fs" />
+    <Compile Include="Promise\OrderBook\OrderBookActions.fs" />
+    <Compile Include="Promise\OrderBook\OrderBookFeature.fs" />
+    <Compile Include="Promise\CustomerProfiles\CustomerProfileGrid.fs" />
+    <Compile Include="Promise\CustomerProfiles\CustomerProfileActions.fs" />
+    <Compile Include="Promise\CustomerProfiles\CustomerProfileFeature.fs" />
+    <Compile Include="Promise\Allocations\AllocationGrid.fs" />
+    <Compile Include="Promise\Allocations\AllocationActions.fs" />
+    <Compile Include="Promise\Allocations\AllocationFeature.fs" />
+    <Compile Include="Promise\Commitments\CommitmentGrid.fs" />
+    <Compile Include="Promise\Commitments\CommitmentActions.fs" />
+    <Compile Include="Promise\Commitments\CommitmentFeature.fs" />
+    <Compile Include="Promise\Risk\PromiseRiskGrid.fs" />
+    <Compile Include="Promise\Risk\PromiseRiskActions.fs" />
+    <Compile Include="Promise\Risk\PromiseRiskFeature.fs" />
+    <Compile Include="Promise\Backorders\BackorderGrid.fs" />
+    <Compile Include="Promise\Backorders\BackorderActions.fs" />
+    <Compile Include="Promise\Backorders\BackorderFeature.fs" />
+
     <!-- AI Layer -->
     <Compile Include="AI\CausalExplainer.fs" />
     <Compile Include="AI\MedhaviAssistant.fs" />

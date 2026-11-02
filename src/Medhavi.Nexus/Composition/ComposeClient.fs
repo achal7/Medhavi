@@ -11,6 +11,8 @@ open Medhavi.Contracts.Core.Exception
 open Medhavi.Contracts.Core.ItemTransition
 open Medhavi.Contracts.Demand
 open Medhavi.Contracts.Supply
+open Medhavi.Common
+open Medhavi.Contracts.Promise
 open Medhavi.Client
 open Medhavi.SemanticModel
 open Medhavi.Demand
@@ -328,11 +330,112 @@ let addApplicationServices
     services.AddSingleton<SupplyLearningQueries>(supplyServices.LearnFromSupply.SupplyLearningQueries) |> ignore
     services.AddSingleton<SupplyLearningApi>(supplyServices.LearnFromSupply.SupplyLearningApi) |> ignore
 
-    // 5. Platform Domain Services Composite
+    // 5. Promise Intelligence Domain Services (CA-P-001 .. CA-P-011)
+    let orderBookQueries: Medhavi.Contracts.Promise.OrderBookQueries =
+        QueryAdapter.adaptWith Medhavi.Promise.OrderBookSnapshotId.create nexusCtx.Promise.UnderstandOrders.OrderBookQueries
+
+    let customerProfileQueries: Medhavi.Contracts.Promise.CustomerPromiseProfileQueries =
+        QueryAdapter.adaptWith CustomerId.create nexusCtx.Promise.UnderstandOrders.CustomerProfileQueries
+
+    let allocationQueries: Medhavi.Contracts.Promise.AllocationQueries =
+        QueryAdapter.adaptWith Medhavi.Promise.AllocationPoolId.create nexusCtx.Promise.AllocateSupply.AllocationQueries
+
+    let reservationQueries: Medhavi.Contracts.Promise.ReservationQueries =
+        QueryAdapter.adaptWith Medhavi.Promise.TemporaryReservationId.create nexusCtx.Promise.ReserveInventory.ReservationQueries
+
+    let commitmentQueries: Medhavi.Contracts.Promise.CommitmentQueries =
+        QueryAdapter.adaptWith Medhavi.Promise.OrderCommitmentId.create nexusCtx.Promise.EstablishCommitments.CommitmentQueries
+
+    let explanationQueries: Medhavi.Contracts.Promise.PromiseExplanationQueries =
+        QueryAdapter.adaptWith Medhavi.Promise.PromiseExplanationId.create nexusCtx.Promise.EstablishCommitments.ExplanationQueries
+
+    let riskQueries: Medhavi.Contracts.Promise.PromiseRiskQueries =
+        QueryAdapter.adaptWith Medhavi.Promise.PromiseRiskAssessmentId.create nexusCtx.Promise.AssessPromiseRisk.RiskQueries
+
+    let backorderQueries: Medhavi.Contracts.Promise.BackorderQueries =
+        QueryAdapter.adaptWith Medhavi.Promise.BackorderId.create nexusCtx.Promise.ManageBackorders.BackorderQueries
+
+    let promiseExceptionQueries: Medhavi.Contracts.Promise.PromiseExceptionQueries =
+        QueryAdapter.adaptWith Medhavi.Promise.PromiseExceptionId.create nexusCtx.Promise.ResolveExceptions.ExceptionQueries
+
+    let promiseQualityQueries: Medhavi.Contracts.Promise.PromiseQualityQueries =
+        QueryAdapter.adaptWith Medhavi.Promise.PromiseQualityAssessmentId.create nexusCtx.Promise.MeasurePerformance.QualityQueries
+
+    let promiseLearningQueries: Medhavi.Contracts.Promise.PromiseLearningQueries =
+        QueryAdapter.adaptWith Medhavi.Promise.PromiseLearningId.create nexusCtx.Promise.LearnFromPromises.LearningQueries
+
+    let evaluateAtp (req: EvaluateATPOptionsReq) : Task<Result<ATPFeasibilityAssessmentDto, ApiError>> =
+        taskResult {
+            let! assessment =
+                nexusCtx.Promise.EvaluateATP.Commands.Evaluate req
+                |> TaskResult.mapError Medhavi.Promise.AclHelpers.mapAppErrorToApiError
+            return Medhavi.Promise.EvaluateATP.Projections.mapAssessmentToDto assessment
+        }
+
+    let evaluateCtp (req: EvaluateCTPOptionsReq) : Task<Result<CTPFeasibilityAssessmentDto, ApiError>> =
+        taskResult {
+            let! assessment =
+                nexusCtx.Promise.EvaluateCTP.Commands.Evaluate req
+                |> TaskResult.mapError Medhavi.Promise.AclHelpers.mapAppErrorToApiError
+            return Medhavi.Promise.EvaluateCTP.Projections.mapToDto assessment
+        }
+
+    let promiseServices: PromiseDomainServices =
+        { UnderstandOrders =
+            { OrderBook = nexusCtx.Promise.UnderstandOrders.Commands.OrderBook
+              CustomerProfiles = nexusCtx.Promise.UnderstandOrders.Commands.CustomerProfiles
+              OrderBookQueries = orderBookQueries
+              CustomerProfileQueries = customerProfileQueries }
+          AllocateSupply =
+            { Allocation = nexusCtx.Promise.AllocateSupply.Commands.Allocation
+              AllocationQueries = allocationQueries }
+          ReserveInventory =
+            { Reservation = nexusCtx.Promise.ReserveInventory.Commands.Reservations
+              ReservationQueries = reservationQueries }
+          EvaluatePromise =
+            { Evaluation =
+                { EvaluateATP = evaluateAtp
+                  EvaluateCTP = evaluateCtp } }
+          EstablishCommitments =
+            { Commitments = nexusCtx.Promise.EstablishCommitments.Commands.Commitment
+              CommitmentQueries = commitmentQueries
+              Explanation = nexusCtx.Promise.EstablishCommitments.Commands.Explanation
+              ExplanationQueries = explanationQueries }
+          AssessPromiseRisk =
+            { Risk = nexusCtx.Promise.AssessPromiseRisk.Commands.Risk
+              RiskQueries = riskQueries }
+          ManageBackorders =
+            { Backorder = nexusCtx.Promise.ManageBackorders.Commands.Backorders
+              BackorderQueries = backorderQueries }
+          ResolveExceptions =
+            { ExceptionApi = nexusCtx.Promise.ResolveExceptions.Commands.Exception
+              ExceptionQueries = promiseExceptionQueries }
+          MeasurePerformance =
+            { Quality = nexusCtx.Promise.MeasurePerformance.Commands
+              QualityQueries = promiseQualityQueries }
+          LearnFromPromises =
+            { Learning = nexusCtx.Promise.LearnFromPromises.Commands
+              LearningQueries = promiseLearningQueries } }
+
+    services.AddSingleton<PromiseDomainServices>(promiseServices) |> ignore
+    services.AddSingleton<Medhavi.Contracts.Promise.OrderBookQueries>(orderBookQueries) |> ignore
+    services.AddSingleton<Medhavi.Contracts.Promise.CustomerPromiseProfileQueries>(customerProfileQueries) |> ignore
+    services.AddSingleton<Medhavi.Contracts.Promise.AllocationQueries>(allocationQueries) |> ignore
+    services.AddSingleton<Medhavi.Contracts.Promise.ReservationQueries>(reservationQueries) |> ignore
+    services.AddSingleton<Medhavi.Contracts.Promise.CommitmentQueries>(commitmentQueries) |> ignore
+    services.AddSingleton<Medhavi.Contracts.Promise.PromiseExplanationQueries>(explanationQueries) |> ignore
+    services.AddSingleton<Medhavi.Contracts.Promise.PromiseRiskQueries>(riskQueries) |> ignore
+    services.AddSingleton<Medhavi.Contracts.Promise.BackorderQueries>(backorderQueries) |> ignore
+    services.AddSingleton<Medhavi.Contracts.Promise.PromiseExceptionQueries>(promiseExceptionQueries) |> ignore
+    services.AddSingleton<Medhavi.Contracts.Promise.PromiseQualityQueries>(promiseQualityQueries) |> ignore
+    services.AddSingleton<Medhavi.Contracts.Promise.PromiseLearningQueries>(promiseLearningQueries) |> ignore
+
+    // 6. Platform Domain Services Composite
     let domainServices: DomainServices =
         { Core = coreServices
           Demand = demandServices
-          Supply = supplyServices }
+          Supply = supplyServices
+          Promise = promiseServices }
 
     services.AddSingleton<DomainServices>(domainServices) |> ignore
 

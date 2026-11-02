@@ -53,5 +53,19 @@
     <Compile Include="Supply\SupplyException.fs" />
     <Compile Include="Supply\SupplyExplanation.fs" />
     <Compile Include="Supply\SupplyLearning.fs" />
+
+    <Compile Include="Promise\Types.fs" />
+    <Compile Include="Promise\OrderBookSnapshot.fs" />
+    <Compile Include="Promise\CustomerPromiseProfile.fs" />
+    <Compile Include="Promise\AllocationPool.fs" />
+    <Compile Include="Promise\TemporaryReservation.fs" />
+    <Compile Include="Promise\OrderCommitment.fs" />
+    <Compile Include="Promise\PromiseEvaluation.fs" />
+    <Compile Include="Promise\BackorderRecord.fs" />
+    <Compile Include="Promise\PromiseRisk.fs" />
+    <Compile Include="Promise\PromiseException.fs" />
+    <Compile Include="Promise\PromiseQuality.fs" />
+    <Compile Include="Promise\PromiseExplanation.fs" />
+    <Compile Include="Promise\PromiseLearning.fs" />
   </ItemGroup>
 </Project>

@@ -43,6 +43,14 @@ open Medhavi.Client.Supply.Distribution
 open Medhavi.Client.Supply.Quality
 open Medhavi.Client.Supply.Learning
 
+// Feature slices: Promise
+open Medhavi.Client.Promise.OrderBook
+open Medhavi.Client.Promise.CustomerProfiles
+open Medhavi.Client.Promise.Allocations
+open Medhavi.Client.Promise.Commitments
+open Medhavi.Client.Promise.Risk
+open Medhavi.Client.Promise.Backorders
+
 // AI & Cross-cutting
 open Medhavi.Client.Components
 
@@ -104,6 +112,114 @@ let private idDemandQuality = ViewComponentId.literal "comp-demand-quality"
 let private idDemandExplanation = ViewComponentId.literal "comp-demand-explanation"
 let private idDemandLearning = ViewComponentId.literal "comp-demand-learning"
 let private idDemandInterventions = ViewComponentId.literal "comp-demand-interventions"
+let private idOrderBook = ViewComponentId.literal "comp-order-book-grid"
+let private idCustomerProfile = ViewComponentId.literal "comp-customer-profile-grid"
+let private idAllocationPool = ViewComponentId.literal "comp-allocation-pool-grid"
+let private idOrderCommitment = ViewComponentId.literal "comp-order-commitment-grid"
+let private idPromiseRisk = ViewComponentId.literal "comp-promise-risk-grid"
+let private idBackorder = ViewComponentId.literal "comp-backorder-grid"
+
+let private compOrderBook: ViewComponent =
+    {
+        ComponentDefId = OrderBookGrid.definitionId
+        Binding =
+            {
+                StoreId = OrderBookGrid.storeId
+                SchemaDefId = OrderBookGrid.schemaId
+            }
+        Configuration =
+            {
+                LocalFilters = []
+                Parameters = Map.empty
+            }
+        Title = Some "Customer Order Book Snapshots (SE-P-001)"
+        Icon = Some "receipt_long"
+    }
+
+let private compCustomerProfile: ViewComponent =
+    {
+        ComponentDefId = CustomerProfileGrid.definitionId
+        Binding =
+            {
+                StoreId = CustomerProfileGrid.storeId
+                SchemaDefId = CustomerProfileGrid.schemaId
+            }
+        Configuration =
+            {
+                LocalFilters = []
+                Parameters = Map.empty
+            }
+        Title = Some "Customer Promise Profiles (SE-P-050)"
+        Icon = Some "badge"
+    }
+
+let private compAllocationPool: ViewComponent =
+    {
+        ComponentDefId = AllocationGrid.definitionId
+        Binding =
+            {
+                StoreId = AllocationGrid.storeId
+                SchemaDefId = AllocationGrid.schemaId
+            }
+        Configuration =
+            {
+                LocalFilters = []
+                Parameters = Map.empty
+            }
+        Title = Some "Supply Allocation Pools (SE-P-020)"
+        Icon = Some "pie_chart"
+    }
+
+let private compOrderCommitment: ViewComponent =
+    {
+        ComponentDefId = CommitmentGrid.definitionId
+        Binding =
+            {
+                StoreId = CommitmentGrid.storeId
+                SchemaDefId = CommitmentGrid.schemaId
+            }
+        Configuration =
+            {
+                LocalFilters = []
+                Parameters = Map.empty
+            }
+        Title = Some "Order Commitment Ledgers (SE-P-010)"
+        Icon = Some "handshake"
+    }
+
+let private compPromiseRisk: ViewComponent =
+    {
+        ComponentDefId = PromiseRiskGrid.definitionId
+        Binding =
+            {
+                StoreId = PromiseRiskGrid.storeId
+                SchemaDefId = PromiseRiskGrid.schemaId
+            }
+        Configuration =
+            {
+                LocalFilters = []
+                Parameters = Map.empty
+            }
+        Title = Some "Promise Risk Assessments (SE-P-060)"
+        Icon = Some "warning"
+    }
+
+let private compBackorder: ViewComponent =
+    {
+        ComponentDefId = BackorderGrid.definitionId
+        Binding =
+            {
+                StoreId = BackorderGrid.storeId
+                SchemaDefId = BackorderGrid.schemaId
+            }
+        Configuration =
+            {
+                LocalFilters = []
+                Parameters = Map.empty
+            }
+        Title = Some "Backorders & Recovery Queue (SE-P-040)"
+        Icon = Some "queue"
+    }
 
 let private compForecast: ViewComponent =
     {
@@ -1435,6 +1551,210 @@ let demandInterventionWorkbenchView: ViewDefinition =
         Metadata = defaultMetadata "Demand Intervention Studio" atomicComponentViewCategory "transform"
     }
 
+let customerPromisingAtpTowerView: ViewDefinition =
+    {
+        Id = ViewDefId.literal "view-promise-atp-tower"
+        Name = "Customer Promising & ATP Control Tower"
+        Version = 1
+        State =
+            {
+                Title = "Customer Promising & Multi-Option ATP Control Tower (CA-P-001 / CA-P-004)"
+                Components =
+                    Map.ofList
+                        [
+                            (idOrderBook, compOrderBook)
+                            (idAllocationPool, compAllocationPool)
+                            (idCustomerProfile, compCustomerProfile)
+                        ]
+                Layout =
+                    LayoutDefinition.Dashboard(
+                        GridDimensions.defaultDimensions,
+                        Map.ofList
+                            [
+                                (idOrderBook, TilePosition.literal 1 1 12 6)
+                                (idAllocationPool, TilePosition.literal 1 7 6 6)
+                                (idCustomerProfile, TilePosition.literal 7 7 6 6)
+                            ]
+                    )
+                SharedContext = None
+            }
+        Metadata = defaultMetadata "Customer Promising & ATP Control Tower" workbenchViewCategory "alt_route"
+    }
+
+let commitmentLedgerCtpStudioView: ViewDefinition =
+    {
+        Id = ViewDefId.literal "view-promise-ctp-studio"
+        Name = "Commitment Ledger & CTP Studio"
+        Version = 1
+        State =
+            {
+                Title = "Order Commitment Ledger & CTP Studio (CA-P-005 / CA-P-006)"
+                Components =
+                    Map.ofList
+                        [
+                            (idOrderCommitment, compOrderCommitment)
+                            (idAllocationPool, compAllocationPool)
+                            (idOrderBook, compOrderBook)
+                        ]
+                Layout =
+                    LayoutDefinition.Dashboard(
+                        GridDimensions.defaultDimensions,
+                        Map.ofList
+                            [
+                                (idOrderCommitment, TilePosition.literal 1 1 12 6)
+                                (idAllocationPool, TilePosition.literal 1 7 6 6)
+                                (idOrderBook, TilePosition.literal 7 7 6 6)
+                            ]
+                    )
+                SharedContext = None
+            }
+        Metadata = defaultMetadata "Commitment Ledger & CTP Studio" workbenchViewCategory "handshake"
+    }
+
+let promiseResilienceDisruptionView: ViewDefinition =
+    {
+        Id = ViewDefId.literal "view-promise-resilience-recovery"
+        Name = "Promise Resilience & Disruption Recovery"
+        Version = 1
+        State =
+            {
+                Title = "Promise Resilience & Disruption Recovery Workbench (CA-P-007 / CA-P-008)"
+                Components =
+                    Map.ofList
+                        [
+                            (idPromiseRisk, compPromiseRisk)
+                            (idBackorder, compBackorder)
+                            (idOrderCommitment, compOrderCommitment)
+                        ]
+                Layout =
+                    LayoutDefinition.Dashboard(
+                        GridDimensions.defaultDimensions,
+                        Map.ofList
+                            [
+                                (idPromiseRisk, TilePosition.literal 1 1 6 6)
+                                (idBackorder, TilePosition.literal 7 1 6 6)
+                                (idOrderCommitment, TilePosition.literal 1 7 12 6)
+                            ]
+                    )
+                SharedContext = None
+            }
+        Metadata = defaultMetadata "Promise Resilience & Disruption Recovery" workbenchViewCategory "crisis_alert"
+    }
+
+let orderBookAtomicView: ViewDefinition =
+    {
+        Id = ViewDefId.literal "view-order-book"
+        Name = "Customer Order Book Snapshots"
+        Version = 1
+        State =
+            {
+                Title = "Customer Order Book Snapshots (SE-P-001)"
+                Components = Map.ofList [ (idOrderBook, compOrderBook) ]
+                Layout =
+                    LayoutDefinition.Dashboard(
+                        GridDimensions.defaultDimensions,
+                        Map.ofList [ (idOrderBook, TilePosition.literal 1 1 12 6) ]
+                    )
+                SharedContext = None
+            }
+        Metadata = defaultMetadata "Customer Order Book" atomicComponentViewCategory "receipt_long"
+    }
+
+let customerProfileAtomicView: ViewDefinition =
+    {
+        Id = ViewDefId.literal "view-customer-profiles"
+        Name = "Customer Promise Profiles"
+        Version = 1
+        State =
+            {
+                Title = "Customer Promise Profiles & SLA Governance (SE-P-050)"
+                Components = Map.ofList [ (idCustomerProfile, compCustomerProfile) ]
+                Layout =
+                    LayoutDefinition.Dashboard(
+                        GridDimensions.defaultDimensions,
+                        Map.ofList [ (idCustomerProfile, TilePosition.literal 1 1 12 6) ]
+                    )
+                SharedContext = None
+            }
+        Metadata = defaultMetadata "Customer Promise Profiles" atomicComponentViewCategory "badge"
+    }
+
+let allocationPoolAtomicView: ViewDefinition =
+    {
+        Id = ViewDefId.literal "view-allocation-pools"
+        Name = "Supply Allocation Pools"
+        Version = 1
+        State =
+            {
+                Title = "Supply Allocation Pools & Buckets (SE-P-020)"
+                Components = Map.ofList [ (idAllocationPool, compAllocationPool) ]
+                Layout =
+                    LayoutDefinition.Dashboard(
+                        GridDimensions.defaultDimensions,
+                        Map.ofList [ (idAllocationPool, TilePosition.literal 1 1 12 6) ]
+                    )
+                SharedContext = None
+            }
+        Metadata = defaultMetadata "Supply Allocation Pools" atomicComponentViewCategory "pie_chart"
+    }
+
+let orderCommitmentAtomicView: ViewDefinition =
+    {
+        Id = ViewDefId.literal "view-order-commitments"
+        Name = "Order Commitment Ledgers"
+        Version = 1
+        State =
+            {
+                Title = "Order Commitment Ledgers & Revisions (SE-P-010)"
+                Components = Map.ofList [ (idOrderCommitment, compOrderCommitment) ]
+                Layout =
+                    LayoutDefinition.Dashboard(
+                        GridDimensions.defaultDimensions,
+                        Map.ofList [ (idOrderCommitment, TilePosition.literal 1 1 12 6) ]
+                    )
+                SharedContext = None
+            }
+        Metadata = defaultMetadata "Order Commitment Ledgers" atomicComponentViewCategory "handshake"
+    }
+
+let promiseRiskAtomicView: ViewDefinition =
+    {
+        Id = ViewDefId.literal "view-promise-risk"
+        Name = "Promise Risk Assessments"
+        Version = 1
+        State =
+            {
+                Title = "Promise Risk Telemetry & Breach Prediction (SE-P-060)"
+                Components = Map.ofList [ (idPromiseRisk, compPromiseRisk) ]
+                Layout =
+                    LayoutDefinition.Dashboard(
+                        GridDimensions.defaultDimensions,
+                        Map.ofList [ (idPromiseRisk, TilePosition.literal 1 1 12 6) ]
+                    )
+                SharedContext = None
+            }
+        Metadata = defaultMetadata "Promise Risk Assessments" atomicComponentViewCategory "warning"
+    }
+
+let backorderAtomicView: ViewDefinition =
+    {
+        Id = ViewDefId.literal "view-backorders"
+        Name = "Backorders & Recovery Queue"
+        Version = 1
+        State =
+            {
+                Title = "Backorders & Recovery Queue (SE-P-040)"
+                Components = Map.ofList [ (idBackorder, compBackorder) ]
+                Layout =
+                    LayoutDefinition.Dashboard(
+                        GridDimensions.defaultDimensions,
+                        Map.ofList [ (idBackorder, TilePosition.literal 1 1 12 6) ]
+                    )
+                SharedContext = None
+            }
+        Metadata = defaultMetadata "Backorders & Recovery Queue" atomicComponentViewCategory "queue"
+    }
+
 let defaultViews: ViewDefinition list =
     [
         // 1. AI Intelligence
@@ -1449,6 +1769,9 @@ let defaultViews: ViewDefinition list =
         sourcingDeploymentStudioView
         supplyControlTowerView
         supplyQuadWorkbenchView
+        customerPromisingAtpTowerView
+        commitmentLedgerCtpStudioView
+        promiseResilienceDisruptionView
 
         // 3. Enterprise Governance
         coreMasterDataWorkbenchView
@@ -1481,6 +1804,12 @@ let atomicComponentViews: ViewDefinition list =
         distributionWorkbenchView
         supplyQualityWorkbenchView
         supplyLearningWorkbenchView
+        orderBookAtomicView
+        customerProfileAtomicView
+        allocationPoolAtomicView
+        orderCommitmentAtomicView
+        promiseRiskAtomicView
+        backorderAtomicView
     ]
 
 let allViews: ViewDefinition list = defaultViews @ atomicComponentViews

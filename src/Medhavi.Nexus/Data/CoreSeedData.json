@@ -2,61 +2,73 @@
   "Demands": [
     {
       "DemandId": "DEM-ORD-1001",
-      "Item": "SKU-DRIVE-500GB",
-      "Location": "LOC-CENTRAL-WH",
-      "Customer": "CUST-ACME-CORP",
-      "Quantity": 250.0,
-      "NeedWindowLatest": "2026-09-19T00:00:00Z",
-      "NeedWindowEarliest": "2026-09-15T00:00:00Z",
-      "NeedWindowPreferred": "2026-09-17T00:00:00Z",
+      "Item": "SKU-DRIVE-1TB",
+      "Location": "LOC-EAST-HUB",
+      "Customer": "CUST-TITAN-CLOUD",
+      "Quantity": 200.0,
+      "NeedWindowLatest": "2026-11-08T00:00:00Z",
+      "NeedWindowEarliest": "2026-11-04T00:00:00Z",
+      "NeedWindowPreferred": "2026-11-06T00:00:00Z",
       "DemandOrigin": "CustomerOrder",
       "ParentDemand": null
     },
     {
       "DemandId": "DEM-ORD-1002",
-      "Item": "SKU-DRIVE-1TB",
-      "Location": "LOC-WEST-PLANT",
+      "Item": "SKU-BATTERY-PACK-PRO",
+      "Location": "LOC-CENTRAL-WH",
       "Customer": "CUST-GLOBAL-LOGISTICS",
-      "Quantity": 500.0,
-      "NeedWindowLatest": "2026-09-26T00:00:00Z",
-      "NeedWindowEarliest": "2026-09-22T00:00:00Z",
-      "NeedWindowPreferred": "2026-09-24T00:00:00Z",
+      "Quantity": 350.0,
+      "NeedWindowLatest": "2026-11-15T00:00:00Z",
+      "NeedWindowEarliest": "2026-11-10T00:00:00Z",
+      "NeedWindowPreferred": "2026-11-12T00:00:00Z",
+      "DemandOrigin": "CustomerOrder",
+      "ParentDemand": null
+    },
+    {
+      "DemandId": "DEM-ORD-1003",
+      "Item": "SKU-POWER-SUPPLY-850W",
+      "Location": "LOC-EAST-HUB",
+      "Customer": "CUST-NORDIC-MFG",
+      "Quantity": 100.0,
+      "NeedWindowLatest": "2026-11-20T00:00:00Z",
+      "NeedWindowEarliest": "2026-11-16T00:00:00Z",
+      "NeedWindowPreferred": "2026-11-18T00:00:00Z",
       "DemandOrigin": "CustomerOrder",
       "ParentDemand": null
     },
     {
       "DemandId": "DEM-FCST-2001",
-      "Item": "SKU-BATTERY-PACK-PRO",
+      "Item": "SKU-AI-STORAGE-2TB",
       "Location": "LOC-CENTRAL-WH",
       "Customer": null,
-      "Quantity": 1200.0,
-      "NeedWindowLatest": "2026-10-12T00:00:00Z",
-      "NeedWindowEarliest": "2026-09-27T00:00:00Z",
-      "NeedWindowPreferred": "2026-10-02T00:00:00Z",
+      "Quantity": 500.0,
+      "NeedWindowLatest": "2026-11-30T00:00:00Z",
+      "NeedWindowEarliest": "2026-11-15T00:00:00Z",
+      "NeedWindowPreferred": "2026-11-20T00:00:00Z",
       "DemandOrigin": "Forecast",
       "ParentDemand": null
     },
     {
       "DemandId": "DEM-PROD-3001",
       "Item": "SKU-POWER-SUPPLY-850W",
-      "Location": "LOC-EAST-HUB",
-      "Customer": "CUST-NORDIC-MFG",
-      "Quantity": 75.0,
-      "NeedWindowLatest": "2026-09-17T00:00:00Z",
-      "NeedWindowEarliest": "2026-09-14T00:00:00Z",
-      "NeedWindowPreferred": "2026-09-16T00:00:00Z",
+      "Location": "LOC-WEST-PLANT",
+      "Customer": null,
+      "Quantity": 400.0,
+      "NeedWindowLatest": "2026-11-12T00:00:00Z",
+      "NeedWindowEarliest": "2026-11-06T00:00:00Z",
+      "NeedWindowPreferred": "2026-11-09T00:00:00Z",
       "DemandOrigin": "ProductionRequirement",
       "ParentDemand": null
     },
     {
       "DemandId": "DEM-TRF-4001",
-      "Item": "SKU-DRIVE-500GB",
+      "Item": "SKU-DRIVE-1TB",
       "Location": "LOC-EAST-HUB",
       "Customer": null,
-      "Quantity": 150.0,
-      "NeedWindowLatest": "2026-09-20T00:00:00Z",
-      "NeedWindowEarliest": "2026-09-16T00:00:00Z",
-      "NeedWindowPreferred": "2026-09-18T00:00:00Z",
+      "Quantity": 200.0,
+      "NeedWindowLatest": "2026-11-07T00:00:00Z",
+      "NeedWindowEarliest": "2026-11-04T00:00:00Z",
+      "NeedWindowPreferred": "2026-11-05T00:00:00Z",
       "DemandOrigin": "Transfer",
       "ParentDemand": "DEM-ORD-1001"
     }
@@ -69,7 +81,7 @@
       "AffectedScopeIdentifier": "WC-ASSEMBLY-LINE-01",
       "EvidenceReference": "EVD-TELEMETRY-9912",
       "Severity": "Critical",
-      "EvidenceTime": "2026-09-12T10:15:00Z"
+      "EvidenceTime": "2026-11-02T08:00:00Z"
     },
     {
       "ConstraintReference": "CR-MAT-SHORTAGE-02",
@@ -78,7 +90,7 @@
       "AffectedScopeIdentifier": "SKU-POWER-SUPPLY-850W@LOC-EAST-HUB",
       "EvidenceReference": "EVD-STOCK-ALERT-403",
       "Severity": "High",
-      "EvidenceTime": "2026-09-12T09:00:00Z"
+      "EvidenceTime": "2026-11-02T08:30:00Z"
     },
     {
       "ConstraintReference": "CR-TRANS-DELAY-05",
@@ -87,7 +99,7 @@
       "AffectedScopeIdentifier": "LANE-CENTRAL-TO-EAST",
       "EvidenceReference": "EVD-CARRIER-STATUS-882",
       "Severity": "Medium",
-      "EvidenceTime": "2026-09-12T05:00:00Z"
+      "EvidenceTime": "2026-11-02T07:00:00Z"
     }
   ],
   "ItemTransitions": [
@@ -95,15 +107,8 @@
       "SupersededItem": "SKU-DRIVE-500GB",
       "SupersedingItem": "SKU-DRIVE-1TB",
       "TransitionType": "Successor",
-      "EffectiveDate": "2026-10-12T00:00:00Z",
-      "EndDate": "2026-12-11T00:00:00Z"
-    },
-    {
-      "SupersededItem": "SKU-BATTERY-PACK-LEGACY",
-      "SupersedingItem": "SKU-BATTERY-PACK-PRO",
-      "TransitionType": "DirectReplacement",
-      "EffectiveDate": "2026-09-27T00:00:00Z",
-      "EndDate": null
+      "EffectiveDate": "2026-11-01T00:00:00Z",
+      "EndDate": "2026-12-31T00:00:00Z"
     }
   ],
   "EnterprisePictures": [
@@ -112,16 +117,25 @@
       "DemandReferences": [
         "DEM-ORD-1001",
         "DEM-ORD-1002",
+        "DEM-ORD-1003",
         "DEM-FCST-2001",
         "DEM-PROD-3001",
         "DEM-TRF-4001"
       ],
-      "SupplyReferences": [],
-      "InventoryReferences": [],
-      "CompositionTime": "2026-09-12T11:00:00Z",
+      "SupplyReferences": [
+        "SREC-PO-2026-001",
+        "SREC-WO-2026-002",
+        "SREC-TRF-2026-003"
+      ],
+      "InventoryReferences": [
+        "SREC-INV-2026-001",
+        "SREC-INV-2026-002",
+        "SREC-INV-2026-003"
+      ],
+      "CompositionTime": "2026-11-02T09:00:00Z",
       "Publish": true,
       "VersionNumber": 1,
-      "PublicationTime": "2026-09-12T11:05:00Z"
+      "PublicationTime": "2026-11-02T09:05:00Z"
     }
   ]
 }

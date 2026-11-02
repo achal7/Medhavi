@@ -15,6 +15,10 @@ open Medhavi.Client.AI
 open Medhavi.Client.Supply.Capacity
 open Medhavi.Client.Supply.SupplyOrders
 open Medhavi.Client.Supply.Collaboration
+open Medhavi.Client.Promise.OrderBook
+open Medhavi.Client.Promise.Commitments
+open Medhavi.Client.Promise.Risk
+open Medhavi.Client.Promise.Backorders
 
 module CapacityActions = CapacityGrid
 module SupplyActions = SupplyGrid
@@ -52,6 +56,11 @@ let schemaDefinition: SchemaDefinition =
                 CapacityActions.reallocate.Id
                 SupplyActions.generatePlan.Id
                 SupplierActions.requestAlternative.Id
+                OrderBookGrid.OrderBookActions.evaluateAtp.Id
+                CommitmentGrid.CommitmentActions.establishCommitment.Id
+                CommitmentGrid.CommitmentActions.reviseCommitment.Id
+                PromiseRiskGrid.PromiseRiskActions.escalate.Id
+                BackorderGrid.BackorderActions.resolve.Id
             ]
         Actions = []
         Columns = []
@@ -223,6 +232,99 @@ let private generateAssistantResponse (prompt: string) : ChatMessage =
             "$342,500 Downstream Impact",
             Some "PO-8802",
             Some "Purchase Order",
+            actions
+        )
+    elif p.Contains("titan") || p.Contains("ord-titan-7001") || p.Contains("atp") then
+        let actions =
+            [
+                {
+                    Title = "Firmly Commit Option 1 (Direct Express)"
+                    ActionId = CommitmentGrid.CommitmentActions.establishCommitment.Id
+                    TargetKey = "CMT-TITAN-7001"
+                    Description = "Commit Option 1: 100 units from Central DC via Express Freight on Nov 08 (95% Conf, 28% Margin)."
+                    Impact = "Guarantees 1-day early delivery; protects ,500 revenue and 28.0% margin."
+                    Icon = "handshake"
+                }
+                {
+                    Title = "Run CTP Multi-Leg Allocation"
+                    ActionId = OrderBookGrid.OrderBookActions.evaluateAtp.Id
+                    TargetKey = "SNAP-ORD-TITAN-7001"
+                    Description = "Evaluate Option 2 split sourcing across Central DC and West Hub."
+                    Impact = "Increases fulfillment confidence to 98.2%."
+                    Icon = "alt_route"
+                }
+            ]
+
+        AssistantMessage(
+            now,
+            "Multi-Option ATP Evaluation: ORD-TITAN-7001 (Titan Cloud)",
+            "• Customer: Titan Cloud Solutions (Tier Platinum)\n• Item: SKU-DRIVE-1TB (Qty: 100 EA)\n• Destination: LOC-EAST-HUB (Required: 2026-11-09)\n• Option 1 (Recommended): Express Direct from Central DC (Nov 08, 95% Conf, 28% Margin)\n• Option 2: Split Shipment (50 EA Nov 07 from Central DC + 50 EA Nov 10 from West Hub, 98% Conf, 26% Margin)\n• Option 3: Substitute SKU-DRIVE-2TB (+3% Cost, 92% Conf, 22% Margin)",
+            "Central DC stock ring-fenced for Platinum tier; express lane verified.",
+            ",500 Order Value · 28.0% Gross Margin Protected",
+            Some "SNAP-ORD-TITAN-7001",
+            Some "Customer Order Book Snapshot",
+            actions
+        )
+    elif p.Contains("cmt-titan-7001") || p.Contains("risk") || p.Contains("breach") then
+        let actions =
+            [
+                {
+                    Title = "Escalate to Disruption Triage"
+                    ActionId = PromiseRiskGrid.PromiseRiskActions.escalate.Id
+                    TargetKey = "RISK-CMT-TITAN-7001"
+                    Description = "Escalate longitudinal transit delay to disruption recovery control tower."
+                    Impact = "Activates priority expedite protocol to preserve customer SLA."
+                    Icon = "crisis_alert"
+                }
+                {
+                    Title = "Revise Commitment Schedule (+2d)"
+                    ActionId = CommitmentGrid.CommitmentActions.reviseCommitment.Id
+                    TargetKey = "CMT-TITAN-7001"
+                    Description = "Revise commitment delivery date from Nov 09 to Nov 11."
+                    Impact = "Resets customer SLA clock; reduces penalty exposure by ,200."
+                    Icon = "edit_calendar"
+                }
+            ]
+
+        AssistantMessage(
+            now,
+            "Promise Risk & Disruption Containment: CMT-TITAN-7001",
+            "• Commitment ID: CMT-TITAN-7001 (Titan Cloud)\n• Promised Delivery: 2026-11-09\n• Breach Probability: 74.0% (Severity: High)\n• Projected Delay: 2.5 Days\n• Buffer Consumption: 88.0% of transit safety window exhausted.\n• Risk Drivers: Upstream rail freight congestion at Central Corridor.",
+            "Rail corridor transit delay (+2.5d) exceeds safety buffer.",
+            ",200 SLA Penalty Exposure",
+            Some "CMT-TITAN-7001",
+            Some "Order Commitment",
+            actions
+        )
+    elif p.Contains("nordic") || p.Contains("backorder") || p.Contains("recovery") then
+        let actions =
+            [
+                {
+                    Title = "Match Incoming Supply & Re-Promise"
+                    ActionId = BackorderGrid.BackorderActions.resolve.Id
+                    TargetKey = "BO-NORDIC-8002"
+                    Description = "Link incoming PO-BATTERY-W46 shipment (arriving Nov 06) to fulfill backorder."
+                    Impact = "Fulfills 40 EA backorder by Nov 07; restores 100% line fulfillment."
+                    Icon = "done_all"
+                }
+                {
+                    Title = "Autonomous Re-Promising Audit"
+                    ActionId = BackorderGrid.BackorderActions.repromise.Id
+                    TargetKey = "BO-NORDIC-8002"
+                    Description = "Trigger autonomous multi-tier re-promising calculation."
+                    Impact = "Revalidates carrier slot availability."
+                    Icon = "published_with_changes"
+                }
+            ]
+
+        AssistantMessage(
+            now,
+            "Backorder Recovery Match: BO-NORDIC-8002",
+            "• Customer: Nordic Manufacturing (Tier Gold)\n• Item: SKU-BATTERY-PACK (Qty: 40 EA)\n• Location: LOC-WEST-HUB\n• Backorder Status: In recovery queue since 2026-11-02.\n• Inbound Match Detected: PO-BATTERY-W46 arriving Nov 06 at West Hub.\n• Projected Recovery: Full order fulfillment by 2026-11-07 (within customer SLA).",
+            "Initial allocation depleted by prior surge; replenishment inbound.",
+            ",400 Backlog Value Cleared",
+            Some "BO-NORDIC-8002",
+            Some "Backorder Recovery Record",
             actions
         )
     else

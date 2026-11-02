@@ -9,6 +9,7 @@
     <Project Path="src/Medhavi.Core/Medhavi.Core.fsproj" />
     <Project Path="src/Medhavi.Demand/Medhavi.Demand.fsproj" />
     <Project Path="src/Medhavi.Supply/Medhavi.Supply.fsproj" />
+    <Project Path="src/Medhavi.Promise/Medhavi.Promise.fsproj" />
     <Project Path="src/Medhavi.Client/Medhavi.Client.fsproj" />
     <Project Path="src/Medhavi.Nexus/Medhavi.Nexus.fsproj" />
   </Folder>

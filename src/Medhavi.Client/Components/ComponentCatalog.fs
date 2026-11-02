@@ -44,6 +44,14 @@ open Medhavi.Client.Supply.Distribution
 open Medhavi.Client.Supply.Quality
 open Medhavi.Client.Supply.Learning
 
+// Feature slices: Promise
+open Medhavi.Client.Promise.OrderBook
+open Medhavi.Client.Promise.CustomerProfiles
+open Medhavi.Client.Promise.Allocations
+open Medhavi.Client.Promise.Commitments
+open Medhavi.Client.Promise.Risk
+open Medhavi.Client.Promise.Backorders
+
 // AI & Cross-cutting
 open Medhavi.Client.Components
 
@@ -79,6 +87,12 @@ let private allFeatureManifests =
         DistributionFeature.manifest
         SupplyQualityFeature.manifest
         SupplyLearningFeature.manifest
+        OrderBookFeature.manifest
+        CustomerProfileFeature.manifest
+        AllocationFeature.manifest
+        CommitmentFeature.manifest
+        PromiseRiskFeature.manifest
+        BackorderFeature.manifest
     ]
 
 let allActions: ActionDescriptor list =

@@ -57,6 +57,12 @@ module CausalExplainer =
             | "Customer Demand" | "Demand" | "Demand Order" -> "person"
             | "Purchase Order" | "Supplier" | "Pegged Supplier PO" -> "local_shipping"
             | "Work Center" | "Production" | "Manufacturing Assembly" -> "precision_manufacturing"
+            | "Order Commitment" | "Commitment" | "Promise" -> "handshake"
+            | "Order Line" | "Order Book" -> "receipt_long"
+            | "Allocation Pool" | "Quota" -> "pie_chart"
+            | "Promise Risk" | "Breach Alert" -> "warning"
+            | "Backorder" | "Backlog" -> "queue"
+            | "Customer Profile" -> "badge"
             | "PrescriptiveRecommendation" -> "bolt"
             | _ -> "info"
 
@@ -68,6 +74,9 @@ module CausalExplainer =
             | "RootCause" | "Disruption" -> "var(--rz-danger)"
             | "Bottleneck" -> "var(--rz-danger)"
             | "Constraint" -> "var(--rz-warning)"
+            | "Promise Risk" | "Breach Alert" -> "var(--rz-danger)"
+            | "Backorder" -> "var(--rz-warning)"
+            | "Order Commitment" | "Promise" -> "var(--rz-success)"
             | "PrescriptiveRecommendation" -> "var(--rz-success)"
             | _ -> "var(--rz-primary)"
 

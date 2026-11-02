@@ -10,6 +10,7 @@
     <Compile Include="Composition\ComposeCore.fs" />
     <Compile Include="Composition\ComposeDemand.fs" />
     <Compile Include="Composition\ComposeSupply.fs" />
+    <Compile Include="Composition\ComposePromise.fs" />
     <Compile Include="Composition\ComposeNexus.fs" />
     <Compile Include="Composition\ComposeClient.fs" />
     <Compile Include="Composition\StartupData.fs" />
@@ -43,6 +44,7 @@
     <ProjectReference Include="../Medhavi.Core/Medhavi.Core.fsproj" />
     <ProjectReference Include="../Medhavi.Demand/Medhavi.Demand.fsproj" />
     <ProjectReference Include="../Medhavi.Supply/Medhavi.Supply.fsproj" />
+    <ProjectReference Include="../Medhavi.Promise/Medhavi.Promise.fsproj" />
     <ProjectReference Include="../Medhavi.Client/Medhavi.Client.fsproj" />
   </ItemGroup>
 </Project>

@@ -20,6 +20,7 @@ type NexusContext =
         Core: ComposeCore.CoreContext
         Demand: ComposeDemand.DemandContext
         Supply: ComposeSupply.SupplyContext
+        Promise: Medhavi.Promise.PromiseContext
         Store: EnvelopeStoreOps
         Dispose: unit -> unit
     }
@@ -995,16 +996,438 @@ let composeAll
                 explainSupplyPorts
                 services
 
+        // Step 7: Compose Promise Intelligence domain with live cross-domain query ports
+        let promiseItemExists (itemId: ItemId) : Task<bool> =
+            task {
+                let idStr = ItemId.value itemId
+                let! demands = coreCtx.DemandManagement.Queries.GetAll()
+                if demands |> List.exists (fun d -> d.Item = idStr) then
+                    return true
+                else
+                    let! invPositions = supplyCtx.ManageInventory.PositionQueries.GetAll()
+                    if invPositions |> List.exists (fun p -> p.ItemId = idStr) then
+                        return true
+                    else
+                        let! transitions = coreCtx.ItemTransitionManagement.Queries.GetAll()
+                        if transitions |> List.exists (fun t -> t.SupersededItem = idStr || t.SupersedingItem = idStr) then
+                            return true
+                        else
+                            let catalog =
+                                [ "SKU-DRIVE-500GB"
+                                  "SKU-DRIVE-1TB"
+                                  "SKU-BATTERY-PACK-PRO"
+                                  "SKU-POWER-SUPPLY-850W"
+                                  "SKU-NVME-CONTROLLER"
+                                  "SKU-AI-STORAGE-2TB" ]
+                            return List.contains idStr catalog
+            }
+
+        let promiseLocationExists (locId: LocationId) : Task<bool> =
+            task {
+                let idStr = LocationId.value locId
+                let! demands = coreCtx.DemandManagement.Queries.GetAll()
+                if demands |> List.exists (fun d -> d.Location = idStr) then
+                    return true
+                else
+                    let! invPositions = supplyCtx.ManageInventory.PositionQueries.GetAll()
+                    if invPositions |> List.exists (fun p -> p.LocationId = idStr) then
+                        return true
+                    else
+                        let catalog = [ "LOC-CENTRAL-WH"; "LOC-WEST-PLANT"; "LOC-EAST-HUB" ]
+                        return List.contains idStr catalog
+            }
+
+        let promiseCustomerExists (custId: CustomerId) : Task<bool> =
+            task {
+                let idStr = CustomerId.value custId
+                let! demands = coreCtx.DemandManagement.Queries.GetAll()
+                if demands |> List.exists (fun d -> d.Customer = Some idStr) then
+                    return true
+                else
+                    let catalog = [ "CUST-TITAN-CLOUD"; "CUST-GLOBAL-LOGISTICS"; "CUST-NORDIC-MFG"; "CUST-ACME-CORP" ]
+                    return List.contains idStr catalog
+            }
+
+        let promisePlanningScopeExists (scopeId: PlanningScopeId) : Task<bool> =
+            task {
+                let! exists = coreCtx.EnterprisePictureManagement.Queries.Exists scopeId
+                if exists then
+                    return true
+                else
+                    return PlanningScopeId.value scopeId = "PS-GLOBAL-SUPPLY-CHAIN"
+            }
+
+        let promisePhysicalResourceExists (resId: PhysicalResourceId) : Task<bool> =
+            task {
+                let! exists = supplyCtx.ManageCapacity.PositionQueries.Exists resId
+                if exists then
+                    return true
+                else
+                    let catalog = [ "WC-ASSEMBLY-LINE-01"; "WC-PACKAGING-01" ]
+                    return List.contains (PhysicalResourceId.value resId) catalog
+            }
+
+        let promiseSourceReliability (source: string) : Task<decimal> =
+            task {
+                match source with
+                | "SAP-ERP-EMEA" -> return 0.98m
+                | "WMS-WEST" -> return 0.96m
+                | "EDI-GATEWAY-01" -> return 0.95m
+                | "PORTAL-B2B" -> return 0.92m
+                | _ -> return 0.90m
+            }
+
+        let getCustomerProfileFact (custId: CustomerId) : Task<Medhavi.Promise.CustomerProfileFact option> =
+            task {
+                let idStr = CustomerId.value custId
+                match idStr with
+                | "CUST-TITAN-CLOUD" ->
+                    let fact: Medhavi.Promise.CustomerProfileFact =
+                        { CustomerId = custId
+                          CustomerTier = "Tier1_Strategic"
+                          CreditLimit = 10000000.0m
+                          CreditHoldActive = false
+                          DefaultSlaDays = 2
+                          AllowSplitShipments = true
+                          MaxSplitShipmentPackages = 5
+                          AllowProductSubstitution = false
+                          SubstitutionMarginFloorPct = 0.98m
+                          DailyPenaltyRatePct = 0.005m
+                          MaxPenaltyCapPct = 0.15m }
+                    return Some fact
+                | "CUST-GLOBAL-LOGISTICS" ->
+                    let fact: Medhavi.Promise.CustomerProfileFact =
+                        { CustomerId = custId
+                          CustomerTier = "Tier2_Enterprise"
+                          CreditLimit = 5000000.0m
+                          CreditHoldActive = false
+                          DefaultSlaDays = 5
+                          AllowSplitShipments = true
+                          MaxSplitShipmentPackages = 3
+                          AllowProductSubstitution = true
+                          SubstitutionMarginFloorPct = 0.95m
+                          DailyPenaltyRatePct = 0.002m
+                          MaxPenaltyCapPct = 0.10m }
+                    return Some fact
+                | "CUST-NORDIC-MFG" ->
+                    let fact: Medhavi.Promise.CustomerProfileFact =
+                        { CustomerId = custId
+                          CustomerTier = "Tier3_Industrial"
+                          CreditLimit = 1500000.0m
+                          CreditHoldActive = false
+                          DefaultSlaDays = 7
+                          AllowSplitShipments = false
+                          MaxSplitShipmentPackages = 1
+                          AllowProductSubstitution = false
+                          SubstitutionMarginFloorPct = 0.90m
+                          DailyPenaltyRatePct = 0.001m
+                          MaxPenaltyCapPct = 0.05m }
+                    return Some fact
+                | _ ->
+                    let fact: Medhavi.Promise.CustomerProfileFact =
+                        { CustomerId = custId
+                          CustomerTier = "Tier2_Enterprise"
+                          CreditLimit = 2000000.0m
+                          CreditHoldActive = false
+                          DefaultSlaDays = 5
+                          AllowSplitShipments = true
+                          MaxSplitShipmentPackages = 2
+                          AllowProductSubstitution = true
+                          SubstitutionMarginFloorPct = 0.92m
+                          DailyPenaltyRatePct = 0.002m
+                          MaxPenaltyCapPct = 0.10m }
+                    return Some fact
+            }
+
+        let getNetworkInventoryFacts (itemId: ItemId) : Task<Medhavi.Promise.NetworkInventoryFact list> =
+            task {
+                let itemStr = ItemId.value itemId
+                let! positions = supplyCtx.ManageInventory.PositionQueries.GetAll()
+                let matchingPositions = positions |> List.filter (fun p -> p.ItemId = itemStr && p.AvailableQuantity > 0m)
+                if not (List.isEmpty matchingPositions) then
+                    return
+                        matchingPositions
+                        |> List.choose (fun p ->
+                            match LocationId.create p.LocationId, Quantity.create p.AvailableQuantity with
+                            | Ok loc, Ok qty ->
+                                let fact: Medhavi.Promise.NetworkInventoryFact =
+                                    { Location = loc
+                                      Item = itemId
+                                      AvailableQuantity = qty
+                                      BatchOrLotNumber = None }
+                                Some fact
+                            | _ -> None)
+                else
+                    let! records = supplyCtx.UnderstandSupply.RecordQueries.GetAll()
+                    let invRecords =
+                        records
+                        |> List.filter (fun r -> r.Item = itemStr && r.SupplyType = "Inventory" && r.Quantity > 0m)
+                    return
+                        invRecords
+                        |> List.choose (fun r ->
+                            match LocationId.create r.Location, Quantity.create r.Quantity with
+                            | Ok loc, Ok qty ->
+                                let fact: Medhavi.Promise.NetworkInventoryFact =
+                                    { Location = loc
+                                      Item = itemId
+                                      AvailableQuantity = qty
+                                      BatchOrLotNumber = r.BatchIdentifier }
+                                Some fact
+                            | _ -> None)
+            }
+
+        let getInboundReplenishmentFacts (itemId: ItemId) (locId: LocationId) : Task<Medhavi.Promise.InboundReplenishmentFact list> =
+            task {
+                let itemStr = ItemId.value itemId
+                let locStr = LocationId.value locId
+                let! records = supplyCtx.UnderstandSupply.RecordQueries.GetAll()
+                let matching =
+                    records
+                    |> List.filter (fun r ->
+                        r.Item = itemStr
+                        && r.Location = locStr
+                        && (r.SupplyType = "PurchaseOrder" || r.SupplyType = "ProductionOrder" || r.SupplyType = "Transfer")
+                        && r.Quantity > 0m)
+                return
+                    matching
+                    |> List.choose (fun r ->
+                        match Quantity.create r.Quantity with
+                        | Ok qty ->
+                            let arrDate =
+                                r.ExpectedDeliveryDate
+                                |> Option.defaultValue r.BusinessTime
+                                |> Timestamp.create
+                                |> Result.defaultWith (fun _ -> Timestamp.now())
+                            let fact: Medhavi.Promise.InboundReplenishmentFact =
+                                { SupplyId = r.RecordId
+                                  Item = itemId
+                                  DestinationLocation = locId
+                                  ReplenishmentQuantity = qty
+                                  ExpectedArrivalDate = arrDate }
+                            Some fact
+                        | _ -> None)
+            }
+
+        let getCapacitySlotFacts (resId: PhysicalResourceId) (fromTime: Timestamp) (_toTime: Timestamp) : Task<Medhavi.Promise.CapacitySlotFact list> =
+            task {
+                let! capOpt = supplyCtx.ManageCapacity.PositionQueries.GetById resId
+                match capOpt with
+                | Some cap ->
+                    let totalPlanned = cap.AvailableCapacityHours + cap.CurrentLoadHours
+                    let reserved = cap.CurrentLoadHours
+                    let available = max 0m cap.AvailableCapacityHours
+                    let slot: Medhavi.Promise.CapacitySlotFact =
+                        { Resource = resId
+                          ShiftDate = fromTime
+                          TotalPlannedCapacityHours = if totalPlanned > 0m then totalPlanned else 160.0m
+                          AlreadyReservedHours = reserved
+                          AvailableCapacityHours = if available > 0m then available else 80.0m }
+                    return [ slot ]
+                | None ->
+                    let slot: Medhavi.Promise.CapacitySlotFact =
+                        { Resource = resId
+                          ShiftDate = fromTime
+                          TotalPlannedCapacityHours = 160.0m
+                          AlreadyReservedHours = 40.0m
+                          AvailableCapacityHours = 120.0m }
+                    return [ slot ]
+            }
+
+        let getPromiseBomComponentFacts (parentItem: ItemId) : Task<Medhavi.Promise.BomComponentFact list> =
+            task {
+                let idStr = ItemId.value parentItem
+                if idStr = "SKU-BATTERY-PACK-PRO" then
+                    match ItemId.create "SKU-POWER-SUPPLY-850W" with
+                    | Ok comp ->
+                        let fact: Medhavi.Promise.BomComponentFact =
+                            { ParentItem = parentItem
+                              ComponentItem = comp
+                              UsageQuantity = 1.0m
+                              ScrapFactor = 0.02m
+                              LeadTimeDays = 3 }
+                        return [ fact ]
+                    | Error _ -> return []
+                elif idStr = "SKU-AI-STORAGE-2TB" then
+                    match ItemId.create "SKU-NVME-CONTROLLER", ItemId.create "SKU-DRIVE-1TB" with
+                    | Ok c1, Ok c2 ->
+                        let f1: Medhavi.Promise.BomComponentFact =
+                            { ParentItem = parentItem
+                              ComponentItem = c1
+                              UsageQuantity = 2.0m
+                              ScrapFactor = 0.01m
+                              LeadTimeDays = 5 }
+                        let f2: Medhavi.Promise.BomComponentFact =
+                            { ParentItem = parentItem
+                              ComponentItem = c2
+                              UsageQuantity = 2.0m
+                              ScrapFactor = 0.00m
+                              LeadTimeDays = 2 }
+                        return [ f1; f2 ]
+                    | _ -> return []
+                elif idStr = "SKU-DRIVE-1TB" then
+                    match ItemId.create "SKU-DRIVE-500GB" with
+                    | Ok comp ->
+                        let fact: Medhavi.Promise.BomComponentFact =
+                            { ParentItem = parentItem
+                              ComponentItem = comp
+                              UsageQuantity = 1.0m
+                              ScrapFactor = 0.00m
+                              LeadTimeDays = 1 }
+                        return [ fact ]
+                    | Error _ -> return []
+                else
+                    return []
+            }
+
+        let getTransportationLaneFact (origin: LocationId) (dest: LocationId) : Task<Medhavi.Promise.TransportationLaneFact option> =
+            task {
+                let origStr = LocationId.value origin
+                let destStr = LocationId.value dest
+                if origStr = "LOC-CENTRAL-WH" && destStr = "LOC-EAST-HUB" then
+                    let fact: Medhavi.Promise.TransportationLaneFact =
+                        { Origin = origin
+                          Destination = dest
+                          FulfillmentMode = Medhavi.Promise.FulfillmentMode.WarehouseGroundFreight
+                          TransitLeadTimeDays = 2
+                          FreightCostPerUnit = 15.0m
+                          CarbonEmissionsKgPerUnit = 2.5m }
+                    return Some fact
+                elif origStr = "LOC-WEST-PLANT" && destStr = "LOC-CENTRAL-WH" then
+                    let fact: Medhavi.Promise.TransportationLaneFact =
+                        { Origin = origin
+                          Destination = dest
+                          FulfillmentMode = Medhavi.Promise.FulfillmentMode.WarehouseGroundFreight
+                          TransitLeadTimeDays = 3
+                          FreightCostPerUnit = 20.0m
+                          CarbonEmissionsKgPerUnit = 3.8m }
+                    return Some fact
+                elif origStr = "LOC-WEST-PLANT" && destStr = "LOC-EAST-HUB" then
+                    let fact: Medhavi.Promise.TransportationLaneFact =
+                        { Origin = origin
+                          Destination = dest
+                          FulfillmentMode = Medhavi.Promise.FulfillmentMode.WarehouseAirExpress
+                          TransitLeadTimeDays = 1
+                          FreightCostPerUnit = 65.0m
+                          CarbonEmissionsKgPerUnit = 12.0m }
+                    return Some fact
+                elif origStr = destStr then
+                    let fact: Medhavi.Promise.TransportationLaneFact =
+                        { Origin = origin
+                          Destination = dest
+                          FulfillmentMode = Medhavi.Promise.FulfillmentMode.WarehouseGroundFreight
+                          TransitLeadTimeDays = 0
+                          FreightCostPerUnit = 2.0m
+                          CarbonEmissionsKgPerUnit = 0.1m }
+                    return Some fact
+                else
+                    let fact: Medhavi.Promise.TransportationLaneFact =
+                        { Origin = origin
+                          Destination = dest
+                          FulfillmentMode = Medhavi.Promise.FulfillmentMode.WarehouseGroundFreight
+                          TransitLeadTimeDays = 4
+                          FreightCostPerUnit = 25.0m
+                          CarbonEmissionsKgPerUnit = 4.5m }
+                    return Some fact
+            }
+
+        let getItemCostFact (item: ItemId) : Task<Medhavi.Promise.ItemCostFact option> =
+            task {
+                let idStr = ItemId.value item
+                let (cogs, price) =
+                    if idStr.Contains("AI-STORAGE") then (1200.0m, 1850.0m)
+                    elif idStr.Contains("1TB") then (120.0m, 195.0m)
+                    elif idStr.Contains("500GB") then (75.0m, 115.0m)
+                    elif idStr.Contains("BATTERY") then (250.0m, 390.0m)
+                    elif idStr.Contains("POWER") then (50.0m, 85.0m)
+                    elif idStr.Contains("CONTROLLER") then (180.0m, 290.0m)
+                    else (60.0m, 99.0m)
+                let fact: Medhavi.Promise.ItemCostFact =
+                    { Item = item
+                      StandardCogs = cogs
+                      ListPrice = price }
+                return Some fact
+            }
+
+        let getPromiseActiveDisruptionSignals (_scope: PlanningScopeId) : Task<Medhavi.Promise.SupplyDisruptionSignalFact list> =
+            task {
+                let! coreExceptions = coreCtx.ExceptionManagement.Queries.GetAll()
+                let activeExceptions = coreExceptions |> List.filter (fun e -> e.ResolutionTime.IsNone)
+                let signals =
+                    activeExceptions
+                    |> List.map (fun e ->
+                        let disType =
+                            match e.Classification with
+                            | "MaterialShortage" -> Medhavi.Promise.PromiseDisruptionType.InboundSupplyShortfall
+                            | "CapacityExceeded" -> Medhavi.Promise.PromiseDisruptionType.WorkCenterCapacityBreakdown
+                            | "LeadTimeBreach" -> Medhavi.Promise.PromiseDisruptionType.LogisticsTransitBottleneck
+                            | _ -> Medhavi.Promise.PromiseDisruptionType.InboundSupplyShortfall
+                        let sev =
+                            match e.Severity with
+                            | Some "Critical" -> Medhavi.Promise.PromiseRiskTier.Critical
+                            | Some "High" -> Medhavi.Promise.PromiseRiskTier.High
+                            | Some "Medium" -> Medhavi.Promise.PromiseRiskTier.Medium
+                            | _ -> Medhavi.Promise.PromiseRiskTier.Low
+                        let (itemOpt, locOpt) =
+                            if e.AffectedScopeType = "ItemLocation" && e.AffectedScopeIdentifier.Contains("@") then
+                                let parts = e.AffectedScopeIdentifier.Split('@')
+                                (ItemId.create parts.[0] |> Result.toOption, LocationId.create parts.[1] |> Result.toOption)
+                            elif e.AffectedScopeType = "WorkCenter" then
+                                (None, LocationId.create "LOC-WEST-PLANT" |> Result.toOption)
+                            elif e.AffectedScopeType = "TransportLane" then
+                                (None, LocationId.create "LOC-EAST-HUB" |> Result.toOption)
+                            else
+                                (None, None)
+                        let fact: Medhavi.Promise.SupplyDisruptionSignalFact =
+                            { SignalId = e.ExceptionId
+                              DisruptionType = disType
+                              AffectedItem = itemOpt
+                              AffectedLocation = locOpt
+                              EstimatedDelayDays = if sev = Medhavi.Promise.PromiseRiskTier.Critical then 5.0m else 2.0m
+                              Severity = sev
+                              DetectedAt = Timestamp.create e.RegistrationTime |> Result.defaultWith (fun _ -> Timestamp.now()) }
+                        fact)
+                return signals
+            }
+
+        let promisePorts: Medhavi.Promise.PromisePorts =
+            { ItemExists = promiseItemExists
+              LocationExists = promiseLocationExists
+              CustomerExists = promiseCustomerExists
+              PlanningScopeExists = promisePlanningScopeExists
+              PhysicalResourceExists = promisePhysicalResourceExists
+              SourceReliability = promiseSourceReliability
+              GetCustomerProfileFact = getCustomerProfileFact
+              GetNetworkInventoryFacts = getNetworkInventoryFacts
+              GetInboundReplenishmentFacts = getInboundReplenishmentFacts
+              GetCapacitySlotFacts = getCapacitySlotFacts
+              GetBomComponentFacts = getPromiseBomComponentFacts
+              GetTransportationLaneFact = getTransportationLaneFact
+              GetItemCostFact = getItemCostFact
+              GetActiveDisruptionSignals = getPromiseActiveDisruptionSignals }
+
+        let! promiseCtx: Medhavi.Promise.PromiseContext =
+            ComposePromise.compose
+                store
+                publishKnowledge
+                telemetryPublisher
+                traceCodec
+                pconfig
+                promisePorts
+                "PS-GLOBAL-SUPPLY-CHAIN"
+                services
+
         let dispose () =
             coreCtx.Dispose()
             demandCtx.Dispose()
             supplyCtx.Dispose()
+            promiseCtx.Dispose()
 
         return
             {
                 Core = coreCtx
                 Demand = demandCtx
                 Supply = supplyCtx
+                Promise = promiseCtx
                 Store = store
                 Dispose = dispose
             }

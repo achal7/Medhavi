@@ -1,0 +1,166 @@
+{
+  "CustomerProfiles": [
+    {
+      "CustomerId": "CUST-TITAN-CLOUD",
+      "CustomerTier": "Tier1_Strategic",
+      "CreditLimit": 10000000.0,
+      "CreditHoldActive": false,
+      "DefaultSlaDays": 2,
+      "AllowSplitShipments": true,
+      "MaxSplitShipmentPackages": 5,
+      "AllowProductSubstitution": false,
+      "SubstitutionMarginFloorPct": 0.98,
+      "DailyPenaltyRatePct": 0.005,
+      "MaxPenaltyCapPct": 0.15,
+      "EffectiveFrom": "2026-11-01T00:00:00Z"
+    },
+    {
+      "CustomerId": "CUST-GLOBAL-LOGISTICS",
+      "CustomerTier": "Tier2_Enterprise",
+      "CreditLimit": 5000000.0,
+      "CreditHoldActive": false,
+      "DefaultSlaDays": 5,
+      "AllowSplitShipments": true,
+      "MaxSplitShipmentPackages": 3,
+      "AllowProductSubstitution": true,
+      "SubstitutionMarginFloorPct": 0.95,
+      "DailyPenaltyRatePct": 0.002,
+      "MaxPenaltyCapPct": 0.10,
+      "EffectiveFrom": "2026-11-01T00:00:00Z"
+    },
+    {
+      "CustomerId": "CUST-NORDIC-MFG",
+      "CustomerTier": "Tier3_Industrial",
+      "CreditLimit": 1500000.0,
+      "CreditHoldActive": false,
+      "DefaultSlaDays": 7,
+      "AllowSplitShipments": false,
+      "MaxSplitShipmentPackages": 1,
+      "AllowProductSubstitution": false,
+      "SubstitutionMarginFloorPct": 0.90,
+      "DailyPenaltyRatePct": 0.001,
+      "MaxPenaltyCapPct": 0.05,
+      "EffectiveFrom": "2026-11-01T00:00:00Z"
+    }
+  ],
+  "AllocationPools": [
+    {
+      "PoolId": "POOL-DRV-1TB-CENTRAL",
+      "PlanningScopeId": "PS-GLOBAL-SUPPLY-CHAIN",
+      "Item": "SKU-DRIVE-1TB",
+      "Location": "LOC-CENTRAL-WH",
+      "PlanningPeriod": "2026-W45",
+      "TotalPlannedSupply": 600.0,
+      "Buckets": [
+        {
+          "BucketId": "BUCKET-STRATEGIC-CLOUD",
+          "ChannelOrTier": "Tier1_Strategic",
+          "AllocatedQuantity": 350.0,
+          "HardRingFence": true
+        },
+        {
+          "BucketId": "BUCKET-ENTERPRISE-REGIONAL",
+          "ChannelOrTier": "Tier2_Enterprise",
+          "AllocatedQuantity": 150.0,
+          "HardRingFence": false
+        },
+        {
+          "BucketId": "BUCKET-GENERAL-MARKET",
+          "ChannelOrTier": "Tier3_Industrial",
+          "AllocatedQuantity": 100.0,
+          "HardRingFence": false
+        }
+      ]
+    },
+    {
+      "PoolId": "POOL-BATTERY-WEST",
+      "PlanningScopeId": "PS-GLOBAL-SUPPLY-CHAIN",
+      "Item": "SKU-BATTERY-PACK-PRO",
+      "Location": "LOC-WEST-PLANT",
+      "PlanningPeriod": "2026-W45",
+      "TotalPlannedSupply": 450.0,
+      "Buckets": [
+        {
+          "BucketId": "BUCKET-ENTERPRISE-ENERGY",
+          "ChannelOrTier": "Tier2_Enterprise",
+          "AllocatedQuantity": 300.0,
+          "HardRingFence": true
+        },
+        {
+          "BucketId": "BUCKET-OPEN-QUOTA",
+          "ChannelOrTier": "GeneralMarket",
+          "AllocatedQuantity": 150.0,
+          "HardRingFence": false
+        }
+      ]
+    }
+  ],
+  "OrderBookSnapshots": [
+    {
+      "SnapshotId": "SNAP-ORD-2026-001",
+      "PlanningScopeId": "PS-GLOBAL-SUPPLY-CHAIN",
+      "CustomerOrderIdentifier": "ORD-TITAN-7001",
+      "CustomerId": "CUST-TITAN-CLOUD",
+      "OrderChannel": "DirectB2B",
+      "OrderPriorityClass": "Critical",
+      "ObservationTimestamp": "2026-11-02T08:00:00Z",
+      "Lines": [
+        {
+          "OrderLineId": "LINE-TITAN-7001-01",
+          "Item": "SKU-DRIVE-1TB",
+          "RequestedQuantity": 200.0,
+          "UnitOfMeasure": "EA",
+          "RequestedDeliveryDate": "2026-11-06T00:00:00Z",
+          "EarliestAcceptableDate": "2026-11-04T00:00:00Z",
+          "LatestAcceptableDate": "2026-11-08T00:00:00Z",
+          "DestinationLocation": "LOC-EAST-HUB",
+          "ExternalLineReference": "CUST-PO-9912"
+        }
+      ]
+    },
+    {
+      "SnapshotId": "SNAP-ORD-2026-002",
+      "PlanningScopeId": "PS-GLOBAL-SUPPLY-CHAIN",
+      "CustomerOrderIdentifier": "ORD-GLOBAL-8002",
+      "CustomerId": "CUST-GLOBAL-LOGISTICS",
+      "OrderChannel": "EDI",
+      "OrderPriorityClass": "High",
+      "ObservationTimestamp": "2026-11-02T08:30:00Z",
+      "Lines": [
+        {
+          "OrderLineId": "LINE-GLOBAL-8002-01",
+          "Item": "SKU-BATTERY-PACK-PRO",
+          "RequestedQuantity": 350.0,
+          "UnitOfMeasure": "EA",
+          "RequestedDeliveryDate": "2026-11-12T00:00:00Z",
+          "EarliestAcceptableDate": "2026-11-10T00:00:00Z",
+          "LatestAcceptableDate": "2026-11-15T00:00:00Z",
+          "DestinationLocation": "LOC-CENTRAL-WH",
+          "ExternalLineReference": "CUST-PO-8841"
+        }
+      ]
+    },
+    {
+      "SnapshotId": "SNAP-ORD-2026-003",
+      "PlanningScopeId": "PS-GLOBAL-SUPPLY-CHAIN",
+      "CustomerOrderIdentifier": "ORD-NORDIC-9003",
+      "CustomerId": "CUST-NORDIC-MFG",
+      "OrderChannel": "WebPortal",
+      "OrderPriorityClass": "Standard",
+      "ObservationTimestamp": "2026-11-02T09:00:00Z",
+      "Lines": [
+        {
+          "OrderLineId": "LINE-NORDIC-9003-01",
+          "Item": "SKU-POWER-SUPPLY-850W",
+          "RequestedQuantity": 100.0,
+          "UnitOfMeasure": "EA",
+          "RequestedDeliveryDate": "2026-11-18T00:00:00Z",
+          "EarliestAcceptableDate": "2026-11-16T00:00:00Z",
+          "LatestAcceptableDate": "2026-11-20T00:00:00Z",
+          "DestinationLocation": "LOC-EAST-HUB",
+          "ExternalLineReference": "CUST-PO-7733"
+        }
+      ]
+    }
+  ]
+}
