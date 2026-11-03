@@ -15,6 +15,7 @@ open Medhavi.Client.Supply.Inventory
 open Medhavi.Client.Supply.Capacity
 open Medhavi.Client.Supply.SupplyOrders
 open Medhavi.Client.Supply.ChangeSensing
+open Medhavi.Contracts.Client
 
 
     // ==================================================================
@@ -158,7 +159,7 @@ open Medhavi.Client.Supply.ChangeSensing
               DataStates = Map.empty
               Selections = Map.empty }
 
-        let ctx = ComponentResolver.buildContext id testVC testDefinition testSchema renderState Map.empty culture
+        let ctx = ComponentResolver.buildContext id testVC testDefinition testSchema renderState Map.empty culture Density.Compact
         ctx.DataState = Idle && ctx.Selection = None
 
     // ==================================================================

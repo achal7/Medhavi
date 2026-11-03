@@ -9,6 +9,7 @@ open Medhavi.Client.ViewComposition.Context
 open Medhavi.Client.ViewComposition.Identity
 open Medhavi.Client.ViewComposition.Schema
 open Medhavi.Client.ViewComposition.Session
+open Medhavi.Contracts.Client
 
 type ComponentEvent =
     | SelectionChanged of rowKey: string option
@@ -28,7 +29,8 @@ type ComponentRenderContext =
       DataState: DataState
       Data: DataPayload
       Selection: string option
-      Culture: CultureInfo }
+      Culture: CultureInfo
+      Density: Density }
 
 type CellRenderer = UniversalRow -> CellValue -> Node
 

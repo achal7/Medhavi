@@ -151,6 +151,9 @@ type DynamicRadzenGrid() =
     member val FormatProvider: IFormatProvider = CultureInfo.CurrentCulture with get, set
 
     [<Parameter>]
+    member val Density: Radzen.Density = Radzen.Density.Compact with get, set
+
+    [<Parameter>]
     member val OnRowSelected: Action<Value> = null with get, set
 
     [<Parameter>]
@@ -219,12 +222,10 @@ type DynamicRadzenGrid() =
                         else
                             text String.Empty
 
+                let minHeightStyle = if this.Density = Radzen.Density.Compact then "min-height: 18px;" else "min-height: 24px;"
+
                 div {
-                    attr.style "width: 100%; height: 100%; min-height: 24px; display: flex; align-items: center;"
-
-
-
-
+                    attr.style ("width: 100%; height: 100%; " + minHeightStyle + " display: flex; align-items: center;")
                     contentNode
                 }
 
@@ -252,7 +253,7 @@ type DynamicRadzenGrid() =
                 "Value" => this.SelectedValues
                 "SelectionMode" => this.SelectionMode
                 "FilterCaseSensitivity" => FilterCaseSensitivity.CaseInsensitive
-                "Density" => Density.Compact
+                "Density" => this.Density
                 "Responsive" => true
                 "Style" => "width: 100%; height: 100%; min-height: 0;"
 

@@ -85,6 +85,11 @@ let render (ctx: ComponentRenderContext) (dispatch: ComponentEvent -> unit) : No
     let activeSortDirection =
         sortOpt |> Option.map(fun s -> if s.Direction = Descending then "Descending" else "Ascending")
 
+    let radzenDensity =
+        match ctx.Density with
+        | Medhavi.Contracts.Client.Density.Comfortable -> Radzen.Density.Default
+        | Medhavi.Contracts.Client.Density.Compact -> Radzen.Density.Compact
+
     div {
         attr.style
             "width: 100%; height: 100%; display: flex; flex-direction: column; min-height: 0; gap: 8px; padding: 8px; box-sizing: border-box;"
@@ -150,6 +155,7 @@ let render (ctx: ComponentRenderContext) (dispatch: ComponentEvent -> unit) : No
             attr.style "flex: 1; min-height: 0; width: 100%; height: 100%; overflow: hidden;"
 
             comp<DynamicRadzenGrid> {
+                "Density" => radzenDensity
                 "Rows" => (dynamicRows :> IReadOnlyList<Value>)
                 "Columns" => (dynamicColumns :> IReadOnlyList<Definition>)
                 let isLargeDataset = dynamicRows.Length > 100

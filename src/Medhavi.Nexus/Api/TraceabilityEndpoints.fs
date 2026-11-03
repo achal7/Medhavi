@@ -27,8 +27,8 @@ let mapTraceabilityEndpoints (app: IEndpointRouteBuilder) : IEndpointRouteBuilde
 
                     let limit =
                         match Int32.TryParse(ctx.Request.Query["limit"].ToString()) with
-                        | true, l when l > 0 -> min 500 l
-                        | _ -> 100
+                        | true, l when l > 0 -> min 10000 l
+                        | _ -> 5000
 
                     let skip =
                         match Int32.TryParse(ctx.Request.Query["skip"].ToString()) with
@@ -82,6 +82,29 @@ let mapTraceabilityEndpoints (app: IEndpointRouteBuilder) : IEndpointRouteBuilde
                             Results.NotFound
                                 {|
                                     message = $"No trace dossier found for CorrelationId: {correlationId}"
+                                |}
+            })
+    )
+    |> ignore
+
+    app.MapGet(
+        "/api/traceability/dossier/{correlationId}/high-fidelity",
+        Func<string, HttpContext, System.Threading.Tasks.Task<IResult>>(fun correlationId ctx ->
+            task {
+                let queryService = ctx.RequestServices.GetService<TraceabilityQueryService>()
+
+                if isNull(box queryService) then
+                    return Results.StatusCode(503)
+                else
+                    let! dossierOpt = queryService.GetHighFidelityTraceDossier correlationId
+
+                    match dossierOpt with
+                    | Some dossier -> return Results.Ok dossier
+                    | None ->
+                        return
+                            Results.NotFound
+                                {|
+                                    message = $"No high-fidelity trace dossier found for CorrelationId: {correlationId}"
                                 |}
             })
     )

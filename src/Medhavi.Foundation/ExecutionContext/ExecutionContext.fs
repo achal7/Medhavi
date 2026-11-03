@@ -58,13 +58,22 @@ module ExecutionContext =
     let withCausalDecisionIds (ids: string list) (ctx: ExecutionContext) = { ctx with CausalDecisionIds = ids }
 
     let asCausation (ctx: ExecutionContext) =
-        { CorrelationId = CorrelationId.create()
+        { CorrelationId = ctx.CorrelationId
           CausationId = Some ctx.CorrelationId
           Principal = ctx.Principal
           Timestamp = DateTimeOffset.UtcNow
           TenantId = ctx.TenantId
           MessageId = ctx.MessageId
           CausalDecisionIds = ctx.CausalDecisionIds }
+
+    let fromCorrelationAndCausation (corrId: CorrelationId) (causationId: CorrelationId option) =
+        { CorrelationId = corrId
+          CausationId = causationId
+          Principal = None
+          Timestamp = DateTimeOffset.UtcNow
+          TenantId = None
+          MessageId = None
+          CausalDecisionIds = [] }
 
     let toMetadataMap (ctx: ExecutionContext) =
         let m =

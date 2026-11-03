@@ -124,7 +124,16 @@ type private ObservationState =
       AggregateIndex: Map<string, TelemetryEvent list>
       DecisionIndex: Map<string, DecisionTrace> }
 
+module private ObservationHelpers =
+    let extractDecisionTrace (propVal: obj) : DecisionTrace option =
+        match propVal with
+        | null -> None
+        | :? DecisionTrace as dt -> Some dt
+        | :? (DecisionTrace option) as dtOpt -> dtOpt
+        | _ -> None
+
 module private ObservationState =
+    open ObservationHelpers
     let empty capacity : ObservationState =
         { Capacity = capacity
           Count = 0
@@ -161,9 +170,11 @@ module private ObservationState =
 
         let nextDecIndex =
             match evt.Properties.TryFind "DecisionTrace" with
-            | Some (:? DecisionTrace as dt) ->
-                state.DecisionIndex.Add(dt.DecisionId, dt)
-            | _ -> state.DecisionIndex
+            | Some dtObj ->
+                match extractDecisionTrace dtObj with
+                | Some dt -> state.DecisionIndex.Add(dt.DecisionId, dt)
+                | None -> state.DecisionIndex
+            | None -> state.DecisionIndex
 
         { Capacity = state.Capacity
           Count = if nextCount > state.Capacity + 500 then state.Capacity else nextCount
@@ -288,9 +299,8 @@ module private ObservationState =
             let decisions =
                 sortedEvents
                 |> List.choose (fun e ->
-                    match e.Properties.TryFind "DecisionTrace" with
-                    | Some (:? DecisionTrace as dt) -> Some dt
-                    | _ -> None)
+                    e.Properties.TryFind "DecisionTrace"
+                    |> Option.bind extractDecisionTrace)
 
             let stageTimings =
                 sortedEvents
@@ -329,17 +339,21 @@ module private ObservationState =
         | _ -> None
 
     let getRecentTransitions (state: ObservationState) : DomainTransition list =
-        state.Events
-        |> List.rev
-        |> List.choose (fun e ->
-            e.Properties.TryFind "BoundedContext"
-            |> Option.map (fun bc -> (string bc, e.Timestamp)))
-        |> Seq.pairwise
-        |> Seq.choose (fun ((c1, t1), (c2, t2)) ->
-            if c1 <> c2 then
-                let lat = (t2 - t1).TotalMilliseconds
-                Some ((c1, c2), (1, lat))
-            else None)
+        state.CorrelationIndex
+        |> Map.toList
+        |> List.collect (fun (_, events) ->
+            events
+            |> List.sortBy (fun e -> e.Timestamp)
+            |> List.choose (fun e ->
+                e.Properties.TryFind "BoundedContext"
+                |> Option.map (fun bc -> (string bc, e.Timestamp)))
+            |> Seq.pairwise
+            |> Seq.choose (fun ((c1, t1), (c2, t2)) ->
+                if c1 <> c2 then
+                    let lat = (t2 - t1).TotalMilliseconds
+                    Some ((c1, c2), (1, lat))
+                else None)
+            |> Seq.toList)
         |> Seq.groupBy fst
         |> Seq.map (fun (key, group) ->
             let (src, tgt) = key

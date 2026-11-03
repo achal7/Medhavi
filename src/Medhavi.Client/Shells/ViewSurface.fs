@@ -75,6 +75,7 @@ module ComponentResolver =
         (renderState: ViewRenderState)
         (dataStores: Map<DataStoreId, Medhavi.Client.ViewComposition.Data.DataPayload>)
         (culture: CultureInfo)
+        (density: Medhavi.Contracts.Client.Density)
         : ComponentRenderContext =
         let data =
             dataStores
@@ -90,6 +91,7 @@ module ComponentResolver =
             DataState = renderState.DataStates |> Map.tryFind id |> Option.defaultValue DataState.Idle
             Selection = renderState.Selections |> Map.tryFind id |> Option.defaultValue None
             Culture = culture
+            Density = density
         }
 
 // ============================================================================
@@ -346,6 +348,7 @@ module ViewSurface =
         (dataStores: Map<DataStoreId, Medhavi.Client.ViewComposition.Data.DataPayload>)
         (renderState: ViewRenderState)
         (culture: CultureInfo)
+        (density: Medhavi.Contracts.Client.Density)
         (dispatch: ViewSurfaceMsg -> unit)
         (id: ViewComponentId)
         : Node =
@@ -374,7 +377,7 @@ module ViewSurface =
                 }
             | Ok(registration, schema) ->
                 let ctx =
-                    ComponentResolver.buildContext id vc registration.Definition schema renderState dataStores culture
+                    ComponentResolver.buildContext id vc registration.Definition schema renderState dataStores culture density
 
                 let sink evt = dispatch(ComponentEvent(id, evt))
                 registration.Runtime.Render ctx sink
@@ -386,11 +389,12 @@ module ViewSurface =
         (dataStores: Map<DataStoreId, Medhavi.Client.ViewComposition.Data.DataPayload>)
         (renderState: ViewRenderState)
         (culture: CultureInfo)
+        (density: Medhavi.Contracts.Client.Density)
         (hints: DashboardRenderHints)
         (isEditMode: bool)
         (dispatch: ViewSurfaceMsg -> unit)
         (onAdapterError: LayoutAdapterError -> unit)
         : Node =
-        let leaf = renderLeaf components schemas dataStores renderState culture dispatch
+        let leaf = renderLeaf components schemas dataStores renderState culture density dispatch
         let header = resolveHeader components schemas renderState
         LayoutInterpreter.renderWithHeader hints isEditMode leaf header dispatch onAdapterError renderState.State.Layout

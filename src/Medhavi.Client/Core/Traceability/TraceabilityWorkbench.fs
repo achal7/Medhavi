@@ -301,7 +301,7 @@ let componentDefinition: ComponentDefinition =
       SelectionMode = SingleSelection }
 
 let runtime: ComponentRuntime =
-    { Render = UniversalEnterpriseGrid.render }
+    { Render = TraceabilityStudio.render }
 
 let registration: ComponentRegistration =
     { Definition = componentDefinition

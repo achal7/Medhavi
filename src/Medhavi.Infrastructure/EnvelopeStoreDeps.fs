@@ -6,6 +6,7 @@ open System.Threading.Tasks
 open Medhavi.Common
 open Medhavi.Foundation.Contracts
 open Medhavi.Foundation.Execution.AggregateStages
+open Medhavi.Foundation.ExecutionContext
 open Medhavi.Infrastructure.Stores.EnvelopeStore
 
 let create<'Event>
@@ -24,7 +25,6 @@ let create<'Event>
             | Ok _ -> return ()
             | Error err ->
                 // Log error but don't fail - dispatch is fire-and-forget
-                // TODO: Add logging
                 printfn $"Failed to dispatch envelope {envelope.EventId}: {err}"
         }
 
@@ -57,7 +57,19 @@ let create<'Event>
                         | _ -> true
 
                     if shouldProcess then
-                        do! handler envelopedEvent.Envelope
+                        let env = envelopedEvent.Envelope
+                        let corrId =
+                            env.CorrelationId
+                            |> Option.defaultValue (CorrelationId.create())
+                        let causeId =
+                            match env.EventId with
+                            | EventId g -> CorrelationId.fromString (g.ToString())
+                        let ctx = ExecutionContext.fromCorrelationAndCausation corrId causeId
+                        ExecutionContextHolder.Set(ctx)
+                        try
+                            do! handler env
+                        finally
+                            ExecutionContextHolder.Clear()
                 }
 
             let! result = store.Subscribe mode None wrappedHandler cancellationToken
@@ -67,7 +79,7 @@ let create<'Event>
                 return
                     { new IDisposable with
                         member _.Dispose() = handle.Unsubscribe() |> Async.AwaitTask |> Async.RunSynchronously }
-            | Error err ->
+            | Error _ ->
                 // Return no-op disposable on error
                 return
                     { new IDisposable with

@@ -1327,6 +1327,7 @@ let view (ctx: ApplicationContext) (model: Model) (dispatch: Msg -> unit) : Node
             Schemas = ctx.SchemaRegistry
             Culture = Formatting.toCultureInfo model.Cultural
             DashboardHints = { RowHeight = 90; Gap = 8 }
+            Density = model.Appearance.Density
             ContextMenu = ctx.Resolve<Radzen.ContextMenuService>()
         }
         : ViewSpace.ViewSpaceDependencies

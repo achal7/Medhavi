@@ -3,6 +3,7 @@ namespace Medhavi.Client.Rendering
 open System.Globalization
 open Bolero
 open Medhavi.Client.SemanticModel
+open Medhavi.Contracts.Client
 
 // ============================================================================
 // R1.2 — Presentation runtime capability contract.
@@ -22,7 +23,8 @@ type ComponentRenderContext =
       SharedContext: SharedContext option
       DataState: DataState
       Selection: string option
-      Culture: CultureInfo }
+      Culture: CultureInfo
+      Density: Density }
 
 /// PURITY CONTRACT: Render performs no immediate application effects. It
 /// constructs a presentation description embedding the explicitly supplied

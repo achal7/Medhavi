@@ -13,6 +13,7 @@ open Medhavi.Contracts.Core.ItemTransition
 open Medhavi.Contracts.Demand
 open Medhavi.Contracts.Supply
 open Medhavi.Contracts.Promise
+open Medhavi.Foundation.ExecutionContext
 open Medhavi.Nexus.Composition.ComposeNexus
 
 type EnterprisePictureSeed =
@@ -253,6 +254,251 @@ let private seedPromiseData
                 printfn $"  [FAIL] Order book ingestion error for {req.SnapshotId}: {err.Message}"
     }
 
+let private seedExemplarCausalChains (nexusCtx: NexusContext) : Task<unit> =
+    task {
+        printfn "[StartupData] Seeding Multi-Domain End-to-End Exemplar Causal Chains..."
+
+        // CHAIN 1: Strategic Customer Order Fulfillment (Demand -> Core -> Supply -> Promise)
+        let chain1Guid = Guid.Parse("00000001-aaaa-bbbb-cccc-000000000001")
+        let corr1 =
+            match CorrelationId.fromString (chain1Guid.ToString()) with
+            | Some c -> c
+            | None -> CorrelationId.create()
+
+        let ctx1 = ExecutionContext.fromCorrelationAndCausation corr1 None
+        ExecutionContextHolder.Set(ctx1)
+
+        try
+            // Step 1: Demand Observation Ingested (Demand Domain)
+            let demObsReq: ReceiveObservationReq =
+                { ObservationId = "DEM-ORD-8001"
+                  Item = "SKU-DRIVE-1TB"
+                  Location = "LOC-CENTRAL-WH"
+                  Quantity = 500.0m
+                  UnitOfMeasure = "EA"
+                  ObservationType = "CustomerOrder"
+                  BusinessTime = DateTimeOffset.UtcNow
+                  ObservationTime = DateTimeOffset.UtcNow
+                  SourceSystemProvenance = "ERP-SEED" }
+            let! _ = nexusCtx.Demand.UnderstandDemand.Commands.Observations.Receive demObsReq
+
+            // Step 2: Enterprise Demand Fact Recorded (Core Domain)
+            let ctx1_2 = ExecutionContext.asCausation ctx1
+            ExecutionContextHolder.Set(ctx1_2)
+
+            let coreDemReq: RecordDemandReq =
+                { DemandId = "DEM-AUTH-8001"
+                  Item = "SKU-DRIVE-1TB"
+                  Location = "LOC-CENTRAL-WH"
+                  Customer = Some "CUST-STRATEGIC-01"
+                  Quantity = 500.0m
+                  NeedWindowLatest = DateTimeOffset.UtcNow.AddDays(14.0)
+                  NeedWindowEarliest = Some DateTimeOffset.UtcNow
+                  NeedWindowPreferred = Some (DateTimeOffset.UtcNow.AddDays(10.0))
+                  DemandOrigin = "CustomerOrder"
+                  ParentDemand = Some "DEM-ORD-8001" }
+            let! _ = nexusCtx.Core.DemandManagement.Commands.Record coreDemReq
+
+            // Step 3: Supply Inventory Position Evaluated (Supply Domain)
+            let ctx1_3 = ExecutionContext.asCausation ctx1_2
+            ExecutionContextHolder.Set(ctx1_3)
+
+            let invReq: UpdateInventoryPositionReq =
+                { ItemId = "SKU-DRIVE-1TB"
+                  LocationId = "LOC-CENTRAL-WH"
+                  TriggeringEvidence = [ "DEM-AUTH-8001"; "BUFFER_ALLOCATED" ] }
+            let! _ = nexusCtx.Supply.ManageInventory.Commands.Position.Update invReq
+
+            // Step 4: Customer Order Book Ingested & Validated (Promise Domain)
+            let ctx1_4 = ExecutionContext.asCausation ctx1_3
+            ExecutionContextHolder.Set(ctx1_4)
+
+            let snapReq: IngestOrderRequest =
+                { SnapshotId = "SNAP-CHAIN-8001"
+                  PlanningScopeId = "SCOPE-GLOBAL"
+                  CustomerOrderIdentifier = "ORD-GLOBAL-8001"
+                  CustomerId = "CUST-STRATEGIC-01"
+                  OrderChannel = "DirectEnterprise"
+                  OrderPriorityClass = "Tier-1 Strategic"
+                  ObservationTimestamp = DateTimeOffset.UtcNow
+                  Lines =
+                    [ { OrderLineId = "ORD-LINE-8001"
+                        Item = "SKU-DRIVE-1TB"
+                        RequestedQuantity = 500.0m
+                        UnitOfMeasure = "EA"
+                        RequestedDeliveryDate = DateTimeOffset.UtcNow.AddDays(14.0)
+                        EarliestAcceptableDate = Some DateTimeOffset.UtcNow
+                        LatestAcceptableDate = Some (DateTimeOffset.UtcNow.AddDays(20.0))
+                        DestinationLocation = "LOC-CENTRAL-WH"
+                        ExternalLineReference = "PO-LINE-8001" } ] }
+            let! snapRes = nexusCtx.Promise.UnderstandOrders.Commands.OrderBook.Ingest snapReq
+            match snapRes with
+            | Ok _ ->
+                let valReq: ValidateOrderLineReq =
+                    { SnapshotId = "SNAP-CHAIN-8001"
+                      OrderLineId = "ORD-LINE-8001"
+                      EvaluationTime = DateTimeOffset.UtcNow }
+                let! _ = nexusCtx.Promise.UnderstandOrders.Commands.OrderBook.Validate valReq
+                printfn "  [OK] Causal Chain E2E-CHAIN-SOP-001 seeded across Demand -> Core -> Supply -> Promise."
+            | Error err ->
+                printfn $"  [FAIL] Order book ingestion error in E2E-CHAIN-SOP-001: {err.Message}"
+        finally
+            ExecutionContextHolder.Clear()
+
+        // CHAIN 2: Regional DC Replenishment (Demand -> Core -> Supply -> Promise)
+        let chain2Guid = Guid.Parse("00000002-aaaa-bbbb-cccc-000000000002")
+        let corr2 =
+            match CorrelationId.fromString (chain2Guid.ToString()) with
+            | Some c -> c
+            | None -> CorrelationId.create()
+
+        let ctx2 = ExecutionContext.fromCorrelationAndCausation corr2 None
+        ExecutionContextHolder.Set(ctx2)
+
+        try
+            // Step 1: Regional Demand Replenishment Signal (Demand Domain)
+            let demRplReq: ReceiveObservationReq =
+                { ObservationId = "DEM-RPL-9002"
+                  Item = "SKU-BATTERY-PACK-PRO"
+                  Location = "LOC-WEST-PLANT"
+                  Quantity = 250.0m
+                  UnitOfMeasure = "EA"
+                  ObservationType = "ReplenishmentOrder"
+                  BusinessTime = DateTimeOffset.UtcNow
+                  ObservationTime = DateTimeOffset.UtcNow
+                  SourceSystemProvenance = "HUB-SEED" }
+            let! _ = nexusCtx.Demand.UnderstandDemand.Commands.Observations.Receive demRplReq
+
+            // Step 2: Authoritative Enterprise Demand Recorded (Core Domain)
+            let ctx2_2 = ExecutionContext.asCausation ctx2
+            ExecutionContextHolder.Set(ctx2_2)
+
+            let coreRplReq: RecordDemandReq =
+                { DemandId = "DEM-AUTH-9002"
+                  Item = "SKU-BATTERY-PACK-PRO"
+                  Location = "LOC-WEST-PLANT"
+                  Customer = Some "CUST-MUNICH-HUB"
+                  Quantity = 250.0m
+                  NeedWindowLatest = DateTimeOffset.UtcNow.AddDays(7.0)
+                  NeedWindowEarliest = Some DateTimeOffset.UtcNow
+                  NeedWindowPreferred = Some (DateTimeOffset.UtcNow.AddDays(5.0))
+                  DemandOrigin = "ReplenishmentOrder"
+                  ParentDemand = Some "DEM-RPL-9002" }
+            let! _ = nexusCtx.Core.DemandManagement.Commands.Record coreRplReq
+
+            // Step 3: Production Capacity Evaluated (Supply Domain)
+            let ctx2_3 = ExecutionContext.asCausation ctx2_2
+            ExecutionContextHolder.Set(ctx2_3)
+
+            let capReq: UpdateCapacityPositionReq =
+                { PhysicalResourceId = "WC-ASSEMBLY-LINE-01"
+                  TriggeringEvidence = [ "DEM-AUTH-9002"; "EXPEDITE_SHIFT_1" ] }
+            let! _ = nexusCtx.Supply.ManageCapacity.Commands.Position.Update capReq
+
+            // Step 4: Order Commitment Validated (Promise Domain)
+            let ctx2_4 = ExecutionContext.asCausation ctx2_3
+            ExecutionContextHolder.Set(ctx2_4)
+
+            let snapRplReq: IngestOrderRequest =
+                { SnapshotId = "SNAP-CHAIN-9002"
+                  PlanningScopeId = "SCOPE-MUNICH"
+                  CustomerOrderIdentifier = "ORD-REPLENISH-9002"
+                  CustomerId = "CUST-MUNICH-HUB"
+                  OrderChannel = "HubReplenish"
+                  OrderPriorityClass = "Expedited"
+                  ObservationTimestamp = DateTimeOffset.UtcNow
+                  Lines =
+                    [ { OrderLineId = "ORD-LINE-9002"
+                        Item = "SKU-BATTERY-PACK-PRO"
+                        RequestedQuantity = 250.0m
+                        UnitOfMeasure = "EA"
+                        RequestedDeliveryDate = DateTimeOffset.UtcNow.AddDays(7.0)
+                        EarliestAcceptableDate = Some DateTimeOffset.UtcNow
+                        LatestAcceptableDate = Some (DateTimeOffset.UtcNow.AddDays(10.0))
+                        DestinationLocation = "LOC-WEST-PLANT"
+                        ExternalLineReference = "HUB-LINE-9002" } ] }
+            let! snapRes2 = nexusCtx.Promise.UnderstandOrders.Commands.OrderBook.Ingest snapRplReq
+            match snapRes2 with
+            | Ok _ ->
+                let valReq2: ValidateOrderLineReq =
+                    { SnapshotId = "SNAP-CHAIN-9002"
+                      OrderLineId = "ORD-LINE-9002"
+                      EvaluationTime = DateTimeOffset.UtcNow }
+                let! _ = nexusCtx.Promise.UnderstandOrders.Commands.OrderBook.Validate valReq2
+                printfn "  [OK] Causal Chain E2E-CHAIN-REPLENISH-002 seeded across Demand -> Core -> Supply -> Promise."
+            | Error err ->
+                printfn $"  [FAIL] Order book ingestion error in E2E-CHAIN-REPLENISH-002: {err.Message}"
+        finally
+            ExecutionContextHolder.Clear()
+
+        // CHAIN 3: Supply Disruption & Quota Review (Supply -> Core -> Promise)
+        let chain3Guid = Guid.Parse("00000003-aaaa-bbbb-cccc-000000000003")
+        let corr3 =
+            match CorrelationId.fromString (chain3Guid.ToString()) with
+            | Some c -> c
+            | None -> CorrelationId.create()
+
+        let ctx3 = ExecutionContext.fromCorrelationAndCausation corr3 None
+        ExecutionContextHolder.Set(ctx3)
+
+        try
+            // Step 1: Supply Capacity Bottleneck Sensed (Supply Domain)
+            let capDisruptReq: UpdateCapacityPositionReq =
+                { PhysicalResourceId = "WC-PACKAGING-01"
+                  TriggeringEvidence = [ "TOOLING_FAILURE"; "THROUGHPUT_DEGRADED" ] }
+            let! _ = nexusCtx.Supply.ManageCapacity.Commands.Position.Update capDisruptReq
+
+            // Step 2: Planning Exception Registered (Core Domain)
+            let ctx3_2 = ExecutionContext.asCausation ctx3
+            ExecutionContextHolder.Set(ctx3_2)
+
+            let excReq: ExceptionEvidenceReq =
+                { ConstraintReference = "BR-S-010-MAX-HOURS"
+                  Classification = "CapacityBottleneck"
+                  AffectedScopeType = "PhysicalResource"
+                  AffectedScopeIdentifier = "WC-PACKAGING-01"
+                  EvidenceReference = Some "Packaging line down for emergency maintenance. Throughput capacity reduced by 60%."
+                  Severity = Some "High"
+                  EvidenceTime = DateTimeOffset.UtcNow }
+            let! _ = nexusCtx.Core.ExceptionManagement.Commands.ProcessEvidence excReq
+
+            // Step 3: Promise Allocation Evaluated under Exception (Promise Domain)
+            let ctx3_3 = ExecutionContext.asCausation ctx3_2
+            ExecutionContextHolder.Set(ctx3_3)
+
+            let snapDisruptReq: IngestOrderRequest =
+                { SnapshotId = "SNAP-CHAIN-7003"
+                  PlanningScopeId = "SCOPE-WEST"
+                  CustomerOrderIdentifier = "ORD-EXCEPTION-7003"
+                  CustomerId = "CUST-STRATEGIC-01"
+                  OrderChannel = "DirectEnterprise"
+                  OrderPriorityClass = "Standard Commercial"
+                  ObservationTimestamp = DateTimeOffset.UtcNow
+                  Lines =
+                    [ { OrderLineId = "ORD-LINE-7003"
+                        Item = "SKU-POWER-SUPPLY-850W"
+                        RequestedQuantity = 800.0m
+                        UnitOfMeasure = "EA"
+                        RequestedDeliveryDate = DateTimeOffset.UtcNow.AddDays(3.0)
+                        EarliestAcceptableDate = Some DateTimeOffset.UtcNow
+                        LatestAcceptableDate = Some (DateTimeOffset.UtcNow.AddDays(5.0))
+                        DestinationLocation = "LOC-WEST-PLANT"
+                        ExternalLineReference = "DISRUPT-LINE-7003" } ] }
+            let! snapRes3 = nexusCtx.Promise.UnderstandOrders.Commands.OrderBook.Ingest snapDisruptReq
+            match snapRes3 with
+            | Ok _ ->
+                let valReq3: ValidateOrderLineReq =
+                    { SnapshotId = "SNAP-CHAIN-7003"
+                      OrderLineId = "ORD-LINE-7003"
+                      EvaluationTime = DateTimeOffset.UtcNow }
+                let! _ = nexusCtx.Promise.UnderstandOrders.Commands.OrderBook.Validate valReq3
+                printfn "  [OK] Causal Chain E2E-CHAIN-DISRUPTION-003 seeded across Supply -> Core -> Promise."
+            | Error err ->
+                printfn $"  [FAIL] Order book ingestion error in E2E-CHAIN-DISRUPTION-003: {err.Message}"
+        finally
+            ExecutionContextHolder.Clear()
+    }
+
 let seed (nexusCtx: NexusContext) : Task<unit> =
     task {
         printfn "========================================================="
@@ -337,6 +583,10 @@ let seed (nexusCtx: NexusContext) : Task<unit> =
                     promiseDoc
         | None ->
             printfn "[StartupData] Skipping Promise seeding due to missing or invalid PromiseSeedData.json"
+
+        // Seed multi-domain exemplar causal chains
+        do! Task.Delay 600
+        do! seedExemplarCausalChains nexusCtx
 
         // Final drain of projection mailboxes
         do! Task.Delay 600

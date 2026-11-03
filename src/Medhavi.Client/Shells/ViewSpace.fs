@@ -69,7 +69,8 @@ type ViewSpaceDependencies =
       Schemas: SchemaRegistry
       Culture: CultureInfo
       DashboardHints: DashboardRenderHints
-      ContextMenu: ContextMenuService option }
+      ContextMenu: ContextMenuService option
+      Density: Medhavi.Contracts.Client.Density }
 
 // Model
 type Model =
@@ -740,6 +741,7 @@ let private renderActiveWorkspace (model: Model) (dependencies: ViewSpaceDepende
             model.DataStores
             renderState
             dependencies.Culture
+            dependencies.Density
             dependencies.DashboardHints
             tab.IsEditMode
             (SurfaceMessage >> dispatch)
@@ -788,11 +790,24 @@ let view (model: Model) (dependencies: ViewSpaceDependencies) (dispatch: Msg -> 
 type Component() =
     inherit ElmishComponent<Model, Msg>()
 
+    let mutable lastDensity: Medhavi.Contracts.Client.Density option = None
+    let mutable lastCulture: CultureInfo option = None
+
     [<Inject>]
     member val ContextMenuService: ContextMenuService = Unchecked.defaultof<ContextMenuService> with get, set
 
     [<Parameter>]
     member val Dependencies: ViewSpaceDependencies option = None with get, set
+
+    override this.ShouldRender() =
+        let currentDensity = this.Dependencies |> Option.map (fun d -> d.Density)
+        let currentCulture = this.Dependencies |> Option.map (fun d -> d.Culture)
+        if currentDensity <> lastDensity || currentCulture <> lastCulture then
+            lastDensity <- currentDensity
+            lastCulture <- currentCulture
+            true
+        else
+            base.ShouldRender()
 
     override this.View model dispatch =
         match this.Dependencies with

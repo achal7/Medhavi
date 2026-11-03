@@ -57,6 +57,7 @@ type EnterpriseGridConfig<'Row> =
       RowKey: 'Row -> string
       ToolbarActions: Node list
       Banner: Node option
+      Density: Medhavi.Contracts.Client.Density option
       OnRowSelected: string option -> unit
       OnSortChanged: SortCriterion option -> unit
       OnFiltersChanged: FilterCriterion list -> unit
@@ -75,6 +76,11 @@ module EnterpriseGrid =
                 $"{currentCount} / {totalCount} records (Filtered)"
             else
                 $"{currentCount} records"
+
+        let radzenDensity =
+            match config.Density with
+            | Some Medhavi.Contracts.Client.Density.Comfortable -> Radzen.Density.Default
+            | _ -> Radzen.Density.Compact
 
         div {
             attr.style
@@ -140,7 +146,7 @@ module EnterpriseGrid =
                     "FilterCaseSensitivity" => FilterCaseSensitivity.CaseInsensitive
                     "AllowRowSelectOnRowClick" => true
                     "SelectionMode" => DataGridSelectionMode.Single
-                    "Density" => Density.Compact
+                    "Density" => radzenDensity
                     "Responsive" => true
                     "Style" => "width: 100%; height: 100%; min-height: 0;"
 

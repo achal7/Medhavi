@@ -59,6 +59,13 @@
     <Compile Include="Core\EnterprisePicture\EnterprisePictureGrid.fs" />
     <Compile Include="Core\EnterprisePicture\EnterprisePictureActions.fs" />
     <Compile Include="Core\EnterprisePicture\EnterprisePictureFeature.fs" />
+    <Compile Include="Core\Traceability\TraceDetailTypes.fs" />
+    <Compile Include="Core\Traceability\TraceCanvasLayout.fs" />
+    <Compile Include="Core\Traceability\TraceCanvasRenderer.fs" />
+    <Compile Include="Core\Traceability\TraceWaterfallRenderer.fs" />
+    <Compile Include="Core\Traceability\TraceRuleInspectorRenderer.fs" />
+    <Compile Include="Core\Traceability\TraceNodeInspectorRenderer.fs" />
+    <Compile Include="Core\Traceability\TraceabilityStudio.fs" />
     <Compile Include="Core\Traceability\TraceabilityWorkbench.fs" />
     <Compile Include="Core\Traceability\TraceabilityActions.fs" />
     <Compile Include="Core\Traceability\TraceabilityFeature.fs" />

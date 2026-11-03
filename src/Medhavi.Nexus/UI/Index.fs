@@ -27,7 +27,7 @@ type Index() =
 
                     title { text "Medhavi APS" }
 
-                    comp<RadzenTheme> { "Theme" => VisualTheme.cssName VisualTheme.SoftwareDark }
+                    comp<RadzenTheme> { "Theme" => VisualTheme.cssName VisualTheme.Software }
 
                     style {
                         rawHtml
@@ -37,12 +37,6 @@ type Index() =
                             }
                             .rz-grid-table tbody tr {
                                 cursor: pointer;
-                            }
-                            .rz-grid-table tbody tr.rz-state-highlight,
-                            .rz-grid-table tbody tr.rz-state-highlight > td {
-                                background-color: var(--rz-primary-lighter) !important;
-                                color: var(--rz-primary-dark) !important;
-                                font-weight: 600;
                             }
                             """
                     }

@@ -12,7 +12,7 @@ let store =
 
             let query =
                 { TelemetryFilterQuery.Default with
-                    Limit = 100
+                    Limit = 5000
                 }
 
             let! result = queryService.QueryTelemetry query |> Async.AwaitTask

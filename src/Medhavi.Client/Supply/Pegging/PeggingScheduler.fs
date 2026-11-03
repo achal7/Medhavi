@@ -1065,7 +1065,7 @@ module ViewModel =
             }
         }
 
-    let renderWorkbench (model: Model) (data: DataPayload) (dispatch: Msg -> unit) : Node =
+    let renderWorkbench (model: Model) (data: DataPayload) (density: Radzen.Density) (dispatch: Msg -> unit) : Node =
         let matrixRows = buildMatrixRows data model
 
         let horizonDates =
@@ -1315,7 +1315,7 @@ module ViewModel =
                         "AllowSorting" => false
                         "AllowFiltering" => false
                         "AllowColumnResize" => true
-                        "Density" => Density.Compact
+                        "Density" => density
                         "Style" => "width: 100%; height: 100%; min-height: 0;"
 
                         attr.fragment "Columns" (concat {
@@ -1510,7 +1510,12 @@ type PeggingWorkbenchComponent() =
         this.StateHasChanged()
 
     override this.Render() =
-        ViewModel.renderWorkbench model this.Context.Data this.DispatchLocal
+        let radzenDensity =
+            match this.Context.Density with
+            | Medhavi.Contracts.Client.Density.Comfortable -> Radzen.Density.Default
+            | _ -> Radzen.Density.Compact
+
+        ViewModel.renderWorkbench model this.Context.Data radzenDensity this.DispatchLocal
 
 // ----------------------------------------------------------------------------
 // Component Runtime Registration

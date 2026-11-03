@@ -36,9 +36,15 @@ let composeAll
         let pconfig = ProjectionConfig.Default
         let traceCodec: Codec<DecisionTrace> = Codec.json<DecisionTrace>
 
+        // Decorate knowledge observation port explicitly per Bounded Context
+        let coreKnowledge = publishKnowledge |> KnowledgeRepresentation.withContext "Core"
+        let demandKnowledge = publishKnowledge |> KnowledgeRepresentation.withContext "Demand"
+        let supplyKnowledge = publishKnowledge |> KnowledgeRepresentation.withContext "Supply"
+        let promiseKnowledge = publishKnowledge |> KnowledgeRepresentation.withContext "Promise"
+
         // Step 2: Compose Core domain
         let! coreCtx: ComposeCore.CoreContext =
-            ComposeCore.compose store publishKnowledge telemetryPublisher pconfig services
+            ComposeCore.compose store coreKnowledge telemetryPublisher pconfig services
 
         // Step 3: Implement real cross-domain DemandPorts wired to Core context
         let getPictureDemandFacts (scopeId: PlanningScopeId) : Task<PictureFacts> =
@@ -342,7 +348,7 @@ let composeAll
 
         // Step 4: Compose Demand domain with live cross-domain query ports
         let! demandCtx: ComposeDemand.DemandContext =
-            ComposeDemand.compose store publishKnowledge telemetryPublisher pconfig traceCodec demandPorts services
+            ComposeDemand.compose store demandKnowledge telemetryPublisher pconfig traceCodec demandPorts services
 
         // Step 5: Implement real cross-domain SupplyPorts wired to Core and Demand contexts
         let supplierExists (suppId: SupplierId) : Task<bool> =
@@ -988,7 +994,7 @@ let composeAll
         let! supplyCtx: ComposeSupply.SupplyContext =
             ComposeSupply.compose
                 store
-                publishKnowledge
+                supplyKnowledge
                 telemetryPublisher
                 pconfig
                 traceCodec
@@ -1408,7 +1414,7 @@ let composeAll
         let! promiseCtx: Medhavi.Promise.PromiseContext =
             ComposePromise.compose
                 store
-                publishKnowledge
+                promiseKnowledge
                 telemetryPublisher
                 traceCodec
                 pconfig
